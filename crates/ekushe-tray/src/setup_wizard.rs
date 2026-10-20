@@ -38,7 +38,7 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
 };
 
 use crate::{
-    wide_null, FONT_HINDSILIGURI_BOLD, FONT_HINDSILIGURI_REG, FONT_KALPURUSH, FONT_NIKOSH,
+    wide_null, FONT_HINDSILIGURI_BOLD, FONT_HINDSILIGURI_REG, FONT_KALPURUSH,
     FONT_SIYAMRUPALI, FONT_SOLAIMANLIPI, LOGO_PNG_BYTES,
 };
 
@@ -131,7 +131,6 @@ pub fn ensure_self_configured() {
     let font_files: &[(&str, &str, &[u8])] = &[
         ("Kalpurush (TrueType)", "Kalpurush.ttf", FONT_KALPURUSH),
         ("SolaimanLipi (TrueType)", "SolaimanLipi.ttf", FONT_SOLAIMANLIPI),
-        ("Nikosh (TrueType)", "Nikosh.ttf", FONT_NIKOSH),
         ("Siyam Rupali (TrueType)", "SiyamRupali.ttf", FONT_SIYAMRUPALI),
         (
             "Hind Siliguri (TrueType)",

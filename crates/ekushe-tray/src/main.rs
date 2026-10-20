@@ -67,7 +67,6 @@ static LOGO_PNG_BYTES: &[u8] = include_bytes!("../../../assets/icons/logo_256.pn
 /// Bundled Bangladeshi & Bengali OpenType Fonts (100% offline, compiled into binary)
 static FONT_KALPURUSH: &[u8] = include_bytes!("../../../assets/fonts/Kalpurush.ttf");
 static FONT_SOLAIMANLIPI: &[u8] = include_bytes!("../../../assets/fonts/SolaimanLipi.ttf");
-static FONT_NIKOSH: &[u8] = include_bytes!("../../../assets/fonts/Nikosh.ttf");
 static FONT_SIYAMRUPALI: &[u8] = include_bytes!("../../../assets/fonts/SiyamRupali.ttf");
 static FONT_HINDSILIGURI_REG: &[u8] = include_bytes!("../../../assets/fonts/HindSiliguri-Regular.ttf");
 static FONT_HINDSILIGURI_BOLD: &[u8] = include_bytes!("../../../assets/fonts/HindSiliguri-Bold.ttf");
@@ -168,7 +167,6 @@ unsafe fn register_embedded_bangla_fonts() {
     for font_bytes in [
         FONT_KALPURUSH,
         FONT_SOLAIMANLIPI,
-        FONT_NIKOSH,
         FONT_SIYAMRUPALI,
         FONT_HINDSILIGURI_REG,
         FONT_HINDSILIGURI_BOLD,
@@ -192,7 +190,7 @@ fn main() {
 
     unsafe {
         let _ = windows_sys::Win32::UI::WindowsAndMessaging::SetProcessDPIAware();
-        // Register bundled Bangladeshi fonts (Kalpurush, SolaimanLipi, Nikosh, Siyam Rupali, Hind Siliguri) in GDI memory
+        // Register bundled Bangladeshi fonts (Kalpurush, SolaimanLipi, Siyam Rupali, Hind Siliguri) in GDI memory
         register_embedded_bangla_fonts();
 
         if exe_name.contains("uninstall") || args.iter().any(|a| a == "--uninstall") {
@@ -1950,9 +1948,6 @@ fn handle_http_client(mut stream: TcpStream) -> std::io::Result<()> {
     }
     if method == "GET" && clean_path == "/fonts/SolaimanLipi.ttf" {
         return write_http_response(&mut stream, "200 OK", "font/ttf", FONT_SOLAIMANLIPI);
-    }
-    if method == "GET" && clean_path == "/fonts/Nikosh.ttf" {
-        return write_http_response(&mut stream, "200 OK", "font/ttf", FONT_NIKOSH);
     }
     if method == "GET" && clean_path == "/fonts/SiyamRupali.ttf" {
         return write_http_response(&mut stream, "200 OK", "font/ttf", FONT_SIYAMRUPALI);
