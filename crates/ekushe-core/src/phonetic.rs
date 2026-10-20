@@ -296,7 +296,9 @@ impl PhoneticEngine {
             }
 
             // 10. Single / digraph consonant match
-            if let Some((c_len, cons_str, is_cons)) = match_single_consonant(rem, i == 0, prev_consonant) {
+            if let Some((c_len, cons_str, is_cons)) =
+                match_single_consonant(rem, i == 0, prev_consonant)
+            {
                 out.push_str(cons_str);
                 prev_consonant = is_cons;
                 force_join = false;
@@ -347,8 +349,7 @@ fn normalize_avro_case(word: &str) -> String {
             'O' | 'I' | 'U' | 'D' | 'T' | 'N' | 'R' | 'Z' => true,
             'S' => {
                 // Keep `Sh` distinct from `sh`
-                chars.get(idx + 1).copied() == Some('h')
-                    || chars.get(idx + 1).copied() == Some('H')
+                chars.get(idx + 1).copied() == Some('h') || chars.get(idx + 1).copied() == Some('H')
             }
             'G' => {
                 // Keep `NG` / `Ng`
@@ -615,13 +616,7 @@ fn match_single_consonant(
         b'v' => Some((1, "ভ", true)),
         b'm' => Some((1, "ম", true)),
         b'z' => Some((1, "য", true)),
-        b'y' => {
-            if at_word_start {
-                Some((1, "য়", true))
-            } else {
-                Some((1, "য়", true))
-            }
-        }
+        b'y' => Some((1, "য়", true)),
         b'r' => Some((1, "র", true)),
         b'l' => Some((1, "ল", true)),
         b'S' => Some((1, "শ", true)),
@@ -820,7 +815,8 @@ fn lookup_common_orthographic_word_exact(word: &str) -> Option<&'static str> {
         "mishti" | "miShTi" | "misti" => Some("মিষ্টি"),
         "noshto" | "noShTo" | "nosto" => Some("নষ্ট"),
         "brishTi" | "brishti" | "brriShTi" | "brrishti" => Some("বৃষ্টি"),
-        "srishti" | "sristi" | "srisTi" | "shrishti" | "srriShTi" | "srrishTi" | "srrishti" | "srristi" => Some("সৃষ্টি"),
+        "srishti" | "sristi" | "srisTi" | "shrishti" | "srriShTi" | "srrishTi" | "srrishti"
+        | "srristi" => Some("সৃষ্টি"),
         "srishtikorta" | "sristikorta" | "srriShTikorta" | "srrishtikorta" => Some("সৃষ্টিকর্তা"),
         "srishtisheel" | "srishtishil" | "srriShTishIl" => Some("সৃষ্টিশীল"),
         "drishti" | "dristi" | "drishTi" | "drriShTi" | "drrishTi" | "drrishti" => Some("দৃষ্টি"),
@@ -906,17 +902,20 @@ mod tests {
     #[test]
     fn test_classic_avro_sentence() {
         let eng = PhoneticEngine::new();
-        assert_eq!(
-            eng.transliterate("ami banglay gan gai."),
-            "আমি বাংলায় গান গাই।"
-        );
+        assert_eq!(eng.transliterate("ami banglay gan gai."), "আমি বাংলায় গান গাই।");
     }
 
     #[test]
     fn test_signs_and_kars() {
         let eng = PhoneticEngine::new();
-        assert_eq!(eng.transliterate("ka ki kI kee ku kU koo krri ke kOI koi kO kou kOU"), "কা কি কী কী কু কূ কূ কৃ কে কৈ কৈ কো কৌ কৌ");
-        assert_eq!(eng.transliterate("cha^d du:kho hothat`` 100$"), "চাঁদ দুঃখ হঠাৎ ১০০৳");
+        assert_eq!(
+            eng.transliterate("ka ki kI kee ku kU koo krri ke kOI koi kO kou kOU"),
+            "কা কি কী কী কু কূ কূ কৃ কে কৈ কৈ কো কৌ কৌ"
+        );
+        assert_eq!(
+            eng.transliterate("cha^d du:kho hothat`` 100$"),
+            "চাঁদ দুঃখ হঠাৎ ১০০৳"
+        );
         assert_eq!(eng.transliterate("c ch chati"), "চ ছ ছাতি");
     }
 
@@ -936,8 +935,14 @@ mod tests {
         assert_eq!(eng.transliterate("srriShTi"), "সৃষ্টি");
         assert_eq!(eng.transliterate("smriti"), "স্মৃতি");
         assert_eq!(eng.transliterate("smrriti"), "স্মৃতি");
-        assert_eq!(eng.transliterate("Rokto Bhokto Shokti Mukti Byokto"), "রক্ত ভক্ত শক্তি মুক্তি ব্যক্ত");
-        assert_eq!(eng.transliterate("Nomoshkar Puroshkar Shoposhto Shombhob"), "নমস্কার পুরস্কার স্পষ্ট সম্ভব");
+        assert_eq!(
+            eng.transliterate("Rokto Bhokto Shokti Mukti Byokto"),
+            "রক্ত ভক্ত শক্তি মুক্তি ব্যক্ত"
+        );
+        assert_eq!(
+            eng.transliterate("Nomoshkar Puroshkar Shoposhto Shombhob"),
+            "নমস্কার পুরস্কার স্পষ্ট সম্ভব"
+        );
         assert_eq!(eng.transliterate("rrto"), "র্ত");
         assert_eq!(eng.transliterate("krrto"), "কর্ত");
     }

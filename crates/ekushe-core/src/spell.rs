@@ -12,8 +12,8 @@
 //! - ট <-> ত, ঠ <-> থ, ড <-> দ, ঢ <-> ধ (Retroflex vs Dental stops)
 //! - Common Bangla inflectional suffixes (`-টি`, `-টা`, `-গুলো`, `-ের`, `-কে`, `-রা`, `-দের`, `-তে`, `-য়`).
 
-use std::collections::{HashMap, HashSet};
 use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, HashSet};
 
 use crate::dict::{Dictionary, WordClass, FLAG_CONFIDENT};
 
@@ -59,9 +59,21 @@ fn compose_nukta(w: &[char]) -> Vec<char> {
     for &c in w {
         if c == '\u{09BC}' {
             match out.last().copied() {
-                Some('\u{09A1}') => { out.pop(); out.push('\u{09DC}'); continue; }
-                Some('\u{09A2}') => { out.pop(); out.push('\u{09DD}'); continue; }
-                Some('\u{09AF}') => { out.pop(); out.push('\u{09DF}'); continue; }
+                Some('\u{09A1}') => {
+                    out.pop();
+                    out.push('\u{09DC}');
+                    continue;
+                }
+                Some('\u{09A2}') => {
+                    out.pop();
+                    out.push('\u{09DD}');
+                    continue;
+                }
+                Some('\u{09AF}') => {
+                    out.pop();
+                    out.push('\u{09DF}');
+                    continue;
+                }
                 _ => {}
             }
         }
@@ -72,9 +84,32 @@ fn compose_nukta(w: &[char]) -> Vec<char> {
 
 /// Common Bangla inflectional suffixes that can be attached to valid dictionary roots.
 const BANGLA_SUFFIXES: &[&str] = &[
-    "গুলোকে", "গুলোতে", "গুলোর", "গুলো", "গুলি", "দেরকে", "দের", "টিকে", "টির", "টিতে", "টি",
-    "টাকে", "টার", "টাতে", "টা", "খানা", "খানি", "গুলোয়", "কে", "রে", "রা", "তে", "য়", "য়ে",
-    "ের", "র",
+    "গুলোকে",
+    "গুলোতে",
+    "গুলোর",
+    "গুলো",
+    "গুলি",
+    "দেরকে",
+    "দের",
+    "টিকে",
+    "টির",
+    "টিতে",
+    "টি",
+    "টাকে",
+    "টার",
+    "টাতে",
+    "টা",
+    "খানা",
+    "খানি",
+    "গুলোয়",
+    "কে",
+    "রে",
+    "রা",
+    "তে",
+    "য়",
+    "য়ে",
+    "ের",
+    "র",
 ];
 
 impl SpellChecker {
@@ -108,7 +143,10 @@ impl SpellChecker {
         let norm = normalize_bangla(word);
         let trimmed = norm.trim_matches(|c: char| !is_bangla_letter_or_mark(c));
         if let Some(d) = self.dict {
-            if trimmed.is_empty() || trimmed.chars().all(|c| ('০'..='৯').contains(&c)) || self.user_words.contains(trimmed) {
+            if trimmed.is_empty()
+                || trimmed.chars().all(|c| ('০'..='৯').contains(&c))
+                || self.user_words.contains(trimmed)
+            {
                 return true;
             }
             if let Some(info) = d.lookup(trimmed) {
@@ -116,7 +154,9 @@ impl SpellChecker {
             }
             for &suf in BANGLA_SUFFIXES {
                 if let Some(stem) = trimmed.strip_suffix(suf) {
-                    if stem.chars().count() >= 2 && (self.dict_knows(stem) || self.user_words.contains(stem)) {
+                    if stem.chars().count() >= 2
+                        && (self.dict_knows(stem) || self.user_words.contains(stem))
+                    {
                         return true;
                     }
                 }
@@ -241,7 +281,10 @@ impl SpellChecker {
             out.push(d.word(p).to_string());
         }
         let wc: Vec<char> = w.chars().collect();
-        let mut keys: Vec<String> = crate::roman::romanize(w, 4).iter().map(|(_, r)| crate::roman::skeleton(r)).collect();
+        let mut keys: Vec<String> = crate::roman::romanize(w, 4)
+            .iter()
+            .map(|(_, r)| crate::roman::skeleton(r))
+            .collect();
         keys.sort();
         keys.dedup();
         let mut scored: Vec<(f32, String)> = Vec::new();
@@ -294,9 +337,19 @@ impl SpellChecker {
 
     fn issue_for(&self, word: &str, byte_offset: usize) -> Option<SpellIssue> {
         if !self.is_correct(word) {
-            return Some(SpellIssue { word: word.to_string(), byte_offset, suggestions: self.suggest(word, 5), kind: "misspelling".into() });
+            return Some(SpellIssue {
+                word: word.to_string(),
+                byte_offset,
+                suggestions: self.suggest(word, 5),
+                kind: "misspelling".into(),
+            });
         }
-        self.non_standard(word).map(|p| SpellIssue { word: word.to_string(), byte_offset, suggestions: vec![p], kind: "non_standard".into() })
+        self.non_standard(word).map(|p| SpellIssue {
+            word: word.to_string(),
+            byte_offset,
+            suggestions: vec![p],
+            kind: "non_standard".into(),
+        })
     }
 
     /// Check an entire Bangla text and return all detected spelling issues with offsets and suggestions.

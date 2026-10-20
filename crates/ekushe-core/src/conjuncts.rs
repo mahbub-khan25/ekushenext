@@ -92,12 +92,36 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "ক্ত (ক+ত যুক্তবর্ণ · K-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "রক্ত", roman: "rokto", meaning: "Blood" },
-            WordExample { bangla: "ভক্ত", roman: "bhokto", meaning: "Devotee" },
-            WordExample { bangla: "শক্তি", roman: "shokti", meaning: "Power/Energy" },
-            WordExample { bangla: "মুক্তি", roman: "mukti", meaning: "Freedom" },
-            WordExample { bangla: "ব্যক্ত", roman: "byokto", meaning: "Expressed" },
-            WordExample { bangla: "যুক্ত", roman: "jukto", meaning: "Connected" },
+            WordExample {
+                bangla: "রক্ত",
+                roman: "rokto",
+                meaning: "Blood",
+            },
+            WordExample {
+                bangla: "ভক্ত",
+                roman: "bhokto",
+                meaning: "Devotee",
+            },
+            WordExample {
+                bangla: "শক্তি",
+                roman: "shokti",
+                meaning: "Power/Energy",
+            },
+            WordExample {
+                bangla: "মুক্তি",
+                roman: "mukti",
+                meaning: "Freedom",
+            },
+            WordExample {
+                bangla: "ব্যক্ত",
+                roman: "byokto",
+                meaning: "Expressed",
+            },
+            WordExample {
+                bangla: "যুক্ত",
+                roman: "jukto",
+                meaning: "Connected",
+            },
         ],
     },
     SignGuideEntry {
@@ -111,13 +135,41 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "ক্ষ (ক+ষ যুক্তবর্ণ · K-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "শিক্ষা", roman: "shikkha", meaning: "Education" },
-            WordExample { bangla: "ক্ষমা", roman: "khoma / kkhoma", meaning: "Forgiveness" },
-            WordExample { bangla: "ক্ষতি", roman: "khoti / kkhoti", meaning: "Harm/Loss" },
-            WordExample { bangla: "লক্ষ্য", roman: "lokkho / lokkhyo", meaning: "Goal/Target" },
-            WordExample { bangla: "দক্ষ", roman: "dokkho", meaning: "Skilled" },
-            WordExample { bangla: "পরীক্ষা", roman: "porikkha", meaning: "Exam/Test" },
-            WordExample { bangla: "বৃক্ষ", roman: "briksho / brrikkho", meaning: "Tree" },
+            WordExample {
+                bangla: "শিক্ষা",
+                roman: "shikkha",
+                meaning: "Education",
+            },
+            WordExample {
+                bangla: "ক্ষমা",
+                roman: "khoma / kkhoma",
+                meaning: "Forgiveness",
+            },
+            WordExample {
+                bangla: "ক্ষতি",
+                roman: "khoti / kkhoti",
+                meaning: "Harm/Loss",
+            },
+            WordExample {
+                bangla: "লক্ষ্য",
+                roman: "lokkho / lokkhyo",
+                meaning: "Goal/Target",
+            },
+            WordExample {
+                bangla: "দক্ষ",
+                roman: "dokkho",
+                meaning: "Skilled",
+            },
+            WordExample {
+                bangla: "পরীক্ষা",
+                roman: "porikkha",
+                meaning: "Exam/Test",
+            },
+            WordExample {
+                bangla: "বৃক্ষ",
+                roman: "briksho / brrikkho",
+                meaning: "Tree",
+            },
         ],
     },
     SignGuideEntry {
@@ -131,11 +183,31 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "ঙ্ক (ঙ+ক যুক্তবর্ণ · K-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "অঙ্ক", roman: "onko", meaning: "Math/Digit" },
-            WordExample { bangla: "ব্যাংক", roman: "bank / byank", meaning: "Bank" },
-            WordExample { bangla: "আশঙ্কা", roman: "ashongka", meaning: "Anxiety/Fear" },
-            WordExample { bangla: "অহঙ্কার", roman: "ahongkar / ohongkar", meaning: "Arrogance" },
-            WordExample { bangla: "কঙ্কাল", roman: "kongkal", meaning: "Skeleton" },
+            WordExample {
+                bangla: "অঙ্ক",
+                roman: "onko",
+                meaning: "Math/Digit",
+            },
+            WordExample {
+                bangla: "ব্যাংক",
+                roman: "bank / byank",
+                meaning: "Bank",
+            },
+            WordExample {
+                bangla: "আশঙ্কা",
+                roman: "ashongka",
+                meaning: "Anxiety/Fear",
+            },
+            WordExample {
+                bangla: "অহঙ্কার",
+                roman: "ahongkar / ohongkar",
+                meaning: "Arrogance",
+            },
+            WordExample {
+                bangla: "কঙ্কাল",
+                roman: "kongkal",
+                meaning: "Skeleton",
+            },
         ],
     },
     SignGuideEntry {
@@ -149,12 +221,36 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "ঙ্গ (ঙ+গ যুক্তবর্ণ · K-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "সঙ্গী", roman: "shonggi / songi", meaning: "Companion" },
-            WordExample { bangla: "বাঙালি", roman: "bangali", meaning: "Bengali person" },
-            WordExample { bangla: "রঙ্গিন", roman: "ronggin", meaning: "Colorful" },
-            WordExample { bangla: "অঙ্গ", roman: "onggo", meaning: "Body part" },
-            WordExample { bangla: "মঙ্গল", roman: "monggol", meaning: "Welfare/Tuesday" },
-            WordExample { bangla: "বঙ্গ", roman: "bonggo / bongo", meaning: "Bengal" },
+            WordExample {
+                bangla: "সঙ্গী",
+                roman: "shonggi / songi",
+                meaning: "Companion",
+            },
+            WordExample {
+                bangla: "বাঙালি",
+                roman: "bangali",
+                meaning: "Bengali person",
+            },
+            WordExample {
+                bangla: "রঙ্গিন",
+                roman: "ronggin",
+                meaning: "Colorful",
+            },
+            WordExample {
+                bangla: "অঙ্গ",
+                roman: "onggo",
+                meaning: "Body part",
+            },
+            WordExample {
+                bangla: "মঙ্গল",
+                roman: "monggol",
+                meaning: "Welfare/Tuesday",
+            },
+            WordExample {
+                bangla: "বঙ্গ",
+                roman: "bonggo / bongo",
+                meaning: "Bengal",
+            },
         ],
     },
     SignGuideEntry {
@@ -168,9 +264,21 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "ক্ল (ক+ল যুক্তবর্ণ · K-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "ক্লান্ত", roman: "klanto", meaning: "Tired" },
-            WordExample { bangla: "ক্লাস", roman: "klas", meaning: "Class" },
-            WordExample { bangla: "ক্লাব", roman: "klab", meaning: "Club" },
+            WordExample {
+                bangla: "ক্লান্ত",
+                roman: "klanto",
+                meaning: "Tired",
+            },
+            WordExample {
+                bangla: "ক্লাস",
+                roman: "klas",
+                meaning: "Class",
+            },
+            WordExample {
+                bangla: "ক্লাব",
+                roman: "klab",
+                meaning: "Club",
+            },
         ],
     },
     SignGuideEntry {
@@ -184,9 +292,21 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "ক্স (ক+স যুক্তবর্ণ · K-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "বাক্স", roman: "bakso", meaning: "Box" },
-            WordExample { bangla: "ট্যাক্সি", roman: "tyaksi", meaning: "Taxi" },
-            WordExample { bangla: "কক্সবাজার", roman: "koksobajar", meaning: "Cox's Bazar" },
+            WordExample {
+                bangla: "বাক্স",
+                roman: "bakso",
+                meaning: "Box",
+            },
+            WordExample {
+                bangla: "ট্যাক্সি",
+                roman: "tyaksi",
+                meaning: "Taxi",
+            },
+            WordExample {
+                bangla: "কক্সবাজার",
+                roman: "koksobajar",
+                meaning: "Cox's Bazar",
+            },
         ],
     },
     SignGuideEntry {
@@ -200,12 +320,23 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "গ্ধ (গ+ধ যুক্তবর্ণ · K-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "মুগ্ধ", roman: "mugdho", meaning: "Fascinated/Charmed" },
-            WordExample { bangla: "দুগ্ধ", roman: "dugdho", meaning: "Milk" },
-            WordExample { bangla: "দগ্ধ", roman: "dogdho", meaning: "Burned" },
+            WordExample {
+                bangla: "মুগ্ধ",
+                roman: "mugdho",
+                meaning: "Fascinated/Charmed",
+            },
+            WordExample {
+                bangla: "দুগ্ধ",
+                roman: "dugdho",
+                meaning: "Milk",
+            },
+            WordExample {
+                bangla: "দগ্ধ",
+                roman: "dogdho",
+                meaning: "Burned",
+            },
         ],
     },
-
     // ════════════════════════════════════════════════════════════════════════
     // 2. Ch-Series (চ, জ, ঞ)
     // ════════════════════════════════════════════════════════════════════════
@@ -220,11 +351,31 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "চ্চ (চ+চ যুক্তবর্ণ · Ch-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "উচ্চ", roman: "uccho / ucco", meaning: "High" },
-            WordExample { bangla: "বাচ্চা", roman: "bacca / bachcha", meaning: "Child" },
-            WordExample { bangla: "উচ্চারণ", roman: "uccaron", meaning: "Pronunciation" },
-            WordExample { bangla: "সচ্চরিত্র", roman: "soccoritro", meaning: "Good character" },
-            WordExample { bangla: "বিচ্ছিন্ন", roman: "bicchinno", meaning: "Disconnected" },
+            WordExample {
+                bangla: "উচ্চ",
+                roman: "uccho / ucco",
+                meaning: "High",
+            },
+            WordExample {
+                bangla: "বাচ্চা",
+                roman: "bacca / bachcha",
+                meaning: "Child",
+            },
+            WordExample {
+                bangla: "উচ্চারণ",
+                roman: "uccaron",
+                meaning: "Pronunciation",
+            },
+            WordExample {
+                bangla: "সচ্চরিত্র",
+                roman: "soccoritro",
+                meaning: "Good character",
+            },
+            WordExample {
+                bangla: "বিচ্ছিন্ন",
+                roman: "bicchinno",
+                meaning: "Disconnected",
+            },
         ],
     },
     SignGuideEntry {
@@ -238,12 +389,36 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "চ্ছ (চ+ছ যুক্তবর্ণ · Ch-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "ইচ্ছা", roman: "iccha", meaning: "Wish/Desire" },
-            WordExample { bangla: "আচ্ছা", roman: "accha", meaning: "Okay/Alright" },
-            WordExample { bangla: "স্বচ্ছ", roman: "shoccho / swoccho", meaning: "Transparent/Clear" },
-            WordExample { bangla: "উচ্ছেদ", roman: "ucched", meaning: "Eviction" },
-            WordExample { bangla: "আচ্ছাদন", roman: "acchadon", meaning: "Covering" },
-            WordExample { bangla: "শুভেচ্ছা", roman: "shubheccha", meaning: "Greetings" },
+            WordExample {
+                bangla: "ইচ্ছা",
+                roman: "iccha",
+                meaning: "Wish/Desire",
+            },
+            WordExample {
+                bangla: "আচ্ছা",
+                roman: "accha",
+                meaning: "Okay/Alright",
+            },
+            WordExample {
+                bangla: "স্বচ্ছ",
+                roman: "shoccho / swoccho",
+                meaning: "Transparent/Clear",
+            },
+            WordExample {
+                bangla: "উচ্ছেদ",
+                roman: "ucched",
+                meaning: "Eviction",
+            },
+            WordExample {
+                bangla: "আচ্ছাদন",
+                roman: "acchadon",
+                meaning: "Covering",
+            },
+            WordExample {
+                bangla: "শুভেচ্ছা",
+                roman: "shubheccha",
+                meaning: "Greetings",
+            },
         ],
     },
     SignGuideEntry {
@@ -257,12 +432,36 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "জ্ঞ (জ+ঞ যুক্তবর্ণ · Ch-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "জ্ঞান", roman: "gyan / ggan", meaning: "Knowledge" },
-            WordExample { bangla: "বিজ্ঞান", roman: "bigyan / biggan", meaning: "Science" },
-            WordExample { bangla: "অজ্ঞ", roman: "oggo", meaning: "Ignorant" },
-            WordExample { bangla: "বিজ্ঞাপন", roman: "biggapon", meaning: "Advertisement" },
-            WordExample { bangla: "প্রতিজ্ঞা", roman: "protigga", meaning: "Promise" },
-            WordExample { bangla: "জিজ্ঞাসা", roman: "jiggasha", meaning: "Question/Inquiry" },
+            WordExample {
+                bangla: "জ্ঞান",
+                roman: "gyan / ggan",
+                meaning: "Knowledge",
+            },
+            WordExample {
+                bangla: "বিজ্ঞান",
+                roman: "bigyan / biggan",
+                meaning: "Science",
+            },
+            WordExample {
+                bangla: "অজ্ঞ",
+                roman: "oggo",
+                meaning: "Ignorant",
+            },
+            WordExample {
+                bangla: "বিজ্ঞাপন",
+                roman: "biggapon",
+                meaning: "Advertisement",
+            },
+            WordExample {
+                bangla: "প্রতিজ্ঞা",
+                roman: "protigga",
+                meaning: "Promise",
+            },
+            WordExample {
+                bangla: "জিজ্ঞাসা",
+                roman: "jiggasha",
+                meaning: "Question/Inquiry",
+            },
         ],
     },
     SignGuideEntry {
@@ -276,12 +475,36 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "ঞ্চ (ঞ+চ যুক্তবর্ণ · Ch-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "পঞ্চ", roman: "poncho", meaning: "Five" },
-            WordExample { bangla: "অঞ্চল", roman: "onchol", meaning: "Region/Zone" },
-            WordExample { bangla: "পঞ্চম", roman: "ponchom", meaning: "Fifth" },
-            WordExample { bangla: "চঞ্চল", roman: "chonchol", meaning: "Restless" },
-            WordExample { bangla: "বঞ্চনা", roman: "bonchona", meaning: "Deprivation" },
-            WordExample { bangla: "মঞ্চ", roman: "moncho", meaning: "Stage" },
+            WordExample {
+                bangla: "পঞ্চ",
+                roman: "poncho",
+                meaning: "Five",
+            },
+            WordExample {
+                bangla: "অঞ্চল",
+                roman: "onchol",
+                meaning: "Region/Zone",
+            },
+            WordExample {
+                bangla: "পঞ্চম",
+                roman: "ponchom",
+                meaning: "Fifth",
+            },
+            WordExample {
+                bangla: "চঞ্চল",
+                roman: "chonchol",
+                meaning: "Restless",
+            },
+            WordExample {
+                bangla: "বঞ্চনা",
+                roman: "bonchona",
+                meaning: "Deprivation",
+            },
+            WordExample {
+                bangla: "মঞ্চ",
+                roman: "moncho",
+                meaning: "Stage",
+            },
         ],
     },
     SignGuideEntry {
@@ -295,9 +518,21 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "ঞ্জ (ঞ+জ যুক্তবর্ণ · Ch-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "পাঞ্জাবি", roman: "panjabi", meaning: "Panjabi attire" },
-            WordExample { bangla: "গঞ্জ", roman: "gonj", meaning: "Market town" },
-            WordExample { bangla: "রঞ্জন", roman: "ronjon", meaning: "Coloring/Pleasing" },
+            WordExample {
+                bangla: "পাঞ্জাবি",
+                roman: "panjabi",
+                meaning: "Panjabi attire",
+            },
+            WordExample {
+                bangla: "গঞ্জ",
+                roman: "gonj",
+                meaning: "Market town",
+            },
+            WordExample {
+                bangla: "রঞ্জন",
+                roman: "ronjon",
+                meaning: "Coloring/Pleasing",
+            },
         ],
     },
     SignGuideEntry {
@@ -311,12 +546,23 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "জ্জ (জ+জ যুক্তবর্ণ · Ch-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "লজ্জা", roman: "lojja", meaning: "Shyness/Shame" },
-            WordExample { bangla: "সজ্জা", roman: "shojja", meaning: "Decoration" },
-            WordExample { bangla: "উজ্জ্বল", roman: "ujjwol", meaning: "Bright/Radiant" },
+            WordExample {
+                bangla: "লজ্জা",
+                roman: "lojja",
+                meaning: "Shyness/Shame",
+            },
+            WordExample {
+                bangla: "সজ্জা",
+                roman: "shojja",
+                meaning: "Decoration",
+            },
+            WordExample {
+                bangla: "উজ্জ্বল",
+                roman: "ujjwol",
+                meaning: "Bright/Radiant",
+            },
         ],
     },
-
     // ════════════════════════════════════════════════════════════════════════
     // 3. T-Series (ত, ট, ড)
     // ════════════════════════════════════════════════════════════════════════
@@ -331,11 +577,31 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "ট্ট (ট+ট যুক্তবর্ণ · T-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "চট্টগ্রাম", roman: "chottogram", meaning: "Chittagong" },
-            WordExample { bangla: "অট্টালিকা", roman: "ottalika", meaning: "Building/Mansion" },
-            WordExample { bangla: "ভট্টাচার্য", roman: "bhottachorjo", meaning: "Bhattacharya (surname)" },
-            WordExample { bangla: "টট্টর", roman: "tottor", meaning: "Chattering sound" },
-            WordExample { bangla: "ঠাট্টা", roman: "thaTTa", meaning: "Joke/Jest" },
+            WordExample {
+                bangla: "চট্টগ্রাম",
+                roman: "chottogram",
+                meaning: "Chittagong",
+            },
+            WordExample {
+                bangla: "অট্টালিকা",
+                roman: "ottalika",
+                meaning: "Building/Mansion",
+            },
+            WordExample {
+                bangla: "ভট্টাচার্য",
+                roman: "bhottachorjo",
+                meaning: "Bhattacharya (surname)",
+            },
+            WordExample {
+                bangla: "টট্টর",
+                roman: "tottor",
+                meaning: "Chattering sound",
+            },
+            WordExample {
+                bangla: "ঠাট্টা",
+                roman: "thaTTa",
+                meaning: "Joke/Jest",
+            },
         ],
     },
     SignGuideEntry {
@@ -349,11 +615,31 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "ত্ত (ত+ত যুক্তবর্ণ · T-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "উত্তেজনা", roman: "uttejna / uttejona", meaning: "Excitement" },
-            WordExample { bangla: "উত্তর", roman: "uttor", meaning: "Answer/North" },
-            WordExample { bangla: "সম্পত্তি", roman: "shompotti", meaning: "Property" },
-            WordExample { bangla: "উত্তম", roman: "uttom", meaning: "Excellent" },
-            WordExample { bangla: "বিপত্তি", roman: "bipotti", meaning: "Adversity" },
+            WordExample {
+                bangla: "উত্তেজনা",
+                roman: "uttejna / uttejona",
+                meaning: "Excitement",
+            },
+            WordExample {
+                bangla: "উত্তর",
+                roman: "uttor",
+                meaning: "Answer/North",
+            },
+            WordExample {
+                bangla: "সম্পত্তি",
+                roman: "shompotti",
+                meaning: "Property",
+            },
+            WordExample {
+                bangla: "উত্তম",
+                roman: "uttom",
+                meaning: "Excellent",
+            },
+            WordExample {
+                bangla: "বিপত্তি",
+                roman: "bipotti",
+                meaning: "Adversity",
+            },
         ],
     },
     SignGuideEntry {
@@ -367,12 +653,36 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "ত্র (ত+র যুক্তবর্ণ · T-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "পত্র", roman: "potro", meaning: "Letter/Page" },
-            WordExample { bangla: "ছাত্র", roman: "chatro", meaning: "Student" },
-            WordExample { bangla: "মিত্র", roman: "mitro", meaning: "Friend" },
-            WordExample { bangla: "ত্রাণ", roman: "tran", meaning: "Relief/Rescue" },
-            WordExample { bangla: "রাত্রি", roman: "ratri", meaning: "Night" },
-            WordExample { bangla: "চিত্র", roman: "chitro", meaning: "Picture/Art" },
+            WordExample {
+                bangla: "পত্র",
+                roman: "potro",
+                meaning: "Letter/Page",
+            },
+            WordExample {
+                bangla: "ছাত্র",
+                roman: "chatro",
+                meaning: "Student",
+            },
+            WordExample {
+                bangla: "মিত্র",
+                roman: "mitro",
+                meaning: "Friend",
+            },
+            WordExample {
+                bangla: "ত্রাণ",
+                roman: "tran",
+                meaning: "Relief/Rescue",
+            },
+            WordExample {
+                bangla: "রাত্রি",
+                roman: "ratri",
+                meaning: "Night",
+            },
+            WordExample {
+                bangla: "চিত্র",
+                roman: "chitro",
+                meaning: "Picture/Art",
+            },
         ],
     },
     SignGuideEntry {
@@ -386,12 +696,36 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "ত্ব (ত+ব যুক্তবর্ণ · T-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "গুরুত্ব", roman: "gurutwo", meaning: "Importance" },
-            WordExample { bangla: "সত্যত্ব", roman: "sottwo", meaning: "Truthfulness" },
-            WordExample { bangla: "নেতৃত্ব", roman: "netritwo", meaning: "Leadership" },
-            WordExample { bangla: "ঘনত্ব", roman: "ghonotwo", meaning: "Density" },
-            WordExample { bangla: "ব্যক্তিত্ব", roman: "byoktitwo", meaning: "Personality" },
-            WordExample { bangla: "দায়িত্ব", roman: "dayitwo", meaning: "Responsibility" },
+            WordExample {
+                bangla: "গুরুত্ব",
+                roman: "gurutwo",
+                meaning: "Importance",
+            },
+            WordExample {
+                bangla: "সত্যত্ব",
+                roman: "sottwo",
+                meaning: "Truthfulness",
+            },
+            WordExample {
+                bangla: "নেতৃত্ব",
+                roman: "netritwo",
+                meaning: "Leadership",
+            },
+            WordExample {
+                bangla: "ঘনত্ব",
+                roman: "ghonotwo",
+                meaning: "Density",
+            },
+            WordExample {
+                bangla: "ব্যক্তিত্ব",
+                roman: "byoktitwo",
+                meaning: "Personality",
+            },
+            WordExample {
+                bangla: "দায়িত্ব",
+                roman: "dayitwo",
+                meaning: "Responsibility",
+            },
         ],
     },
     SignGuideEntry {
@@ -405,9 +739,21 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "ত্ম (ত+ম যুক্তবর্ণ · T-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "আত্মা", roman: "atma", meaning: "Soul/Spirit" },
-            WordExample { bangla: "মহাত্মা", roman: "mohatma", meaning: "Great soul" },
-            WordExample { bangla: "আত্মবিশ্বাস", roman: "atmobishwas", meaning: "Self-confidence" },
+            WordExample {
+                bangla: "আত্মা",
+                roman: "atma",
+                meaning: "Soul/Spirit",
+            },
+            WordExample {
+                bangla: "মহাত্মা",
+                roman: "mohatma",
+                meaning: "Great soul",
+            },
+            WordExample {
+                bangla: "আত্মবিশ্বাস",
+                roman: "atmobishwas",
+                meaning: "Self-confidence",
+            },
         ],
     },
     SignGuideEntry {
@@ -421,12 +767,23 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "ত্ন (ত+ন যুক্তবর্ণ · T-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "যত্ন", roman: "jotno", meaning: "Care" },
-            WordExample { bangla: "রত্ন", roman: "rotno", meaning: "Gem/Jewel" },
-            WordExample { bangla: "প্রযত্ন", roman: "projotno", meaning: "Effort" },
+            WordExample {
+                bangla: "যত্ন",
+                roman: "jotno",
+                meaning: "Care",
+            },
+            WordExample {
+                bangla: "রত্ন",
+                roman: "rotno",
+                meaning: "Gem/Jewel",
+            },
+            WordExample {
+                bangla: "প্রযত্ন",
+                roman: "projotno",
+                meaning: "Effort",
+            },
         ],
     },
-
     // ════════════════════════════════════════════════════════════════════════
     // 4. N-Series (ন, ণ)
     // ════════════════════════════════════════════════════════════════════════
@@ -441,10 +798,26 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "ণ্ট (ণ+ট যুক্তবর্ণ · N-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "ঘণ্টা", roman: "ghonta", meaning: "Hour/Bell" },
-            WordExample { bangla: "কণ্টক", roman: "kontok", meaning: "Thorn" },
-            WordExample { bangla: "প্যান্ট", roman: "pant", meaning: "Pants" },
-            WordExample { bangla: "কাউন্টার", roman: "kauntar", meaning: "Counter" },
+            WordExample {
+                bangla: "ঘণ্টা",
+                roman: "ghonta",
+                meaning: "Hour/Bell",
+            },
+            WordExample {
+                bangla: "কণ্টক",
+                roman: "kontok",
+                meaning: "Thorn",
+            },
+            WordExample {
+                bangla: "প্যান্ট",
+                roman: "pant",
+                meaning: "Pants",
+            },
+            WordExample {
+                bangla: "কাউন্টার",
+                roman: "kauntar",
+                meaning: "Counter",
+            },
         ],
     },
     SignGuideEntry {
@@ -458,11 +831,31 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "ণ্ঠ (ণ+ঠ যুক্তবর্ণ · N-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "কণ্ঠ", roman: "kontho", meaning: "Voice/Throat" },
-            WordExample { bangla: "লণ্ঠন", roman: "lonthon", meaning: "Lantern" },
-            WordExample { bangla: "কুণ্ঠা", roman: "kuntha", meaning: "Hesitation" },
-            WordExample { bangla: "উৎকণ্ঠা", roman: "utkontha", meaning: "Anxiety" },
-            WordExample { bangla: "উপকণ্ঠ", roman: "upokontho", meaning: "Outskirts" },
+            WordExample {
+                bangla: "কণ্ঠ",
+                roman: "kontho",
+                meaning: "Voice/Throat",
+            },
+            WordExample {
+                bangla: "লণ্ঠন",
+                roman: "lonthon",
+                meaning: "Lantern",
+            },
+            WordExample {
+                bangla: "কুণ্ঠা",
+                roman: "kuntha",
+                meaning: "Hesitation",
+            },
+            WordExample {
+                bangla: "উৎকণ্ঠা",
+                roman: "utkontha",
+                meaning: "Anxiety",
+            },
+            WordExample {
+                bangla: "উপকণ্ঠ",
+                roman: "upokontho",
+                meaning: "Outskirts",
+            },
         ],
     },
     SignGuideEntry {
@@ -476,11 +869,31 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "ন্দ (ন+দ যুক্তবর্ণ · N-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "সুন্দর", roman: "shundor", meaning: "Beautiful" },
-            WordExample { bangla: "আনন্দ", roman: "anondo", meaning: "Joy" },
-            WordExample { bangla: "মন্দির", roman: "mondir", meaning: "Temple" },
-            WordExample { bangla: "ছন্দ", roman: "chhondo", meaning: "Rhythm" },
-            WordExample { bangla: "আন্দোলন", roman: "andolon", meaning: "Movement/Protest" },
+            WordExample {
+                bangla: "সুন্দর",
+                roman: "shundor",
+                meaning: "Beautiful",
+            },
+            WordExample {
+                bangla: "আনন্দ",
+                roman: "anondo",
+                meaning: "Joy",
+            },
+            WordExample {
+                bangla: "মন্দির",
+                roman: "mondir",
+                meaning: "Temple",
+            },
+            WordExample {
+                bangla: "ছন্দ",
+                roman: "chhondo",
+                meaning: "Rhythm",
+            },
+            WordExample {
+                bangla: "আন্দোলন",
+                roman: "andolon",
+                meaning: "Movement/Protest",
+            },
         ],
     },
     SignGuideEntry {
@@ -494,11 +907,31 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "ন্ধ (ন+ধ যুক্তবর্ণ · N-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "অন্ধ", roman: "ondho", meaning: "Blind" },
-            WordExample { bangla: "বন্ধু", roman: "bondhu", meaning: "Friend" },
-            WordExample { bangla: "সন্ধ্যা", roman: "shondhya", meaning: "Evening" },
-            WordExample { bangla: "বন্ধ", roman: "bondho", meaning: "Closed" },
-            WordExample { bangla: "গন্ধ", roman: "gondho", meaning: "Smell/Fragrance" },
+            WordExample {
+                bangla: "অন্ধ",
+                roman: "ondho",
+                meaning: "Blind",
+            },
+            WordExample {
+                bangla: "বন্ধু",
+                roman: "bondhu",
+                meaning: "Friend",
+            },
+            WordExample {
+                bangla: "সন্ধ্যা",
+                roman: "shondhya",
+                meaning: "Evening",
+            },
+            WordExample {
+                bangla: "বন্ধ",
+                roman: "bondho",
+                meaning: "Closed",
+            },
+            WordExample {
+                bangla: "গন্ধ",
+                roman: "gondho",
+                meaning: "Smell/Fragrance",
+            },
         ],
     },
     SignGuideEntry {
@@ -512,11 +945,31 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "ন্ত (ন+ত যুক্তবর্ণ · N-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "কিন্তু", roman: "kintu", meaning: "But" },
-            WordExample { bangla: "শান্ত", roman: "shanto", meaning: "Calm" },
-            WordExample { bangla: "অন্তত", roman: "ontoto", meaning: "At least" },
-            WordExample { bangla: "বসন্ত", roman: "boshonto", meaning: "Spring" },
-            WordExample { bangla: "অনন্ত", roman: "ononto", meaning: "Endless" },
+            WordExample {
+                bangla: "কিন্তু",
+                roman: "kintu",
+                meaning: "But",
+            },
+            WordExample {
+                bangla: "শান্ত",
+                roman: "shanto",
+                meaning: "Calm",
+            },
+            WordExample {
+                bangla: "অন্তত",
+                roman: "ontoto",
+                meaning: "At least",
+            },
+            WordExample {
+                bangla: "বসন্ত",
+                roman: "boshonto",
+                meaning: "Spring",
+            },
+            WordExample {
+                bangla: "অনন্ত",
+                roman: "ononto",
+                meaning: "Endless",
+            },
         ],
     },
     SignGuideEntry {
@@ -530,10 +983,26 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "ন্ত্র (ন+ত+র যুক্তবর্ণ · N-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "মন্ত্র", roman: "montro", meaning: "Mantra/Chant" },
-            WordExample { bangla: "যন্ত্র", roman: "jontro", meaning: "Machine/Instrument" },
-            WordExample { bangla: "গণতন্ত্র", roman: "gonotontro", meaning: "Democracy" },
-            WordExample { bangla: "নিয়ন্ত্রণ", roman: "niyontron", meaning: "Control" },
+            WordExample {
+                bangla: "মন্ত্র",
+                roman: "montro",
+                meaning: "Mantra/Chant",
+            },
+            WordExample {
+                bangla: "যন্ত্র",
+                roman: "jontro",
+                meaning: "Machine/Instrument",
+            },
+            WordExample {
+                bangla: "গণতন্ত্র",
+                roman: "gonotontro",
+                meaning: "Democracy",
+            },
+            WordExample {
+                bangla: "নিয়ন্ত্রণ",
+                roman: "niyontron",
+                meaning: "Control",
+            },
         ],
     },
     SignGuideEntry {
@@ -547,9 +1016,21 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "ণ্ড / ন্ড (ণ+ড যুক্তবর্ণ · N-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "ঠান্ডা", roman: "thanda / thanDa", meaning: "Cold" },
-            WordExample { bangla: "প্রচণ্ড", roman: "prochondo", meaning: "Intense/Extreme" },
-            WordExample { bangla: "কাণ্ড", roman: "kaNDo", meaning: "Incident/Trunk" },
+            WordExample {
+                bangla: "ঠান্ডা",
+                roman: "thanda / thanDa",
+                meaning: "Cold",
+            },
+            WordExample {
+                bangla: "প্রচণ্ড",
+                roman: "prochondo",
+                meaning: "Intense/Extreme",
+            },
+            WordExample {
+                bangla: "কাণ্ড",
+                roman: "kaNDo",
+                meaning: "Incident/Trunk",
+            },
         ],
     },
     SignGuideEntry {
@@ -563,14 +1044,33 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "ন্ন (ন+ন যুক্তবর্ণ · N-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "অন্ন", roman: "onno", meaning: "Rice/Food" },
-            WordExample { bangla: "রান্না", roman: "ranna", meaning: "Cooking" },
-            WordExample { bangla: "সম্পন্ন", roman: "shomponno", meaning: "Completed/Accomplished" },
-            WordExample { bangla: "ভিন্ন", roman: "bhinno", meaning: "Different" },
-            WordExample { bangla: "উন্নতি", roman: "unnoti", meaning: "Progress" },
+            WordExample {
+                bangla: "অন্ন",
+                roman: "onno",
+                meaning: "Rice/Food",
+            },
+            WordExample {
+                bangla: "রান্না",
+                roman: "ranna",
+                meaning: "Cooking",
+            },
+            WordExample {
+                bangla: "সম্পন্ন",
+                roman: "shomponno",
+                meaning: "Completed/Accomplished",
+            },
+            WordExample {
+                bangla: "ভিন্ন",
+                roman: "bhinno",
+                meaning: "Different",
+            },
+            WordExample {
+                bangla: "উন্নতি",
+                roman: "unnoti",
+                meaning: "Progress",
+            },
         ],
     },
-
     // ════════════════════════════════════════════════════════════════════════
     // 5. P-Series (প, ব, ম)
     // ════════════════════════════════════════════════════════════════════════
@@ -585,11 +1085,31 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "প্ত (প+ত যুক্তবর্ণ · P-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "প্রাপ্ত", roman: "prapto", meaning: "Received" },
-            WordExample { bangla: "সপ্ত", roman: "sopto", meaning: "Seven" },
-            WordExample { bangla: "গুপ্ত", roman: "gupto", meaning: "Hidden/Secret" },
-            WordExample { bangla: "সুপ্ত", roman: "supto", meaning: "Dormant" },
-            WordExample { bangla: "সপ্তাহ", roman: "soptaho", meaning: "Week" },
+            WordExample {
+                bangla: "প্রাপ্ত",
+                roman: "prapto",
+                meaning: "Received",
+            },
+            WordExample {
+                bangla: "সপ্ত",
+                roman: "sopto",
+                meaning: "Seven",
+            },
+            WordExample {
+                bangla: "গুপ্ত",
+                roman: "gupto",
+                meaning: "Hidden/Secret",
+            },
+            WordExample {
+                bangla: "সুপ্ত",
+                roman: "supto",
+                meaning: "Dormant",
+            },
+            WordExample {
+                bangla: "সপ্তাহ",
+                roman: "soptaho",
+                meaning: "Week",
+            },
         ],
     },
     SignGuideEntry {
@@ -603,11 +1123,31 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "ম্প (ম+প যুক্তবর্ণ · P-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "কম্পিউটার", roman: "kompiutar", meaning: "Computer" },
-            WordExample { bangla: "সম্পর্ক", roman: "shomporko", meaning: "Relationship" },
-            WordExample { bangla: "সম্পূর্ণ", roman: "shompurno", meaning: "Complete" },
-            WordExample { bangla: "কম্পন", roman: "kompon", meaning: "Vibration/Tremor" },
-            WordExample { bangla: "সম্পদ", roman: "shompod", meaning: "Wealth/Asset" },
+            WordExample {
+                bangla: "কম্পিউটার",
+                roman: "kompiutar",
+                meaning: "Computer",
+            },
+            WordExample {
+                bangla: "সম্পর্ক",
+                roman: "shomporko",
+                meaning: "Relationship",
+            },
+            WordExample {
+                bangla: "সম্পূর্ণ",
+                roman: "shompurno",
+                meaning: "Complete",
+            },
+            WordExample {
+                bangla: "কম্পন",
+                roman: "kompon",
+                meaning: "Vibration/Tremor",
+            },
+            WordExample {
+                bangla: "সম্পদ",
+                roman: "shompod",
+                meaning: "Wealth/Asset",
+            },
         ],
     },
     SignGuideEntry {
@@ -621,11 +1161,31 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "ম্ব (ম+ব যুক্তবর্ণ · P-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "লম্বা", roman: "lomba", meaning: "Tall/Long" },
-            WordExample { bangla: "কম্বল", roman: "kombol", meaning: "Blanket" },
-            WordExample { bangla: "চৌম্বক", roman: "choumbok", meaning: "Magnet" },
-            WordExample { bangla: "অম্বল", roman: "ombol", meaning: "Acidity/Sour dish" },
-            WordExample { bangla: "বিলম্ব", roman: "bilombo", meaning: "Delay" },
+            WordExample {
+                bangla: "লম্বা",
+                roman: "lomba",
+                meaning: "Tall/Long",
+            },
+            WordExample {
+                bangla: "কম্বল",
+                roman: "kombol",
+                meaning: "Blanket",
+            },
+            WordExample {
+                bangla: "চৌম্বক",
+                roman: "choumbok",
+                meaning: "Magnet",
+            },
+            WordExample {
+                bangla: "অম্বল",
+                roman: "ombol",
+                meaning: "Acidity/Sour dish",
+            },
+            WordExample {
+                bangla: "বিলম্ব",
+                roman: "bilombo",
+                meaning: "Delay",
+            },
         ],
     },
     SignGuideEntry {
@@ -639,11 +1199,31 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "ম্ভ (ম+ভ যুক্তবর্ণ · P-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "সম্ভব", roman: "shombhob", meaning: "Possible" },
-            WordExample { bangla: "গম্ভীর", roman: "gombhir", meaning: "Serious/Deep" },
-            WordExample { bangla: "অসম্ভব", roman: "oshombhob", meaning: "Impossible" },
-            WordExample { bangla: "স্তম্ভ", roman: "stombho", meaning: "Pillar" },
-            WordExample { bangla: "সম্ভাবনা", roman: "shombhabona", meaning: "Probability/Potential" },
+            WordExample {
+                bangla: "সম্ভব",
+                roman: "shombhob",
+                meaning: "Possible",
+            },
+            WordExample {
+                bangla: "গম্ভীর",
+                roman: "gombhir",
+                meaning: "Serious/Deep",
+            },
+            WordExample {
+                bangla: "অসম্ভব",
+                roman: "oshombhob",
+                meaning: "Impossible",
+            },
+            WordExample {
+                bangla: "স্তম্ভ",
+                roman: "stombho",
+                meaning: "Pillar",
+            },
+            WordExample {
+                bangla: "সম্ভাবনা",
+                roman: "shombhabona",
+                meaning: "Probability/Potential",
+            },
         ],
     },
     SignGuideEntry {
@@ -657,9 +1237,21 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "ম্ম (ম+ম যুক্তবর্ণ · P-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "সম্মান", roman: "shomman", meaning: "Respect/Honor" },
-            WordExample { bangla: "সম্মতি", roman: "shommoti", meaning: "Consent" },
-            WordExample { bangla: "আম্মা", roman: "amma", meaning: "Mother" },
+            WordExample {
+                bangla: "সম্মান",
+                roman: "shomman",
+                meaning: "Respect/Honor",
+            },
+            WordExample {
+                bangla: "সম্মতি",
+                roman: "shommoti",
+                meaning: "Consent",
+            },
+            WordExample {
+                bangla: "আম্মা",
+                roman: "amma",
+                meaning: "Mother",
+            },
         ],
     },
     SignGuideEntry {
@@ -673,12 +1265,23 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "ব্দ (ব+দ যুক্তবর্ণ · P-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "শব্দ", roman: "shobdo", meaning: "Word/Sound" },
-            WordExample { bangla: "শতাব্দী", roman: "shotabdI", meaning: "Century" },
-            WordExample { bangla: "জব্দ", roman: "jobdo", meaning: "Subdued/Confiscated" },
+            WordExample {
+                bangla: "শব্দ",
+                roman: "shobdo",
+                meaning: "Word/Sound",
+            },
+            WordExample {
+                bangla: "শতাব্দী",
+                roman: "shotabdI",
+                meaning: "Century",
+            },
+            WordExample {
+                bangla: "জব্দ",
+                roman: "jobdo",
+                meaning: "Subdued/Confiscated",
+            },
         ],
     },
-
     // ════════════════════════════════════════════════════════════════════════
     // 6. Sh-Series (শ, ষ, স)
     // ════════════════════════════════════════════════════════════════════════
@@ -693,11 +1296,31 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "শ্চ (শ+চ যুক্তবর্ণ · Sh-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "নিশ্চয়", roman: "nishchoy", meaning: "Definitely" },
-            WordExample { bangla: "পশ্চিম", roman: "poshchim", meaning: "West" },
-            WordExample { bangla: "আশ্চর্য", roman: "ashchorjo", meaning: "Surprised/Wonderful" },
-            WordExample { bangla: "দুশ্চিন্তা", roman: "dushchinta", meaning: "Anxiety/Worry" },
-            WordExample { bangla: "দুশ্চরিত্র", roman: "dushchoritro", meaning: "Bad character" },
+            WordExample {
+                bangla: "নিশ্চয়",
+                roman: "nishchoy",
+                meaning: "Definitely",
+            },
+            WordExample {
+                bangla: "পশ্চিম",
+                roman: "poshchim",
+                meaning: "West",
+            },
+            WordExample {
+                bangla: "আশ্চর্য",
+                roman: "ashchorjo",
+                meaning: "Surprised/Wonderful",
+            },
+            WordExample {
+                bangla: "দুশ্চিন্তা",
+                roman: "dushchinta",
+                meaning: "Anxiety/Worry",
+            },
+            WordExample {
+                bangla: "দুশ্চরিত্র",
+                roman: "dushchoritro",
+                meaning: "Bad character",
+            },
         ],
     },
     SignGuideEntry {
@@ -711,12 +1334,36 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "ষ্ট (ষ+ট যুক্তবর্ণ · Sh-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "কষ্ট", roman: "koshto / koshTo", meaning: "Trouble/Pain" },
-            WordExample { bangla: "মিষ্টি", roman: "mishti / miShTi", meaning: "Sweet" },
-            WordExample { bangla: "নষ্ট", roman: "noshto / noShTo", meaning: "Ruined/Spoiled" },
-            WordExample { bangla: "বৃষ্টি", roman: "brishti / brriShTi", meaning: "Rain" },
-            WordExample { bangla: "সৃষ্টি", roman: "srishti / srriShTi", meaning: "Creation" },
-            WordExample { bangla: "দৃষ্টি", roman: "drishti / drriShTi", meaning: "Vision/Sight" },
+            WordExample {
+                bangla: "কষ্ট",
+                roman: "koshto / koshTo",
+                meaning: "Trouble/Pain",
+            },
+            WordExample {
+                bangla: "মিষ্টি",
+                roman: "mishti / miShTi",
+                meaning: "Sweet",
+            },
+            WordExample {
+                bangla: "নষ্ট",
+                roman: "noshto / noShTo",
+                meaning: "Ruined/Spoiled",
+            },
+            WordExample {
+                bangla: "বৃষ্টি",
+                roman: "brishti / brriShTi",
+                meaning: "Rain",
+            },
+            WordExample {
+                bangla: "সৃষ্টি",
+                roman: "srishti / srriShTi",
+                meaning: "Creation",
+            },
+            WordExample {
+                bangla: "দৃষ্টি",
+                roman: "drishti / drriShTi",
+                meaning: "Vision/Sight",
+            },
         ],
     },
     SignGuideEntry {
@@ -730,11 +1377,31 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "ষ্ঠ (ষ+ঠ যুক্তবর্ণ · Sh-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "শ্রেষ্ঠ", roman: "shreshtho", meaning: "Best" },
-            WordExample { bangla: "অনুষ্ঠান", roman: "onushthan", meaning: "Event/Program" },
-            WordExample { bangla: "প্রতিষ্ঠিত", roman: "protishthit", meaning: "Established" },
-            WordExample { bangla: "পৃষ্ঠা", roman: "prishtha / prriShTha", meaning: "Page" },
-            WordExample { bangla: "নিষ্ঠা", roman: "nishtha", meaning: "Dedication" },
+            WordExample {
+                bangla: "শ্রেষ্ঠ",
+                roman: "shreshtho",
+                meaning: "Best",
+            },
+            WordExample {
+                bangla: "অনুষ্ঠান",
+                roman: "onushthan",
+                meaning: "Event/Program",
+            },
+            WordExample {
+                bangla: "প্রতিষ্ঠিত",
+                roman: "protishthit",
+                meaning: "Established",
+            },
+            WordExample {
+                bangla: "পৃষ্ঠা",
+                roman: "prishtha / prriShTha",
+                meaning: "Page",
+            },
+            WordExample {
+                bangla: "নিষ্ঠা",
+                roman: "nishtha",
+                meaning: "Dedication",
+            },
         ],
     },
     SignGuideEntry {
@@ -748,11 +1415,31 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "স্ক (স+ক যুক্তবর্ণ · Sh-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "নমস্কার", roman: "nomoshkar", meaning: "Hello/Greetings" },
-            WordExample { bangla: "স্কুল", roman: "skul", meaning: "School" },
-            WordExample { bangla: "পুরস্কার", roman: "puroshkar", meaning: "Reward/Award" },
-            WordExample { bangla: "তিরস্কার", roman: "tiroshkar", meaning: "Scolding/Rebuke" },
-            WordExample { bangla: "ভাস্কর", roman: "bhaskor", meaning: "Sculptor" },
+            WordExample {
+                bangla: "নমস্কার",
+                roman: "nomoshkar",
+                meaning: "Hello/Greetings",
+            },
+            WordExample {
+                bangla: "স্কুল",
+                roman: "skul",
+                meaning: "School",
+            },
+            WordExample {
+                bangla: "পুরস্কার",
+                roman: "puroshkar",
+                meaning: "Reward/Award",
+            },
+            WordExample {
+                bangla: "তিরস্কার",
+                roman: "tiroshkar",
+                meaning: "Scolding/Rebuke",
+            },
+            WordExample {
+                bangla: "ভাস্কর",
+                roman: "bhaskor",
+                meaning: "Sculptor",
+            },
         ],
     },
     SignGuideEntry {
@@ -766,11 +1453,31 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "স্ত (স+ত যুক্তবর্ণ · Sh-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "রাস্তা", roman: "rasta", meaning: "Road" },
-            WordExample { bangla: "সস্তা", roman: "shoshta / sosta", meaning: "Cheap" },
-            WordExample { bangla: "ব্যস্ত", roman: "byosto", meaning: "Busy" },
-            WordExample { bangla: "সমস্ত", roman: "shomosto", meaning: "All" },
-            WordExample { bangla: "হস্ত", roman: "hosto", meaning: "Hand" },
+            WordExample {
+                bangla: "রাস্তা",
+                roman: "rasta",
+                meaning: "Road",
+            },
+            WordExample {
+                bangla: "সস্তা",
+                roman: "shoshta / sosta",
+                meaning: "Cheap",
+            },
+            WordExample {
+                bangla: "ব্যস্ত",
+                roman: "byosto",
+                meaning: "Busy",
+            },
+            WordExample {
+                bangla: "সমস্ত",
+                roman: "shomosto",
+                meaning: "All",
+            },
+            WordExample {
+                bangla: "হস্ত",
+                roman: "hosto",
+                meaning: "Hand",
+            },
         ],
     },
     SignGuideEntry {
@@ -784,11 +1491,31 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "স্থ (স+থ যুক্তবর্ণ · Sh-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "স্থান", roman: "sthan", meaning: "Place" },
-            WordExample { bangla: "অবস্থা", roman: "obostha", meaning: "Condition/Situation" },
-            WordExample { bangla: "সুস্থ", roman: "shustho / sustho", meaning: "Healthy" },
-            WordExample { bangla: "উপস্থিত", roman: "uposthit", meaning: "Present" },
-            WordExample { bangla: "স্থায়ী", roman: "sthayi", meaning: "Permanent" },
+            WordExample {
+                bangla: "স্থান",
+                roman: "sthan",
+                meaning: "Place",
+            },
+            WordExample {
+                bangla: "অবস্থা",
+                roman: "obostha",
+                meaning: "Condition/Situation",
+            },
+            WordExample {
+                bangla: "সুস্থ",
+                roman: "shustho / sustho",
+                meaning: "Healthy",
+            },
+            WordExample {
+                bangla: "উপস্থিত",
+                roman: "uposthit",
+                meaning: "Present",
+            },
+            WordExample {
+                bangla: "স্থায়ী",
+                roman: "sthayi",
+                meaning: "Permanent",
+            },
         ],
     },
     SignGuideEntry {
@@ -802,11 +1529,31 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "স্প (স+প যুক্তবর্ণ · Sh-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "স্পষ্ট", roman: "shoposhto / sposhto", meaning: "Clear" },
-            WordExample { bangla: "স্পর্শ", roman: "shoporsho / sporsho", meaning: "Touch" },
-            WordExample { bangla: "স্পন্দন", roman: "spondon", meaning: "Pulse/Beat" },
-            WordExample { bangla: "স্পঞ্জ", roman: "sponjo", meaning: "Sponge" },
-            WordExample { bangla: "পরস্পর", roman: "porospor", meaning: "Each other" },
+            WordExample {
+                bangla: "স্পষ্ট",
+                roman: "shoposhto / sposhto",
+                meaning: "Clear",
+            },
+            WordExample {
+                bangla: "স্পর্শ",
+                roman: "shoporsho / sporsho",
+                meaning: "Touch",
+            },
+            WordExample {
+                bangla: "স্পন্দন",
+                roman: "spondon",
+                meaning: "Pulse/Beat",
+            },
+            WordExample {
+                bangla: "স্পঞ্জ",
+                roman: "sponjo",
+                meaning: "Sponge",
+            },
+            WordExample {
+                bangla: "পরস্পর",
+                roman: "porospor",
+                meaning: "Each other",
+            },
         ],
     },
     SignGuideEntry {
@@ -820,11 +1567,31 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "স্ব (স+ব যুক্তবর্ণ · Sh-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "স্বাধীন", roman: "swadhin / sbadhin", meaning: "Independent" },
-            WordExample { bangla: "স্বপ্ন", roman: "swapno / sbopno", meaning: "Dream" },
-            WordExample { bangla: "স্বদেশ", roman: "swadesh", meaning: "Homeland" },
-            WordExample { bangla: "স্বাগতম", roman: "swagatam", meaning: "Welcome" },
-            WordExample { bangla: "স্বভাব", roman: "swobhab", meaning: "Nature/Habit" },
+            WordExample {
+                bangla: "স্বাধীন",
+                roman: "swadhin / sbadhin",
+                meaning: "Independent",
+            },
+            WordExample {
+                bangla: "স্বপ্ন",
+                roman: "swapno / sbopno",
+                meaning: "Dream",
+            },
+            WordExample {
+                bangla: "স্বদেশ",
+                roman: "swadesh",
+                meaning: "Homeland",
+            },
+            WordExample {
+                bangla: "স্বাগতম",
+                roman: "swagatam",
+                meaning: "Welcome",
+            },
+            WordExample {
+                bangla: "স্বভাব",
+                roman: "swobhab",
+                meaning: "Nature/Habit",
+            },
         ],
     },
     SignGuideEntry {
@@ -838,10 +1605,26 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "শ্ব (শ+ব যুক্তবর্ণ · Sh-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "বিশ্ব", roman: "bishwo / biswo", meaning: "World" },
-            WordExample { bangla: "বিশ্বাস", roman: "bishwas / bissas", meaning: "Belief/Trust" },
-            WordExample { bangla: "নিঃশ্বাস", roman: "ni:shwas", meaning: "Breath" },
-            WordExample { bangla: "ঈশ্বর", roman: "Ishwor", meaning: "God" },
+            WordExample {
+                bangla: "বিশ্ব",
+                roman: "bishwo / biswo",
+                meaning: "World",
+            },
+            WordExample {
+                bangla: "বিশ্বাস",
+                roman: "bishwas / bissas",
+                meaning: "Belief/Trust",
+            },
+            WordExample {
+                bangla: "নিঃশ্বাস",
+                roman: "ni:shwas",
+                meaning: "Breath",
+            },
+            WordExample {
+                bangla: "ঈশ্বর",
+                roman: "Ishwor",
+                meaning: "God",
+            },
         ],
     },
     SignGuideEntry {
@@ -855,10 +1638,26 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "স্ম (স+ম যুক্তবর্ণ · Sh-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "স্মৃতি", roman: "smriti / smrriti", meaning: "Memory" },
-            WordExample { bangla: "স্মৃতিসৌধ", roman: "smritishoudho", meaning: "National Memorial" },
-            WordExample { bangla: "স্মরণ", roman: "smoron", meaning: "Remembrance" },
-            WordExample { bangla: "বিস্ময়", roman: "bismoy", meaning: "Wonder/Surprise" },
+            WordExample {
+                bangla: "স্মৃতি",
+                roman: "smriti / smrriti",
+                meaning: "Memory",
+            },
+            WordExample {
+                bangla: "স্মৃতিসৌধ",
+                roman: "smritishoudho",
+                meaning: "National Memorial",
+            },
+            WordExample {
+                bangla: "স্মরণ",
+                roman: "smoron",
+                meaning: "Remembrance",
+            },
+            WordExample {
+                bangla: "বিস্ময়",
+                roman: "bismoy",
+                meaning: "Wonder/Surprise",
+            },
         ],
     },
     SignGuideEntry {
@@ -872,9 +1671,21 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "ষ্ণ (ষ+ণ যুক্তবর্ণ · Sh-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "উষ্ণ", roman: "ushno / uShNo", meaning: "Warm" },
-            WordExample { bangla: "কৃষ্ণ", roman: "krishno / krriShNo", meaning: "Krishna/Black" },
-            WordExample { bangla: "তৃষ্ণা", roman: "trishna / trriShNa", meaning: "Thirst" },
+            WordExample {
+                bangla: "উষ্ণ",
+                roman: "ushno / uShNo",
+                meaning: "Warm",
+            },
+            WordExample {
+                bangla: "কৃষ্ণ",
+                roman: "krishno / krriShNo",
+                meaning: "Krishna/Black",
+            },
+            WordExample {
+                bangla: "তৃষ্ণা",
+                roman: "trishna / trriShNa",
+                meaning: "Thirst",
+            },
         ],
     },
     SignGuideEntry {
@@ -888,11 +1699,18 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "শ্ন (শ+ন যুক্তবর্ণ · Sh-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "প্রশ্ন", roman: "proshno", meaning: "Question" },
-            WordExample { bangla: "প্রশ্নপত্র", roman: "proshnopotro", meaning: "Question paper" },
+            WordExample {
+                bangla: "প্রশ্ন",
+                roman: "proshno",
+                meaning: "Question",
+            },
+            WordExample {
+                bangla: "প্রশ্নপত্র",
+                roman: "proshnopotro",
+                meaning: "Question paper",
+            },
         ],
     },
-
     // ════════════════════════════════════════════════════════════════════════
     // 7. D-Series & L/H-Series (দ, ধ, ল, হ — Everyday High-Frequency)
     // ════════════════════════════════════════════════════════════════════════
@@ -907,11 +1725,31 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "দ্ধ (দ+ধ যুক্তবর্ণ · D-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "যুদ্ধ", roman: "zuddho", meaning: "War" },
-            WordExample { bangla: "বুদ্ধি", roman: "buddhi", meaning: "Intelligence" },
-            WordExample { bangla: "শুদ্ধ", roman: "shuddho", meaning: "Pure/Correct" },
-            WordExample { bangla: "শ্রদ্ধা", roman: "shroddha", meaning: "Respect" },
-            WordExample { bangla: "বৃদ্ধ", roman: "briddho / brriddho", meaning: "Elderly" },
+            WordExample {
+                bangla: "যুদ্ধ",
+                roman: "zuddho",
+                meaning: "War",
+            },
+            WordExample {
+                bangla: "বুদ্ধি",
+                roman: "buddhi",
+                meaning: "Intelligence",
+            },
+            WordExample {
+                bangla: "শুদ্ধ",
+                roman: "shuddho",
+                meaning: "Pure/Correct",
+            },
+            WordExample {
+                bangla: "শ্রদ্ধা",
+                roman: "shroddha",
+                meaning: "Respect",
+            },
+            WordExample {
+                bangla: "বৃদ্ধ",
+                roman: "briddho / brriddho",
+                meaning: "Elderly",
+            },
         ],
     },
     SignGuideEntry {
@@ -925,10 +1763,26 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "দ্ব (দ+ব যুক্তবর্ণ · D-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "দ্বিতীয়", roman: "dwitiyo / dwitIyo", meaning: "Second" },
-            WordExample { bangla: "দ্বার", roman: "dwar", meaning: "Door/Gate" },
-            WordExample { bangla: "দ্বীপ", roman: "dwIp", meaning: "Island" },
-            WordExample { bangla: "দ্বন্দ্ব", roman: "dwondwo", meaning: "Conflict" },
+            WordExample {
+                bangla: "দ্বিতীয়",
+                roman: "dwitiyo / dwitIyo",
+                meaning: "Second",
+            },
+            WordExample {
+                bangla: "দ্বার",
+                roman: "dwar",
+                meaning: "Door/Gate",
+            },
+            WordExample {
+                bangla: "দ্বীপ",
+                roman: "dwIp",
+                meaning: "Island",
+            },
+            WordExample {
+                bangla: "দ্বন্দ্ব",
+                roman: "dwondwo",
+                meaning: "Conflict",
+            },
         ],
     },
     SignGuideEntry {
@@ -942,9 +1796,21 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "ধ্ব (ধ+ব যুক্তবর্ণ · D-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "ধ্বনি", roman: "dhwoni / dhboni", meaning: "Sound" },
-            WordExample { bangla: "ধ্বংস", roman: "dhwongsho", meaning: "Destruction" },
-            WordExample { bangla: "প্রতিধ্বনি", roman: "protidhwoni", meaning: "Echo" },
+            WordExample {
+                bangla: "ধ্বনি",
+                roman: "dhwoni / dhboni",
+                meaning: "Sound",
+            },
+            WordExample {
+                bangla: "ধ্বংস",
+                roman: "dhwongsho",
+                meaning: "Destruction",
+            },
+            WordExample {
+                bangla: "প্রতিধ্বনি",
+                roman: "protidhwoni",
+                meaning: "Echo",
+            },
         ],
     },
     SignGuideEntry {
@@ -958,8 +1824,16 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "দ্দ (দ+দ যুক্তবর্ণ · D-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "উদ্দেশ্য", roman: "uddeshyo", meaning: "Purpose/Aim" },
-            WordExample { bangla: "পদ্ধতি", roman: "poddhoti", meaning: "Method/System" },
+            WordExample {
+                bangla: "উদ্দেশ্য",
+                roman: "uddeshyo",
+                meaning: "Purpose/Aim",
+            },
+            WordExample {
+                bangla: "পদ্ধতি",
+                roman: "poddhoti",
+                meaning: "Method/System",
+            },
         ],
     },
     SignGuideEntry {
@@ -973,9 +1847,21 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "দ্ম (দ+ম যুক্তবর্ণ · D-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "পদ্ম", roman: "podmo", meaning: "Lotus" },
-            WordExample { bangla: "পদ্মা", roman: "podma", meaning: "Padma River" },
-            WordExample { bangla: "ছদ্মবেশ", roman: "chhodmobesh", meaning: "Disguise" },
+            WordExample {
+                bangla: "পদ্ম",
+                roman: "podmo",
+                meaning: "Lotus",
+            },
+            WordExample {
+                bangla: "পদ্মা",
+                roman: "podma",
+                meaning: "Padma River",
+            },
+            WordExample {
+                bangla: "ছদ্মবেশ",
+                roman: "chhodmobesh",
+                meaning: "Disguise",
+            },
         ],
     },
     SignGuideEntry {
@@ -989,11 +1875,31 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "ল্প (ল+প যুক্তবর্ণ · L-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "গল্প", roman: "golpo", meaning: "Story" },
-            WordExample { bangla: "অল্প", roman: "olpo", meaning: "Little/Few" },
-            WordExample { bangla: "কল্পনা", roman: "kolpona", meaning: "Imagination" },
-            WordExample { bangla: "শিল্প", roman: "shilpo", meaning: "Art/Industry" },
-            WordExample { bangla: "বিকল্প", roman: "bikolpo", meaning: "Alternative" },
+            WordExample {
+                bangla: "গল্প",
+                roman: "golpo",
+                meaning: "Story",
+            },
+            WordExample {
+                bangla: "অল্প",
+                roman: "olpo",
+                meaning: "Little/Few",
+            },
+            WordExample {
+                bangla: "কল্পনা",
+                roman: "kolpona",
+                meaning: "Imagination",
+            },
+            WordExample {
+                bangla: "শিল্প",
+                roman: "shilpo",
+                meaning: "Art/Industry",
+            },
+            WordExample {
+                bangla: "বিকল্প",
+                roman: "bikolpo",
+                meaning: "Alternative",
+            },
         ],
     },
     SignGuideEntry {
@@ -1007,9 +1913,21 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "ল্ল (ল+ল যুক্তবর্ণ · L-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "উল্লাস", roman: "ullash", meaning: "Joy/Cheer" },
-            WordExample { bangla: "পল্লী", roman: "pollI", meaning: "Rural village" },
-            WordExample { bangla: "আল্লাহ", roman: "allah", meaning: "Allah" },
+            WordExample {
+                bangla: "উল্লাস",
+                roman: "ullash",
+                meaning: "Joy/Cheer",
+            },
+            WordExample {
+                bangla: "পল্লী",
+                roman: "pollI",
+                meaning: "Rural village",
+            },
+            WordExample {
+                bangla: "আল্লাহ",
+                roman: "allah",
+                meaning: "Allah",
+            },
         ],
     },
     SignGuideEntry {
@@ -1023,9 +1941,21 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "হ্ম (হ+ম যুক্তবর্ণ · L-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "ব্রহ্ম", roman: "brohmo", meaning: "Brahma" },
-            WordExample { bangla: "ব্রহ্মপুত্র", roman: "brohmoputro", meaning: "Brahmaputra River" },
-            WordExample { bangla: "ব্রাহ্মণ", roman: "brahmoN", meaning: "Brahmin" },
+            WordExample {
+                bangla: "ব্রহ্ম",
+                roman: "brohmo",
+                meaning: "Brahma",
+            },
+            WordExample {
+                bangla: "ব্রহ্মপুত্র",
+                roman: "brohmoputro",
+                meaning: "Brahmaputra River",
+            },
+            WordExample {
+                bangla: "ব্রাহ্মণ",
+                roman: "brahmoN",
+                meaning: "Brahmin",
+            },
         ],
     },
     SignGuideEntry {
@@ -1039,9 +1969,21 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "হ্ন / হ্ণ (হ+ন/ণ যুক্তবর্ণ · L-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "চিহ্ন", roman: "chihno", meaning: "Sign/Symbol" },
-            WordExample { bangla: "মধ্যাহ্ন", roman: "modhyahno", meaning: "Noon" },
-            WordExample { bangla: "অপরাহ্ণ", roman: "oporahNo", meaning: "Afternoon" },
+            WordExample {
+                bangla: "চিহ্ন",
+                roman: "chihno",
+                meaning: "Sign/Symbol",
+            },
+            WordExample {
+                bangla: "মধ্যাহ্ন",
+                roman: "modhyahno",
+                meaning: "Noon",
+            },
+            WordExample {
+                bangla: "অপরাহ্ণ",
+                roman: "oporahNo",
+                meaning: "Afternoon",
+            },
         ],
     },
     SignGuideEntry {
@@ -1055,11 +1997,18 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "ক্ষ্ম (ক+ষ+ম যুক্তবর্ণ · K-Series)",
         kind: SignKind::Conjunct,
         words: &[
-            WordExample { bangla: "লক্ষ্মী", roman: "lokShmI", meaning: "Lakshmi" },
-            WordExample { bangla: "সূক্ষ্ম", roman: "sUkShmo", meaning: "Subtle/Fine" },
+            WordExample {
+                bangla: "লক্ষ্মী",
+                roman: "lokShmI",
+                meaning: "Lakshmi",
+            },
+            WordExample {
+                bangla: "সূক্ষ্ম",
+                roman: "sUkShmo",
+                meaning: "Subtle/Fine",
+            },
         ],
     },
-
     // ════════════════════════════════════════════════════════════════════════
     // 8. Folas (ফলা — ্র, ্য, র্, ্ব, ্ম, ্ল, ্ন)
     // ════════════════════════════════════════════════════════════════════════
@@ -1074,11 +2023,31 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "র-ফলা (Ra-fola)",
         kind: SignKind::Fola,
         words: &[
-            WordExample { bangla: "প্রথম", roman: "prothom", meaning: "First" },
-            WordExample { bangla: "প্রাণ", roman: "praN", meaning: "Life/Soul" },
-            WordExample { bangla: "গ্রাম", roman: "gram", meaning: "Village" },
-            WordExample { bangla: "প্রেম", roman: "prem", meaning: "Love" },
-            WordExample { bangla: "প্রিয়", roman: "priyo", meaning: "Dear/Favorite" },
+            WordExample {
+                bangla: "প্রথম",
+                roman: "prothom",
+                meaning: "First",
+            },
+            WordExample {
+                bangla: "প্রাণ",
+                roman: "praN",
+                meaning: "Life/Soul",
+            },
+            WordExample {
+                bangla: "গ্রাম",
+                roman: "gram",
+                meaning: "Village",
+            },
+            WordExample {
+                bangla: "প্রেম",
+                roman: "prem",
+                meaning: "Love",
+            },
+            WordExample {
+                bangla: "প্রিয়",
+                roman: "priyo",
+                meaning: "Dear/Favorite",
+            },
         ],
     },
     SignGuideEntry {
@@ -1092,11 +2061,31 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "য-ফলা (Ja-fola)",
         kind: SignKind::Fola,
         words: &[
-            WordExample { bangla: "বাক্য", roman: "bakyo", meaning: "Sentence" },
-            WordExample { bangla: "সত্য", roman: "shotyo", meaning: "Truth" },
-            WordExample { bangla: "জন্য", roman: "jonyo", meaning: "For" },
-            WordExample { bangla: "শূন্য", roman: "shUnyo", meaning: "Zero/Empty" },
-            WordExample { bangla: "ব্যবসা", roman: "byobsha", meaning: "Business" },
+            WordExample {
+                bangla: "বাক্য",
+                roman: "bakyo",
+                meaning: "Sentence",
+            },
+            WordExample {
+                bangla: "সত্য",
+                roman: "shotyo",
+                meaning: "Truth",
+            },
+            WordExample {
+                bangla: "জন্য",
+                roman: "jonyo",
+                meaning: "For",
+            },
+            WordExample {
+                bangla: "শূন্য",
+                roman: "shUnyo",
+                meaning: "Zero/Empty",
+            },
+            WordExample {
+                bangla: "ব্যবসা",
+                roman: "byobsha",
+                meaning: "Business",
+            },
         ],
     },
     SignGuideEntry {
@@ -1110,11 +2099,31 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "রেফ (Reph)",
         kind: SignKind::Fola,
         words: &[
-            WordExample { bangla: "কর্ম", roman: "kormo", meaning: "Work/Deed" },
-            WordExample { bangla: "ধর্ম", roman: "dhormo", meaning: "Religion" },
-            WordExample { bangla: "সূর্য", roman: "shurjo / sUrjo", meaning: "Sun" },
-            WordExample { bangla: "গর্ব", roman: "gorbo", meaning: "Pride" },
-            WordExample { bangla: "বর্ণ", roman: "borNo", meaning: "Letter/Color" },
+            WordExample {
+                bangla: "কর্ম",
+                roman: "kormo",
+                meaning: "Work/Deed",
+            },
+            WordExample {
+                bangla: "ধর্ম",
+                roman: "dhormo",
+                meaning: "Religion",
+            },
+            WordExample {
+                bangla: "সূর্য",
+                roman: "shurjo / sUrjo",
+                meaning: "Sun",
+            },
+            WordExample {
+                bangla: "গর্ব",
+                roman: "gorbo",
+                meaning: "Pride",
+            },
+            WordExample {
+                bangla: "বর্ণ",
+                roman: "borNo",
+                meaning: "Letter/Color",
+            },
         ],
     },
     SignGuideEntry {
@@ -1128,9 +2137,21 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "ব-ফলা (Ba-fola)",
         kind: SignKind::Fola,
         words: &[
-            WordExample { bangla: "স্বাধীন", roman: "swadhin", meaning: "Independent" },
-            WordExample { bangla: "বিশ্ব", roman: "bishwo", meaning: "World" },
-            WordExample { bangla: "ধ্বনি", roman: "dhwoni", meaning: "Sound" },
+            WordExample {
+                bangla: "স্বাধীন",
+                roman: "swadhin",
+                meaning: "Independent",
+            },
+            WordExample {
+                bangla: "বিশ্ব",
+                roman: "bishwo",
+                meaning: "World",
+            },
+            WordExample {
+                bangla: "ধ্বনি",
+                roman: "dhwoni",
+                meaning: "Sound",
+            },
         ],
     },
     SignGuideEntry {
@@ -1144,9 +2165,21 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "ম-ফলা (Ma-fola)",
         kind: SignKind::Fola,
         words: &[
-            WordExample { bangla: "পদ্ম", roman: "podmo", meaning: "Lotus" },
-            WordExample { bangla: "স্মৃতি", roman: "smriti / smrriti", meaning: "Memory" },
-            WordExample { bangla: "আত্মা", roman: "atma", meaning: "Soul" },
+            WordExample {
+                bangla: "পদ্ম",
+                roman: "podmo",
+                meaning: "Lotus",
+            },
+            WordExample {
+                bangla: "স্মৃতি",
+                roman: "smriti / smrriti",
+                meaning: "Memory",
+            },
+            WordExample {
+                bangla: "আত্মা",
+                roman: "atma",
+                meaning: "Soul",
+            },
         ],
     },
     SignGuideEntry {
@@ -1160,8 +2193,16 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "ল-ফলা (La-fola)",
         kind: SignKind::Fola,
         words: &[
-            WordExample { bangla: "ক্লান্ত", roman: "klanto", meaning: "Tired" },
-            WordExample { bangla: "বিপ্লব", roman: "biplob", meaning: "Revolution" },
+            WordExample {
+                bangla: "ক্লান্ত",
+                roman: "klanto",
+                meaning: "Tired",
+            },
+            WordExample {
+                bangla: "বিপ্লব",
+                roman: "biplob",
+                meaning: "Revolution",
+            },
         ],
     },
     SignGuideEntry {
@@ -1175,12 +2216,23 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "ন-ফলা (Na-fola)",
         kind: SignKind::Fola,
         words: &[
-            WordExample { bangla: "প্রশ্ন", roman: "proshno", meaning: "Question" },
-            WordExample { bangla: "স্বপ্ন", roman: "swapno", meaning: "Dream" },
-            WordExample { bangla: "যত্ন", roman: "jotno", meaning: "Care" },
+            WordExample {
+                bangla: "প্রশ্ন",
+                roman: "proshno",
+                meaning: "Question",
+            },
+            WordExample {
+                bangla: "স্বপ্ন",
+                roman: "swapno",
+                meaning: "Dream",
+            },
+            WordExample {
+                bangla: "যত্ন",
+                roman: "jotno",
+                meaning: "Care",
+            },
         ],
     },
-
     // ════════════════════════════════════════════════════════════════════════
     // 9. Vowel Signs (কার — া, ি, ী, ু, ূ, ৃ, ে, ৈ, ো, ৌ)
     // ════════════════════════════════════════════════════════════════════════
@@ -1195,11 +2247,31 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "ঋ-কার (Rri-kar)",
         kind: SignKind::Kar,
         words: &[
-            WordExample { bangla: "সৃষ্টি", roman: "srishti / srriShTi", meaning: "Creation" },
-            WordExample { bangla: "স্মৃতি", roman: "smriti / smrriti", meaning: "Memory" },
-            WordExample { bangla: "কৃষি", roman: "krishi / krriShi", meaning: "Agriculture" },
-            WordExample { bangla: "পৃথিবী", roman: "prithibi / prrithibI", meaning: "Earth" },
-            WordExample { bangla: "হৃদয়", roman: "hridoy / hrridoy", meaning: "Heart" },
+            WordExample {
+                bangla: "সৃষ্টি",
+                roman: "srishti / srriShTi",
+                meaning: "Creation",
+            },
+            WordExample {
+                bangla: "স্মৃতি",
+                roman: "smriti / smrriti",
+                meaning: "Memory",
+            },
+            WordExample {
+                bangla: "কৃষি",
+                roman: "krishi / krriShi",
+                meaning: "Agriculture",
+            },
+            WordExample {
+                bangla: "পৃথিবী",
+                roman: "prithibi / prrithibI",
+                meaning: "Earth",
+            },
+            WordExample {
+                bangla: "হৃদয়",
+                roman: "hridoy / hrridoy",
+                meaning: "Heart",
+            },
         ],
     },
     SignGuideEntry {
@@ -1213,9 +2285,21 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "আ-কার (Aa-kar)",
         kind: SignKind::Kar,
         words: &[
-            WordExample { bangla: "মা", roman: "ma", meaning: "Mother" },
-            WordExample { bangla: "বাবা", roman: "baba", meaning: "Father" },
-            WordExample { bangla: "ভাষা", roman: "bhasha", meaning: "Language" },
+            WordExample {
+                bangla: "মা",
+                roman: "ma",
+                meaning: "Mother",
+            },
+            WordExample {
+                bangla: "বাবা",
+                roman: "baba",
+                meaning: "Father",
+            },
+            WordExample {
+                bangla: "ভাষা",
+                roman: "bhasha",
+                meaning: "Language",
+            },
         ],
     },
     SignGuideEntry {
@@ -1229,8 +2313,16 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "হ্রস্ব ই-কার (Short i-kar)",
         kind: SignKind::Kar,
         words: &[
-            WordExample { bangla: "দিন", roman: "din", meaning: "Day" },
-            WordExample { bangla: "চিঠি", roman: "chiThi", meaning: "Letter" },
+            WordExample {
+                bangla: "দিন",
+                roman: "din",
+                meaning: "Day",
+            },
+            WordExample {
+                bangla: "চিঠি",
+                roman: "chiThi",
+                meaning: "Letter",
+            },
         ],
     },
     SignGuideEntry {
@@ -1244,9 +2336,21 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "দীর্ঘ ঈ-কার (Long ii-kar)",
         kind: SignKind::Kar,
         words: &[
-            WordExample { bangla: "জীবন", roman: "jIbon / jibon", meaning: "Life" },
-            WordExample { bangla: "নদী", roman: "nodI / nodee", meaning: "River" },
-            WordExample { bangla: "শহীদ", roman: "shohId / shohid", meaning: "Martyr" },
+            WordExample {
+                bangla: "জীবন",
+                roman: "jIbon / jibon",
+                meaning: "Life",
+            },
+            WordExample {
+                bangla: "নদী",
+                roman: "nodI / nodee",
+                meaning: "River",
+            },
+            WordExample {
+                bangla: "শহীদ",
+                roman: "shohId / shohid",
+                meaning: "Martyr",
+            },
         ],
     },
     SignGuideEntry {
@@ -1260,8 +2364,16 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "হ্রস্ব উ-কার (Short u-kar)",
         kind: SignKind::Kar,
         words: &[
-            WordExample { bangla: "ফুল", roman: "phul / ful", meaning: "Flower" },
-            WordExample { bangla: "সুখ", roman: "shukh", meaning: "Happiness" },
+            WordExample {
+                bangla: "ফুল",
+                roman: "phul / ful",
+                meaning: "Flower",
+            },
+            WordExample {
+                bangla: "সুখ",
+                roman: "shukh",
+                meaning: "Happiness",
+            },
         ],
     },
     SignGuideEntry {
@@ -1275,8 +2387,16 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "দীর্ঘ ঊ-কার (Long uu-kar)",
         kind: SignKind::Kar,
         words: &[
-            WordExample { bangla: "সূর্য", roman: "sUrjo / shurjo", meaning: "Sun" },
-            WordExample { bangla: "রূপ", roman: "rUp / roop", meaning: "Beauty/Form" },
+            WordExample {
+                bangla: "সূর্য",
+                roman: "sUrjo / shurjo",
+                meaning: "Sun",
+            },
+            WordExample {
+                bangla: "রূপ",
+                roman: "rUp / roop",
+                meaning: "Beauty/Form",
+            },
         ],
     },
     SignGuideEntry {
@@ -1290,8 +2410,16 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "এ-কার (E-kar)",
         kind: SignKind::Kar,
         words: &[
-            WordExample { bangla: "দেশ", roman: "desh", meaning: "Country" },
-            WordExample { bangla: "মেঘ", roman: "megh", meaning: "Cloud" },
+            WordExample {
+                bangla: "দেশ",
+                roman: "desh",
+                meaning: "Country",
+            },
+            WordExample {
+                bangla: "মেঘ",
+                roman: "megh",
+                meaning: "Cloud",
+            },
         ],
     },
     SignGuideEntry {
@@ -1305,8 +2433,16 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "ঐ-কার (Oi-kar)",
         kind: SignKind::Kar,
         words: &[
-            WordExample { bangla: "বৈশাখ", roman: "boishakh", meaning: "Boishakh (1st Bangla month)" },
-            WordExample { bangla: "শৈশব", roman: "shoishob", meaning: "Childhood" },
+            WordExample {
+                bangla: "বৈশাখ",
+                roman: "boishakh",
+                meaning: "Boishakh (1st Bangla month)",
+            },
+            WordExample {
+                bangla: "শৈশব",
+                roman: "shoishob",
+                meaning: "Childhood",
+            },
         ],
     },
     SignGuideEntry {
@@ -1320,8 +2456,16 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "ও-কার (O-kar)",
         kind: SignKind::Kar,
         words: &[
-            WordExample { bangla: "ভোর", roman: "bhOr", meaning: "Dawn" },
-            WordExample { bangla: "চোখ", roman: "chOkh", meaning: "Eye" },
+            WordExample {
+                bangla: "ভোর",
+                roman: "bhOr",
+                meaning: "Dawn",
+            },
+            WordExample {
+                bangla: "চোখ",
+                roman: "chOkh",
+                meaning: "Eye",
+            },
         ],
     },
     SignGuideEntry {
@@ -1335,11 +2479,18 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "ঔ-কার (Ou-kar)",
         kind: SignKind::Kar,
         words: &[
-            WordExample { bangla: "নৌকা", roman: "nouka", meaning: "Boat" },
-            WordExample { bangla: "গৌরব", roman: "gourob", meaning: "Glory" },
+            WordExample {
+                bangla: "নৌকা",
+                roman: "nouka",
+                meaning: "Boat",
+            },
+            WordExample {
+                bangla: "গৌরব",
+                roman: "gourob",
+                meaning: "Glory",
+            },
         ],
     },
-
     // ════════════════════════════════════════════════════════════════════════
     // 10. Diacritics & Special Marks (চিহ্ন)
     // ════════════════════════════════════════════════════════════════════════
@@ -1354,9 +2505,21 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "চন্দ্রবিন্দু (Chandrabindu)",
         kind: SignKind::Mark,
         words: &[
-            WordExample { bangla: "চাঁদ", roman: "cha^d", meaning: "Moon" },
-            WordExample { bangla: "বাঁশি", roman: "ba^shi", meaning: "Flute" },
-            WordExample { bangla: "ফাঁকা", roman: "pha^ka", meaning: "Empty" },
+            WordExample {
+                bangla: "চাঁদ",
+                roman: "cha^d",
+                meaning: "Moon",
+            },
+            WordExample {
+                bangla: "বাঁশি",
+                roman: "ba^shi",
+                meaning: "Flute",
+            },
+            WordExample {
+                bangla: "ফাঁকা",
+                roman: "pha^ka",
+                meaning: "Empty",
+            },
         ],
     },
     SignGuideEntry {
@@ -1370,9 +2533,21 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "অনুস্বার (Anusvara)",
         kind: SignKind::Mark,
         words: &[
-            WordExample { bangla: "বাংলা", roman: "bangla", meaning: "Bengali" },
-            WordExample { bangla: "রং", roman: "rong", meaning: "Color" },
-            WordExample { bangla: "এবং", roman: "ebong", meaning: "And" },
+            WordExample {
+                bangla: "বাংলা",
+                roman: "bangla",
+                meaning: "Bengali",
+            },
+            WordExample {
+                bangla: "রং",
+                roman: "rong",
+                meaning: "Color",
+            },
+            WordExample {
+                bangla: "এবং",
+                roman: "ebong",
+                meaning: "And",
+            },
         ],
     },
     SignGuideEntry {
@@ -1386,8 +2561,16 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "বিসর্গ (Visarga)",
         kind: SignKind::Mark,
         words: &[
-            WordExample { bangla: "দুঃখ", roman: "du:kho", meaning: "Sorrow" },
-            WordExample { bangla: "নিঃশ্বাস", roman: "ni:shwas", meaning: "Breath" },
+            WordExample {
+                bangla: "দুঃখ",
+                roman: "du:kho",
+                meaning: "Sorrow",
+            },
+            WordExample {
+                bangla: "নিঃশ্বাস",
+                roman: "ni:shwas",
+                meaning: "Breath",
+            },
         ],
     },
     SignGuideEntry {
@@ -1401,8 +2584,16 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         name: "খণ্ড ত (Khanda Ta)",
         kind: SignKind::Mark,
         words: &[
-            WordExample { bangla: "হঠাৎ", roman: "hothat``", meaning: "Suddenly" },
-            WordExample { bangla: "উৎসব", roman: "ut``shob", meaning: "Festival" },
+            WordExample {
+                bangla: "হঠাৎ",
+                roman: "hothat``",
+                meaning: "Suddenly",
+            },
+            WordExample {
+                bangla: "উৎসব",
+                roman: "ut``shob",
+                meaning: "Festival",
+            },
         ],
     },
     SignGuideEntry {
@@ -1415,9 +2606,11 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         decomposition: "হসন্ত / যুক্তবর্ণ যোজক",
         name: "হসন্ত / যুক্ত যোজক (Hasanta / Joiner)",
         kind: SignKind::Mark,
-        words: &[
-            WordExample { bangla: "ক+ত = ক্ত", roman: "k+t", meaning: "Explicitly join any 2 letters" },
-        ],
+        words: &[WordExample {
+            bangla: "ক+ত = ক্ত",
+            roman: "k+t",
+            meaning: "Explicitly join any 2 letters",
+        }],
     },
     SignGuideEntry {
         bangla: "।",
@@ -1429,9 +2622,11 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         decomposition: "। (পূর্ণচ্ছেদ দাড়ি)",
         name: "দাড়ি (Dari / Full stop)",
         kind: SignKind::Mark,
-        words: &[
-            WordExample { bangla: "আমি যাই।", roman: "ami zai.", meaning: "Full stop at sentence end" },
-        ],
+        words: &[WordExample {
+            bangla: "আমি যাই।",
+            roman: "ami zai.",
+            meaning: "Full stop at sentence end",
+        }],
     },
     SignGuideEntry {
         bangla: "৳",
@@ -1443,9 +2638,11 @@ pub static SIGN_AND_CONJUNCT_GUIDE: &[SignGuideEntry] = &[
         decomposition: "৳ (বাংলাদেশী টাকা চিহ্ন)",
         name: "টাকা চিহ্ন (Taka sign)",
         kind: SignKind::Mark,
-        words: &[
-            WordExample { bangla: "১০০৳", roman: "100$", meaning: "100 Bangladeshi Taka" },
-        ],
+        words: &[WordExample {
+            bangla: "১০০৳",
+            roman: "100$",
+            meaning: "100 Bangladeshi Taka",
+        }],
     },
 ];
 
@@ -1485,13 +2682,25 @@ pub fn contextual_sign_hints(roman: &str, bangla_preedit: &str) -> Vec<SignHint>
             ("ক্ল", "kl", "ক+ল"),
             ("ক্স", "ks", "ক+স"),
         ],
-        'গ' => &[("গ্ধ", "gdh", "গ+ধ"), ("গ্ল", "gl", "গ+ল"), ("গ্ন", "gn", "গ+ন")],
+        'গ' => &[
+            ("গ্ধ", "gdh", "গ+ধ"),
+            ("গ্ল", "gl", "গ+ল"),
+            ("গ্ন", "gn", "গ+ন"),
+        ],
         'ঙ' => &[("ঙ্ক", "nk", "ঙ+ক"), ("ঙ্গ", "ngg", "ঙ+গ")],
         'চ' => &[("চ্চ", "cc", "চ+চ"), ("চ্ছ", "cch", "চ+ছ")],
-        'জ' => &[("জ্ঞ", "gg", "জ+ঞ"), ("জ্জ", "jj", "জ+জ"), ("জ্ব", "jw", "জ+ব")],
+        'জ' => &[
+            ("জ্ঞ", "gg", "জ+ঞ"),
+            ("জ্জ", "jj", "জ+জ"),
+            ("জ্ব", "jw", "জ+ব"),
+        ],
         'ঞ' => &[("ঞ্চ", "nch", "ঞ+চ"), ("ঞ্জ", "nj", "ঞ+জ")],
         'ট' => &[("ট্ট", "TT", "ট+ট")],
-        'ণ' => &[("ণ্ড", "ND", "ণ+ড"), ("ণ্ট", "NT", "ণ+ট"), ("ণ্ঠ", "NTh", "ণ+ঠ")],
+        'ণ' => &[
+            ("ণ্ড", "ND", "ণ+ড"),
+            ("ণ্ট", "NT", "ণ+ট"),
+            ("ণ্ঠ", "NTh", "ণ+ঠ"),
+        ],
         'ত' => &[
             ("ত্ব", "tw", "ত+ব"),
             ("ত্ত", "tt", "ত+ত"),
@@ -1505,7 +2714,11 @@ pub fn contextual_sign_hints(roman: &str, bangla_preedit: &str) -> Vec<SignHint>
             ("দ্দ", "dd", "দ+দ"),
             ("দ্ম", "dm", "দ+ম"),
         ],
-        'ধ' => &[("ধ্ব", "dhw", "ধ+ব"), ("ধ্র", "dhr", "ধ+র"), ("ধ্ন", "dhn", "ধ+ন")],
+        'ধ' => &[
+            ("ধ্ব", "dhw", "ধ+ব"),
+            ("ধ্র", "dhr", "ধ+র"),
+            ("ধ্ন", "dhn", "ধ+ন"),
+        ],
         'ন' => &[
             ("ন্দ", "nd", "ন+দ"),
             ("ন্ধ", "ndh", "ন+ধ"),
@@ -1513,15 +2726,27 @@ pub fn contextual_sign_hints(roman: &str, bangla_preedit: &str) -> Vec<SignHint>
             ("ন্ত্র", "ntr", "ন+ত+র"),
             ("ন্ন", "nn", "ন+ন"),
         ],
-        'প' => &[("প্ত", "pt", "প+ত"), ("প্প", "pp", "প+প"), ("প্ল", "pl", "প+ল")],
-        'ব' => &[("ব্ধ", "bdh", "ব+ধ"), ("ব্দ", "bd", "ব+দ"), ("ব্ব", "bb", "ব+ব")],
+        'প' => &[
+            ("প্ত", "pt", "প+ত"),
+            ("প্প", "pp", "প+প"),
+            ("প্ল", "pl", "প+ল"),
+        ],
+        'ব' => &[
+            ("ব্ধ", "bdh", "ব+ধ"),
+            ("ব্দ", "bd", "ব+দ"),
+            ("ব্ব", "bb", "ব+ব"),
+        ],
         'ম' => &[
             ("ম্প", "mp", "ম+প"),
             ("ম্ব", "mb", "ম+ব"),
             ("ম্ভ", "mbh", "ম+ভ"),
             ("ম্ম", "mm", "ম+ম"),
         ],
-        'ল' => &[("ল্ল", "ll", "ল+ল"), ("ল্প", "lp", "ল+প"), ("ল্ট", "lT", "ল+ট")],
+        'ল' => &[
+            ("ল্ল", "ll", "ল+ল"),
+            ("ল্প", "lp", "ল+প"),
+            ("ল্ট", "lT", "ল+ট"),
+        ],
         'শ' => &[
             ("শ্ব", "shw", "শ+ব"),
             ("শ্চ", "shch", "শ+চ"),
@@ -1542,7 +2767,11 @@ pub fn contextual_sign_hints(roman: &str, bangla_preedit: &str) -> Vec<SignHint>
             ("স্প", "sp", "স+প"),
             ("স্ক", "sk", "স+ক"),
         ],
-        'হ' => &[("হ্ম", "hm", "হ+ম"), ("হ্ণ", "hN", "হ+ণ"), ("হ্ন", "hn", "হ+ন")],
+        'হ' => &[
+            ("হ্ম", "hm", "হ+ম"),
+            ("হ্ণ", "hN", "হ+ণ"),
+            ("হ্ন", "hn", "হ+ন"),
+        ],
         _ => &[],
     };
 

@@ -110,7 +110,13 @@ pub struct Dictionary {
 
 impl std::fmt::Debug for Dictionary {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Dictionary({} words, {} keys, {} bytes)", self.n_words, self.n_keys, self.bytes.len())
+        write!(
+            f,
+            "Dictionary({} words, {} keys, {} bytes)",
+            self.n_words,
+            self.n_keys,
+            self.bytes.len()
+        )
     }
 }
 
@@ -162,7 +168,6 @@ impl Dictionary {
         let pn = rd_u32(b, pair_offs.off + n_words * 4) as usize;
         let pair_next = take(pn * 4)?;
         let pair_count = take(pn * 2)?;
-        drop(take);
         Ok(Self {
             bytes,
             n_words,
@@ -185,7 +190,8 @@ impl Dictionary {
 
     /// Load `ekushe.dict` (raw) or `ekushe.dict.z` (zlib-compressed); the format is detected.
     pub fn load(path: &Path) -> Result<Self, DictError> {
-        let data = std::fs::read(path).map_err(|e| DictError(format!("{}: {e}", path.display())))?;
+        let data =
+            std::fs::read(path).map_err(|e| DictError(format!("{}: {e}", path.display())))?;
         if data.starts_with(MAGIC) {
             Self::from_bytes(Cow::Owned(data))
         } else {
@@ -195,7 +201,8 @@ impl Dictionary {
 
     /// Parse a zlib-compressed dictionary image.
     pub fn from_compressed(data: &[u8]) -> Result<Self, DictError> {
-        let raw = miniz_oxide::inflate::decompress_to_vec_zlib(data).map_err(|e| DictError(format!("decompress: {e:?}")))?;
+        let raw = miniz_oxide::inflate::decompress_to_vec_zlib(data)
+            .map_err(|e| DictError(format!("decompress: {e:?}")))?;
         Self::from_bytes(Cow::Owned(raw))
     }
 
@@ -208,7 +215,10 @@ impl Dictionary {
             .get_or_init(|| {
                 #[cfg(feature = "embedded-dict")]
                 {
-                    static EMBED: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../data/dictionary/ekushe.dict.z"));
+                    static EMBED: &[u8] = include_bytes!(concat!(
+                        env!("CARGO_MANIFEST_DIR"),
+                        "/../../data/dictionary/ekushe.dict.z"
+                    ));
                     if let Ok(d) = Dictionary::from_compressed(EMBED) {
                         return Some(d);
                     }
@@ -266,7 +276,12 @@ impl Dictionary {
         let class = WordClass::from_u8(b[at + 2]);
         let flags = b[at + 3];
         let p = rd_u32(b, at + 4);
-        WordInfo { log_ppm: lf, class, flags, preferred: if p == u32::MAX { None } else { Some(p) } }
+        WordInfo {
+            log_ppm: lf,
+            class,
+            flags,
+            preferred: if p == u32::MAX { None } else { Some(p) },
+        }
     }
 
     /// Find a word's id (binary search over the sorted id table).
@@ -330,7 +345,10 @@ impl Dictionary {
         let k = self.key_lower_bound(key);
         if k < self.n_keys && self.key(k) == key {
             let b = self.b();
-            Some((rd_u32(b, self.post_offs.off + k * 4 + 4) - rd_u32(b, self.post_offs.off + k * 4)) as usize)
+            Some(
+                (rd_u32(b, self.post_offs.off + k * 4 + 4) - rd_u32(b, self.post_offs.off + k * 4))
+                    as usize,
+            )
         } else {
             None
         }
@@ -364,7 +382,11 @@ impl Dictionary {
         let stored = self.stored_roms(id);
         let mut out: Vec<(f32, Cow<str>)> = Vec::new();
         if info.flags & FLAG_CORE == 0 {
-            out.extend(romanize(self.word(id), 5).into_iter().map(|(c, r)| (c, Cow::Owned(r))));
+            out.extend(
+                romanize(self.word(id), 5)
+                    .into_iter()
+                    .map(|(c, r)| (c, Cow::Owned(r))),
+            );
         }
         out.extend(stored.into_iter().map(|(c, r)| (c, Cow::Borrowed(r))));
         out
@@ -376,7 +398,12 @@ impl Dictionary {
         let s = rd_u32(b, self.pair_offs.off + id as usize * 4) as usize;
         let e = rd_u32(b, self.pair_offs.off + id as usize * 4 + 4) as usize;
         (s..e)
-            .map(|i| (rd_u32(b, self.pair_next.off + i * 4), rd_u16(b, self.pair_count.off + i * 2)))
+            .map(|i| {
+                (
+                    rd_u32(b, self.pair_next.off + i * 4),
+                    rd_u16(b, self.pair_count.off + i * 2),
+                )
+            })
             .collect()
     }
 
@@ -410,7 +437,15 @@ pub struct RankParams {
 
 impl Default for RankParams {
     fn default() -> Self {
-        Self { freq_w: 0.55, exact: 0.8, case: 0.3, lift: 0.25, final_vowel: 0.8, context_w: 0.5, completion: 0.9 }
+        Self {
+            freq_w: 0.55,
+            exact: 0.8,
+            case: 0.3,
+            lift: 0.25,
+            final_vowel: 0.8,
+            context_w: 0.5,
+            completion: 0.9,
+        }
     }
 }
 
@@ -445,12 +480,29 @@ fn cheap_char(c: u8) -> bool {
 }
 #[inline]
 fn cheap_pair(a: u8, b: u8) -> bool {
-    matches!((a.min(b), a.max(b)), (b'c', b's') | (b'j', b'z') | (b'b', b'v') | (b'j', b'y') | (b'b', b'w') | (b'f', b'p') | (b'i', b'y') | (b'e', b'y'))
+    matches!(
+        (a.min(b), a.max(b)),
+        (b'c', b's')
+            | (b'j', b'z')
+            | (b'b', b'v')
+            | (b'j', b'y')
+            | (b'b', b'w')
+            | (b'f', b'p')
+            | (b'i', b'y')
+            | (b'e', b'y')
+    )
 }
 
 /// Weighted edit distance tuned for Banglish (both inputs lower-case ASCII). With `prefix`, the end of
 /// `b` is free, so it measures how well `a` matches the start of `b`.
-fn wdist(a: &[u8], b: &[u8], final_vowel: f32, prefix: bool, row: &mut Vec<f32>, cur: &mut Vec<f32>) -> f32 {
+fn wdist(
+    a: &[u8],
+    b: &[u8],
+    final_vowel: f32,
+    prefix: bool,
+    row: &mut Vec<f32>,
+    cur: &mut Vec<f32>,
+) -> f32 {
     let (la, lb) = (a.len(), b.len());
     row.clear();
     row.extend((0..=lb).map(|j| j as f32));
@@ -463,15 +515,29 @@ fn wdist(a: &[u8], b: &[u8], final_vowel: f32, prefix: bool, row: &mut Vec<f32>,
             let sub = if ca == cb {
                 0.0
             } else if is_vowel(ca) && is_vowel(cb) {
-                if i == la && j == lb { final_vowel } else { 0.35 }
+                if i == la && j == lb {
+                    final_vowel
+                } else {
+                    0.35
+                }
             } else if cheap_pair(ca, cb) {
                 0.4
             } else {
                 1.0
             };
-            let ins_b = if cheap_char(cb) || (j > 1 && b[j - 2] == cb) { 0.25 } else { 1.0 };
-            let del_a = if cheap_char(ca) || (i > 1 && a[i - 2] == ca) { 0.25 } else { 1.0 };
-            let v = (row[j - 1] + sub).min(row[j] + del_a).min(cur[j - 1] + ins_b);
+            let ins_b = if cheap_char(cb) || (j > 1 && b[j - 2] == cb) {
+                0.25
+            } else {
+                1.0
+            };
+            let del_a = if cheap_char(ca) || (i > 1 && a[i - 2] == ca) {
+                0.25
+            } else {
+                1.0
+            };
+            let v = (row[j - 1] + sub)
+                .min(row[j] + del_a)
+                .min(cur[j - 1] + ins_b);
             cur.push(v);
         }
         std::mem::swap(row, cur);
@@ -506,7 +572,10 @@ impl Dictionary {
         // casual Banglish writes `s` for ছ (ase = আছে, kisu = কিছু): also read each `s` as ছ (key `c`)
         if sk.contains('s') {
             let positions: Vec<usize> = sk.match_indices('s').map(|(i, _)| i).collect();
-            let mut alias: Vec<String> = positions.iter().map(|&i| format!("{}c{}", &sk[..i], &sk[i + 1..])).collect();
+            let mut alias: Vec<String> = positions
+                .iter()
+                .map(|&i| format!("{}c{}", &sk[..i], &sk[i + 1..]))
+                .collect();
             if positions.len() > 1 {
                 alias.push(sk.replace('s', "c"));
             }
@@ -567,7 +636,12 @@ impl Dictionary {
                 }
                 k += 1;
             }
-            comps.sort_by(|a, b| self.info(*b).log_ppm.partial_cmp(&self.info(*a).log_ppm).unwrap());
+            comps.sort_by(|a, b| {
+                self.info(*b)
+                    .log_ppm
+                    .partial_cmp(&self.info(*a).log_ppm)
+                    .unwrap()
+            });
             comps.retain(|id| !out.contains(id));
             comps.truncate(30);
         }
@@ -586,11 +660,18 @@ impl Dictionary {
         let (cands, comps) = self.candidates(&sk, 400);
         let prev_id = prev.and_then(|w| self.id_of(w));
         let prev_lp = prev_id.map(|id| self.info(id).log_ppm).unwrap_or(0.0);
-        let ctx: HashMap<u32, u16> = prev_id.map(|id| self.followers(id).into_iter().collect()).unwrap_or_default();
+        let ctx: HashMap<u32, u16> = prev_id
+            .map(|id| self.followers(id).into_iter().collect())
+            .unwrap_or_default();
         let (mut row, mut cur) = (Vec::with_capacity(32), Vec::with_capacity(32));
         let mut scores: HashMap<u32, (f32, bool)> = HashMap::new();
         let mut runtime_budget = 40usize;
-        let best_rom = |id: u32, prefix: bool, budget: &mut usize, row: &mut Vec<f32>, cur: &mut Vec<f32>| -> Option<f32> {
+        let best_rom = |id: u32,
+                        prefix: bool,
+                        budget: &mut usize,
+                        row: &mut Vec<f32>,
+                        cur: &mut Vec<f32>|
+         -> Option<f32> {
             let info = self.info(id);
             if info.flags & FLAG_CORE == 0 {
                 if *budget == 0 {
@@ -613,12 +694,19 @@ impl Dictionary {
             }
             Some(best)
         };
-        let consider = |id: u32, prefix: bool, scores: &mut HashMap<u32, (f32, bool)>, budget: &mut usize, row: &mut Vec<f32>, cur: &mut Vec<f32>| {
+        let consider = |id: u32,
+                        prefix: bool,
+                        scores: &mut HashMap<u32, (f32, bool)>,
+                        budget: &mut usize,
+                        row: &mut Vec<f32>,
+                        cur: &mut Vec<f32>| {
             let info = self.info(id);
             if info.class == WordClass::Typo {
                 return;
             }
-            let Some(a) = best_rom(id, prefix, budget, row, cur) else { return };
+            let Some(a) = best_rom(id, prefix, budget, row, cur) else {
+                return;
+            };
             if info.class == WordClass::Vulgar && (prefix || a > -0.3) {
                 return; // vulgar words only on an exact spelling
             }
@@ -627,7 +715,10 @@ impl Dictionary {
             let ctx_bonus = |w: u32| {
                 ctx.get(&w)
                     .map(|&c| {
-                        let lift = (c as f32).log10() + 6.0 - PAIR_CORPUS_LOG10_M - prev_lp - self.info(w).log_ppm;
+                        let lift = (c as f32).log10() + 6.0
+                            - PAIR_CORPUS_LOG10_M
+                            - prev_lp
+                            - self.info(w).log_ppm;
                         p.context_w * lift.clamp(0.0, 3.0)
                     })
                     .unwrap_or(0.0)
@@ -651,16 +742,37 @@ impl Dictionary {
             }
         };
         for id in cands {
-            consider(id, false, &mut scores, &mut runtime_budget, &mut row, &mut cur);
+            consider(
+                id,
+                false,
+                &mut scores,
+                &mut runtime_budget,
+                &mut row,
+                &mut cur,
+            );
         }
         for id in comps {
-            consider(id, true, &mut scores, &mut runtime_budget, &mut row, &mut cur);
+            consider(
+                id,
+                true,
+                &mut scores,
+                &mut runtime_budget,
+                &mut row,
+                &mut cur,
+            );
         }
-        let mut v: Vec<(u32, f32, bool)> = scores.into_iter().map(|(id, (s, c))| (id, s, c)).collect();
+        let mut v: Vec<(u32, f32, bool)> =
+            scores.into_iter().map(|(id, (s, c))| (id, s, c)).collect();
         v.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap().then_with(|| a.0.cmp(&b.0)));
         v.truncate(n);
         v.into_iter()
-            .map(|(id, score, completion)| Ranked { word: self.word(id).to_string(), id, class: self.info(id).class, score, completion })
+            .map(|(id, score, completion)| Ranked {
+                word: self.word(id).to_string(),
+                id,
+                class: self.info(id).class,
+                score,
+                completion,
+            })
             .collect()
     }
 }
@@ -691,7 +803,12 @@ pub struct DictBuilder {
 impl DictBuilder {
     pub fn write(&self, path: &Path) -> std::io::Result<(usize, usize)> {
         let n = self.words.len();
-        let ids: HashMap<&str, u32> = self.words.iter().enumerate().map(|(i, w)| (w.word.as_str(), i as u32)).collect();
+        let ids: HashMap<&str, u32> = self
+            .words
+            .iter()
+            .enumerate()
+            .map(|(i, w)| (w.word.as_str(), i as u32))
+            .collect();
         let mut out: Vec<u8> = Vec::new();
         out.extend_from_slice(MAGIC);
         // keys
@@ -733,16 +850,26 @@ impl DictBuilder {
         out.extend_from_slice(&blob);
         // meta
         for w in &self.words {
-            let lf = ((w.ppm.max(1e-3)).log10() * 1000.0).round().clamp(-32000.0, 32000.0) as i16;
+            let lf = ((w.ppm.max(1e-3)).log10() * 1000.0)
+                .round()
+                .clamp(-32000.0, 32000.0) as i16;
             out.extend_from_slice(&lf.to_le_bytes());
             out.push(w.class as u8);
             out.push(w.flags);
-            let p = w.preferred.as_deref().and_then(|p| ids.get(p).copied()).unwrap_or(u32::MAX);
+            let p = w
+                .preferred
+                .as_deref()
+                .and_then(|p| ids.get(p).copied())
+                .unwrap_or(u32::MAX);
             out.extend_from_slice(&p.to_le_bytes());
         }
         // sorted ids
         let mut sorted: Vec<u32> = (0..n as u32).collect();
-        sorted.sort_by(|a, b| self.words[*a as usize].word.cmp(&self.words[*b as usize].word));
+        sorted.sort_by(|a, b| {
+            self.words[*a as usize]
+                .word
+                .cmp(&self.words[*b as usize].word)
+        });
         for id in sorted {
             out.extend_from_slice(&id.to_le_bytes());
         }
@@ -786,12 +913,16 @@ impl DictBuilder {
                 per[ia as usize].push((ib, *c));
             }
         }
-        let maxf = if self.max_followers == 0 { 16 } else { self.max_followers };
+        let maxf = if self.max_followers == 0 {
+            16
+        } else {
+            self.max_followers
+        };
         let mut next = Vec::new();
         let mut cnt = Vec::new();
         for list in per.iter_mut() {
             out.extend_from_slice(&(next.len() as u32).to_le_bytes());
-            list.sort_by(|a, b| b.1.cmp(&a.1));
+            list.sort_by_key(|b| std::cmp::Reverse(b.1));
             for &(id, c) in list.iter().take(maxf) {
                 next.push(id);
                 cnt.push(c.min(65535) as u16);

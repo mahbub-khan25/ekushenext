@@ -7,11 +7,17 @@ use std::path::Path;
 
 fn dict() -> Option<&'static Dictionary> {
     let base = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data/dictionary");
-    let Some(p) = ["ekushe.dict", "ekushe.dict.z"].iter().map(|f| base.join(f)).find(|p| p.exists()) else {
+    let Some(p) = ["ekushe.dict", "ekushe.dict.z"]
+        .iter()
+        .map(|f| base.join(f))
+        .find(|p| p.exists())
+    else {
         eprintln!("ekushe.dict not built; skipping");
         return None;
     };
-    Some(Box::leak(Box::new(Dictionary::load(&p).expect("load dict"))))
+    Some(Box::leak(Box::new(
+        Dictionary::load(&p).expect("load dict"),
+    )))
 }
 
 fn engine(d: &'static Dictionary) -> Ekushe {
@@ -37,8 +43,14 @@ fn type_words(ek: &mut Ekushe, text: &str) -> String {
 fn sentences_commit_dictionary_words() {
     let Some(d) = dict() else { return };
     let mut ek = engine(d);
-    assert_eq!(type_words(&mut ek, "ami tomake valobashi"), "আমি তোমাকে ভালোবাসি ");
-    assert_eq!(type_words(&mut ek, "amra sobai bangladesher manush"), "আমরা সবাই বাংলাদেশের মানুষ ");
+    assert_eq!(
+        type_words(&mut ek, "ami tomake valobashi"),
+        "আমি তোমাকে ভালোবাসি "
+    );
+    assert_eq!(
+        type_words(&mut ek, "amra sobai bangladesher manush"),
+        "আমরা সবাই বাংলাদেশের মানুষ "
+    );
     assert_eq!(type_words(&mut ek, "kormo"), "কর্ম ");
 }
 
@@ -91,7 +103,10 @@ fn spell_checker_uses_dictionary() {
     let sc = ek.suggestions_engine().spell_checker();
     assert!(sc.is_correct("বাংলাদেশ"));
     assert!(!sc.is_correct("কিনতু"));
-    assert_eq!(sc.suggest("কিনতু", 3).first().map(String::as_str), Some("কিন্তু"));
+    assert_eq!(
+        sc.suggest("কিনতু", 3).first().map(String::as_str),
+        Some("কিন্তু")
+    );
     let issues = sc.check_text("সরকারী অফিসে কিনতু");
     assert_eq!(issues.len(), 2, "{issues:?}");
     assert_eq!(issues[0].kind, "non_standard");
@@ -105,7 +120,9 @@ fn spell_checker_uses_dictionary() {
 fn bijoy_round_trip_every_dictionary_word() {
     use ekushe_core::convert::{bijoy_to_unicode, normalize_bangla_unicode as n, unicode_to_bijoy};
     let p = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data/dictionary/lexicon.tsv");
-    let Ok(text) = std::fs::read_to_string(&p) else { return };
+    let Ok(text) = std::fs::read_to_string(&p) else {
+        return;
+    };
     let mut bad = Vec::new();
     let mut total = 0;
     for w in text.lines().skip(1).filter_map(|l| l.split('\t').next()) {
@@ -115,5 +132,10 @@ fn bijoy_round_trip_every_dictionary_word() {
             bad.push(format!("{w} → {} → {back}", unicode_to_bijoy(w)));
         }
     }
-    assert!(bad.is_empty(), "{} of {total} words do not survive Unicode → Bijoy → Unicode: {:?}", bad.len(), &bad[..bad.len().min(10)]);
+    assert!(
+        bad.is_empty(),
+        "{} of {total} words do not survive Unicode → Bijoy → Unicode: {:?}",
+        bad.len(),
+        &bad[..bad.len().min(10)]
+    );
 }

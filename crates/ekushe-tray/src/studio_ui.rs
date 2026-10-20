@@ -933,6 +933,16 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
 </div>
 
 <script>
+// Every Studio API call carries this page's token; other websites cannot read or change settings.
+const EKUSHE_TOKEN = "__EKUSHE_TOKEN__";
+const nativeFetch = window.fetch.bind(window);
+window.fetch = (url, opts = {}) => {
+  if (typeof url === 'string' && url.startsWith('/api/')) {
+    opts = Object.assign({}, opts);
+    opts.headers = Object.assign({}, opts.headers || {}, { 'X-Ekushe-Token': EKUSHE_TOKEN });
+  }
+  return nativeFetch(url, opts);
+};
 let allSignItems = [];
 let currentSearchItems = [];
 let activeQuickKind = 'ALL';

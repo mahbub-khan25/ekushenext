@@ -8,13 +8,13 @@
 //!   `ekushe-cli bijoy2uni "<bijoy text>"`     -> Convert Bijoy (ANSI / SutonnyMJ) to Unicode
 //!   `ekushe-cli uni2bijoy "<unicode text>"`   -> Convert Unicode Bangla to Bijoy
 
-use std::env;
 use ekushe_core::{
     conjuncts::{decompose_bangla, search_signs_and_conjuncts},
     convert::{bijoy_to_unicode, unicode_to_bijoy},
     phonetic::PhoneticEngine,
     suggest::SuggestionEngine,
 };
+use std::env;
 
 fn main() {
     let args: Vec<String> = env::args().skip(1).collect();

@@ -12,10 +12,16 @@ fn golden_phonetic_words_and_conjuncts() {
     let cases: &[(&str, &str)] = &[
         // Classic sentences
         ("ami banglay gan gai.", "আমি বাংলায় গান গাই।"),
-        ("amar sOnar bangla, ami tOmay valObasi.", "আমার সোনার বাংলা, আমি তোমায় ভালোবাসি।"),
+        (
+            "amar sOnar bangla, ami tOmay valObasi.",
+            "আমার সোনার বাংলা, আমি তোমায় ভালোবাসি।",
+        ),
         // Vowels & Kars
         ("o a i I u U rri e OI O OU", "অ আ ই ঈ উ ঊ ঋ এ ঐ ও ঔ"),
-        ("ko ka ki kI ku kU krri ke kOI kO kOU", "ক কা কি কী কু কূ কৃ কে কৈ কো কৌ"),
+        (
+            "ko ka ki kI ku kU krri ke kOI kO kOU",
+            "ক কা কি কী কু কূ কৃ কে কৈ কো কৌ",
+        ),
         ("kee koo koi kou", "কী কূ কৈ কৌ"),
         // Diacritic marks & punctuation
         ("cha^d", "চাঁদ"),
@@ -111,7 +117,7 @@ fn golden_session_workflow_and_bijoy() {
     assert_eq!(ek.language(), InputLanguage::Bangla);
 
     // Type `/sal` snippet -> commits `আসসালামু আলাইকুম `
-    for ch in ['/','s','a','l'] {
+    for ch in ['/', 's', 'a', 'l'] {
         ek.push_char(ch, false);
     }
     let out = ek.push_char(' ', false);
