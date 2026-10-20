@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "jsx": "react-jsx",
+    "strict": false,
+    "noEmit": true,
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "baseUrl": "."
+  },
+  "include": ["src"]
+}

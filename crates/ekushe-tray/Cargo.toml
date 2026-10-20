@@ -1,0 +1,19 @@
+[package]
+name = "ekushe-tray"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Ekushe Next Windows System Tray IME, Self-Contained GUI Installer, Floating Candidate Popup, and Studio UI"
+
+[[bin]]
+name = "ekushe"
+path = "src/main.rs"
+
+[dependencies]
+ekushe-core = { path = "../ekushe-core", features = ["embedded-dict"] }
+windows-sys.workspace = true
+parking_lot.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+once_cell.workspace = true
+dirs.workspace = true

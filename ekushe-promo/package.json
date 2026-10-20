@@ -1,0 +1,22 @@
+{
+  "name": "ekushe-promo",
+  "version": "1.0.0",
+  "description": "Cinematic Remotion promo for Ekushe Bangla Typing App & International Mother Language Day",
+  "scripts": {
+    "start": "remotion preview src/index.ts",
+    "build": "remotion render src/index.ts EkushePromo out/ekushe-next-promo.mp4",
+    "build:vertical": "remotion render src/index.ts EkushePromoVertical out/ekushe-next-promo-vertical.mp4",
+    "build:all": "remotion render src/index.ts EkushePromo out/ekushe-next-promo.mp4 && remotion render src/index.ts EkushePromoVertical out/ekushe-next-promo-vertical.mp4",
+    "upgrade": "remotion upgrade"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "^4.0.230"
+  },
+  "devDependencies": {
+    "@remotion/cli": "^4.0.230",
+    "@types/react": "^18.3.1",
+    "typescript": "^5.4.5"
+  }
+}

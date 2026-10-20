@@ -1,0 +1,13 @@
+[package]
+name = "ekushe-ffi"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "C ABI / FFI bindings for ekushe-core across Windows, macOS, Linux, Android, and iOS"
+
+[lib]
+crate-type = ["cdylib", "rlib", "staticlib"]
+
+[dependencies]
+ekushe-core = { path = "../ekushe-core" }
+serde_json.workspace = true
