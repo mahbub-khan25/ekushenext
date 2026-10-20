@@ -339,8 +339,11 @@ impl Ekushe {
         self.select_candidate(idx, trailing)
     }
 
+    /// Forget the word being composed, the context word and the last-commit undo. Hosts call this when
+    /// the caret moves or focus changes, so nothing can later be backspaced at the wrong position.
     pub fn reset_composition(&mut self) {
         self.prev_word = None;
+        self.last_commit_undo = None;
         self.roman_buf.clear();
         self.fixed_buf.clear();
         self.pending_prebase_kar = None;
@@ -441,6 +444,17 @@ mod tests {
                 assert_eq!(out.committed, Some(format!("{pre} ")), "{layout:?} lost its text on commit");
             }
         }
+    }
+
+    #[test]
+    fn test_reset_forgets_undo_and_context() {
+        let mut ek = Ekushe::new(Config { typing_mode: TypingMode::PhoneticFirst, ..Config::default() });
+        for c in "ami ".chars() {
+            ek.push_char(c, false);
+        }
+        ek.reset_composition(); // e.g. the user clicked elsewhere
+        assert!(ek.flip_last_committed_word().is_none());
+        assert_eq!(ek.backspace().committed, None);
     }
 
     #[test]
