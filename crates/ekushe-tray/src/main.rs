@@ -136,6 +136,10 @@ struct AppSharedState {
     popup_opacity_pct: u8,
     /// The focused control the current composition was typed into (0 = none)
     comp_focus: isize,
+    /// Foreground window seen by the last keystroke (per-app language switching)
+    last_fg: isize,
+    /// `learned_version` last written to disk
+    saved_learned_version: u64,
 }
 
 static STATE: Lazy<Mutex<AppSharedState>> = Lazy::new(|| {
@@ -145,7 +149,10 @@ static STATE: Lazy<Mutex<AppSharedState>> = Lazy::new(|| {
     }
     // Ensure Bangla digits are enabled in Ekushe Bangla mode so English mode = 0-9 and Ekushe mode = ০-৯
     cfg.bangla_digits = true;
-    let ek = Ekushe::new(cfg);
+    let mut ek = Ekushe::new(cfg);
+    // Words the user picked in earlier sessions
+    let _ = ek.suggestions_engine_mut().load_user_dict(&learned_words_path());
+    let saved_learned_version = ek.suggestions_engine().learned_version();
     Mutex::new(AppSharedState {
         ekushe: ek,
         last_output: SessionOutput::default(),
@@ -164,6 +171,8 @@ static STATE: Lazy<Mutex<AppSharedState>> = Lazy::new(|| {
         compact_btn_rect: RECT { left: 0, top: 0, right: 0, bottom: 0 },
         popup_opacity_pct: 92,
         comp_focus: 0,
+        last_fg: 0,
+        saved_learned_version,
     })
 });
 
@@ -175,6 +184,7 @@ static COMPOSITION_STALE: AtomicBool = AtomicBool::new(false);
 static OVERLAY_HWND: AtomicIsize = AtomicIsize::new(0);
 static TRAY_HWND: AtomicIsize = AtomicIsize::new(0);
 const WM_EKUSHE_FORGET: u32 = WM_APP + 2;
+const TIMER_SAVE_LEARNED: usize = 102;
 const ES_PASSWORD_STYLE: i32 = 0x0020;
 
 unsafe fn register_embedded_bangla_fonts() {
@@ -365,6 +375,8 @@ fn main() {
 
         // Install global low-level keyboard hook
         KEYBOARD_HOOK = SetWindowsHookExW(WH_KEYBOARD_LL, Some(keyboard_hook_proc), hinstance, 0);
+        // Save learned words every 15 s when something new was learned (and again on exit)
+        SetTimer(tray_hwnd, TIMER_SAVE_LEARNED, 15_000, None);
         // Mouse clicks can move the caret; the mouse hook makes sure a half-typed word is then forgotten
         MOUSE_HOOK = SetWindowsHookExW(WH_MOUSE_LL, Some(mouse_hook_proc), hinstance, 0);
 
@@ -386,6 +398,7 @@ fn main() {
         if !MOUSE_HOOK.is_null() {
             UnhookWindowsHookEx(MOUSE_HOOK);
         }
+        save_learned_words_if_changed();
         remove_tray_icon(tray_hwnd);
     }
 }
@@ -723,6 +736,53 @@ fn forget_composition(st: &mut AppSharedState) -> bool {
     had
 }
 
+/// `%APPDATA%\Ekushe\learned.tsv`: the words this user picked (roman → Bangla, with counts).
+fn learned_words_path() -> PathBuf {
+    Config::default_dir().join("learned.tsv")
+}
+
+/// Write learned words to disk if anything new was learned. The file is written outside the shared
+/// lock (the keyboard hook needs it) and atomically (temporary file + rename).
+fn save_learned_words_if_changed() {
+    let pending = {
+        let mut st = STATE.lock();
+        let v = st.ekushe.suggestions_engine().learned_version();
+        if v == st.saved_learned_version {
+            None
+        } else {
+            st.saved_learned_version = v;
+            Some(st.ekushe.suggestions_engine().user_dict_tsv())
+        }
+    };
+    if let Some(tsv) = pending {
+        let _ = ekushe_core::suggest::write_atomic(&learned_words_path(), &tsv);
+    }
+}
+
+/// Lower-case executable file name of the process that owns `hwnd` (e.g. `winword.exe`).
+unsafe fn exe_name_of(hwnd: HWND) -> Option<String> {
+    use windows_sys::Win32::Foundation::CloseHandle;
+    use windows_sys::Win32::System::Threading::{OpenProcess, QueryFullProcessImageNameW, PROCESS_QUERY_LIMITED_INFORMATION};
+    let mut pid: u32 = 0;
+    GetWindowThreadProcessId(hwnd, &mut pid);
+    if pid == 0 {
+        return None;
+    }
+    let h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid);
+    if h.is_null() {
+        return None;
+    }
+    let mut buf = [0u16; 512];
+    let mut len = buf.len() as u32;
+    let ok = QueryFullProcessImageNameW(h, 0, buf.as_mut_ptr(), &mut len) != 0;
+    CloseHandle(h);
+    if !ok {
+        return None;
+    }
+    let full = String::from_utf16_lossy(&buf[..len as usize]);
+    full.rsplit(['\\', '/']).next().map(|s| s.to_lowercase())
+}
+
 /// Low-level mouse hook: a click anywhere except the candidate popup ends the composition.
 unsafe extern "system" fn mouse_hook_proc(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
     const WM_LBUTTONDOWN_: usize = 0x0201;
@@ -814,6 +874,24 @@ unsafe extern "system" fn keyboard_hook_proc(
             refresh_candidate_overlay();
             st = STATE.lock();
         }
+        // Per-app language: switching to another application restores the language last used there
+        // (or its configured default, e.g. terminals → English)
+        let fg = GetForegroundWindow();
+        if fg as isize != st.last_fg {
+            st.last_fg = fg as isize;
+            if let Some(exe) = exe_name_of(fg) {
+                let before = st.ekushe.language();
+                let after = st.ekushe.on_app_focus(&exe);
+                if after != before {
+                    forget_composition(&mut st);
+                    let tray_hwnd = st.tray_hwnd as HWND;
+                    drop(st);
+                    add_or_update_tray_icon(tray_hwnd, false);
+                    refresh_candidate_overlay();
+                    st = STATE.lock();
+                }
+            }
+        }
         // Password boxes: type plain characters, no preview, nothing learned
         if is_password_field(focus) {
             return CallNextHookEx(ptr::null_mut(), code, wparam, lparam);
@@ -901,6 +979,17 @@ unsafe extern "system" fn keyboard_hook_proc(
         // Handle Backspace while composing
         if vk == VK_BACK {
             let prev_len = st.injected_utf16_len;
+            // Right after a word was committed with a space: bring back the Roman text that was typed
+            if prev_len == 0 && st.ekushe.config().backspace_undo {
+                let out = st.ekushe.backspace();
+                if out.delete_before > 0 {
+                    if let Some(roman) = out.committed {
+                        drop(st);
+                        replace_active_text(out.delete_before, &roman);
+                        return 1;
+                    }
+                }
+            }
             if prev_len > 0 {
                 let out = st.ekushe.backspace();
                 let new_text = out.preedit.clone();
@@ -1061,6 +1150,10 @@ unsafe extern "system" fn tray_wnd_proc(
     lparam: LPARAM,
 ) -> LRESULT {
     match msg {
+        WM_TIMER if wparam == TIMER_SAVE_LEARNED => {
+            save_learned_words_if_changed();
+            0
+        }
         WM_EKUSHE_FORGET => {
             if COMPOSITION_STALE.swap(false, Ordering::SeqCst) {
                 let had = {

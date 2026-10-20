@@ -73,6 +73,8 @@ pub struct SuggestionEngine {
     dict: Option<&'static Dictionary>,
     /// Ranking weights for the dictionary
     rank_params: RankParams,
+    /// Increases whenever the user's learned choices change (hosts save when it moves)
+    learned_version: u64,
 }
 
 impl Default for SuggestionEngine {
@@ -155,6 +157,7 @@ impl SuggestionEngine {
             spell,
             dict,
             rank_params: RankParams::default(),
+            learned_version: 0,
         }
     }
 
@@ -207,24 +210,38 @@ impl SuggestionEngine {
             .entry(roman_input.to_lowercase())
             .or_default();
         *entry.entry(chosen_bangla.to_string()).or_insert(0) += 1;
+        self.learned_version += 1;
         self.dictionary
             .entry(chosen_bangla.to_string())
             .or_insert(5_000);
         self.spell.add_user_word(chosen_bangla.to_string());
     }
 
-    /// Save user learned dictionary to a TSV file (`roman \t bangla \t count`).
-    pub fn save_user_dict(&self, path: &Path) -> std::io::Result<()> {
-        if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent)?;
-        }
-        let mut lines = String::new();
+    /// Version counter of the learned choices; changes whenever something new is learned.
+    pub fn learned_version(&self) -> u64 {
+        self.learned_version
+    }
+
+    /// The learned choices as TSV (`roman \t bangla \t count`, sorted), ready to write to disk.
+    pub fn user_dict_tsv(&self) -> String {
+        let mut rows: Vec<(&String, &String, u32)> = Vec::new();
         for (roman, map) in &self.user_choices {
             for (bangla, count) in map {
-                lines.push_str(&format!("{roman}\t{bangla}\t{count}\n"));
+                rows.push((roman, bangla, *count));
             }
         }
-        fs::write(path, lines)
+        rows.sort();
+        let mut lines = String::new();
+        for (roman, bangla, count) in rows {
+            lines.push_str(&format!("{roman}\t{bangla}\t{count}\n"));
+        }
+        lines
+    }
+
+    /// Save user learned dictionary to a TSV file (`roman \t bangla \t count`). Writes a temporary file
+    /// first and renames it, so a crash never leaves a half-written dictionary.
+    pub fn save_user_dict(&self, path: &Path) -> std::io::Result<()> {
+        write_atomic(path, &self.user_dict_tsv())
     }
 
     /// Load user learned dictionary from a TSV file.
@@ -680,10 +697,21 @@ impl SuggestionEngine {
         if !literal_slot_done {
             push(candidates, phonetic(literal_bangla));
         }
+        // Emoji go in the visible part of the bar (after the top 3 words), not after the full word list
         if include_emojis {
-            if let Some(ems) = self.emojis.get(roman_lc).or_else(|| self.emojis.get(literal_bangla)) {
+            let top = candidates.first().map(|c| c.text.clone()).unwrap_or_default();
+            let ems = self
+                .emojis
+                .get(roman_lc)
+                .or_else(|| self.emojis.get(literal_bangla))
+                .or_else(|| self.emojis.get(&top));
+            if let Some(ems) = ems {
+                let mut at = candidates.len().min(3);
                 for &em in ems {
-                    push(candidates, Candidate { text: em.to_string(), kind: CandidateKind::Emoji, annotation: None });
+                    if seen.insert(em.to_string()) {
+                        candidates.insert(at, Candidate { text: em.to_string(), kind: CandidateKind::Emoji, annotation: None });
+                        at += 1;
+                    }
                 }
             }
         }
@@ -698,6 +726,16 @@ impl SuggestionEngine {
         }
         candidates.truncate(max_candidates);
     }
+}
+
+/// Write `contents` to `path` via a temporary file + rename (no half-written file after a crash).
+pub fn write_atomic(path: &Path, contents: &str) -> std::io::Result<()> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let tmp = path.with_extension("tmp");
+    fs::write(&tmp, contents)?;
+    fs::rename(&tmp, path)
 }
 
 /// Normalize a Roman string into a consonant/vowel skeleton so beginners who write
@@ -984,6 +1022,18 @@ mod tests {
         let (cands_fb, _) = engine.suggest("facebook", &phon, false, true, 9);
         assert!(cands_fb.iter().any(|c| c.text == "ফেসবুক"));
         assert!(cands_fb.iter().any(|c| c.text == "facebook"));
+
+        // Learned choices survive a save / load round trip
+        engine.record_user_choice("valo", "ভালো");
+        let dir = std::env::temp_dir().join(format!("ekushe-test-{}", std::process::id()));
+        let path = dir.join("learned.tsv");
+        let v = engine.learned_version();
+        engine.save_user_dict(&path).unwrap();
+        let mut fresh = SuggestionEngine::new();
+        fresh.load_user_dict(&path).unwrap();
+        assert_eq!(fresh.user_dict_tsv(), engine.user_dict_tsv());
+        assert!(v > 0);
+        let _ = std::fs::remove_dir_all(&dir);
 
         // User learning boosts chosen word to the top
         engine.record_user_choice("kmn", "কেমনই");
