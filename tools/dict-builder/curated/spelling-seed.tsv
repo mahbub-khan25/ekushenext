@@ -1,0 +1,70 @@
+# Curated spelling decisions. Edit freely; this file overrides the automatic rules.
+# kind: prefer  = first column is the standard spelling, the rest are variants pointing to it
+#       distinct = all listed words are separate, valid words (meaning depends on context); no preference
+# source: draft = drafted by Claude from Bangla Academy rules, needs native-speaker confirmation
+#         reviewed = confirmed by a reviewer
+# preferred	variants	kind	source	note
+সরকারি	সরকারী	prefer	draft	foreign root সরকার + -ই (Academy: non-tatsama → ি)
+দরকারি	দরকারী	prefer	draft	foreign root
+তরকারি	তরকারী	prefer	draft	non-tatsama
+তৈরি	তৈরী	prefer	draft	non-tatsama
+বাড়ি	বাড়ী	prefer	draft	non-tatsama
+গাড়ি	গাড়ী	prefer	draft	non-tatsama
+শাড়ি	শাড়ী	prefer	draft	non-tatsama
+পাখি	পাখী	prefer	draft	non-tatsama
+হাতি	হাতী	prefer	draft	non-tatsama
+ঘড়ি	ঘড়ী	prefer	draft	non-tatsama
+চাবি	চাবী	prefer	draft	non-tatsama
+দামি	দামী	prefer	draft	non-tatsama
+দেশি	দেশী	prefer	draft	-ই suffix, non-tatsama
+বিদেশি	বিদেশী	prefer	draft	-ই suffix, non-tatsama
+ইংরেজি	ইংরেজী	prefer	draft	language name, -ই suffix
+বাঙালি	বাঙালী	prefer	draft	nationality -ই
+জাপানি	জাপানী	prefer	draft	nationality -ই
+আরবি	আরবী	prefer	draft	language name
+ফারসি	ফারসী	prefer	draft	language name
+হিন্দি	হিন্দী	prefer	draft	language name
+শ্রেণি	শ্রেণী	prefer	draft	tatsama with both forms valid → ি (Academy rule)
+পদবি	পদবী	prefer	draft	tatsama with both forms valid → ি
+রানি	রাণী,রানী	prefer	draft	Academy form
+কাহিনি	কাহিনী	prefer	draft	Academy form
+সূচি	সূচী	prefer	draft	tatsama with both forms valid → ি
+ভঙ্গি	ভঙ্গী	prefer	draft	tatsama with both forms valid → ি
+আমদানি	আমদানী	prefer	draft	foreign
+রপ্তানি	রপ্তানী	prefer	draft	foreign
+কেরানি	কেরানী	prefer	draft	foreign
+দাবি	দাবী	prefer	draft	foreign (Arabic)
+জমি	জমী	prefer	draft	foreign
+খুশি	খুশী	prefer	draft	foreign (Persian)
+বেশি	বেশী	prefer	draft	non-tatsama
+বন্দি	বন্দী	prefer	draft	Academy form
+জাতীয়	জাতিয়	prefer	draft	tatsama -ঈয় suffix keeps ী
+উপকারী	উপকারি	prefer	draft	tatsama -ইন্ agent suffix keeps ী
+নারী	নারি	prefer	draft	tatsama
+নদী	নদি	prefer	draft	tatsama
+মন্ত্রী	মন্ত্রি	prefer	draft	tatsama -ইন্
+প্রাণী	প্রাণি	prefer	draft	tatsama -ইন্
+পৃথিবী	পৃথিবি	prefer	draft	tatsama
+স্থায়ী	স্থায়ি	prefer	draft	tatsama
+দায়ী	দায়ি	prefer	draft	tatsama
+প্রতিযোগী	প্রতিযোগি	prefer	draft	tatsama -ইন্
+সহযোগী	সহযোগি	prefer	draft	tatsama -ইন্
+কর্মচারী	কর্মচারি,কর্ম্মচারী	prefer	draft	tatsama -ইন্
+অধিকারী	অধিকারি	prefer	draft	tatsama -ইন্
+দেবী	দেবি	prefer	draft	tatsama feminine
+রাজধানী	রাজধানি	prefer	draft	tatsama
+দুর্নীতি	দূর্নীতি,দুর্নিতী,দূর্নীতী	prefer	draft	prefix দুর্ is short-u
+ব্যবসা	ব্যাবসা	prefer	draft	Academy form
+ব্যবসায়ী	ব্যাবসায়ী,ব্যবসায়ি	prefer	draft	Academy form
+পূর্ব	পুর্ব	prefer	draft	tatsama
+কারণ	কারন	prefer	draft	tatsama, natural ণ
+পুণ্য	পূণ্য	prefer	draft	tatsama
+কোন	কোনো	distinct	draft	কোন = which, কোনো = any
+মত	মতো	distinct	draft	মত = opinion, মতো = like
+কাল	কালো	distinct	draft	কাল = time/yesterday, কালো = black
+ভাল	ভালো	distinct	draft	ভাল = forehead (rare), ভালো = good
+হল	হলো	distinct	draft	both used for the verb; হল also = hall
+করল	করলো	distinct	draft	both forms accepted
+কী	কি	distinct	draft	কী = what (pronoun), কি = yes/no question particle (Academy)
+করুন	করুণ	distinct	draft	করুন = please do (verb), করুণ = pitiful (adjective)
+কীভাবে	কিভাবে	prefer	draft	Academy: কী (what/how) in কীভাবে, কীরকম

@@ -1,0 +1,24 @@
+# Build output
+/target/
+**/target/
+
+# Installers and promo renders: publish these on GitHub Releases instead
+*.exe
+*.mp4
+ekushe-promo/node_modules/
+ekushe-promo/out/
+
+# Generated dictionary files (rebuild with tools/dict-builder/build.sh)
+data/dictionary/ekushe.dict
+data/dictionary/words-*.tsv
+data/dictionary/roman/romanizations.tsv
+data/dictionary/roman/roman-index.tsv
+tools/dict-builder/work/
+*.gz
+*.tgz
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
