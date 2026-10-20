@@ -1,6 +1,6 @@
 # Ekushe Next - Windows One-Step Installer
 # Builds or copies the release binaries (ekushe.exe, ekushe_tsf.dll, ekushe-cli.exe),
-# installs icons & Bangladeshi fonts (Kalpurush, SolaimanLipi, Nikosh, Siyam Rupali)
+# installs icons & Bangladeshi fonts (Kalpurush, SolaimanLipi, Siyam Rupali, Hind Siliguri)
 # to %LOCALAPPDATA%\Programs\Ekushe and user Windows Fonts, registers TSF profile in HKCU,
 # creates Start Menu shortcut with ekushe.ico, and optionally enables Run-at-Startup.
 
@@ -29,7 +29,7 @@ New-Item -ItemType Directory -Force -Path $fontsDir | Out-Null
 Copy-Item -Force (Join-Path $repoRoot "logo.png") $installDir
 Copy-Item -Force (Join-Path $repoRoot "assets\icons\*") $iconsDir
 Copy-Item -Force (Join-Path $repoRoot "assets\fonts\*") $fontsDir
-Write-Host "  [OK] Copied icons and Bangladeshi fonts (Kalpurush, SolaimanLipi, Nikosh, Siyam Rupali)" -ForegroundColor Green
+Write-Host "  [OK] Copied icons and Bangladeshi fonts (Kalpurush, SolaimanLipi, Siyam Rupali, Hind Siliguri)" -ForegroundColor Green
 
 # Also install Bangladeshi fonts into user's Windows Fonts so all apps on the PC render Bangla cleanly
 $userWinFontsDir = Join-Path $env:LOCALAPPDATA "Microsoft\Windows\Fonts"
@@ -41,7 +41,6 @@ if (-not (Test-Path $fontRegKey)) {
 $banglaFontMap = @{
     "Kalpurush (TrueType)"    = "Kalpurush.ttf"
     "SolaimanLipi (TrueType)" = "SolaimanLipi.ttf"
-    "Nikosh (TrueType)"       = "Nikosh.ttf"
     "Siyam Rupali (TrueType)" = "SiyamRupali.ttf"
     "Hind Siliguri (TrueType)"= "HindSiliguri-Regular.ttf"
 }

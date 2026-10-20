@@ -72,3 +72,18 @@ from Avro, Lekho or OpenBangla.
 cargo test -p ekushe-core     # includes engine tests against the real dictionary
 cargo run --release -p ekushe-core --example engine_eval -- data/dictionary/ekushe.dict.z tools/dict-builder/eval/pilot.tsv
 ```
+
+---
+
+## License
+
+Ekushe Next is open source.
+
+| Part | Licence |
+| --- | --- |
+| Code (all crates, `tools/`, scripts) | [Mozilla Public License 2.0](LICENSE) |
+| Dictionary data (`data/dictionary/`) | [CC BY-SA 4.0](data/dictionary/LICENSE.md) |
+| Bundled fonts (`assets/fonts/`) | Each font's own licence (SIL OFL, GPL with font exception); see [`assets/fonts/README.md`](assets/fonts/README.md) |
+
+Credits for third-party material are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Contributions are
+welcome; see [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md).

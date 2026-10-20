@@ -25,11 +25,6 @@ export const EkushePromo: React.FC = () => {
       src: url('${staticFile('fonts/HindSiliguri-Regular.ttf')}') format('truetype');
       font-weight: normal;
     }
-    @font-face {
-      font-family: 'Nikosh';
-      src: url('${staticFile('fonts/Nikosh.ttf')}') format('truetype');
-      font-weight: normal;
-    }
   `;
 
   return (
