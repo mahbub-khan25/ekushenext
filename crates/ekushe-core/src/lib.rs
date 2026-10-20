@@ -264,6 +264,11 @@ impl Ekushe {
     /// Select candidate at `index` (0-based) and commit it, recording user learning.
     pub fn select_candidate(&mut self, index: usize, trailing: Option<char>) -> SessionOutput {
         self.intervening_key_since_shift = true;
+        // Fixed layouts compose into their own buffer; committing must take that text, not the
+        // (empty) phonetic buffer, or the word is lost (ক + Space used to commit only " ").
+        if self.config.active_layout != LayoutId::AvroPhonetic {
+            return self.commit_default(trailing);
+        }
         let smart = self.config.typing_mode == TypingMode::Smart;
         let (cands, _) = self.suggestions.suggest_with_context(
             &self.roman_buf,
@@ -424,6 +429,19 @@ impl Ekushe {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_fixed_layouts_commit_their_text() {
+        for layout in [LayoutId::Probhat, LayoutId::NationalJatiya, LayoutId::Bornona, LayoutId::MunirOptima] {
+            for commit_via_select in [true, false] {
+                let mut ek = Ekushe::new(Config { active_layout: layout, ..Config::default() });
+                let pre = ek.push_char('k', false).preedit;
+                assert!(!pre.is_empty(), "{layout:?} composes nothing for k");
+                let out = if commit_via_select { ek.select_candidate(0, Some(' ')) } else { ek.commit_default(Some(' ')) };
+                assert_eq!(out.committed, Some(format!("{pre} ")), "{layout:?} lost its text on commit");
+            }
+        }
+    }
 
     #[test]
     fn test_double_tap_shift_switch() {
