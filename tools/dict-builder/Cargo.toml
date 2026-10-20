@@ -1,0 +1,23 @@
+[package]
+name = "ekushe-dict-builder"
+version = "0.1.0"
+edition = "2021"
+license = "MPL-2.0"
+description = "Builds the Ekushe Next Bangla dictionary from open-licensed text corpora"
+
+# Standalone tool: not part of the app workspace.
+[workspace]
+
+[[bin]]
+name = "ekushe-dict"
+path = "src/main.rs"
+
+[dependencies]
+ekushe-core = { path = "../../crates/ekushe-core" }
+unicode-normalization = "0.1"
+rustc-hash = "2"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
