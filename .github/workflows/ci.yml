@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  windows:
+    name: Windows build and tests
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Tests (core engine, dictionary, converter)
+        run: cargo test --workspace
+      - name: Release build (tray app with embedded dictionary, TSF DLL, CLI)
+        run: cargo build --release --workspace
+      - name: Pilot accuracy
+        run: cargo run --release -p ekushe-core --example engine_eval -- data/dictionary/ekushe.dict.z tools/dict-builder/eval/pilot.tsv
+      - name: Tray self-test (Studio HTTP endpoints)
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath target\release\ekushe.exe -ArgumentList '--self-test' -PassThru -NoNewWindow -Wait
+          if ($p.ExitCode -ne 0) { exit $p.ExitCode }
+      - name: Format
+        run: cargo fmt --all -- --check
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ekushe-windows-x64
+          path: |
+            target/release/ekushe.exe
+            target/release/ekushe_tsf.dll
+            target/release/ekushe-cli.exe
+
+  dict-builder:
+    name: Dictionary builder
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build and test
+        working-directory: tools/dict-builder
+        run: cargo test --release
