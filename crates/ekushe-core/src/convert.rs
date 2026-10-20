@@ -15,7 +15,10 @@ const REPH_MARK: char = '\u{E000}';
 
 #[inline]
 fn is_vowel_sign(c: char) -> bool {
-    matches!(c, 'া' | 'ি' | 'ী' | 'ু' | 'ূ' | 'ৃ' | 'ে' | 'ৈ' | 'ো' | 'ৌ' | 'ৗ')
+    matches!(
+        c,
+        'া' | 'ি' | 'ী' | 'ু' | 'ূ' | 'ৃ' | 'ে' | 'ৈ' | 'ো' | 'ৌ' | 'ৗ'
+    )
 }
 
 /// Convert Banglish (Roman phonetic text) directly into Unicode Bangla.
@@ -235,7 +238,8 @@ pub fn bijoy_to_unicode(input: &str) -> String {
         }
 
         // Pre-base kar (`ি`, `ে`, `ৈ`) before a consonant (or consonant cluster `C (্ C)*`)
-        if matches!(ch, 'ি' | 'ে' | 'ৈ') && chars.get(i + 1).copied().is_some_and(is_bangla_consonant)
+        if matches!(ch, 'ি' | 'ে' | 'ৈ')
+            && chars.get(i + 1).copied().is_some_and(is_bangla_consonant)
         {
             let kar = ch;
             i += 1;
@@ -352,7 +356,8 @@ pub fn unicode_to_bijoy(input: &str) -> String {
             {
                 i += 2;
                 stage.push(chars[i]);
-                while i + 2 < chars.len() && chars[i + 1] == '্' && is_bangla_consonant(chars[i + 2]) {
+                while i + 2 < chars.len() && chars[i + 1] == '্' && is_bangla_consonant(chars[i + 2])
+                {
                     stage.push('্');
                     stage.push(chars[i + 2]);
                     i += 2;
@@ -494,7 +499,11 @@ pub fn unicode_to_bijoy(input: &str) -> String {
 
 fn find_cluster_start(buf: &[char]) -> usize {
     // a trailing reph mark belongs to the cluster before it
-    let buf = if buf.last() == Some(&REPH_MARK) { &buf[..buf.len() - 1] } else { buf };
+    let buf = if buf.last() == Some(&REPH_MARK) {
+        &buf[..buf.len() - 1]
+    } else {
+        buf
+    };
     // consonant (with optional nukta) ending at position `end` (exclusive): returns its start
     let cons_start = |end: usize| -> Option<usize> {
         if end >= 2 && buf[end - 1] == '\u{09BC}' && is_bangla_consonant(buf[end - 2]) {
@@ -534,11 +543,20 @@ mod tests {
             ("পুনর্যৌবন", "cyb†h©Šeb"),
         ] {
             assert_eq!(unicode_to_bijoy(uni), bijoy, "encode {uni}");
-            assert_eq!(normalize_bangla_unicode(&bijoy_to_unicode(bijoy)), normalize_bangla_unicode(uni), "decode {bijoy}");
+            assert_eq!(
+                normalize_bangla_unicode(&bijoy_to_unicode(bijoy)),
+                normalize_bangla_unicode(uni),
+                "decode {bijoy}"
+            );
         }
         // য় with a pre-base vowel sign keeps its dot on the letter
-        for w in ["হয়েছে", "নিয়ে", "দিয়ে", "মেয়ে", "বড়ি"] {
-            assert_eq!(normalize_bangla_unicode(&bijoy_to_unicode(&unicode_to_bijoy(w))), normalize_bangla_unicode(w), "{w}");
+        for w in ["হয়েছে", "নিয়ে", "দিয়ে", "মেয়ে", "বড়ি"]
+        {
+            assert_eq!(
+                normalize_bangla_unicode(&bijoy_to_unicode(&unicode_to_bijoy(w))),
+                normalize_bangla_unicode(w),
+                "{w}"
+            );
         }
     }
 
@@ -548,6 +566,9 @@ mod tests {
         let bijoy = unicode_to_bijoy(sample);
         assert_eq!(bijoy, "Avwg evsjvq Mvb MvB| evsjv†`k Avgvi Ÿ†`k|");
         let back = bijoy_to_unicode(&bijoy);
-        assert_eq!(normalize_bangla_unicode(&back), normalize_bangla_unicode(sample));
+        assert_eq!(
+            normalize_bangla_unicode(&back),
+            normalize_bangla_unicode(sample)
+        );
     }
 }

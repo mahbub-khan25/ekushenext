@@ -25,22 +25,20 @@ use ekushe_core::{
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 
-use windows_sys::Win32::Foundation::{
-    COLORREF, HWND, LPARAM, LRESULT, POINT, RECT, SIZE, WPARAM,
-};
+use windows_sys::Win32::Foundation::{COLORREF, HWND, LPARAM, LRESULT, POINT, RECT, SIZE, WPARAM};
 use windows_sys::Win32::Graphics::Dwm::DwmSetWindowAttribute;
 use windows_sys::Win32::Graphics::Gdi::{
     AddFontMemResourceEx, BeginPaint, BitBlt, CreateCompatibleBitmap, CreateCompatibleDC,
     CreateFontW, CreatePen, CreateSolidBrush, DeleteDC, DeleteObject, DrawTextW, EndPaint,
     FillRect, GetTextExtentPoint32W, InvalidateRect, RoundRect, SelectObject, SetBkMode,
-    SetTextColor, TextOutW, DT_CENTER, DT_NOPREFIX, DT_SINGLELINE, DT_VCENTER, HDC,
-    PAINTSTRUCT, PS_SOLID, SRCCOPY, TRANSPARENT,
+    SetTextColor, TextOutW, DT_CENTER, DT_NOPREFIX, DT_SINGLELINE, DT_VCENTER, HDC, PAINTSTRUCT,
+    PS_SOLID, SRCCOPY, TRANSPARENT,
 };
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
-    GetAsyncKeyState, SendInput, ToUnicode, GetKeyboardState, INPUT, INPUT_0, INPUT_KEYBOARD,
-    KEYBDINPUT, KEYEVENTF_KEYUP, KEYEVENTF_UNICODE, VK_BACK, VK_CONTROL, VK_ESCAPE, VK_F12,
-    VK_LSHIFT, VK_MENU, VK_RETURN, VK_RSHIFT, VK_SHIFT, VK_SPACE, VK_TAB,
+    GetAsyncKeyState, GetKeyState, GetKeyboardLayout, SendInput, ToUnicodeEx, INPUT, INPUT_0,
+    INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_KEYUP, KEYEVENTF_UNICODE, VK_BACK, VK_CONTROL, VK_ESCAPE,
+    VK_F12, VK_LSHIFT, VK_MENU, VK_RETURN, VK_RSHIFT, VK_SHIFT, VK_SPACE, VK_TAB,
 };
 use windows_sys::Win32::UI::Shell::{
     Shell_NotifyIconW, NIF_ICON, NIF_INFO, NIF_MESSAGE, NIF_TIP, NIM_ADD, NIM_DELETE, NIM_MODIFY,
@@ -48,20 +46,20 @@ use windows_sys::Win32::UI::Shell::{
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     AppendMenuW, CallNextHookEx, CreatePopupMenu, CreateWindowExW, DefWindowProcW, DestroyMenu,
-    DestroyWindow, DispatchMessageW, GetClassNameW, GetClientRect, GetCursorPos,
-    GetAncestor, GetForegroundWindow, GetGUIThreadInfo, GetMessageW, GetSystemMetrics, GetWindowLongW,
-    GetWindowThreadProcessId, KillTimer, LoadCursorW, LoadIconW, WindowFromPoint, GA_ROOT,
-    GUITHREADINFO, GWL_STYLE, MSLLHOOKSTRUCT, WH_MOUSE_LL,
-    LoadImageW, PostMessageW, PostQuitMessage, RegisterClassW, SetCursor, SetForegroundWindow,
-    SetLayeredWindowAttributes, SetMenuDefaultItem, SetTimer, SetWindowPos, SetWindowsHookExW,
-    ShowWindow, TrackPopupMenu, TranslateMessage, UnhookWindowsHookEx, CW_USEDEFAULT, HHOOK, HICON,
-    HWND_TOPMOST, IDC_HAND, IDI_APPLICATION, IMAGE_ICON, KBDLLHOOKSTRUCT, LR_LOADFROMFILE,
-    LWA_ALPHA, MF_CHECKED, MF_SEPARATOR, MF_STRING, MF_UNCHECKED, MSG, SM_CXSCREEN, SM_CYSCREEN,
-    SWP_NOACTIVATE, SWP_SHOWWINDOW, SW_HIDE, SW_SHOWNOACTIVATE, TPM_BOTTOMALIGN, TPM_LEFTALIGN,
-    TPM_RETURNCMD, TPM_RIGHTBUTTON, WH_KEYBOARD_LL, WM_APP, WM_COMMAND, WM_CONTEXTMENU, WM_DESTROY,
-    WM_KEYDOWN, WM_KEYUP, WM_LBUTTONDBLCLK, WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MOUSEACTIVATE,
-    WM_NULL, WM_PAINT, WM_RBUTTONUP, WM_SETCURSOR, WM_SYSKEYDOWN, WM_TIMER, WNDCLASSW,
-    WS_EX_LAYERED, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_POPUP,
+    DestroyWindow, DispatchMessageW, GetAncestor, GetClassNameW, GetClientRect, GetCursorPos,
+    GetForegroundWindow, GetGUIThreadInfo, GetMessageW, GetSystemMetrics, GetWindowLongW,
+    GetWindowThreadProcessId, KillTimer, LoadCursorW, LoadIconW, LoadImageW, PostMessageW,
+    PostQuitMessage, RegisterClassW, SetCursor, SetForegroundWindow, SetLayeredWindowAttributes,
+    SetMenuDefaultItem, SetTimer, SetWindowPos, SetWindowsHookExW, ShowWindow, TrackPopupMenu,
+    TranslateMessage, UnhookWindowsHookEx, WindowFromPoint, CW_USEDEFAULT, GA_ROOT, GUITHREADINFO,
+    GWL_STYLE, HHOOK, HICON, HWND_TOPMOST, IDC_HAND, IDI_APPLICATION, IMAGE_ICON, KBDLLHOOKSTRUCT,
+    LR_LOADFROMFILE, LWA_ALPHA, MF_CHECKED, MF_SEPARATOR, MF_STRING, MF_UNCHECKED, MSG,
+    MSLLHOOKSTRUCT, SM_CXSCREEN, SM_CYSCREEN, SWP_NOACTIVATE, SWP_SHOWWINDOW, SW_HIDE,
+    SW_SHOWNOACTIVATE, TPM_BOTTOMALIGN, TPM_LEFTALIGN, TPM_RETURNCMD, TPM_RIGHTBUTTON,
+    WH_KEYBOARD_LL, WH_MOUSE_LL, WM_APP, WM_COMMAND, WM_CONTEXTMENU, WM_DESTROY, WM_KEYDOWN,
+    WM_KEYUP, WM_LBUTTONDBLCLK, WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MOUSEACTIVATE, WM_NULL, WM_PAINT,
+    WM_RBUTTONUP, WM_SETCURSOR, WM_SYSKEYDOWN, WM_TIMER, WNDCLASSW, WS_EX_LAYERED,
+    WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_POPUP,
 };
 
 /// Embedded 256x256 PNG logo for the Studio UI (`/logo.png`)
@@ -71,8 +69,10 @@ static LOGO_PNG_BYTES: &[u8] = include_bytes!("../../../assets/icons/logo_256.pn
 static FONT_KALPURUSH: &[u8] = include_bytes!("../../../assets/fonts/Kalpurush.ttf");
 static FONT_SOLAIMANLIPI: &[u8] = include_bytes!("../../../assets/fonts/SolaimanLipi.ttf");
 static FONT_SIYAMRUPALI: &[u8] = include_bytes!("../../../assets/fonts/SiyamRupali.ttf");
-static FONT_HINDSILIGURI_REG: &[u8] = include_bytes!("../../../assets/fonts/HindSiliguri-Regular.ttf");
-static FONT_HINDSILIGURI_BOLD: &[u8] = include_bytes!("../../../assets/fonts/HindSiliguri-Bold.ttf");
+static FONT_HINDSILIGURI_REG: &[u8] =
+    include_bytes!("../../../assets/fonts/HindSiliguri-Regular.ttf");
+static FONT_HINDSILIGURI_BOLD: &[u8] =
+    include_bytes!("../../../assets/fonts/HindSiliguri-Bold.ttf");
 
 /// Magic extra info tag so our low-level keyboard hook never intercepts our own `SendInput` events.
 const EKUSHE_EXTRA_INFO: usize = 0xE21B_0945;
@@ -151,7 +151,9 @@ static STATE: Lazy<Mutex<AppSharedState>> = Lazy::new(|| {
     cfg.bangla_digits = true;
     let mut ek = Ekushe::new(cfg);
     // Words the user picked in earlier sessions
-    let _ = ek.suggestions_engine_mut().load_user_dict(&learned_words_path());
+    let _ = ek
+        .suggestions_engine_mut()
+        .load_user_dict(&learned_words_path());
     let saved_learned_version = ek.suggestions_engine().learned_version();
     Mutex::new(AppSharedState {
         ekushe: ek,
@@ -167,8 +169,18 @@ static STATE: Lazy<Mutex<AppSharedState>> = Lazy::new(|| {
         badge_banner: None,
         cand_hit_rects: Vec::new(),
         hint_hit_rects: Vec::new(),
-        helper_btn_rect: RECT { left: 0, top: 0, right: 0, bottom: 0 },
-        compact_btn_rect: RECT { left: 0, top: 0, right: 0, bottom: 0 },
+        helper_btn_rect: RECT {
+            left: 0,
+            top: 0,
+            right: 0,
+            bottom: 0,
+        },
+        compact_btn_rect: RECT {
+            left: 0,
+            top: 0,
+            right: 0,
+            bottom: 0,
+        },
         popup_opacity_pct: 92,
         comp_focus: 0,
         last_fg: 0,
@@ -195,12 +207,12 @@ unsafe fn register_embedded_bangla_fonts() {
         FONT_HINDSILIGURI_REG,
         FONT_HINDSILIGURI_BOLD,
     ] {
-        let mut num_fonts: u32 = 0;
+        let num_fonts: u32 = 0;
         let _ = AddFontMemResourceEx(
             font_bytes.as_ptr() as *const _,
             font_bytes.len() as u32,
             ptr::null(),
-            &mut num_fonts,
+            &num_fonts,
         );
     }
 }
@@ -246,7 +258,9 @@ fn main() {
     // Automatically ensure icons, Bangladeshi fonts, and default configuration are extracted and active
     setup_wizard::ensure_self_configured();
 
-    let open_studio_on_launch = !args.iter().any(|a| a == "--minimized" || a == "--tray-only");
+    let open_studio_on_launch = !args
+        .iter()
+        .any(|a| a == "--minimized" || a == "--tray-only");
 
     // If an instance of Ekushe is already running in the System Tray, reuse it and open Studio if requested!
     if !args.iter().any(|a| a == "--self-test") {
@@ -409,7 +423,10 @@ fn run_self_test(port: u16) {
 
     let http_get = |uri: &str| -> String {
         let mut s = TcpStream::connect(("127.0.0.1", port)).expect("connect studio server");
-        let req = format!("GET {uri} HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n");
+        let req = format!(
+            "GET {uri} HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nX-Ekushe-Token: {}\r\nConnection: close\r\n\r\n",
+            studio_token()
+        );
         s.write_all(req.as_bytes()).unwrap();
         let mut resp = Vec::new();
         s.read_to_end(&mut resp).unwrap();
@@ -419,7 +436,8 @@ fn run_self_test(port: u16) {
     let http_post = |uri: &str, json_body: &str| -> String {
         let mut s = TcpStream::connect(("127.0.0.1", port)).expect("connect studio server");
         let req = format!(
-            "POST {uri} HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+            "POST {uri} HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nOrigin: http://127.0.0.1:{port}\r\nX-Ekushe-Token: {}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+            studio_token(),
             json_body.len(),
             json_body
         );
@@ -448,6 +466,26 @@ fn run_self_test(port: u16) {
         println!("✓ Right-Click Studio URL verified: GET {uri} -> 200 OK");
     }
 
+    // 1b. The Studio refuses other websites: no token, a foreign Host, a foreign Origin
+    let raw = |req: String| -> String {
+        let mut s = TcpStream::connect(("127.0.0.1", port)).expect("connect studio server");
+        s.write_all(req.as_bytes()).unwrap();
+        let mut resp = Vec::new();
+        s.read_to_end(&mut resp).unwrap();
+        String::from_utf8_lossy(&resp).into_owned()
+    };
+    for bad in [
+        format!("GET /api/state HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nConnection: close\r\n\r\n"),
+        format!("GET / HTTP/1.1\r\nHost: evil.example:{port}\r\nConnection: close\r\n\r\n"),
+        format!(
+            "POST /api/toggle HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nOrigin: http://evil.example\r\nX-Ekushe-Token: {}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+            studio_token()
+        ),
+    ] {
+        assert!(raw(bad).starts_with("HTTP/1.1 403"), "Studio accepted a foreign request");
+    }
+    println!("✓ Studio rejects requests without the token, foreign Host and foreign Origin");
+
     // 2. Verify /api/state
     let r_state = http_get("/api/state");
     assert!(r_state.contains("\"language\""));
@@ -470,9 +508,15 @@ fn run_self_test(port: u16) {
     println!("✓ POST /api/spell verified (বাংলাদেস -> বাংলাদেশ)");
 
     // 6. Verify POST /api/convert (Bijoy <-> Unicode & Banglish)
-    let r_conv1 = http_post("/api/convert", r#"{"mode":"bijoy2uni","text":"Avwg evsjvq Mvb MvB|"}"#);
+    let r_conv1 = http_post(
+        "/api/convert",
+        r#"{"mode":"bijoy2uni","text":"Avwg evsjvq Mvb MvB|"}"#,
+    );
     assert!(r_conv1.contains("আমি বাংলায় গান গাই।"));
-    let r_conv2 = http_post("/api/convert", r#"{"mode":"banglish","text":"ami banglay gan gai"}"#);
+    let r_conv2 = http_post(
+        "/api/convert",
+        r#"{"mode":"banglish","text":"ami banglay gan gai"}"#,
+    );
     assert!(r_conv2.contains("আমি বাংলায় গান গাই"));
     println!("✓ POST /api/convert verified (Bijoy <-> Unicode & Banglish)");
 
@@ -570,9 +614,8 @@ unsafe fn add_or_update_tray_icon(hwnd: HWND, is_add: bool) {
     if is_add {
         nid.uFlags |= NIF_INFO;
         let info_title = wide_null("একুশে নেক্সট (Ekushe Next Bangla Keyboard)");
-        let info_body = wide_null(
-            "সিস্টেম ট্রে-তে সক্রিয় আছে! দুইবার Shift চেপে বাংলা ⇄ ইংরেজি পরিবর্তন করুন।",
-        );
+        let info_body =
+            wide_null("সিস্টেম ট্রে-তে সক্রিয় আছে! দুইবার Shift চেপে বাংলা ⇄ ইংরেজি পরিবর্তন করুন।");
         for (i, &c) in info_title.iter().take(63).enumerate() {
             nid.szInfoTitle[i] = c;
         }
@@ -762,7 +805,9 @@ fn save_learned_words_if_changed() {
 /// Lower-case executable file name of the process that owns `hwnd` (e.g. `winword.exe`).
 unsafe fn exe_name_of(hwnd: HWND) -> Option<String> {
     use windows_sys::Win32::Foundation::CloseHandle;
-    use windows_sys::Win32::System::Threading::{OpenProcess, QueryFullProcessImageNameW, PROCESS_QUERY_LIMITED_INFORMATION};
+    use windows_sys::Win32::System::Threading::{
+        OpenProcess, QueryFullProcessImageNameW, PROCESS_QUERY_LIMITED_INFORMATION,
+    };
     let mut pid: u32 = 0;
     GetWindowThreadProcessId(hwnd, &mut pid);
     if pid == 0 {
@@ -789,10 +834,19 @@ unsafe extern "system" fn mouse_hook_proc(code: i32, wparam: WPARAM, lparam: LPA
     const WM_RBUTTONDOWN_: usize = 0x0204;
     const WM_MBUTTONDOWN_: usize = 0x0207;
     const WM_XBUTTONDOWN_: usize = 0x020B;
-    if code >= 0 && matches!(wparam, WM_LBUTTONDOWN_ | WM_RBUTTONDOWN_ | WM_MBUTTONDOWN_ | WM_XBUTTONDOWN_) {
+    if code >= 0
+        && matches!(
+            wparam,
+            WM_LBUTTONDOWN_ | WM_RBUTTONDOWN_ | WM_MBUTTONDOWN_ | WM_XBUTTONDOWN_
+        )
+    {
         let ms = &*(lparam as *const MSLLHOOKSTRUCT);
         let target = WindowFromPoint(ms.pt);
-        let root = if target.is_null() { target } else { GetAncestor(target, GA_ROOT) };
+        let root = if target.is_null() {
+            target
+        } else {
+            GetAncestor(target, GA_ROOT)
+        };
         let overlay = OVERLAY_HWND.load(Ordering::SeqCst);
         if overlay == 0 || (target as isize != overlay && root as isize != overlay) {
             COMPOSITION_STALE.store(true, Ordering::SeqCst);
@@ -810,11 +864,7 @@ unsafe extern "system" fn mouse_hook_proc(code: i32, wparam: WPARAM, lparam: LPA
 /// 2. Per-App Terminal Smart Guard (auto-English in PowerShell / cmd / Windows Terminal)
 /// 3. `Ctrl+Backspace` to flip the last committed word between Bangla ⇄ English
 /// 4. Live phonetic & fixed-layout Bangla typing in any Windows app (with Bangla digits ০-৯ in Ekushe mode and 0-9 in English mode)
-unsafe extern "system" fn keyboard_hook_proc(
-    code: i32,
-    wparam: WPARAM,
-    lparam: LPARAM,
-) -> LRESULT {
+unsafe extern "system" fn keyboard_hook_proc(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
     if code < 0 {
         return CallNextHookEx(ptr::null_mut(), code, wparam, lparam);
     }
@@ -831,6 +881,9 @@ unsafe extern "system" fn keyboard_hook_proc(
     let ctrl_down = (GetAsyncKeyState(VK_CONTROL as i32) as u16 & 0x8000) != 0;
     let alt_down = (GetAsyncKeyState(VK_MENU as i32) as u16 & 0x8000) != 0;
     let shift_down = (GetAsyncKeyState(VK_SHIFT as i32) as u16 & 0x8000) != 0;
+    // VK_LWIN = 0x5B, VK_RWIN = 0x5C
+    let win_down = (GetAsyncKeyState(0x5B) as u16 & 0x8000) != 0
+        || (GetAsyncKeyState(0x5C) as u16 & 0x8000) != 0;
 
     // 1. Handle Switch Hotkey (Double-Tap Shift, Ctrl+Space, F12, Ctrl+Alt+B)
     let is_shift_key = vk == VK_SHIFT || vk == VK_LSHIFT || vk == VK_RSHIFT;
@@ -934,9 +987,20 @@ unsafe extern "system" fn keyboard_hook_proc(
             }
         }
 
-        // If English mode is active, or Terminal Auto-Pause is active, or Ctrl/Alt shortcuts are pressed, pass straight through
+        // Keyboard shortcuts belong to the application: Ctrl+…, Alt+… (menus) and Win+…; AltGr
+        // (Ctrl+Alt) still types. A half-typed word stays as it is on screen and is closed.
+        let is_win_key = vk == 0x5B || vk == 0x5C;
+        let shortcut = (ctrl_down != alt_down) || win_down || is_win_key;
+        if shortcut {
+            if st.injected_utf16_len > 0 {
+                forget_composition(&mut st);
+                drop(st);
+                refresh_candidate_overlay();
+            }
+            return CallNextHookEx(ptr::null_mut(), code, wparam, lparam);
+        }
+        // English mode and terminals (auto-pause) type plain characters
         if st.ekushe.language() == InputLanguage::English
-            || (ctrl_down && !alt_down)
             || (st.ekushe.config().auto_english_in_terminals && is_foreground_terminal_window())
         {
             return CallNextHookEx(ptr::null_mut(), code, wparam, lparam);
@@ -1022,7 +1086,7 @@ unsafe extern "system" fn keyboard_hook_proc(
         }
 
         // Translate virtual key to printable ASCII/Unicode character (including Numpad 0-9!)
-        if let Some(ch) = vk_to_char(vk, kb.scanCode, shift_down) {
+        if let Some(ch) = vk_to_char(vk, kb.scanCode, shift_down, ctrl_down && alt_down) {
             if !ch.is_control() {
                 let prev_len = st.injected_utf16_len;
                 let altgr = ctrl_down && alt_down;
@@ -1051,24 +1115,37 @@ unsafe extern "system" fn keyboard_hook_proc(
     CallNextHookEx(ptr::null_mut(), code, wparam, lparam)
 }
 
-unsafe fn vk_to_char(vk: u16, scan_code: u32, shift: bool) -> Option<char> {
+unsafe fn vk_to_char(vk: u16, scan_code: u32, shift: bool, altgr: bool) -> Option<char> {
     // Support Numpad 0..=9 (VK_NUMPAD0 = 0x60 .. VK_NUMPAD9 = 0x69) directly so Numpad also types বাংলা ০-৯ in Ekushe mode!
     if !shift && (0x60..=0x69).contains(&vk) {
         return char::from_u32(('0' as u32) + (vk as u32 - 0x60));
     }
+    // GetKeyboardState() describes this hook thread's queue, not the key the user just pressed, so the
+    // modifier state is built from the physical keys instead. Caps Lock is a toggle: GetKeyState's low bit.
     let mut kbd_state = [0u8; 256];
-    GetKeyboardState(kbd_state.as_mut_ptr());
     if shift {
         kbd_state[VK_SHIFT as usize] = 0x80;
     }
+    if altgr {
+        kbd_state[VK_CONTROL as usize] = 0x80;
+        kbd_state[VK_MENU as usize] = 0x80;
+    }
+    if (GetKeyState(0x14) & 1) != 0 {
+        kbd_state[0x14] = 0x01; // VK_CAPITAL toggled
+    }
+    // Translate with the layout of the window the user is typing into (the hook thread's may differ)
+    let fg_thread = GetWindowThreadProcessId(GetForegroundWindow(), ptr::null_mut());
+    let layout = GetKeyboardLayout(fg_thread);
     let mut buf = [0u16; 4];
-    let rc = ToUnicode(
+    // Flag 0x4: do not change the keyboard state, so dead keys typed in the application still work
+    let rc = ToUnicodeEx(
         vk as u32,
         scan_code,
         kbd_state.as_ptr(),
         buf.as_mut_ptr(),
         buf.len() as i32,
-        0,
+        0x4,
+        layout,
     );
     if rc == 1 {
         char::from_u32(buf[0] as u32)
@@ -1311,11 +1388,7 @@ unsafe fn show_tray_context_menu(hwnd: HWND) {
             "মোড: Phonetic-First",
             CMD_MODE_PHONETIC_FIRST,
         ),
-        (
-            TypingMode::Smart,
-            "মোড: Smart (Default)",
-            CMD_MODE_SMART,
-        ),
+        (TypingMode::Smart, "মোড: Smart (Default)", CMD_MODE_SMART),
         (
             TypingMode::PhoneticOnly,
             "মোড: Phonetic-Only (No Popup)",
@@ -1449,10 +1522,7 @@ unsafe fn handle_tray_command(hwnd: HWND, cmd: usize) {
             drop(st);
             show_mode_badge(&format!("✓ টাইপিং মোড: {label}"));
         }
-        CMD_LAYOUT_AVRO
-        | CMD_LAYOUT_PROBHAT
-        | CMD_LAYOUT_JATIYA
-        | CMD_LAYOUT_BORNONA
+        CMD_LAYOUT_AVRO | CMD_LAYOUT_PROBHAT | CMD_LAYOUT_JATIYA | CMD_LAYOUT_BORNONA
         | CMD_LAYOUT_MUNIR => {
             let lay = match cmd {
                 CMD_LAYOUT_PROBHAT => LayoutId::Probhat,
@@ -1584,7 +1654,8 @@ unsafe extern "system" fn overlay_wnd_proc(
                     } else {
                         let roman = st.last_output.roman_buffer.clone();
                         let pre = st.last_output.preedit.clone();
-                        st.last_output.sign_hints = ekushe_core::conjuncts::contextual_sign_hints(&roman, &pre);
+                        st.last_output.sign_hints =
+                            ekushe_core::conjuncts::contextual_sign_hints(&roman, &pre);
                     }
                 }
                 refresh_candidate_overlay();
@@ -1638,21 +1709,21 @@ unsafe extern "system" fn overlay_wnd_proc(
             let old_bm = SelectObject(hdc, hbm as _);
 
             // Modern 2026 Light-Mode Palette (COLORREF = 0x00BBGGRR)
-            let c_surface: COLORREF = 0x00FF_FFFF;         // Pure Alabaster Card #FFFFFF
-            let c_header_strip: COLORREF = 0x00F6_FAF8;    // Soft Mint-Slate Header Strip #F8FAF6
-            let c_outer_border: COLORREF = 0x00CE_DFD7;    // Delicate Sage Border #D7DFCE -> #D7E5DE (0x00DEE5D7)
-            let c_emerald_brand: COLORREF = 0x004E_6E0D;   // Bangladeshi Emerald #0D6E4E
-            let c_emerald_dark: COLORREF = 0x003B_5409;    // Deep Emerald #09543B
-            let c_crimson: COLORREF = 0x002B_1EC8;         // Bangladeshi Crimson #C81E2B
-            let c_crimson_bg: COLORREF = 0x00F2_F0FD;      // Soft Rose Pill #FDF0F2
-            let c_crimson_border: COLORREF = 0x00D5_CEFA;  // Soft Rose Border #FACED5
-            let c_pill_bg: COLORREF = 0x00F6_F9F4;         // Soft Mint Pill #F4F9F6
-            let c_pill_border: COLORREF = 0x00DC_E8D6;     // Soft Mint Border #D6E8DC
-            let c_chip_bg: COLORREF = 0x00FA_FBF8;         // Hint Chip Surface #F8FBFA
-            let c_keycap_bg: COLORREF = 0x00EE_F3EF;       // Keyboard Keycap Badge #EFF3EE
-            let c_text_main: COLORREF = 0x001E_280F;       // Deep Forest Ink #0F281E
-            let c_text_muted: COLORREF = 0x0064_7558;      // Slate-Mint Muted #587564
-            let c_white: COLORREF = 0x00FF_FFFF;           // Crisp White #FFFFFF
+            let c_surface: COLORREF = 0x00FF_FFFF; // Pure Alabaster Card #FFFFFF
+            let c_header_strip: COLORREF = 0x00F6_FAF8; // Soft Mint-Slate Header Strip #F8FAF6
+            let c_outer_border: COLORREF = 0x00CE_DFD7; // Delicate Sage Border #D7DFCE -> #D7E5DE (0x00DEE5D7)
+            let c_emerald_brand: COLORREF = 0x004E_6E0D; // Bangladeshi Emerald #0D6E4E
+            let c_emerald_dark: COLORREF = 0x003B_5409; // Deep Emerald #09543B
+            let c_crimson: COLORREF = 0x002B_1EC8; // Bangladeshi Crimson #C81E2B
+            let c_crimson_bg: COLORREF = 0x00F2_F0FD; // Soft Rose Pill #FDF0F2
+            let c_crimson_border: COLORREF = 0x00D5_CEFA; // Soft Rose Border #FACED5
+            let c_pill_bg: COLORREF = 0x00F6_F9F4; // Soft Mint Pill #F4F9F6
+            let c_pill_border: COLORREF = 0x00DC_E8D6; // Soft Mint Border #D6E8DC
+            let c_chip_bg: COLORREF = 0x00FA_FBF8; // Hint Chip Surface #F8FBFA
+            let c_keycap_bg: COLORREF = 0x00EE_F3EF; // Keyboard Keycap Badge #EFF3EE
+            let c_text_main: COLORREF = 0x001E_280F; // Deep Forest Ink #0F281E
+            let c_text_muted: COLORREF = 0x0064_7558; // Slate-Mint Muted #587564
+            let c_white: COLORREF = 0x00FF_FFFF; // Crisp White #FFFFFF
 
             // Fill base card & outer border
             let bg_brush = CreateSolidBrush(c_surface);
@@ -1661,7 +1732,12 @@ unsafe extern "system" fn overlay_wnd_proc(
 
             draw_rounded_pill(
                 hdc,
-                RECT { left: 0, top: 0, right: w_px, bottom: h_px },
+                RECT {
+                    left: 0,
+                    top: 0,
+                    right: w_px,
+                    bottom: h_px,
+                },
                 16,
                 c_surface,
                 c_outer_border,
@@ -1673,8 +1749,18 @@ unsafe extern "system" fn overlay_wnd_proc(
             let mut st = STATE.lock();
             st.cand_hit_rects.clear();
             st.hint_hit_rects.clear();
-            st.helper_btn_rect = RECT { left: 0, top: 0, right: 0, bottom: 0 };
-            st.compact_btn_rect = RECT { left: 0, top: 0, right: 0, bottom: 0 };
+            st.helper_btn_rect = RECT {
+                left: 0,
+                top: 0,
+                right: 0,
+                bottom: 0,
+            };
+            st.compact_btn_rect = RECT {
+                left: 0,
+                top: 0,
+                right: 0,
+                bottom: 0,
+            };
             let is_compact = st.ekushe.config().compact_popup;
 
             let chosen_font = if st.ekushe.config().candidate_font_family.is_empty() {
@@ -1686,16 +1772,68 @@ unsafe extern "system" fn overlay_wnd_proc(
             let ui_font_w = wide_null("Segoe UI");
 
             let font_bn_bold = CreateFontW(
-                -20, 0, 0, 0, 700, 0, 0, 0, 1, 0, 0, 5, 0, font_name_w.as_ptr(),
+                -20,
+                0,
+                0,
+                0,
+                700,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                5,
+                0,
+                font_name_w.as_ptr(),
             );
             let font_bn_med = CreateFontW(
-                -19, 0, 0, 0, 600, 0, 0, 0, 1, 0, 0, 5, 0, font_name_w.as_ptr(),
+                -19,
+                0,
+                0,
+                0,
+                600,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                5,
+                0,
+                font_name_w.as_ptr(),
             );
             let font_bn_small = CreateFontW(
-                -16, 0, 0, 0, 600, 0, 0, 0, 1, 0, 0, 5, 0, font_name_w.as_ptr(),
+                -16,
+                0,
+                0,
+                0,
+                600,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                5,
+                0,
+                font_name_w.as_ptr(),
             );
             let font_ui_small = CreateFontW(
-                -13, 0, 0, 0, 600, 0, 0, 0, 1, 0, 0, 5, 0, ui_font_w.as_ptr(),
+                -13,
+                0,
+                0,
+                0,
+                600,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                5,
+                0,
+                ui_font_w.as_ptr(),
             );
 
             let old_font = SelectObject(hdc, font_bn_bold as _);
@@ -1708,14 +1846,24 @@ unsafe extern "system" fn overlay_wnd_proc(
 
                 draw_rounded_pill(
                     hdc,
-                    RECT { left: 10, top: 9, right: 56, bottom: h_px - 9 },
+                    RECT {
+                        left: 10,
+                        top: 9,
+                        right: 56,
+                        bottom: h_px - 9,
+                    },
                     12,
                     badge_color,
                     badge_color,
                     1,
                 );
                 SetTextColor(hdc, c_white);
-                let mut r_badge = RECT { left: 10, top: 9, right: 56, bottom: h_px - 9 };
+                let mut r_badge = RECT {
+                    left: 10,
+                    top: 9,
+                    right: 56,
+                    bottom: h_px - 9,
+                };
                 let bw = wide_no_null(badge_label);
                 DrawTextW(
                     hdc,
@@ -1727,7 +1875,12 @@ unsafe extern "system" fn overlay_wnd_proc(
 
                 SelectObject(hdc, font_bn_med as _);
                 SetTextColor(hdc, c_text_main);
-                let mut r_txt = RECT { left: 68, top: 6, right: w_px - 12, bottom: h_px - 6 };
+                let mut r_txt = RECT {
+                    left: 68,
+                    top: 6,
+                    right: w_px - 12,
+                    bottom: h_px - 6,
+                };
                 let tw = wide_no_null(&banner);
                 DrawTextW(
                     hdc,
@@ -1742,7 +1895,12 @@ unsafe extern "system" fn overlay_wnd_proc(
                 // ════════════════════════════════════════════════════════════════
                 draw_rounded_pill(
                     hdc,
-                    RECT { left: 4, top: 4, right: w_px - 4, bottom: 36 },
+                    RECT {
+                        left: 4,
+                        top: 4,
+                        right: w_px - 4,
+                        bottom: 36,
+                    },
                     10,
                     c_header_strip,
                     c_header_strip,
@@ -1752,7 +1910,12 @@ unsafe extern "system" fn overlay_wnd_proc(
                 // 1a. Left "বাং" Emerald Pill Badge
                 draw_rounded_pill(
                     hdc,
-                    RECT { left: 10, top: 7, right: 48, bottom: 33 },
+                    RECT {
+                        left: 10,
+                        top: 7,
+                        right: 48,
+                        bottom: 33,
+                    },
                     9,
                     c_emerald_brand,
                     c_emerald_brand,
@@ -1760,7 +1923,12 @@ unsafe extern "system" fn overlay_wnd_proc(
                 );
                 SelectObject(hdc, font_bn_small as _);
                 SetTextColor(hdc, c_white);
-                let mut r_bn_pill = RECT { left: 10, top: 7, right: 48, bottom: 33 };
+                let mut r_bn_pill = RECT {
+                    left: 10,
+                    top: 7,
+                    right: 48,
+                    bottom: 33,
+                };
                 let bn_lbl = wide_no_null("বাং");
                 DrawTextW(
                     hdc,
@@ -1892,7 +2060,11 @@ unsafe extern "system" fn overlay_wnd_proc(
 
                     SelectObject(
                         hdc,
-                        if is_sel { font_bn_bold as _ } else { font_bn_med as _ },
+                        if is_sel {
+                            font_bn_bold as _
+                        } else {
+                            font_bn_med as _
+                        },
                     );
                     let (tw, _) = measure_wide_text(hdc, &lw);
                     let pill_w = (tw + 26).max(58);
@@ -1909,24 +2081,10 @@ unsafe extern "system" fn overlay_wnd_proc(
                     };
 
                     if is_sel {
-                        draw_rounded_pill(
-                            hdc,
-                            r_pill,
-                            11,
-                            c_emerald_brand,
-                            c_emerald_dark,
-                            1,
-                        );
+                        draw_rounded_pill(hdc, r_pill, 11, c_emerald_brand, c_emerald_dark, 1);
                         SetTextColor(hdc, c_white);
                     } else {
-                        draw_rounded_pill(
-                            hdc,
-                            r_pill,
-                            11,
-                            c_pill_bg,
-                            c_pill_border,
-                            1,
-                        );
+                        draw_rounded_pill(hdc, r_pill, 11, c_pill_bg, c_pill_border, 1);
                         SetTextColor(hdc, c_text_main);
                     }
 
@@ -2132,6 +2290,61 @@ fn read_full_http_request(stream: &mut TcpStream) -> std::io::Result<String> {
     Ok(String::from_utf8_lossy(&data).into_owned())
 }
 
+/// Secret the Studio page sends with every `/api/*` request. Other web pages open in the browser can
+/// reach 127.0.0.1 too; without the token they cannot read settings or change them.
+fn studio_token() -> &'static str {
+    static TOKEN: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    TOKEN.get_or_init(|| {
+        use std::hash::{BuildHasher, Hasher};
+        let mut out = String::new();
+        for i in 0..2u64 {
+            // RandomState is seeded from the OS random source
+            let mut h = std::collections::hash_map::RandomState::new().build_hasher();
+            h.write_u64(i);
+            h.write_u128(
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_nanos())
+                    .unwrap_or(0),
+            );
+            out.push_str(&format!("{:016x}", h.finish()));
+        }
+        out
+    })
+}
+
+/// Value of an HTTP header (case-insensitive name), trimmed.
+fn http_header<'a>(req: &'a str, name: &str) -> Option<&'a str> {
+    let head = &req[..req.find("\r\n\r\n").unwrap_or(req.len())];
+    head.lines().skip(1).find_map(|line| {
+        let (k, v) = line.split_once(':')?;
+        k.trim().eq_ignore_ascii_case(name).then(|| v.trim())
+    })
+}
+
+/// Only pages served by this Studio may talk to it: the Host must be loopback (blocks DNS rebinding),
+/// a browser-sent Origin must be this server, and API calls must carry the page's token.
+fn studio_request_allowed(req: &str, method: &str, clean_path: &str, port: u16) -> bool {
+    let allowed_hosts = [format!("127.0.0.1:{port}"), format!("localhost:{port}")];
+    match http_header(req, "Host") {
+        Some(h) if allowed_hosts.iter().any(|a| a.eq_ignore_ascii_case(h)) => {}
+        _ => return false,
+    }
+    if let Some(origin) = http_header(req, "Origin") {
+        let ok = allowed_hosts
+            .iter()
+            .any(|a| origin.eq_ignore_ascii_case(&format!("http://{a}")));
+        if !ok {
+            return false;
+        }
+    }
+    if clean_path.starts_with("/api/") {
+        return http_header(req, "X-Ekushe-Token") == Some(studio_token());
+    }
+    // Everything else is read-only page content
+    method == "GET"
+}
+
 fn handle_http_client(mut stream: TcpStream) -> std::io::Result<()> {
     let req = read_full_http_request(&mut stream)?;
     if req.is_empty() {
@@ -2148,12 +2361,23 @@ fn handle_http_client(mut stream: TcpStream) -> std::io::Result<()> {
     let body_start = req.find("\r\n\r\n").map(|i| i + 4).unwrap_or(req.len());
     let body = &req[body_start..];
 
+    let port = stream.local_addr().map(|a| a.port()).unwrap_or(0);
+    if !studio_request_allowed(&req, method, clean_path, port) {
+        return write_http_response(
+            &mut stream,
+            "403 Forbidden",
+            "text/plain; charset=utf-8",
+            b"Forbidden",
+        );
+    }
+
     if method == "GET" && (clean_path == "/" || clean_path.starts_with("/index")) {
+        let html = studio_ui::STUDIO_HTML.replace("__EKUSHE_TOKEN__", studio_token());
         return write_http_response(
             &mut stream,
             "200 OK",
             "text/html; charset=utf-8",
-            studio_ui::STUDIO_HTML.as_bytes(),
+            html.as_bytes(),
         );
     }
 
@@ -2195,7 +2419,8 @@ fn handle_http_client(mut stream: TcpStream) -> std::io::Result<()> {
         let mode_str = format!("{:?}", cfg.typing_mode);
         let lay_str = format!("{:?}", cfg.active_layout);
         // Studio expects a list of [trigger, expansion] pairs
-        let mut snippet_pairs: Vec<(&String, &String)> = st.ekushe.suggestions_engine().snippets().iter().collect();
+        let mut snippet_pairs: Vec<(&String, &String)> =
+            st.ekushe.suggestions_engine().snippets().iter().collect();
         snippet_pairs.sort();
         let json = serde_json::json!({
             "language": lang,
@@ -2241,7 +2466,9 @@ fn handle_http_client(mut stream: TcpStream) -> std::io::Result<()> {
         // the keyboard hook needs the same lock on every keystroke.
         let (cands, hints) = {
             let st = STATE.lock();
-            st.ekushe.suggestions_engine().suggest(&q, &phon, false, true, 9)
+            st.ekushe
+                .suggestions_engine()
+                .suggest(&q, &phon, false, true, 9)
         };
         let json = serde_json::json!({
             "candidates": cands,
@@ -2273,7 +2500,12 @@ fn handle_http_client(mut stream: TcpStream) -> std::io::Result<()> {
         let text = parsed.get("text").and_then(|v| v.as_str()).unwrap_or("");
         // Spell-check a whole document on a copy of the checker, outside the shared lock, so a long
         // check can never stall typing (the keyboard hook needs that lock on every keystroke).
-        let checker = STATE.lock().ekushe.suggestions_engine().spell_checker().clone();
+        let checker = STATE
+            .lock()
+            .ekushe
+            .suggestions_engine()
+            .spell_checker()
+            .clone();
         let issues = checker.check_text(text);
         let json = serde_json::to_string(&issues).unwrap_or_else(|_| "[]".to_string());
         return write_http_response(
@@ -2286,7 +2518,10 @@ fn handle_http_client(mut stream: TcpStream) -> std::io::Result<()> {
 
     if method == "POST" && clean_path == "/api/convert" {
         let parsed: serde_json::Value = serde_json::from_str(body).unwrap_or_default();
-        let mode = parsed.get("mode").and_then(|v| v.as_str()).unwrap_or("bijoy2uni");
+        let mode = parsed
+            .get("mode")
+            .and_then(|v| v.as_str())
+            .unwrap_or("bijoy2uni");
         let text = parsed.get("text").and_then(|v| v.as_str()).unwrap_or("");
         let result = match mode {
             "uni2bijoy" => unicode_to_bijoy(text),
@@ -2304,15 +2539,40 @@ fn handle_http_client(mut stream: TcpStream) -> std::io::Result<()> {
 
     if method == "POST" && clean_path == "/api/settings" {
         let parsed: serde_json::Value = serde_json::from_str(body).unwrap_or_default();
-        let hk_str = parsed.get("hotkey").and_then(|v| v.as_str()).unwrap_or("DoubleTapShift");
-        let mode_str = parsed.get("typing_mode").and_then(|v| v.as_str()).unwrap_or("Smart");
-        let lay_str = parsed.get("active_layout").and_then(|v| v.as_str()).unwrap_or("AvroPhonetic");
-        let font_str = parsed.get("font_family").and_then(|v| v.as_str()).unwrap_or("Kalpurush");
-        let opacity_opt = parsed.get("popup_opacity").and_then(|v| v.as_u64()).map(|n| (n as u8).clamp(70, 100));
+        let hk_str = parsed
+            .get("hotkey")
+            .and_then(|v| v.as_str())
+            .unwrap_or("DoubleTapShift");
+        let mode_str = parsed
+            .get("typing_mode")
+            .and_then(|v| v.as_str())
+            .unwrap_or("Smart");
+        let lay_str = parsed
+            .get("active_layout")
+            .and_then(|v| v.as_str())
+            .unwrap_or("AvroPhonetic");
+        let font_str = parsed
+            .get("font_family")
+            .and_then(|v| v.as_str())
+            .unwrap_or("Kalpurush");
+        let opacity_opt = parsed
+            .get("popup_opacity")
+            .and_then(|v| v.as_u64())
+            .map(|n| (n as u8).clamp(70, 100));
         let compact_opt = parsed.get("compact_popup").and_then(|v| v.as_bool());
-        let term_opt = parsed.get("auto_english_in_terminals").and_then(|v| v.as_bool());
+        let term_opt = parsed
+            .get("auto_english_in_terminals")
+            .and_then(|v| v.as_bool());
         // `snippet_key` / `snippet_value` are accepted too (older Studio pages sent those names)
-        let field = |a: &str, b: &str| parsed.get(a).or_else(|| parsed.get(b)).and_then(|v| v.as_str()).unwrap_or("").trim().to_string();
+        let field = |a: &str, b: &str| {
+            parsed
+                .get(a)
+                .or_else(|| parsed.get(b))
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .trim()
+                .to_string()
+        };
         let snip_trig = field("snippet_trigger", "snippet_key");
         let snip_exp = field("snippet_expansion", "snippet_value");
 
@@ -2348,7 +2608,8 @@ fn handle_http_client(mut stream: TcpStream) -> std::io::Result<()> {
                 cfg.auto_english_in_terminals = tm;
             }
             if !snip_trig.is_empty() && !snip_exp.is_empty() {
-                cfg.custom_snippets.insert(snip_trig.to_string(), snip_exp.to_string());
+                cfg.custom_snippets
+                    .insert(snip_trig.to_string(), snip_exp.to_string());
             }
             let _ = cfg.save_to(&Config::default_config_path());
             st.ekushe.set_config(cfg);
@@ -2376,7 +2637,7 @@ fn write_http_response(
     body: &[u8],
 ) -> std::io::Result<()> {
     let header = format!(
-        "HTTP/1.1 {status}\r\nContent-Type: {content_type}\r\nContent-Length: {}\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n",
+        "HTTP/1.1 {status}\r\nContent-Type: {content_type}\r\nContent-Length: {}\r\nCache-Control: no-store\r\nX-Content-Type-Options: nosniff\r\nX-Frame-Options: DENY\r\nReferrer-Policy: no-referrer\r\nConnection: close\r\n\r\n",
         body.len()
     );
     stream.write_all(header.as_bytes())?;

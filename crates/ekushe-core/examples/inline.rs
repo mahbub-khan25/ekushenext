@@ -3,7 +3,9 @@ use ekushe_core::dict::Dictionary;
 use ekushe_core::Ekushe;
 fn main() {
     let a: Vec<String> = std::env::args().collect();
-    let d: &'static Dictionary = Box::leak(Box::new(Dictionary::load(std::path::Path::new(&a[1])).unwrap()));
+    let d: &'static Dictionary = Box::leak(Box::new(
+        Dictionary::load(std::path::Path::new(&a[1])).unwrap(),
+    ));
     for w in &a[2..] {
         let mut ek = Ekushe::default();
         ek.suggestions_engine_mut().set_dictionary(Some(d));

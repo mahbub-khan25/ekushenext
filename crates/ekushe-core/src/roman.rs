@@ -144,9 +144,21 @@ fn parse(word: &str) -> Vec<Unit> {
         }
         if c == NUKTA {
             match w.last().copied() {
-                Some('ড') => { w.pop(); w.push(RRA); continue; }
-                Some('ঢ') => { w.pop(); w.push(RHA); continue; }
-                Some('য') => { w.pop(); w.push(YYA); continue; }
+                Some('ড') => {
+                    w.pop();
+                    w.push(RRA);
+                    continue;
+                }
+                Some('ঢ') => {
+                    w.pop();
+                    w.push(RHA);
+                    continue;
+                }
+                Some('য') => {
+                    w.pop();
+                    w.push(YYA);
+                    continue;
+                }
                 _ => {}
             }
         }
@@ -160,19 +172,33 @@ fn parse(word: &str) -> Vec<Unit> {
         if indep(c).is_some() {
             i += 1;
             let mut mods = Vec::new();
-            while i < n && modifier(w[i]).is_some() { mods.push(w[i]); i += 1; }
+            while i < n && modifier(w[i]).is_some() {
+                mods.push(w[i]);
+                i += 1;
+            }
             units.push(Unit::V(Some(c), mods));
             continue;
         }
         if is_cons(c) {
             let mut cl = vec![c];
             i += 1;
-            while i + 1 < n && w[i] == HC && is_cons(w[i + 1]) { cl.push(w[i + 1]); i += 2; }
+            while i + 1 < n && w[i] == HC && is_cons(w[i + 1]) {
+                cl.push(w[i + 1]);
+                i += 2;
+            }
             let mut sg = None;
-            if i < n && sign(w[i]).is_some() { sg = Some(w[i]); i += 1; }
-            if i < n && w[i] == HC { i += 1; }
+            if i < n && sign(w[i]).is_some() {
+                sg = Some(w[i]);
+                i += 1;
+            }
+            if i < n && w[i] == HC {
+                i += 1;
+            }
             let mut mods = Vec::new();
-            while i < n && modifier(w[i]).is_some() { mods.push(w[i]); i += 1; }
+            while i < n && modifier(w[i]).is_some() {
+                mods.push(w[i]);
+                i += 1;
+            }
             units.push(Unit::C(cl, sg, mods));
             continue;
         }
@@ -189,7 +215,10 @@ fn parse(word: &str) -> Vec<Unit> {
 fn last_consonant(s: &str) -> String {
     // the final letter of the string if it is an ASCII consonant (y counts), lower-cased
     match s.as_bytes().last() {
-        Some(&x) if x.is_ascii_alphabetic() && !matches!(x.to_ascii_lowercase(), b'a' | b'e' | b'i' | b'o' | b'u') => {
+        Some(&x)
+            if x.is_ascii_alphabetic()
+                && !matches!(x.to_ascii_lowercase(), b'a' | b'e' | b'i' | b'o' | b'u') =>
+        {
             ((x as char).to_ascii_lowercase()).to_string()
         }
         _ => String::new(),
@@ -225,7 +254,8 @@ fn cluster_options(cl: &[char], sg: Option<char>) -> (Vec<Vec<Opt>>, bool) {
                 lists.push(vec![S("y", 0.0), Double(0.1), S("", 0.3)]); // য-ফলা
             }
         } else if c == 'ব' && prev != 'ম' {
-            lists.push(vec![S("w", 0.0), S("b", 0.3), S("", 0.4), Double(0.4)]); // ব-ফলা
+            lists.push(vec![S("w", 0.0), S("b", 0.3), S("", 0.4), Double(0.4)]);
+        // ব-ফলা
         } else if c == 'ম' && j == cl.len() - 1 && prev != 'ন' {
             lists.push(vec![S("m", 0.0), S("", 0.4), Double(0.5)]); // ম-ফলা
         } else if c == 'র' {
@@ -295,7 +325,11 @@ pub fn romanize(word: &str, k: usize) -> Vec<(f32, String)> {
                     lists.push(vec![S("", 0.0), S("o", FINAL_O)]);
                 } else {
                     let next_is_c = matches!(units[idx + 1], Unit::C(..));
-                    lists.push(if next_is_c { vec![S("o", 0.0), S("", 0.3)] } else { vec![S("", 0.0), S("o", 0.3)] });
+                    lists.push(if next_is_c {
+                        vec![S("o", 0.0), S("", 0.3)]
+                    } else {
+                        vec![S("", 0.0), S("o", 0.3)]
+                    });
                 }
                 for &m in mods {
                     lists.push(modifier(m).unwrap().to_vec());
@@ -308,7 +342,9 @@ pub fn romanize(word: &str, k: usize) -> Vec<(f32, String)> {
     let mut extra = Vec::new();
     for (cost, r) in &out {
         let b = r.as_bytes();
-        if let Some(p) = (0..b.len().saturating_sub(1)).find(|&p| b[p] == b':' && b"bcdfghjklmnpqrstvwxz".contains(&b[p + 1])) {
+        if let Some(p) = (0..b.len().saturating_sub(1))
+            .find(|&p| b[p] == b':' && b"bcdfghjklmnpqrstvwxz".contains(&b[p + 1]))
+        {
             let c = b[p + 1] as char;
             extra.push((cost + 0.1, format!("{}{}{}", &r[..p], c, &r[p + 1..])));
         }
@@ -330,7 +366,15 @@ pub fn romanize(word: &str, k: usize) -> Vec<(f32, String)> {
 /// Forgiving key: case-free, aspiration-free, vowel-free (a leading vowel leaves `@`), no doubled letters.
 pub fn skeleton(roman: &str) -> String {
     let mut s = roman.to_lowercase();
-    for (a, b) in [("chh", "c"), ("ch", "c"), ("sh", "s"), ("ph", "f"), ("kkh", "k"), ("``", ""), ("ng", "n")] {
+    for (a, b) in [
+        ("chh", "c"),
+        ("ch", "c"),
+        ("sh", "s"),
+        ("ph", "f"),
+        ("kkh", "k"),
+        ("``", ""),
+        ("ng", "n"),
+    ] {
         s = s.replace(a, b);
     }
     // drop aspiration h after a consonant (judged on the unmodified string, like a regex look-behind)
@@ -342,7 +386,12 @@ pub fn skeleton(roman: &str) -> String {
         }
         t.push(c);
     }
-    let t = t.replace('v', "b").replace('z', "j").replace('q', "k").replace('x', "ks").replace('w', "b");
+    let t = t
+        .replace('v', "b")
+        .replace('z', "j")
+        .replace('q', "k")
+        .replace('x', "ks")
+        .replace('w', "b");
     let lead = matches!(t.chars().next(), Some('a' | 'e' | 'i' | 'o' | 'u' | 'y'));
     let mut out = String::with_capacity(t.len() + 1);
     if lead {
