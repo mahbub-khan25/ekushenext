@@ -10,6 +10,14 @@
 use crate::conjuncts::is_bangla_consonant;
 use crate::phonetic::PhoneticEngine;
 
+/// Internal placeholder for reph (`র্`) while converting; Bijoy writes it as `©` after the consonant.
+const REPH_MARK: char = '\u{E000}';
+
+#[inline]
+fn is_vowel_sign(c: char) -> bool {
+    matches!(c, 'া' | 'ি' | 'ী' | 'ু' | 'ূ' | 'ৃ' | 'ে' | 'ৈ' | 'ো' | 'ৌ' | 'ৗ')
+}
+
 /// Convert Banglish (Roman phonetic text) directly into Unicode Bangla.
 pub fn banglish_to_bangla(input: &str) -> String {
     PhoneticEngine::new().transliterate(input)
@@ -56,7 +64,7 @@ const BIJOY_TO_UNI_TOKENS: &[(&str, &str)] = &[
     ("Ó", "ধ্ব"),
     ("Ô", "ন্ট"),
     ("Õ", "ন্ঠ"),
-    ("Ö", "ন্ড"),
+    // `Ö` is র-ফলা (cÖ = প্র), listed with the folas below; it is not ন্ড
     ("×", "ন্ত"),
     ("Ø", "ন্থ"),
     ("Ù", "ন্দ"),
@@ -105,7 +113,7 @@ const BIJOY_TO_UNI_TOKENS: &[(&str, &str)] = &[
     ("Ö", "্র"),
     ("«", "্র"),
     ("ª", "্র"),
-    ("©", "র্"),
+    ("©", "\u{E000}"), // reph: written after its consonant in Bijoy, moved before it below
     ("¯", "্ব"),
     ("&", "্"),
     // Vowels & Kars
@@ -231,13 +239,21 @@ pub fn bijoy_to_unicode(input: &str) -> String {
         {
             let kar = ch;
             i += 1;
-            // Consume the consonant cluster `C (্ C)*`
+            // Consume the consonant cluster `C (়)? (্ C (়)?)*`; a nukta belongs to its consonant (য়, ড়, ঢ়)
             reordered.push(chars[i]);
             i += 1;
+            if chars.get(i) == Some(&'\u{09BC}') {
+                reordered.push('\u{09BC}');
+                i += 1;
+            }
             while i + 1 < chars.len() && chars[i] == '্' && is_bangla_consonant(chars[i + 1]) {
                 reordered.push('্');
                 reordered.push(chars[i + 1]);
                 i += 2;
+                if chars.get(i) == Some(&'\u{09BC}') {
+                    reordered.push('\u{09BC}');
+                    i += 1;
+                }
             }
             // If Reph (`র` + `্`) immediately follows in Bijoy, place `র্` BEFORE the cluster
             if i + 1 < chars.len() && chars[i] == 'র' && chars[i + 1] == '্' {
@@ -260,11 +276,29 @@ pub fn bijoy_to_unicode(input: &str) -> String {
             continue;
         }
 
+        // Reph mark (`©`) after a consonant cluster (and its vowel signs): `র্` goes before the cluster
+        if ch == REPH_MARK {
+            let mut k = reordered.len();
+            while k > 0 && is_vowel_sign(reordered[k - 1]) {
+                k -= 1;
+            }
+            let start = find_cluster_start(&reordered[..k]);
+            reordered.insert(start, '্');
+            reordered.insert(start, 'র');
+            i += 1;
+            continue;
+        }
+
         reordered.push(ch);
         i += 1;
     }
 
-    reordered.into_iter().collect()
+    // Join split vowel signs that a reph mark kept apart (পর্নো: `ে` … `©` … `া` → `ো`)
+    let joined: String = reordered.into_iter().collect();
+    joined
+        .replace("\u{09C7}\u{09BE}", "\u{09CB}")
+        .replace("\u{09C7}\u{09D7}", "\u{09CC}")
+        .replace("\u{09C7}\u{09CC}", "\u{09CC}")
 }
 
 /// Canonicalize decomposed Bangla nukta sequences (`ড`+`়` -> `\u{09DC}`, `ঢ`+`়` -> `\u{09DD}`, `য`+`়` -> `\u{09DF}`)
@@ -310,6 +344,21 @@ pub fn unicode_to_bijoy(input: &str) -> String {
                 let start = find_cluster_start(&stage);
                 stage.insert(start, ch);
             }
+            // Reph `র্` + consonant cluster: Bijoy writes the cluster first, then `©`
+            // (only at the start of a cluster: in ব্র্য, ত্র্য the র is a ফলা, not a reph)
+            'র' if (i == 0 || chars[i - 1] != '্')
+                && chars.get(i + 1) == Some(&'্')
+                && chars.get(i + 2).copied().is_some_and(is_bangla_consonant) =>
+            {
+                i += 2;
+                stage.push(chars[i]);
+                while i + 2 < chars.len() && chars[i + 1] == '্' && is_bangla_consonant(chars[i + 2]) {
+                    stage.push('্');
+                    stage.push(chars[i + 2]);
+                    i += 2;
+                }
+                stage.push(REPH_MARK);
+            }
             _ => stage.push(ch),
         }
         i += 1;
@@ -347,6 +396,7 @@ pub fn unicode_to_bijoy(input: &str) -> String {
         ("্য", "¨"),
         ("্র", "Ö"),
         ("্", "&"),
+        ("\u{E000}", "©"),
         ("অ", "A"),
         ("ই", "B"),
         ("ঈ", "C"),
@@ -443,15 +493,26 @@ pub fn unicode_to_bijoy(input: &str) -> String {
 }
 
 fn find_cluster_start(buf: &[char]) -> usize {
-    if buf.is_empty() {
-        return 0;
-    }
-    let mut idx = buf.len() - 1;
-    if !is_bangla_consonant(buf[idx]) {
+    // a trailing reph mark belongs to the cluster before it
+    let buf = if buf.last() == Some(&REPH_MARK) { &buf[..buf.len() - 1] } else { buf };
+    // consonant (with optional nukta) ending at position `end` (exclusive): returns its start
+    let cons_start = |end: usize| -> Option<usize> {
+        if end >= 2 && buf[end - 1] == '\u{09BC}' && is_bangla_consonant(buf[end - 2]) {
+            Some(end - 2)
+        } else if end >= 1 && is_bangla_consonant(buf[end - 1]) {
+            Some(end - 1)
+        } else {
+            None
+        }
+    };
+    let Some(mut idx) = cons_start(buf.len()) else {
         return buf.len();
-    }
-    while idx >= 2 && buf[idx - 1] == '্' && is_bangla_consonant(buf[idx - 2]) {
-        idx -= 2;
+    };
+    while idx >= 1 && buf[idx - 1] == '্' {
+        match cons_start(idx - 1) {
+            Some(s) => idx = s,
+            None => break,
+        }
     }
     idx
 }
@@ -459,6 +520,27 @@ fn find_cluster_start(buf: &[char]) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_reph_ra_fola_and_nukta() {
+        for (uni, bijoy) in [
+            ("কর্ম", "Kg©"),
+            ("নির্বাচন", "wbe©vPb"),
+            ("মূর্তি", "g~wZ©"),
+            ("প্রথম", "cÖ_g"),
+            ("কার্য", "Kvh©"),
+            ("পর্নো", "c†b©v"),
+            ("ব্র্যাক", "eÖ¨vK"),
+            ("পুনর্যৌবন", "cyb†h©Šeb"),
+        ] {
+            assert_eq!(unicode_to_bijoy(uni), bijoy, "encode {uni}");
+            assert_eq!(normalize_bangla_unicode(&bijoy_to_unicode(bijoy)), normalize_bangla_unicode(uni), "decode {bijoy}");
+        }
+        // য় with a pre-base vowel sign keeps its dot on the letter
+        for w in ["হয়েছে", "নিয়ে", "দিয়ে", "মেয়ে", "বড়ি"] {
+            assert_eq!(normalize_bangla_unicode(&bijoy_to_unicode(&unicode_to_bijoy(w))), normalize_bangla_unicode(w), "{w}");
+        }
+    }
 
     #[test]
     fn test_bijoy_unicode_roundtrip() {

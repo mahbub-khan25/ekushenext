@@ -100,3 +100,20 @@ fn spell_checker_uses_dictionary() {
     // precomposed য় (from other keyboards) is accepted
     assert!(sc.is_correct("\u{09AE}\u{09C7}\u{09DF}\u{09C7}"));
 }
+
+#[test]
+fn bijoy_round_trip_every_dictionary_word() {
+    use ekushe_core::convert::{bijoy_to_unicode, normalize_bangla_unicode as n, unicode_to_bijoy};
+    let p = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data/dictionary/lexicon.tsv");
+    let Ok(text) = std::fs::read_to_string(&p) else { return };
+    let mut bad = Vec::new();
+    let mut total = 0;
+    for w in text.lines().skip(1).filter_map(|l| l.split('\t').next()) {
+        total += 1;
+        let back = bijoy_to_unicode(&unicode_to_bijoy(w));
+        if n(&back) != n(w) {
+            bad.push(format!("{w} → {} → {back}", unicode_to_bijoy(w)));
+        }
+    }
+    assert!(bad.is_empty(), "{} of {total} words do not survive Unicode → Bijoy → Unicode: {:?}", bad.len(), &bad[..bad.len().min(10)]);
+}
