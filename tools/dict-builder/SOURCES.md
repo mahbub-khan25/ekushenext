@@ -1,5 +1,7 @@
 # Ekushe Next dictionary — text sources
 
+The resulting dictionary data is licensed CC BY-SA 4.0; see `data/dictionary/LICENSE.md`.
+
 The dictionary contains **word frequency counts** derived from the sources below. No source text is
 redistributed. Attribution is required for all three; keep this list in the app's About / credits page.
 

@@ -34,13 +34,6 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
     font-display: block;
   }
   @font-face {
-    font-family: 'Nikosh';
-    src: url('/fonts/Nikosh.ttf') format('truetype');
-    font-weight: 400 700;
-    font-style: normal;
-    font-display: block;
-  }
-  @font-face {
     font-family: 'Siyam Rupali';
     src: url('/fonts/SiyamRupali.ttf') format('truetype');
     font-weight: 400 700;
@@ -699,7 +692,6 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
     <select class="font-QuickSelect" id="headerFontSelect" onchange="changeBanglaFont(this.value)" title="বাংলা ফন্ট নির্বাচন করুন (Select Bundled Bangladeshi Font)">
       <option value="Kalpurush">ফন্ট: কালপুরুষ (Kalpurush)</option>
       <option value="SolaimanLipi">ফন্ট: সোলাইমানলিপি (SolaimanLipi)</option>
-      <option value="Nikosh">ফন্ট: নিকশ (Nikosh)</option>
       <option value="Siyam Rupali">ফন্ট: সিয়াম রূপালী (Siyam Rupali)</option>
       <option value="Hind Siliguri">ফন্ট: হিন্দ শিলিগুড়ি (Hind Siliguri)</option>
     </select>
@@ -882,7 +874,6 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
         <select id="cfgFont" onchange="changeBanglaFont(this.value)">
           <option value="Kalpurush">কালপুরুষ (Kalpurush — বাংলাদেশী ডিফল্ট / OmicronLab Standard)</option>
           <option value="SolaimanLipi">সোলাইমানলিপি (SolaimanLipi — একুশে ক্লাসিক স্ট্যান্ডার্ড)</option>
-          <option value="Nikosh">নিকশ (Nikosh — বাংলাদেশ সরকারি ইউনিকোড ফন্ট)</option>
           <option value="Siyam Rupali">সিয়াম রূপালী (Siyam Rupali — স্পষ্ট স্ক্রিন ফন্ট)</option>
           <option value="Hind Siliguri">হিন্দ শিলিগুড়ি (Hind Siliguri — আধুনিক ইউআই ফন্ট)</option>
         </select>

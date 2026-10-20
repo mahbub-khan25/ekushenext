@@ -85,7 +85,7 @@ pub struct Config {
     pub enable_next_word_prediction: bool,
     /// Maximum number of candidates shown (1..=9)
     pub max_candidates: usize,
-    /// Bundled Bangladeshi / Bengali UI & candidate window font family (`Kalpurush`, `SolaimanLipi`, `Nikosh`, `Siyam Rupali`, `Hind Siliguri`)
+    /// Bundled Bangladeshi / Bengali UI & candidate window font family (`Kalpurush`, `SolaimanLipi`, `Siyam Rupali`, `Hind Siliguri`)
     pub candidate_font_family: String,
     /// Candidate window font size in pt
     pub candidate_font_size: u16,
