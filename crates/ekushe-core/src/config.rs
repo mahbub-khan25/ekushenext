@@ -97,6 +97,8 @@ pub struct Config {
     pub phonetic_overrides: HashMap<String, String>,
     /// User custom text expansion snippets (`;trigger -> expansion`)
     pub custom_snippets: HashMap<String, String>,
+    /// Backspace right after a word is committed brings back the Roman text that was typed
+    pub backspace_undo: bool,
 }
 
 impl Default for Config {
@@ -126,6 +128,7 @@ impl Default for Config {
             per_app_defaults: per_app,
             phonetic_overrides: HashMap::new(),
             custom_snippets: HashMap::new(),
+            backspace_undo: true,
         }
     }
 }

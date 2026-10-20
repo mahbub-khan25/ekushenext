@@ -19,6 +19,8 @@ pub mod roman;
 pub mod spell;
 pub mod suggest;
 
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 
 use crate::config::{Config, InputLanguage, TypingMode};
@@ -46,6 +48,10 @@ pub struct SessionOutput {
     pub next_word_predictions: Vec<String>,
     /// If the key caused text to be committed to the application, holds the committed string
     pub committed: Option<String>,
+    /// UTF-16 units the host must delete *before* inserting `committed` (used by Backspace undo,
+    /// which replaces the just-committed word and its space with the original Roman text)
+    #[serde(default)]
+    pub delete_before: usize,
 }
 
 /// Interactive Ekushe typing session.
@@ -72,6 +78,10 @@ pub struct Ekushe {
     intervening_key_since_shift: bool,
     /// Last committed Bangla word, used as context for ranking the next one
     prev_word: Option<String>,
+    /// Executable of the focused application (lower-case), for per-app language memory
+    current_app: Option<String>,
+    /// Language last used in each application this session
+    app_languages: HashMap<String, InputLanguage>,
 }
 
 impl Default for Ekushe {
@@ -105,6 +115,8 @@ impl Ekushe {
             last_shift_tap_ms: None,
             intervening_key_since_shift: false,
             prev_word: None,
+            current_app: None,
+            app_languages: HashMap::new(),
         }
     }
 
@@ -162,12 +174,29 @@ impl Ekushe {
         None
     }
 
-    /// Apply per-application automatic language switching when window focus changes.
+    /// Call when the focused application changes. Remembers the language used in the app being left,
+    /// then switches to the language last used in the new app, or its configured default
+    /// (`per_app_defaults`, e.g. terminals → English), or keeps the current language.
     pub fn on_app_focus(&mut self, executable_name: &str) -> InputLanguage {
         let key = executable_name.to_lowercase();
-        if let Some(&lang) = self.config.per_app_defaults.get(&key) {
-            self.language = lang;
+        if self.current_app.as_deref() == Some(key.as_str()) {
+            return self.language;
         }
+        if let Some(prev) = self.current_app.take() {
+            self.app_languages.insert(prev, self.language);
+        }
+        let next = self
+            .app_languages
+            .get(&key)
+            .copied()
+            .or_else(|| self.config.per_app_defaults.get(&key).copied());
+        if let Some(lang) = next {
+            if lang != self.language {
+                self.reset_composition();
+                self.language = lang;
+            }
+        }
+        self.current_app = Some(key);
         self.language
     }
 
@@ -220,6 +249,7 @@ impl Ekushe {
                     sign_hints,
                     next_word_predictions: Vec::new(),
                     committed: None,
+                    delete_before: 0,
                 }
             }
         }
@@ -246,10 +276,12 @@ impl Ekushe {
             };
         }
 
-        // Undo conversion: if user presses Backspace right after a word commit, restore the Roman text
-        if let Some((roman, _committed_bangla)) = self.last_commit_undo.take() {
+        // Undo conversion: Backspace right after a word was committed with a space replaces that word
+        // and its space with the original Roman text (স্বাধীন␠ → swadhin)
+        if let Some((roman, committed_bangla)) = self.last_commit_undo.take() {
             return SessionOutput {
                 language: self.language,
+                delete_before: committed_bangla.encode_utf16().count() + 1,
                 committed: Some(roman),
                 ..Default::default()
             };
@@ -285,9 +317,14 @@ impl Ekushe {
             .unwrap_or_else(|| self.phonetic.transliterate_word(&self.roman_buf));
 
         let roman = std::mem::take(&mut self.roman_buf);
+        // Undo / flip know exactly what was typed only when the word ended with a plain space
+        // (after Enter the application inserted the line break itself).
+        self.last_commit_undo = None;
         if !roman.is_empty() {
             self.suggestions.record_user_choice(&roman, &chosen);
-            self.last_commit_undo = Some((roman, chosen.clone()));
+            if trailing == Some(' ') {
+                self.last_commit_undo = Some((roman, chosen.clone()));
+            }
         }
 
         let predictions = if self.config.enable_next_word_prediction {
@@ -315,6 +352,7 @@ impl Ekushe {
             sign_hints: Vec::new(),
             next_word_predictions: predictions,
             committed: Some(committed),
+            delete_before: 0,
         }
     }
 
@@ -425,6 +463,7 @@ impl Ekushe {
             sign_hints,
             next_word_predictions: Vec::new(),
             committed,
+            delete_before: 0,
         }
     }
 }
@@ -444,6 +483,39 @@ mod tests {
                 assert_eq!(out.committed, Some(format!("{pre} ")), "{layout:?} lost its text on commit");
             }
         }
+    }
+
+    #[test]
+    fn test_backspace_undo_and_flip_lengths() {
+        let mut ek = Ekushe::new(Config { typing_mode: TypingMode::PhoneticFirst, ..Config::default() });
+        for c in "swadhin".chars() {
+            ek.push_char(c, false);
+        }
+        let committed = ek.push_char(' ', false).committed.unwrap();
+        let undo = ek.backspace();
+        assert_eq!(undo.committed.as_deref(), Some("swadhin"));
+        assert_eq!(undo.delete_before, committed.encode_utf16().count());
+
+        // After Enter there is no undo or flip (the app inserted the line break itself)
+        let mut ek = Ekushe::new(Config { typing_mode: TypingMode::PhoneticFirst, ..Config::default() });
+        for c in "ami".chars() {
+            ek.push_char(c, false);
+        }
+        ek.select_candidate(0, None);
+        assert!(ek.flip_last_committed_word().is_none());
+        assert_eq!(ek.backspace().delete_before, 0);
+    }
+
+    #[test]
+    fn test_per_app_language_memory() {
+        let mut ek = Ekushe::default();
+        assert_eq!(ek.on_app_focus("WINWORD.EXE"), InputLanguage::Bangla);
+        assert_eq!(ek.on_app_focus("cmd.exe"), InputLanguage::English); // configured default
+        ek.toggle_language(); // user wants Bangla in this terminal
+        assert_eq!(ek.on_app_focus("winword.exe"), InputLanguage::Bangla); // Word keeps Bangla
+        ek.toggle_language(); // English in Word
+        assert_eq!(ek.on_app_focus("cmd.exe"), InputLanguage::Bangla); // the terminal remembers Bangla
+        assert_eq!(ek.on_app_focus("winword.exe"), InputLanguage::English); // Word remembers English
     }
 
     #[test]
