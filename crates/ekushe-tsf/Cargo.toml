@@ -3,13 +3,26 @@ name = "ekushe-tsf"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Windows Text Services Framework (TSF) Input Method Editor DLL for Ekushe"
+description = "Windows Text Services Framework (TSF) input method DLL for Ekushe"
 
 [lib]
 name = "ekushe_tsf"
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-ekushe-core = { path = "../ekushe-core" }
-windows-sys.workspace = true
-parking_lot.workspace = true
+ekushe-core = { path = "../ekushe-core", features = ["embedded-dict"] }
+
+[target.'cfg(windows)'.dependencies]
+windows-core = "0.58"
+windows = { version = "0.58", features = [
+    "implement",
+    "Win32_Foundation",
+    "Win32_System_Com",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Ole",
+    "Win32_Security",
+    "Win32_System_Registry",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_UI_TextServices",
+    "Win32_UI_WindowsAndMessaging",
+] }
