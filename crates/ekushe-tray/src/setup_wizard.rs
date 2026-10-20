@@ -32,14 +32,14 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
     GetCursorPos, GetMessageW, GetSystemMetrics, LoadCursorW, LoadIconW, LoadImageW, MessageBoxW,
     PostQuitMessage, RegisterClassW, SendMessageTimeoutW, SetCursor, SetLayeredWindowAttributes,
     SetProcessDPIAware, ShowWindow, TranslateMessage, DI_NORMAL, HICON, HWND_BROADCAST, IDC_ARROW,
-    IDC_HAND, IMAGE_ICON, LR_LOADFROMFILE, LWA_ALPHA, MB_OK, MSG, SM_CXSCREEN, SM_CYSCREEN,
-    SMTO_ABORTIFHUNG, SW_SHOW, WM_DESTROY, WM_FONTCHANGE, WM_LBUTTONDOWN, WM_MOUSEMOVE, WM_PAINT,
+    IDC_HAND, IMAGE_ICON, LR_LOADFROMFILE, LWA_ALPHA, MB_OK, MSG, SMTO_ABORTIFHUNG, SM_CXSCREEN,
+    SM_CYSCREEN, SW_SHOW, WM_DESTROY, WM_FONTCHANGE, WM_LBUTTONDOWN, WM_MOUSEMOVE, WM_PAINT,
     WM_SETCURSOR, WNDCLASSW, WS_CAPTION, WS_EX_LAYERED, WS_OVERLAPPED, WS_SYSMENU, WS_VISIBLE,
 };
 
 use crate::{
-    wide_null, FONT_HINDSILIGURI_BOLD, FONT_HINDSILIGURI_REG, FONT_KALPURUSH,
-    FONT_SIYAMRUPALI, FONT_SOLAIMANLIPI, LOGO_PNG_BYTES,
+    wide_null, FONT_HINDSILIGURI_BOLD, FONT_HINDSILIGURI_REG, FONT_KALPURUSH, FONT_SIYAMRUPALI,
+    FONT_SOLAIMANLIPI, LOGO_PNG_BYTES,
 };
 
 static ICON_EKUSHE_ICO: &[u8] = include_bytes!("../../../assets/icons/ekushe.ico");
@@ -130,8 +130,16 @@ pub fn ensure_self_configured() {
     // Extract & register bundled Bangladeshi fonts
     let font_files: &[(&str, &str, &[u8])] = &[
         ("Kalpurush (TrueType)", "Kalpurush.ttf", FONT_KALPURUSH),
-        ("SolaimanLipi (TrueType)", "SolaimanLipi.ttf", FONT_SOLAIMANLIPI),
-        ("Siyam Rupali (TrueType)", "SiyamRupali.ttf", FONT_SIYAMRUPALI),
+        (
+            "SolaimanLipi (TrueType)",
+            "SolaimanLipi.ttf",
+            FONT_SOLAIMANLIPI,
+        ),
+        (
+            "Siyam Rupali (TrueType)",
+            "SiyamRupali.ttf",
+            FONT_SIYAMRUPALI,
+        ),
         (
             "Hind Siliguri (TrueType)",
             "HindSiliguri-Regular.ttf",
@@ -267,8 +275,14 @@ pub fn perform_full_install(
     unsafe {
         if enable_startup {
             let cmd = format!("\"{}\" --minimized", target_exe.to_string_lossy());
-            set_hkcu_reg_sz(r"Software\Microsoft\Windows\CurrentVersion\Run", "EkusheBanglaKeyboard", &cmd)
-                .map_err(|code| format!("could not enable start with Windows (registry error {code})"))?;
+            set_hkcu_reg_sz(
+                r"Software\Microsoft\Windows\CurrentVersion\Run",
+                "EkusheBanglaKeyboard",
+                &cmd,
+            )
+            .map_err(|code| {
+                format!("could not enable start with Windows (registry error {code})")
+            })?;
         }
 
         // Register in Windows "Installed Apps / Add or Remove Programs"
@@ -283,11 +297,7 @@ pub fn perform_full_install(
         let _ = set_hkcu_reg_sz(uninstall_key, "DisplayVersion", "0.1.0");
         let _ = set_hkcu_reg_sz(uninstall_key, "Publisher", "Ekushe Next Contributors");
         let _ = set_hkcu_reg_sz(uninstall_key, "DisplayIcon", &ico_path.to_string_lossy());
-        let _ = set_hkcu_reg_sz(
-            uninstall_key,
-            "InstallLocation",
-            &root.to_string_lossy(),
-        );
+        let _ = set_hkcu_reg_sz(uninstall_key, "InstallLocation", &root.to_string_lossy());
         set_hkcu_reg_sz(
             uninstall_key,
             "UninstallString",
@@ -381,7 +391,10 @@ fn remove_install_folder(root: &Path) -> Result<(), String> {
     }
     // safety: only ever delete Ekushe's own program folder
     if root.file_name().and_then(|n| n.to_str()) != Some("Ekushe") {
-        return Err(format!("refusing to delete unexpected folder {}", root.display()));
+        return Err(format!(
+            "refusing to delete unexpected folder {}",
+            root.display()
+        ));
     }
     let me = env::current_exe().ok();
     let mut in_use = false;
@@ -392,7 +405,11 @@ fn remove_install_folder(root: &Path) -> Result<(), String> {
                 in_use = true;
                 continue;
             }
-            let res = if p.is_dir() { fs::remove_dir_all(&p) } else { fs::remove_file(&p) };
+            let res = if p.is_dir() {
+                fs::remove_dir_all(&p)
+            } else {
+                fs::remove_file(&p)
+            };
             if res.is_err() {
                 in_use = true;
             }
@@ -401,7 +418,10 @@ fn remove_install_folder(root: &Path) -> Result<(), String> {
     if in_use || fs::remove_dir(root).is_err() {
         use std::os::windows::process::CommandExt;
         // wait for this process to exit, then remove what is left
-        let cmd = format!("ping 127.0.0.1 -n 4 >nul & rmdir /S /Q \"{}\"", root.display());
+        let cmd = format!(
+            "ping 127.0.0.1 -n 4 >nul & rmdir /S /Q \"{}\"",
+            root.display()
+        );
         Command::new("cmd.exe")
             .args(["/C", &cmd])
             .creation_flags(0x0800_0000 | 0x0000_0008) // CREATE_NO_WINDOW | DETACHED_PROCESS
@@ -417,7 +437,10 @@ pub unsafe fn run_gui_installer_window() {
     ensure_self_configured();
 
     let hinstance = GetModuleHandleW(ptr::null());
-    let ico_file = install_root_dir().join("assets").join("icons").join("ekushe.ico");
+    let ico_file = install_root_dir()
+        .join("assets")
+        .join("icons")
+        .join("ekushe.ico");
     APP_ICON_HANDLE = LoadImageW(
         ptr::null_mut(),
         wide_null(&ico_file.to_string_lossy()).as_ptr(),
@@ -427,7 +450,7 @@ pub unsafe fn run_gui_installer_window() {
         LR_LOADFROMFILE,
     ) as HICON;
     if APP_ICON_HANDLE.is_null() {
-        APP_ICON_HANDLE = LoadIconW(hinstance, 1 as *const u16);
+        APP_ICON_HANDLE = LoadIconW(hinstance, ptr::without_provenance::<u16>(1));
     }
 
     let class_name = wide_null("EkusheModernLightSetupWizardClass");
@@ -811,17 +834,39 @@ unsafe fn paint_installer_canvas(hdc: HDC, rc_client: &RECT) {
     let old_font = SelectObject(hdc, font_title as _);
 
     // ── 1. Top Banner Card (32, 18 .. 808, 108) ──────────────────────────────
-    let top_border = if WIZARD_STEP == 1 { border_emerald } else { border_subtle };
+    let top_border = if WIZARD_STEP == 1 {
+        border_emerald
+    } else {
+        border_subtle
+    };
     let top_border_w = if WIZARD_STEP == 1 { 2 } else { 1 };
     draw_rounded_box(hdc, 32, 18, 808, 108, 16, bg_card, top_border, top_border_w);
 
     if !APP_ICON_HANDLE.is_null() {
-        DrawIconEx(hdc, 50, 31, APP_ICON_HANDLE, 62, 62, 0, ptr::null_mut(), DI_NORMAL);
+        DrawIconEx(
+            hdc,
+            50,
+            31,
+            APP_ICON_HANDLE,
+            62,
+            62,
+            0,
+            ptr::null_mut(),
+            DI_NORMAL,
+        );
     }
 
     // Interactive Theme Switcher & Version Pill in Top-Right of Header
-    let pill_bg = if HOVER_ZONE == 6 { bg_row_hover } else { bg_pill };
-    let pill_border = if HOVER_ZONE == 6 { border_emerald } else { border_subtle };
+    let pill_bg = if HOVER_ZONE == 6 {
+        bg_row_hover
+    } else {
+        bg_pill
+    };
+    let pill_border = if HOVER_ZONE == 6 {
+        border_emerald
+    } else {
+        border_subtle
+    };
     draw_rounded_box(
         hdc,
         RECT_BTN_THEME.left,
@@ -950,11 +995,25 @@ unsafe fn paint_installer_canvas(hdc: HDC, rc_client: &RECT) {
             draw_text_centered(hdc, &pill_rc, badge);
 
             SetTextColor(hdc, text_heading);
-            draw_text_left(hdc, rc.left + 76, rc.top + 16, rc.right - 14, rc.top + 46, title);
+            draw_text_left(
+                hdc,
+                rc.left + 76,
+                rc.top + 16,
+                rc.right - 14,
+                rc.top + 46,
+                title,
+            );
 
             SelectObject(hdc, font_card_desc as _);
             SetTextColor(hdc, text_muted);
-            draw_text_left(hdc, rc.left + 76, rc.top + 46, rc.right - 14, rc.top + 74, desc);
+            draw_text_left(
+                hdc,
+                rc.left + 76,
+                rc.top + 46,
+                rc.right - 14,
+                rc.top + 74,
+                desc,
+            );
         }
 
         // Toggle Rows
@@ -1020,7 +1079,11 @@ unsafe fn paint_installer_canvas(hdc: HDC, rc_client: &RECT) {
             "✔ এক ক্লিকে ইনস্টল ও চালু করুন (Install & Launch)",
         );
 
-        let uninst_bg = if HOVER_ZONE == 4 { bg_row_hover } else { bg_card };
+        let uninst_bg = if HOVER_ZONE == 4 {
+            bg_row_hover
+        } else {
+            bg_card
+        };
         draw_rounded_box(
             hdc,
             RECT_BTN_UNINSTALL.left,
@@ -1035,7 +1098,11 @@ unsafe fn paint_installer_canvas(hdc: HDC, rc_client: &RECT) {
         SetTextColor(hdc, crimson_accent);
         draw_text_centered(hdc, &RECT_BTN_UNINSTALL, "আনইনস্টল (Uninstall)");
 
-        let close_bg = if HOVER_ZONE == 5 { bg_row_hover } else { bg_card };
+        let close_bg = if HOVER_ZONE == 5 {
+            bg_row_hover
+        } else {
+            bg_card
+        };
         draw_rounded_box(
             hdc,
             RECT_BTN_CLOSE.left,
@@ -1153,11 +1220,25 @@ unsafe fn paint_installer_canvas(hdc: HDC, rc_client: &RECT) {
             draw_text_centered(hdc, &pill_rc, "✓");
 
             SetTextColor(hdc, text_heading);
-            draw_text_left(hdc, rc.left + 76, rc.top + 16, rc.right - 14, rc.top + 46, title);
+            draw_text_left(
+                hdc,
+                rc.left + 76,
+                rc.top + 16,
+                rc.right - 14,
+                rc.top + 46,
+                title,
+            );
 
             SelectObject(hdc, font_card_desc as _);
             SetTextColor(hdc, text_muted);
-            draw_text_left(hdc, rc.left + 76, rc.top + 46, rc.right - 14, rc.top + 74, desc);
+            draw_text_left(
+                hdc,
+                rc.left + 76,
+                rc.top + 46,
+                rc.right - 14,
+                rc.top + 74,
+                desc,
+            );
         }
 
         // Quick-Start Highlight Banner Card (32, 318 .. 808, 430)
@@ -1238,7 +1319,11 @@ unsafe fn paint_installer_canvas(hdc: HDC, rc_client: &RECT) {
             "✨ একুশে নেক্সট স্টুডিও খুলুন (Open Ekushe Next Studio)",
         );
 
-        let done_bg = if HOVER_ZONE == 5 { bg_row_hover } else { bg_card };
+        let done_bg = if HOVER_ZONE == 5 {
+            bg_row_hover
+        } else {
+            bg_card
+        };
         draw_rounded_box(
             hdc,
             RECT_BTN_SUCCESS_DONE.left,
@@ -1262,14 +1347,7 @@ unsafe fn paint_installer_canvas(hdc: HDC, rc_client: &RECT) {
         // ══════════════════════════════════════════════════════════════════════
         SelectObject(hdc, font_title as _);
         SetTextColor(hdc, crimson_accent);
-        draw_text_left(
-            hdc,
-            128,
-            28,
-            645,
-            64,
-            "একুশে বাংলা কীবোর্ড আনইনস্টল সম্পন্ন হয়েছে",
-        );
+        draw_text_left(hdc, 128, 28, 645, 64, "একুশে বাংলা কীবোর্ড আনইনস্টল সম্পন্ন হয়েছে");
 
         SelectObject(hdc, font_sub as _);
         SetTextColor(hdc, text_muted);
@@ -1311,7 +1389,11 @@ unsafe fn paint_installer_canvas(hdc: HDC, rc_client: &RECT) {
         );
 
         SelectObject(hdc, font_btn as _);
-        let done_bg = if HOVER_ZONE == 5 { bg_row_hover } else { bg_card };
+        let done_bg = if HOVER_ZONE == 5 {
+            bg_row_hover
+        } else {
+            bg_card
+        };
         draw_rounded_box(
             hdc,
             RECT_BTN_SUCCESS_DONE.left,
@@ -1354,7 +1436,11 @@ unsafe fn draw_checkbox_row(
     font_tag: *mut core::ffi::c_void,
 ) {
     let bg = if hovered { bg_hover } else { bg_normal };
-    let border = if hovered || checked { border_active } else { border_idle };
+    let border = if hovered || checked {
+        border_active
+    } else {
+        border_idle
+    };
     draw_rounded_box(hdc, rc.left, rc.top, rc.right, rc.bottom, 12, bg, border, 1);
 
     // Modern Checkbox square (22x22)
@@ -1388,13 +1474,28 @@ unsafe fn draw_checkbox_row(
     }
 
     SetTextColor(hdc, text_col);
-    draw_text_left(hdc, box_right + 14, rc.top, rc.right - 210, rc.bottom, bn_label);
+    draw_text_left(
+        hdc,
+        box_right + 14,
+        rc.top,
+        rc.right - 210,
+        rc.bottom,
+        bn_label,
+    );
 
     SelectObject(hdc, font_tag);
     SetTextColor(hdc, muted_col);
-    draw_text_right(hdc, rc.right - 220, rc.top, rc.right - 18, rc.bottom, en_tag);
+    draw_text_right(
+        hdc,
+        rc.right - 220,
+        rc.top,
+        rc.right - 18,
+        rc.bottom,
+        en_tag,
+    );
 }
 
+#[allow(clippy::too_many_arguments)]
 unsafe fn draw_rounded_box(
     hdc: HDC,
     left: i32,
@@ -1568,7 +1669,13 @@ unsafe fn set_hkcu_reg_sz(subkey: &str, value_name: &str, data: &str) -> Result<
 unsafe fn delete_hkcu_reg_value(subkey: &str, value_name: &str) -> Result<(), u32> {
     let mut hkey: HKEY = ptr::null_mut();
     let subkey_w = wide_null(subkey);
-    let status = RegOpenKeyExW(HKEY_CURRENT_USER, subkey_w.as_ptr(), 0, KEY_WRITE, &mut hkey);
+    let status = RegOpenKeyExW(
+        HKEY_CURRENT_USER,
+        subkey_w.as_ptr(),
+        0,
+        KEY_WRITE,
+        &mut hkey,
+    );
     if status != 0 {
         return Err(status);
     }

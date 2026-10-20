@@ -12,14 +12,14 @@
 //! - Text expansion snippets: `/sal` -> `আসসালামু আলাইকুম`, `/bdt` -> `৳`, `/ekushe` -> `অমর একুশে`.
 //! - User learning: remembers which candidate the user picked for a given roman input.
 
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
-use serde::{Deserialize, Serialize};
 
 use crate::conjuncts::{contextual_sign_hints, SignHint};
-use crate::phonetic::PhoneticEngine;
 use crate::dict::{Dictionary, RankParams, WordClass};
+use crate::phonetic::PhoneticEngine;
 use crate::spell::{bangla_weighted_distance, SpellChecker};
 
 /// Type of a candidate shown in the popup window.
@@ -109,7 +109,10 @@ impl SuggestionEngine {
                     let r_clean = r_part.trim();
                     if !r_clean.is_empty() {
                         let skel = roman_skeleton(r_clean);
-                        roman_index.entry(skel).or_default().push(w.bangla.to_string());
+                        roman_index
+                            .entry(skel)
+                            .or_default()
+                            .push(w.bangla.to_string());
                         roman_index
                             .entry(r_clean.to_lowercase())
                             .or_default()
@@ -275,7 +278,14 @@ impl SuggestionEngine {
         include_emojis: bool,
         max_candidates: usize,
     ) -> (Vec<Candidate>, Vec<SignHint>) {
-        self.suggest_with_context(roman_input, phonetic_engine, smart_mode, include_emojis, max_candidates, None)
+        self.suggest_with_context(
+            roman_input,
+            phonetic_engine,
+            smart_mode,
+            include_emojis,
+            max_candidates,
+            None,
+        )
     }
 
     /// Like [`suggest`](Self::suggest), with the previously committed word as context.
@@ -317,7 +327,9 @@ impl SuggestionEngine {
                     annotation: Some("Snippet".to_string()),
                 },
             );
-        } else if (roman_input.starts_with(';') || roman_input.starts_with('/')) && roman_input.len() >= 2 {
+        } else if (roman_input.starts_with(';') || roman_input.starts_with('/'))
+            && roman_input.len() >= 2
+        {
             let mut prefix_snips: Vec<(&String, &String)> = self
                 .snippets
                 .iter()
@@ -340,7 +352,8 @@ impl SuggestionEngine {
         // 1b. Inline Mix-English Escape (`/word` or `` `word ``):
         // When typing in Bangla mode, starting a word with `/` or `` ` `` (e.g., `/office`, `` `email ``)
         // puts the clean English word first without switching the keyboard!
-        if (roman_input.starts_with('/') || roman_input.starts_with('`')) && roman_input.len() >= 2 {
+        if (roman_input.starts_with('/') || roman_input.starts_with('`')) && roman_input.len() >= 2
+        {
             let eng_word = &roman_input[1..];
             if !eng_word.is_empty() && candidates.is_empty() {
                 push_unique(
@@ -420,8 +433,16 @@ impl SuggestionEngine {
         // Full dictionary path: Ekushe's own ranking replaces the small built-in heuristics below.
         if let Some(dict) = self.dict {
             self.dictionary_candidates(
-                dict, roman_input, &roman_lc, &literal_bangla, smart_mode, include_emojis, max_candidates,
-                prev_word, &mut candidates, &mut seen,
+                dict,
+                roman_input,
+                &roman_lc,
+                &literal_bangla,
+                smart_mode,
+                include_emojis,
+                max_candidates,
+                prev_word,
+                &mut candidates,
+                &mut seen,
             );
             return (candidates, hints);
         }
@@ -442,7 +463,11 @@ impl SuggestionEngine {
         // 3b. Zero-Memorization `ri` -> `ৃ` (ঋ-কার) Assistant:
         // Whenever the user types `ri` after a consonant (e.g., `krishi`, `srishti`, `smriti`, `nripo`),
         // automatically offer the `rri` (ঋ-কার `ৃ`) variant right in the top candidates!
-        if roman_lc.len() >= 2 && roman_lc.contains("ri") && !roman_lc.contains("rri") && !roman_lc.starts_with("ri") {
+        if roman_lc.len() >= 2
+            && roman_lc.contains("ri")
+            && !roman_lc.contains("rri")
+            && !roman_lc.starts_with("ri")
+        {
             let rri_roman = roman_input.replacen("ri", "rri", 1);
             let rri_bangla = phonetic_engine.transliterate_word(&rri_roman);
             if rri_bangla != literal_bangla {
@@ -523,7 +548,7 @@ impl SuggestionEngine {
             }
         }
 
-        dict_matches.sort_by(|a, b| b.0.cmp(&a.0));
+        dict_matches.sort_by_key(|b| std::cmp::Reverse(b.0));
         let dict_cap = max_candidates.saturating_sub(1).max(4);
         for (_, w) in dict_matches {
             push_unique(
@@ -622,10 +647,7 @@ impl SuggestionEngine {
                 return p;
             }
         }
-        self.bigrams
-            .get(prev_word)
-            .cloned()
-            .unwrap_or_default()
+        self.bigrams.get(prev_word).cloned().unwrap_or_default()
     }
 
     /// Candidate list from the full dictionary.
@@ -651,10 +673,26 @@ impl SuggestionEngine {
                 list.push(cand);
             }
         };
-        if let Some(ac) = self.autocorrect.get(roman_input).or_else(|| self.autocorrect.get(roman_lc)) {
-            push(candidates, Candidate { text: ac.clone(), kind: CandidateKind::Dictionary, annotation: Some("Smart".to_string()) });
+        if let Some(ac) = self
+            .autocorrect
+            .get(roman_input)
+            .or_else(|| self.autocorrect.get(roman_lc))
+        {
+            push(
+                candidates,
+                Candidate {
+                    text: ac.clone(),
+                    kind: CandidateKind::Dictionary,
+                    annotation: Some("Smart".to_string()),
+                },
+            );
         }
-        let mut ranked = dict.rank(roman_input, prev_word, max_candidates.max(5), &self.rank_params);
+        let mut ranked = dict.rank(
+            roman_input,
+            prev_word,
+            max_candidates.max(5),
+            &self.rank_params,
+        );
         // Completions (longer words) belong in the bar, never in slot #1: slot #1 is shown inline and
         // committed by Space, so it must be a whole-word match for what was typed.
         if let Some(pos) = ranked.iter().position(|r| !r.completion) {
@@ -663,7 +701,11 @@ impl SuggestionEngine {
                 ranked.insert(0, first);
             }
         }
-        let phonetic = |t: &str| Candidate { text: t.to_string(), kind: CandidateKind::Phonetic, annotation: None };
+        let phonetic = |t: &str| Candidate {
+            text: t.to_string(),
+            kind: CandidateKind::Phonetic,
+            annotation: None,
+        };
         // The first keystroke shows the plain letter (s → স) instead of jumping to a word.
         if roman_input.chars().count() == 1 {
             push(candidates, phonetic(literal_bangla));
@@ -672,9 +714,16 @@ impl SuggestionEngine {
         // than Ekushe's top choice, and among its top 3 (tomake → তমাকে is literal but rare; তোমাকে wins).
         if !smart_mode {
             if let Some(li) = dict.lookup(literal_bangla) {
-                let top_ppm = ranked.first().map(|r| dict.info(r.id).log_ppm).unwrap_or(f32::MIN);
+                let top_ppm = ranked
+                    .first()
+                    .map(|r| dict.info(r.id).log_ppm)
+                    .unwrap_or(f32::MIN);
                 let in_top3 = ranked.iter().take(3).any(|r| r.word == literal_bangla);
-                if li.class == WordClass::Standard && li.flags & crate::dict::FLAG_SUSPECT == 0 && li.log_ppm >= top_ppm - 1.0 && in_top3 {
+                if li.class == WordClass::Standard
+                    && li.flags & crate::dict::FLAG_SUSPECT == 0
+                    && li.log_ppm >= top_ppm - 1.0
+                    && in_top3
+                {
                     push(candidates, phonetic(literal_bangla));
                 }
             }
@@ -692,14 +741,24 @@ impl SuggestionEngine {
                 _ if r.completion => Some("…".to_string()),
                 _ => None,
             };
-            push(candidates, Candidate { text: r.word, kind: CandidateKind::Dictionary, annotation });
+            push(
+                candidates,
+                Candidate {
+                    text: r.word,
+                    kind: CandidateKind::Dictionary,
+                    annotation,
+                },
+            );
         }
         if !literal_slot_done {
             push(candidates, phonetic(literal_bangla));
         }
         // Emoji go in the visible part of the bar (after the top 3 words), not after the full word list
         if include_emojis {
-            let top = candidates.first().map(|c| c.text.clone()).unwrap_or_default();
+            let top = candidates
+                .first()
+                .map(|c| c.text.clone())
+                .unwrap_or_default();
             let ems = self
                 .emojis
                 .get(roman_lc)
@@ -709,15 +768,29 @@ impl SuggestionEngine {
                 let mut at = candidates.len().min(3);
                 for &em in ems {
                     if seen.insert(em.to_string()) {
-                        candidates.insert(at, Candidate { text: em.to_string(), kind: CandidateKind::Emoji, annotation: None });
+                        candidates.insert(
+                            at,
+                            Candidate {
+                                text: em.to_string(),
+                                kind: CandidateKind::Emoji,
+                                annotation: None,
+                            },
+                        );
                         at += 1;
                     }
                 }
             }
         }
         // Keep the English word itself reachable in slot 5 (one click / Tab picks English)
-        if roman_input.len() >= 2 && roman_input.chars().all(|c| c.is_ascii_alphabetic()) && seen.insert(roman_input.to_string()) {
-            let en = Candidate { text: roman_input.to_string(), kind: CandidateKind::English, annotation: Some("EN".to_string()) };
+        if roman_input.len() >= 2
+            && roman_input.chars().all(|c| c.is_ascii_alphabetic())
+            && seen.insert(roman_input.to_string())
+        {
+            let en = Candidate {
+                text: roman_input.to_string(),
+                kind: CandidateKind::English,
+                annotation: Some("EN".to_string()),
+            };
             if candidates.len() >= 5 {
                 candidates.insert(4, en);
             } else {

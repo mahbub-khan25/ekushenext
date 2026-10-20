@@ -11,8 +11,8 @@
 
 pub mod config;
 pub mod conjuncts;
-pub mod dict;
 pub mod convert;
+pub mod dict;
 pub mod layout;
 pub mod phonetic;
 pub mod roman;
@@ -92,10 +92,8 @@ impl Default for Ekushe {
 
 impl Ekushe {
     pub fn new(config: Config) -> Self {
-        let phonetic = PhoneticEngine::with_overrides(
-            config.phonetic_overrides.clone(),
-            config.bangla_digits,
-        );
+        let phonetic =
+            PhoneticEngine::with_overrides(config.phonetic_overrides.clone(), config.bangla_digits);
         let fixed_layout = FixedLayout::builtin(config.active_layout);
         let mut suggestions = SuggestionEngine::new();
         for (trig, exp) in &config.custom_snippets {
@@ -125,10 +123,8 @@ impl Ekushe {
     }
 
     pub fn set_config(&mut self, config: Config) {
-        self.phonetic = PhoneticEngine::with_overrides(
-            config.phonetic_overrides.clone(),
-            config.bangla_digits,
-        );
+        self.phonetic =
+            PhoneticEngine::with_overrides(config.phonetic_overrides.clone(), config.bangla_digits);
         self.fixed_layout = FixedLayout::builtin(config.active_layout);
         for (trig, exp) in &config.custom_snippets {
             self.suggestions.set_snippet(trig.clone(), exp.clone());
@@ -334,9 +330,19 @@ impl Ekushe {
         };
 
         // Context for the next word: only across a plain space between Bangla words
-        let is_bangla = chosen.chars().any(|c| ('\u{0980}'..='\u{09FF}').contains(&c));
-        let ends_clean = chosen.chars().last().map(|c| ('\u{0980}'..='\u{09FF}').contains(&c) && c != '।').unwrap_or(false);
-        self.prev_word = if trailing == Some(' ') && is_bangla && ends_clean { Some(chosen.clone()) } else { None };
+        let is_bangla = chosen
+            .chars()
+            .any(|c| ('\u{0980}'..='\u{09FF}').contains(&c));
+        let ends_clean = chosen
+            .chars()
+            .last()
+            .map(|c| ('\u{0980}'..='\u{09FF}').contains(&c) && c != '।')
+            .unwrap_or(false);
+        self.prev_word = if trailing == Some(' ') && is_bangla && ends_clean {
+            Some(chosen.clone())
+        } else {
+            None
+        };
 
         let mut committed = chosen;
         if let Some(tr) = trailing {
@@ -474,20 +480,39 @@ mod tests {
 
     #[test]
     fn test_fixed_layouts_commit_their_text() {
-        for layout in [LayoutId::Probhat, LayoutId::NationalJatiya, LayoutId::Bornona, LayoutId::MunirOptima] {
+        for layout in [
+            LayoutId::Probhat,
+            LayoutId::NationalJatiya,
+            LayoutId::Bornona,
+            LayoutId::MunirOptima,
+        ] {
             for commit_via_select in [true, false] {
-                let mut ek = Ekushe::new(Config { active_layout: layout, ..Config::default() });
+                let mut ek = Ekushe::new(Config {
+                    active_layout: layout,
+                    ..Config::default()
+                });
                 let pre = ek.push_char('k', false).preedit;
                 assert!(!pre.is_empty(), "{layout:?} composes nothing for k");
-                let out = if commit_via_select { ek.select_candidate(0, Some(' ')) } else { ek.commit_default(Some(' ')) };
-                assert_eq!(out.committed, Some(format!("{pre} ")), "{layout:?} lost its text on commit");
+                let out = if commit_via_select {
+                    ek.select_candidate(0, Some(' '))
+                } else {
+                    ek.commit_default(Some(' '))
+                };
+                assert_eq!(
+                    out.committed,
+                    Some(format!("{pre} ")),
+                    "{layout:?} lost its text on commit"
+                );
             }
         }
     }
 
     #[test]
     fn test_backspace_undo_and_flip_lengths() {
-        let mut ek = Ekushe::new(Config { typing_mode: TypingMode::PhoneticFirst, ..Config::default() });
+        let mut ek = Ekushe::new(Config {
+            typing_mode: TypingMode::PhoneticFirst,
+            ..Config::default()
+        });
         for c in "swadhin".chars() {
             ek.push_char(c, false);
         }
@@ -497,7 +522,10 @@ mod tests {
         assert_eq!(undo.delete_before, committed.encode_utf16().count());
 
         // After Enter there is no undo or flip (the app inserted the line break itself)
-        let mut ek = Ekushe::new(Config { typing_mode: TypingMode::PhoneticFirst, ..Config::default() });
+        let mut ek = Ekushe::new(Config {
+            typing_mode: TypingMode::PhoneticFirst,
+            ..Config::default()
+        });
         for c in "ami".chars() {
             ek.push_char(c, false);
         }
@@ -520,7 +548,10 @@ mod tests {
 
     #[test]
     fn test_reset_forgets_undo_and_context() {
-        let mut ek = Ekushe::new(Config { typing_mode: TypingMode::PhoneticFirst, ..Config::default() });
+        let mut ek = Ekushe::new(Config {
+            typing_mode: TypingMode::PhoneticFirst,
+            ..Config::default()
+        });
         for c in "ami ".chars() {
             ek.push_char(c, false);
         }
@@ -548,7 +579,10 @@ mod tests {
     #[test]
     fn test_typing_sign_hints_and_undo_conversion() {
         // Phonetic-First keeps the literal spelling inline, which this test inspects letter by letter
-        let mut ek = Ekushe::new(Config { typing_mode: TypingMode::PhoneticFirst, ..Config::default() });
+        let mut ek = Ekushe::new(Config {
+            typing_mode: TypingMode::PhoneticFirst,
+            ..Config::default()
+        });
 
         // Type 's' -> preedit "স", and sign_hints includes "স্ব (sw)"
         let out_s = ek.push_char('s', false);

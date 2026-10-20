@@ -9,7 +9,9 @@ use std::ptr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use windows_sys::core::{GUID, HRESULT};
-use windows_sys::Win32::Foundation::{BOOL, CLASS_E_CLASSNOTAVAILABLE, E_INVALIDARG, HINSTANCE, S_FALSE, S_OK, TRUE};
+use windows_sys::Win32::Foundation::{
+    BOOL, CLASS_E_CLASSNOTAVAILABLE, E_INVALIDARG, HINSTANCE, S_FALSE, S_OK, TRUE,
+};
 use windows_sys::Win32::System::Registry::{
     RegCloseKey, RegCreateKeyExW, RegDeleteTreeW, RegSetValueExW, HKEY, HKEY_CURRENT_USER,
     KEY_WRITE, REG_OPTION_NON_VOLATILE, REG_SZ,
@@ -31,6 +33,9 @@ static ACTIVE_OBJECTS: AtomicUsize = AtomicUsize::new(0);
 static mut DLL_INSTANCE: HINSTANCE = ptr::null_mut();
 
 #[no_mangle]
+/// # Safety
+/// Called only by Windows (COM / the loader) with the arguments its contract defines.
+#[allow(clippy::missing_safety_doc)]
 pub unsafe extern "system" fn DllMain(
     hinst_dll: HINSTANCE,
     fdw_reason: u32,
@@ -44,6 +49,9 @@ pub unsafe extern "system" fn DllMain(
 }
 
 #[no_mangle]
+/// # Safety
+/// Called only by Windows (COM / the loader) with the arguments its contract defines.
+#[allow(clippy::missing_safety_doc)]
 pub unsafe extern "system" fn DllCanUnloadNow() -> HRESULT {
     if ACTIVE_OBJECTS.load(Ordering::SeqCst) == 0 {
         S_OK
@@ -53,6 +61,9 @@ pub unsafe extern "system" fn DllCanUnloadNow() -> HRESULT {
 }
 
 #[no_mangle]
+/// # Safety
+/// Called only by Windows (COM / the loader) with the arguments its contract defines.
+#[allow(clippy::missing_safety_doc)]
 pub unsafe extern "system" fn DllGetClassObject(
     rclsid: *const GUID,
     _riid: *const GUID,
@@ -68,6 +79,9 @@ pub unsafe extern "system" fn DllGetClassObject(
 /// Registers Ekushe COM class & CTF TIP registry entries under `HKCU\Software\Classes`
 /// so registration works even without UAC administrator elevation.
 #[no_mangle]
+/// # Safety
+/// Called only by Windows (COM / the loader) with the arguments its contract defines.
+#[allow(clippy::missing_safety_doc)]
 pub unsafe extern "system" fn DllRegisterServer() -> HRESULT {
     let clsid_key = format!("Software\\Classes\\CLSID\\{EKUSHE_CLSID_STR}");
     let inproc_key = format!("{clsid_key}\\InprocServer32");
@@ -75,10 +89,24 @@ pub unsafe extern "system" fn DllRegisterServer() -> HRESULT {
         "Software\\Microsoft\\CTF\\TIP\\{EKUSHE_CLSID_STR}\\LanguageProfile\\0x00000845\\{EKUSHE_PROFILE_GUID_STR}"
     );
 
-    if set_reg_sz(HKEY_CURRENT_USER, &clsid_key, None, "Ekushe Next Bangla Input Method").is_err() {
+    if set_reg_sz(
+        HKEY_CURRENT_USER,
+        &clsid_key,
+        None,
+        "Ekushe Next Bangla Input Method",
+    )
+    .is_err()
+    {
         return -1;
     }
-    if set_reg_sz(HKEY_CURRENT_USER, &inproc_key, Some("ThreadingModel"), "Apartment").is_err() {
+    if set_reg_sz(
+        HKEY_CURRENT_USER,
+        &inproc_key,
+        Some("ThreadingModel"),
+        "Apartment",
+    )
+    .is_err()
+    {
         return -1;
     }
     let _ = set_reg_sz(
@@ -91,9 +119,14 @@ pub unsafe extern "system" fn DllRegisterServer() -> HRESULT {
 }
 
 #[no_mangle]
+/// # Safety
+/// Called only by Windows (COM / the loader) with the arguments its contract defines.
+#[allow(clippy::missing_safety_doc)]
 pub unsafe extern "system" fn DllUnregisterServer() -> HRESULT {
     let clsid_key = wide_null(&format!("Software\\Classes\\CLSID\\{EKUSHE_CLSID_STR}"));
-    let tip_key = wide_null(&format!("Software\\Microsoft\\CTF\\TIP\\{EKUSHE_CLSID_STR}"));
+    let tip_key = wide_null(&format!(
+        "Software\\Microsoft\\CTF\\TIP\\{EKUSHE_CLSID_STR}"
+    ));
     let _ = RegDeleteTreeW(HKEY_CURRENT_USER, clsid_key.as_ptr());
     let _ = RegDeleteTreeW(HKEY_CURRENT_USER, tip_key.as_ptr());
     S_OK
