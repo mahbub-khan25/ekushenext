@@ -48,6 +48,21 @@ cargo run -p ekushe-tray
 > **Note on Windows SmartScreen (Unsigned Binary):**
 > If downloading a prebuilt binary before code-signing is configured, click **More info → Run anyway** on first launch.
 
+### Windows input method (preview)
+
+`ekushe_tsf.dll` is Ekushe as a real Windows input method (Text Services Framework). It writes the
+word you are typing as a TSF composition instead of simulating key presses, so it works in Store apps
+and elevated windows and never flickers. It is a **preview**: there is no candidate window yet (the top
+word shows inline, Tab cycles), and only 64-bit applications are covered. To try it, quit the tray app
+first (running both converts every key twice), then from an administrator prompt:
+
+```powershell
+regsvr32 target\release\ekushe_tsf.dll      # adds "Ekushe Next Bangla" under Bangla (Bangladesh)
+regsvr32 /u target\release\ekushe_tsf.dll   # removes it
+```
+
+Then pick it with Win+Space. The installer copies the DLL but does not register it.
+
 ---
 
 ## Ekushe's Own Dictionary

@@ -228,13 +228,9 @@ pub fn perform_full_install(
         }
     }
 
-    // Register TSF COM Server in HKCU if ekushe_tsf.dll is present
-    let tsf_dll = root.join("ekushe_tsf.dll");
-    if tsf_dll.exists() {
-        let _ = Command::new("regsvr32.exe")
-            .args(["/s", &tsf_dll.to_string_lossy()])
-            .status();
-    }
+    // ekushe_tsf.dll (the Windows input-method version of Ekushe) is copied but NOT registered: it is a
+    // preview, and running it together with this tray app would convert every key twice. Testers
+    // register it themselves from an administrator prompt: `regsvr32 ekushe_tsf.dll`.
 
     // Broadcast WM_FONTCHANGE so all open Windows applications immediately see Kalpurush & SolaimanLipi
     unsafe {

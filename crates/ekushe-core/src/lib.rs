@@ -383,6 +383,16 @@ impl Ekushe {
         self.select_candidate(idx, trailing)
     }
 
+    /// True while Backspace would undo the last conversion (a word was just committed with a space).
+    pub fn has_undo(&self) -> bool {
+        self.last_commit_undo.is_some()
+    }
+
+    /// True while a word is being typed (Roman or fixed-layout buffer not empty).
+    pub fn is_composing(&self) -> bool {
+        !self.roman_buf.is_empty() || !self.fixed_buf.is_empty()
+    }
+
     /// Forget the word being composed, the context word and the last-commit undo. Hosts call this when
     /// the caret moves or focus changes, so nothing can later be backspaced at the wrong position.
     pub fn reset_composition(&mut self) {
