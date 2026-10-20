@@ -12,6 +12,7 @@ use std::net::{TcpListener, TcpStream};
 use std::path::PathBuf;
 use std::process::Command;
 use std::ptr;
+use std::sync::atomic::{AtomicBool, AtomicIsize, Ordering};
 use std::time::Instant;
 
 use ekushe_core::{
@@ -48,7 +49,9 @@ use windows_sys::Win32::UI::Shell::{
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     AppendMenuW, CallNextHookEx, CreatePopupMenu, CreateWindowExW, DefWindowProcW, DestroyMenu,
     DestroyWindow, DispatchMessageW, GetClassNameW, GetClientRect, GetCursorPos,
-    GetForegroundWindow, GetMessageW, GetSystemMetrics, KillTimer, LoadCursorW, LoadIconW,
+    GetAncestor, GetForegroundWindow, GetGUIThreadInfo, GetMessageW, GetSystemMetrics, GetWindowLongW,
+    GetWindowThreadProcessId, KillTimer, LoadCursorW, LoadIconW, WindowFromPoint, GA_ROOT,
+    GUITHREADINFO, GWL_STYLE, MSLLHOOKSTRUCT, WH_MOUSE_LL,
     LoadImageW, PostMessageW, PostQuitMessage, RegisterClassW, SetCursor, SetForegroundWindow,
     SetLayeredWindowAttributes, SetMenuDefaultItem, SetTimer, SetWindowPos, SetWindowsHookExW,
     ShowWindow, TrackPopupMenu, TranslateMessage, UnhookWindowsHookEx, CW_USEDEFAULT, HHOOK, HICON,
@@ -131,6 +134,8 @@ struct AppSharedState {
     compact_btn_rect: RECT,
     /// Translucent opacity percentage (`70..=100`, default `92`) for the floating popup bar
     popup_opacity_pct: u8,
+    /// The focused control the current composition was typed into (0 = none)
+    comp_focus: isize,
 }
 
 static STATE: Lazy<Mutex<AppSharedState>> = Lazy::new(|| {
@@ -158,10 +163,19 @@ static STATE: Lazy<Mutex<AppSharedState>> = Lazy::new(|| {
         helper_btn_rect: RECT { left: 0, top: 0, right: 0, bottom: 0 },
         compact_btn_rect: RECT { left: 0, top: 0, right: 0, bottom: 0 },
         popup_opacity_pct: 92,
+        comp_focus: 0,
     })
 });
 
 static mut KEYBOARD_HOOK: HHOOK = ptr::null_mut();
+static mut MOUSE_HOOK: HHOOK = ptr::null_mut();
+/// Set by the mouse hook when the user clicks outside the candidate popup: the caret may have moved,
+/// so the half-typed word must be forgotten (never backspaced at the new position).
+static COMPOSITION_STALE: AtomicBool = AtomicBool::new(false);
+static OVERLAY_HWND: AtomicIsize = AtomicIsize::new(0);
+static TRAY_HWND: AtomicIsize = AtomicIsize::new(0);
+const WM_EKUSHE_FORGET: u32 = WM_APP + 2;
+const ES_PASSWORD_STYLE: i32 = 0x0020;
 
 unsafe fn register_embedded_bangla_fonts() {
     for font_bytes in [
@@ -194,13 +208,19 @@ fn main() {
         register_embedded_bangla_fonts();
 
         if exe_name.contains("uninstall") || args.iter().any(|a| a == "--uninstall") {
-            let _ = setup_wizard::perform_uninstall();
+            if let Err(e) = setup_wizard::perform_uninstall() {
+                eprintln!("Ekushe uninstall failed: {e}");
+                std::process::exit(1);
+            }
             return;
         }
 
         if args.iter().any(|a| a == "--auto-install") {
             let launch = !args.iter().any(|a| a == "--no-launch");
-            let _ = setup_wizard::perform_full_install(true, true, launch);
+            if let Err(e) = setup_wizard::perform_full_install(true, true, launch) {
+                eprintln!("Ekushe install failed: {e}");
+                std::process::exit(1);
+            }
             return;
         }
 
@@ -337,12 +357,16 @@ fn main() {
             st.tray_hwnd = tray_hwnd as isize;
             st.overlay_hwnd = overlay_hwnd as isize;
         }
+        TRAY_HWND.store(tray_hwnd as isize, Ordering::SeqCst);
+        OVERLAY_HWND.store(overlay_hwnd as isize, Ordering::SeqCst);
 
         // Add icon to Windows System Tray
         add_or_update_tray_icon(tray_hwnd, true);
 
         // Install global low-level keyboard hook
         KEYBOARD_HOOK = SetWindowsHookExW(WH_KEYBOARD_LL, Some(keyboard_hook_proc), hinstance, 0);
+        // Mouse clicks can move the caret; the mouse hook makes sure a half-typed word is then forgotten
+        MOUSE_HOOK = SetWindowsHookExW(WH_MOUSE_LL, Some(mouse_hook_proc), hinstance, 0);
 
         // Show initial floating badge ("বাং · একুশে বাংলা সক্রিয়") and optionally open Studio
         show_mode_badge("বাং · একুশে বাংলা সক্রিয় (Tap Shift×2 to switch)");
@@ -358,6 +382,9 @@ fn main() {
 
         if !KEYBOARD_HOOK.is_null() {
             UnhookWindowsHookEx(KEYBOARD_HOOK);
+        }
+        if !MOUSE_HOOK.is_null() {
+            UnhookWindowsHookEx(MOUSE_HOOK);
         }
         remove_tray_icon(tray_hwnd);
     }
@@ -655,6 +682,69 @@ unsafe fn is_foreground_terminal_window() -> bool {
     )
 }
 
+/// The control that has keyboard focus in the foreground window (null if unknown).
+unsafe fn focused_control() -> HWND {
+    let fg = GetForegroundWindow();
+    if fg.is_null() {
+        return ptr::null_mut();
+    }
+    let tid = GetWindowThreadProcessId(fg, ptr::null_mut());
+    let mut gti: GUITHREADINFO = zeroed();
+    gti.cbSize = size_of::<GUITHREADINFO>() as u32;
+    if GetGUIThreadInfo(tid, &mut gti) != 0 && !gti.hwndFocus.is_null() {
+        gti.hwndFocus
+    } else {
+        fg
+    }
+}
+
+/// True for standard Windows password boxes (Edit / RichEdit with `ES_PASSWORD`). Browser and UWP
+/// password fields are not detectable this way; the TSF input method will cover those.
+unsafe fn is_password_field(h: HWND) -> bool {
+    if h.is_null() {
+        return false;
+    }
+    let mut cls_buf = [0u16; 64];
+    let len = GetClassNameW(h, cls_buf.as_mut_ptr(), cls_buf.len() as i32);
+    if len <= 0 {
+        return false;
+    }
+    let cls = String::from_utf16_lossy(&cls_buf[..len as usize]).to_ascii_lowercase();
+    (cls.contains("edit")) && (GetWindowLongW(h, GWL_STYLE) & ES_PASSWORD_STYLE) != 0
+}
+
+/// Forget the current composition without touching the text (the caret may be somewhere else now).
+fn forget_composition(st: &mut AppSharedState) -> bool {
+    let had = st.injected_utf16_len > 0 || !st.last_output.preedit.is_empty();
+    st.ekushe.reset_composition();
+    st.last_output = SessionOutput::default();
+    st.injected_utf16_len = 0;
+    st.comp_focus = 0;
+    had
+}
+
+/// Low-level mouse hook: a click anywhere except the candidate popup ends the composition.
+unsafe extern "system" fn mouse_hook_proc(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
+    const WM_LBUTTONDOWN_: usize = 0x0201;
+    const WM_RBUTTONDOWN_: usize = 0x0204;
+    const WM_MBUTTONDOWN_: usize = 0x0207;
+    const WM_XBUTTONDOWN_: usize = 0x020B;
+    if code >= 0 && matches!(wparam, WM_LBUTTONDOWN_ | WM_RBUTTONDOWN_ | WM_MBUTTONDOWN_ | WM_XBUTTONDOWN_) {
+        let ms = &*(lparam as *const MSLLHOOKSTRUCT);
+        let target = WindowFromPoint(ms.pt);
+        let root = if target.is_null() { target } else { GetAncestor(target, GA_ROOT) };
+        let overlay = OVERLAY_HWND.load(Ordering::SeqCst);
+        if overlay == 0 || (target as isize != overlay && root as isize != overlay) {
+            COMPOSITION_STALE.store(true, Ordering::SeqCst);
+            let tray = TRAY_HWND.load(Ordering::SeqCst);
+            if tray != 0 {
+                PostMessageW(tray as HWND, WM_EKUSHE_FORGET, 0, 0);
+            }
+        }
+    }
+    CallNextHookEx(ptr::null_mut(), code, wparam, lparam)
+}
+
 /// Low-level keyboard hook (`WH_KEYBOARD_LL`) that powers:
 /// 1. One-key toggle (`Double-Tap Shift`, `Ctrl+Space`, `F12`, `Ctrl+Alt+B`)
 /// 2. Per-App Terminal Smart Guard (auto-English in PowerShell / cmd / Windows Terminal)
@@ -713,6 +803,22 @@ unsafe extern "system" fn keyboard_hook_proc(
     if is_keydown {
         let mut st = STATE.lock();
         st.shift_clean_down = false;
+
+        // The caret may have moved (mouse click) or focus changed (another field or window) since the
+        // half-typed word was injected: forget it rather than backspacing text somewhere else.
+        let focus = focused_control();
+        let stale = COMPOSITION_STALE.swap(false, Ordering::SeqCst);
+        if st.injected_utf16_len > 0 && (stale || st.comp_focus != focus as isize) {
+            forget_composition(&mut st);
+            drop(st);
+            refresh_candidate_overlay();
+            st = STATE.lock();
+        }
+        // Password boxes: type plain characters, no preview, nothing learned
+        if is_password_field(focus) {
+            return CallNextHookEx(ptr::null_mut(), code, wparam, lparam);
+        }
+        st.comp_focus = focus as isize;
 
         let switch_triggered = match &st.ekushe.config().switch_hotkey {
             SwitchHotkey::CtrlSpace => ctrl_down && !alt_down && vk == VK_SPACE,
@@ -902,11 +1008,19 @@ unsafe fn replace_active_text(backspaces: usize, new_text: &str) {
         inputs.push(make_unicode_input(unit, KEYEVENTF_KEYUP));
     }
 
-    SendInput(
+    let sent = SendInput(
         inputs.len() as u32,
         inputs.as_ptr(),
         size_of::<INPUT>() as i32,
     );
+    if sent as usize != inputs.len() {
+        // Windows blocked some or all keystrokes (e.g. the target runs as administrator). What reached
+        // the app is unknown, so drop the composition instead of backspacing blindly next time.
+        let mut st = STATE.lock();
+        forget_composition(&mut st);
+        drop(st);
+        show_mode_badge("⚠ এই উইন্ডোতে টাইপ পাঠানো যায়নি (Windows blocked input)");
+    }
 }
 
 unsafe fn make_vk_input(vk: u16, flags: u32) -> INPUT {
@@ -947,6 +1061,18 @@ unsafe extern "system" fn tray_wnd_proc(
     lparam: LPARAM,
 ) -> LRESULT {
     match msg {
+        WM_EKUSHE_FORGET => {
+            if COMPOSITION_STALE.swap(false, Ordering::SeqCst) {
+                let had = {
+                    let mut st = STATE.lock();
+                    forget_composition(&mut st)
+                };
+                if had {
+                    refresh_candidate_overlay();
+                }
+            }
+            0
+        }
         WM_TRAYICON => {
             let event = (lparam & 0xFFFF) as u32;
             match event {
@@ -1975,6 +2101,9 @@ fn handle_http_client(mut stream: TcpStream) -> std::io::Result<()> {
         };
         let mode_str = format!("{:?}", cfg.typing_mode);
         let lay_str = format!("{:?}", cfg.active_layout);
+        // Studio expects a list of [trigger, expansion] pairs
+        let mut snippet_pairs: Vec<(&String, &String)> = st.ekushe.suggestions_engine().snippets().iter().collect();
+        snippet_pairs.sort();
         let json = serde_json::json!({
             "language": lang,
             "hotkey_id": hk_id,
@@ -1985,9 +2114,10 @@ fn handle_http_client(mut stream: TcpStream) -> std::io::Result<()> {
             "popup_opacity": st.popup_opacity_pct,
             "compact_popup": cfg.compact_popup,
             "auto_english_in_terminals": cfg.auto_english_in_terminals,
-            "snippets": st.ekushe.suggestions_engine().snippets(),
+            "snippets": snippet_pairs,
         })
         .to_string();
+        drop(st); // never hold the keyboard hook's lock while writing to the socket
         return write_http_response(
             &mut stream,
             "200 OK",
@@ -2013,9 +2143,13 @@ fn handle_http_client(mut stream: TcpStream) -> std::io::Result<()> {
 
     if method == "GET" && clean_path == "/api/suggest" {
         let q = extract_query_param(path, "q");
-        let st = STATE.lock();
         let phon = ekushe_core::phonetic::PhoneticEngine::new();
-        let (cands, hints) = st.ekushe.suggestions_engine().suggest(&q, &phon, false, true, 9);
+        // Hold the shared lock only while ranking (~1 ms), never while writing to the socket:
+        // the keyboard hook needs the same lock on every keystroke.
+        let (cands, hints) = {
+            let st = STATE.lock();
+            st.ekushe.suggestions_engine().suggest(&q, &phon, false, true, 9)
+        };
         let json = serde_json::json!({
             "candidates": cands,
             "sign_hints": hints,
@@ -2044,8 +2178,10 @@ fn handle_http_client(mut stream: TcpStream) -> std::io::Result<()> {
     if method == "POST" && clean_path == "/api/spell" {
         let parsed: serde_json::Value = serde_json::from_str(body).unwrap_or_default();
         let text = parsed.get("text").and_then(|v| v.as_str()).unwrap_or("");
-        let st = STATE.lock();
-        let issues = st.ekushe.suggestions_engine().spell_checker().check_text(text);
+        // Spell-check a whole document on a copy of the checker, outside the shared lock, so a long
+        // check can never stall typing (the keyboard hook needs that lock on every keystroke).
+        let checker = STATE.lock().ekushe.suggestions_engine().spell_checker().clone();
+        let issues = checker.check_text(text);
         let json = serde_json::to_string(&issues).unwrap_or_else(|_| "[]".to_string());
         return write_http_response(
             &mut stream,
@@ -2082,8 +2218,10 @@ fn handle_http_client(mut stream: TcpStream) -> std::io::Result<()> {
         let opacity_opt = parsed.get("popup_opacity").and_then(|v| v.as_u64()).map(|n| (n as u8).clamp(70, 100));
         let compact_opt = parsed.get("compact_popup").and_then(|v| v.as_bool());
         let term_opt = parsed.get("auto_english_in_terminals").and_then(|v| v.as_bool());
-        let snip_trig = parsed.get("snippet_trigger").and_then(|v| v.as_str()).unwrap_or("").trim();
-        let snip_exp = parsed.get("snippet_expansion").and_then(|v| v.as_str()).unwrap_or("").trim();
+        // `snippet_key` / `snippet_value` are accepted too (older Studio pages sent those names)
+        let field = |a: &str, b: &str| parsed.get(a).or_else(|| parsed.get(b)).and_then(|v| v.as_str()).unwrap_or("").trim().to_string();
+        let snip_trig = field("snippet_trigger", "snippet_key");
+        let snip_exp = field("snippet_expansion", "snippet_value");
 
         let (tray_hwnd, overlay_hwnd, opacity_pct) = {
             let mut st = STATE.lock();

@@ -1503,7 +1503,7 @@ async function addCustomSnippet() {
   if (!key.startsWith(';') && !key.startsWith('/')) {
     key = ';' + key;
   }
-  await saveSettings({ snippet_key: key, snippet_value: val });
+  await saveSettings({ snippet_trigger: key, snippet_expansion: val });
   kEl.value = '';
   vEl.value = '';
 }

@@ -205,15 +205,10 @@ pub fn perform_full_install(
     let uninstall_exe = root.join("Uninstall-Ekushe.exe");
 
     if current_exe != target_exe {
-        use std::os::windows::process::CommandExt;
-        let _ = Command::new("taskkill.exe")
-            .args(["/F", "/IM", "ekushe.exe"])
-            .creation_flags(0x0800_0000)
-            .output();
-        std::thread::sleep(std::time::Duration::from_millis(250));
-        let _ = fs::copy(&current_exe, &target_exe);
+        stop_running_ekushe();
+        copy_checked(&current_exe, &target_exe)?;
     }
-    let _ = fs::copy(&current_exe, &uninstall_exe);
+    copy_checked(&current_exe, &uninstall_exe)?;
 
     // Also copy sibling ekushe_tsf.dll / ekushe-cli.exe if present next to installer
     if let Some(src_dir) = current_exe.parent() {
@@ -272,21 +267,19 @@ pub fn perform_full_install(
     unsafe {
         if enable_startup {
             let cmd = format!("\"{}\" --minimized", target_exe.to_string_lossy());
-            let _ = set_hkcu_reg_sz(
-                r"Software\Microsoft\Windows\CurrentVersion\Run",
-                "EkusheBanglaKeyboard",
-                &cmd,
-            );
+            set_hkcu_reg_sz(r"Software\Microsoft\Windows\CurrentVersion\Run", "EkusheBanglaKeyboard", &cmd)
+                .map_err(|code| format!("could not enable start with Windows (registry error {code})"))?;
         }
 
         // Register in Windows "Installed Apps / Add or Remove Programs"
         let uninstall_key =
             r"Software\Microsoft\Windows\CurrentVersion\Uninstall\EkusheBanglaKeyboard";
-        let _ = set_hkcu_reg_sz(
+        set_hkcu_reg_sz(
             uninstall_key,
             "DisplayName",
             "Ekushe Next Bangla Keyboard & Spell Checker (একুশে নেক্সট বাংলা কীবোর্ড)",
-        );
+        )
+        .map_err(|code| format!("could not register in Installed Apps (registry error {code})"))?;
         let _ = set_hkcu_reg_sz(uninstall_key, "DisplayVersion", "0.1.0");
         let _ = set_hkcu_reg_sz(uninstall_key, "Publisher", "Ekushe Next Contributors");
         let _ = set_hkcu_reg_sz(uninstall_key, "DisplayIcon", &ico_path.to_string_lossy());
@@ -295,11 +288,12 @@ pub fn perform_full_install(
             "InstallLocation",
             &root.to_string_lossy(),
         );
-        let _ = set_hkcu_reg_sz(
+        set_hkcu_reg_sz(
             uninstall_key,
             "UninstallString",
             &format!("\"{}\" --uninstall", uninstall_exe.to_string_lossy()),
-        );
+        )
+        .map_err(|code| format!("could not register the uninstaller (registry error {code})"))?;
     }
 
     if launch_after && target_exe.exists() {
@@ -312,11 +306,7 @@ pub fn perform_full_install(
 /// Cleanly uninstalls Ekushe from the user's PC.
 pub fn perform_uninstall() -> Result<(), String> {
     let root = install_root_dir();
-    use std::os::windows::process::CommandExt;
-    let _ = Command::new("taskkill.exe")
-        .args(["/F", "/IM", "ekushe.exe"])
-        .creation_flags(0x0800_0000)
-        .output();
+    stop_running_ekushe();
 
     let tsf_dll = root.join("ekushe_tsf.dll");
     if tsf_dll.exists() {
@@ -349,6 +339,75 @@ pub fn perform_uninstall() -> Result<(), String> {
         let _ = fs::remove_file(programs.join("Ekushe Bangla Keyboard.lnk"));
     }
 
+    remove_install_folder(&root)
+}
+
+/// Stop other running copies of Ekushe (the tray app), but never this process.
+fn stop_running_ekushe() {
+    use std::os::windows::process::CommandExt;
+    let me = std::process::id().to_string();
+    let _ = Command::new("taskkill.exe")
+        .args(["/F", "/IM", "ekushe.exe", "/FI", &format!("PID ne {me}")])
+        .creation_flags(0x0800_0000)
+        .output();
+    std::thread::sleep(std::time::Duration::from_millis(250));
+}
+
+/// Copy a program file and confirm the copy is complete.
+fn copy_checked(from: &Path, to: &Path) -> Result<(), String> {
+    let mut last_err = String::new();
+    // the old copy may still be closing after taskkill: retry briefly
+    for _ in 0..8 {
+        match fs::copy(from, to) {
+            Ok(n) => {
+                let expected = fs::metadata(from).map(|m| m.len()).unwrap_or(n);
+                if n == expected && fs::metadata(to).map(|m| m.len()).unwrap_or(0) == expected {
+                    return Ok(());
+                }
+                last_err = format!("incomplete copy ({n} of {expected} bytes)");
+            }
+            Err(e) => last_err = e.to_string(),
+        }
+        std::thread::sleep(std::time::Duration::from_millis(250));
+    }
+    Err(format!("could not copy {}: {last_err}", to.display()))
+}
+
+/// Delete the installed program folder. Files in use by this running uninstaller are removed by a
+/// short-lived helper after it exits. User settings (config.toml) are kept.
+fn remove_install_folder(root: &Path) -> Result<(), String> {
+    if !root.exists() {
+        return Ok(());
+    }
+    // safety: only ever delete Ekushe's own program folder
+    if root.file_name().and_then(|n| n.to_str()) != Some("Ekushe") {
+        return Err(format!("refusing to delete unexpected folder {}", root.display()));
+    }
+    let me = env::current_exe().ok();
+    let mut in_use = false;
+    if let Ok(entries) = fs::read_dir(root) {
+        for e in entries.flatten() {
+            let p = e.path();
+            if me.as_deref() == Some(p.as_path()) {
+                in_use = true;
+                continue;
+            }
+            let res = if p.is_dir() { fs::remove_dir_all(&p) } else { fs::remove_file(&p) };
+            if res.is_err() {
+                in_use = true;
+            }
+        }
+    }
+    if in_use || fs::remove_dir(root).is_err() {
+        use std::os::windows::process::CommandExt;
+        // wait for this process to exit, then remove what is left
+        let cmd = format!("ping 127.0.0.1 -n 4 >nul & rmdir /S /Q \"{}\"", root.display());
+        Command::new("cmd.exe")
+            .args(["/C", &cmd])
+            .creation_flags(0x0800_0000 | 0x0000_0008) // CREATE_NO_WINDOW | DETACHED_PROCESS
+            .spawn()
+            .map_err(|e| format!("could not schedule removal of {}: {e}", root.display()))?;
+    }
     Ok(())
 }
 
@@ -524,7 +583,15 @@ unsafe extern "system" fn installer_wnd_proc(
                         }
                     }
                     4 => {
-                        let _ = perform_uninstall();
+                        if let Err(e) = perform_uninstall() {
+                            let msg = format!("আনইনস্টলে সমস্যা হয়েছে: {e}");
+                            MessageBoxW(
+                                hwnd,
+                                wide_null(&msg).as_ptr(),
+                                wide_null("Ekushe Next Installer").as_ptr(),
+                                MB_OK,
+                            );
+                        }
                         WIZARD_STEP = 2;
                         HOVER_ZONE = 0;
                         InvalidateRect(hwnd, ptr::null(), 0);
