@@ -1,6 +1,6 @@
 name: Release
 
-# To publish a release, change .github/release/VERSION (e.g. v0.1.0-beta.2) and push to main
+# To publish a release, change .github/release/VERSION (e.g. v0.1.0-beta.5) and push to main
 # (or push a tag v*). Versions with a dash (beta, rc) are marked as pre-releases. A version that is
 # already released is skipped.
 on:
@@ -12,46 +12,48 @@ on:
 
 permissions:
   contents: write
-  id-token: write   # lets the job sign in to Azure for code signing, without a stored password
+  id-token: write   # lets the Windows job sign in to Azure for code signing, without a stored password
 
 jobs:
-  windows:
-    name: Build and publish (Windows x64)
-    runs-on: windows-latest
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.ver.outputs.tag }}
+      exists: ${{ steps.ver.outputs.exists }}
     steps:
       - uses: actions/checkout@v4
-      - name: Version
-        id: ver
-        shell: pwsh
+      - id: ver
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $v = if ($env:GITHUB_REF -like 'refs/tags/*') { $env:GITHUB_REF_NAME } else { (Get-Content .github/release/VERSION -Raw).Trim() }
-          "tag=$v" >> $env:GITHUB_OUTPUT
-          gh release view $v --repo $env:GITHUB_REPOSITORY *> $null
-          if ($LASTEXITCODE -eq 0) { "exists=true" >> $env:GITHUB_OUTPUT } else { "exists=false" >> $env:GITHUB_OUTPUT }
-          exit 0
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then v="$GITHUB_REF_NAME"; else v="$(tr -d '[:space:]' < .github/release/VERSION)"; fi
+          echo "tag=$v" >> "$GITHUB_OUTPUT"
+          if gh release view "$v" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then echo "exists=true" >> "$GITHUB_OUTPUT"; else echo "exists=false" >> "$GITHUB_OUTPUT"; fi
+
+  windows:
+    name: Windows x64
+    needs: version
+    if: needs.version.outputs.exists == 'false'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-        if: steps.ver.outputs.exists == 'false'
       - uses: Swatinem/rust-cache@v2
-        if: steps.ver.outputs.exists == 'false'
       - name: Tests
-        if: steps.ver.outputs.exists == 'false'
         run: cargo test --workspace
       - name: Release build
-        if: steps.ver.outputs.exists == 'false'
         run: cargo build --release --workspace
       # Code signing with Azure Artifact Signing. Runs once the repository has the settings from
       # docs/CODE_SIGNING.md; until then releases are published unsigned.
       - name: Azure sign-in (code signing)
-        if: steps.ver.outputs.exists == 'false' && vars.SIGNING_ACCOUNT != ''
+        if: vars.SIGNING_ACCOUNT != ''
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       - name: Sign ekushe.exe, ekushe_tsf.dll, ekushe-cli.exe
-        if: steps.ver.outputs.exists == 'false' && vars.SIGNING_ACCOUNT != ''
+        if: vars.SIGNING_ACCOUNT != ''
         uses: azure/artifact-signing-action@v2
         with:
           endpoint: ${{ vars.SIGNING_ENDPOINT }}
@@ -74,7 +76,7 @@ jobs:
           exclude-azure-developer-cli-credential: true
           exclude-interactive-browser-credential: true
       - name: Check signatures
-        if: steps.ver.outputs.exists == 'false' && vars.SIGNING_ACCOUNT != ''
+        if: vars.SIGNING_ACCOUNT != ''
         shell: pwsh
         run: |
           foreach ($f in 'ekushe.exe','ekushe_tsf.dll','ekushe-cli.exe') {
@@ -83,7 +85,6 @@ jobs:
             if ($sig.Status -ne 'Valid') { Write-Error "$f is not validly signed"; exit 1 }
           }
       - name: Install check
-        if: steps.ver.outputs.exists == 'false'
         shell: pwsh
         timeout-minutes: 5
         run: |
@@ -92,7 +93,6 @@ jobs:
           if ($p.ExitCode -ne 0) { exit $p.ExitCode }
           if (-not (Test-Path "$env:LOCALAPPDATA\Programs\Ekushe\ekushe.exe")) { Write-Error "install failed"; exit 1 }
       - name: Package
-        if: steps.ver.outputs.exists == 'false'
         shell: pwsh
         run: |
           New-Item -ItemType Directory dist | Out-Null
@@ -102,13 +102,49 @@ jobs:
           # Browsers block a bare .exe more often than a .zip
           Compress-Archive -Path dist\Ekushe-Setup.exe -DestinationPath dist\Ekushe-Setup.zip
           Compress-Archive -Path target\release\ekushe_tsf.dll, target\release\ekushe-cli.exe -DestinationPath dist\Ekushe-Extras-x64.zip
-          Get-FileHash dist\* -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $(Split-Path $_.Path -Leaf)" } | Set-Content dist\SHA256SUMS.txt
-      - uses: softprops/action-gh-release@v2
-        if: steps.ver.outputs.exists == 'false'
+      - uses: actions/upload-artifact@v4
         with:
-          tag_name: ${{ steps.ver.outputs.tag }}
+          name: release-windows
+          path: dist/*
+
+  macos:
+    name: macOS (Apple silicon + Intel)
+    needs: version
+    if: needs.version.outputs.exists == 'false'
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin, x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+      - name: Engine tests
+        run: cargo test -p ekushe-core -p ekushe-ffi --features "ekushe-ffi/studio ekushe-ffi/embedded-dict"
+      - name: Build Ekushe.app, .pkg and .zip
+        run: platform/macos/build.sh "${{ needs.version.outputs.tag }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-macos
+          path: |
+            build/macos/Ekushe-macOS.pkg
+            build/macos/Ekushe-macOS.zip
+
+  publish:
+    needs: [version, windows, macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Checksums
+        run: cd dist && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.version.outputs.tag }}
           target_commitish: ${{ github.sha }}
-          name: Ekushe Next ${{ steps.ver.outputs.tag }}
+          name: Ekushe Next ${{ needs.version.outputs.tag }}
           body_path: .github/release/notes.md
-          prerelease: ${{ contains(steps.ver.outputs.tag, '-') }}
+          prerelease: ${{ contains(needs.version.outputs.tag, '-') }}
           files: dist/*
