@@ -1,4 +1,4 @@
-**Beta.** Ekushe Next is a Bangla phonetic keyboard for **Windows 10/11 (64-bit)** and, new in this beta, **macOS 11 or later** (Apple silicon and Intel). It comes with its own dictionary, which puts the Bangla Academy standard spelling first.
+**Beta.** Ekushe Next is a Bangla phonetic keyboard for **Windows 10/11 (64-bit)**, **macOS 11 or later** (Apple silicon and Intel) and, new in this beta, **Linux** (64-bit, IBus). It comes with its own dictionary, which puts the Bangla Academy standard spelling first.
 
 ### Download
 - **Ekushe-Setup.exe** (or **Ekushe-Setup.zip**, if your browser blocks the .exe) installs it for your user account, with no admin rights needed. It starts with Windows, adds a Start Menu shortcut, and can be removed from Settings → Apps.
@@ -14,6 +14,24 @@ Windows SmartScreen may warn you because the app isn't code-signed yet. Click **
 4. The Ekushe item in that menu opens **Studio** and **Settings** in your browser.
 
 On a Mac, the suggestions appear in macOS's own candidate bar, and Control+Delete flips the last word between Bangla and Roman. **Ekushe-macOS.zip** has the same app for manual install: unzip it and move **Ekushe.app** into `~/Library/Input Methods`.
+
+### Linux (first Linux beta)
+Ekushe is an **IBus** keyboard. IBus is the standard on Ubuntu, Fedora, Debian and GNOME, and also works on KDE.
+
+| You use | Download | Install |
+|---|---|---|
+| Ubuntu, Debian, Mint, Pop!_OS | `ekushe_…_amd64.deb` | `sudo apt install ./ekushe_*_amd64.deb` |
+| Fedora, RHEL, openSUSE | `ekushe-….x86_64.rpm` | `sudo dnf install ./ekushe-*.x86_64.rpm` |
+| Any distribution, no package | `Ekushe-…-x86_64.AppImage` | `chmod +x Ekushe-*.AppImage`, then run it with `--install-keyboard` |
+
+After installing:
+1. Run `ibus restart`, or log out and back in.
+2. Go to **Settings → Keyboard → Input Sources → + → Bengali → Ekushe Bangla**.
+3. Switch keyboards with **Super+Space**. **Ekushe Studio** appears in your applications menu.
+
+Run the AppImage on its own (double-click it) to open Studio without installing anything. IBus only loads keyboards installed for the whole computer, so `--install-keyboard` asks for your password once, and `--uninstall-keyboard` removes the keyboard again.
+
+On Linux the suggestions appear in IBus's own candidate window. Backspace-undo and Ctrl+Backspace need the app to share the text around the cursor; GTK and Qt apps do.
 
 ### How to use
 - Type Bangla in Roman letters, e.g. `amar sonar bangla`. Space picks the highlighted word, Tab moves to the next suggestion, and Esc keeps what you typed.
