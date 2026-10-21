@@ -6,6 +6,8 @@ automatically in `.github/workflows/release.yml` once the settings below exist. 
 releases are published unsigned.
 
 Cost: Basic plan, US$9.99/month (5,000 signatures). Individuals in the USA and Canada can apply.
+One account and certificate profile sign all your apps: Marrow uses the same ones (see its
+`RELEASE.md`); each repository only needs its own federated credential and the same six settings.
 
 ## 1. Azure account and signing account
 
