@@ -1,10 +1,14 @@
 name: Release
 
-# Push a tag like v0.1.0-beta.1 to publish a release. Tags with a dash (beta, rc) are marked
-# as pre-releases.
+# To publish a release, change .github/release/VERSION (e.g. v0.1.0-beta.2) and push to main
+# (or push a tag v*). Versions with a dash (beta, rc) are marked as pre-releases. A version that is
+# already released is skipped.
 on:
   push:
+    branches: [main]
+    paths: ['.github/release/VERSION']
     tags: ['v*']
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -15,13 +19,29 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Version
+        id: ver
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $v = if ($env:GITHUB_REF -like 'refs/tags/*') { $env:GITHUB_REF_NAME } else { (Get-Content .github/release/VERSION -Raw).Trim() }
+          "tag=$v" >> $env:GITHUB_OUTPUT
+          gh release view $v --repo $env:GITHUB_REPOSITORY *> $null
+          if ($LASTEXITCODE -eq 0) { "exists=true" >> $env:GITHUB_OUTPUT } else { "exists=false" >> $env:GITHUB_OUTPUT }
+          exit 0
       - uses: dtolnay/rust-toolchain@stable
+        if: steps.ver.outputs.exists == 'false'
       - uses: Swatinem/rust-cache@v2
+        if: steps.ver.outputs.exists == 'false'
       - name: Tests
+        if: steps.ver.outputs.exists == 'false'
         run: cargo test --workspace
       - name: Release build
+        if: steps.ver.outputs.exists == 'false'
         run: cargo build --release --workspace
       - name: Install check
+        if: steps.ver.outputs.exists == 'false'
         shell: pwsh
         timeout-minutes: 5
         run: |
@@ -30,6 +50,7 @@ jobs:
           if ($p.ExitCode -ne 0) { exit $p.ExitCode }
           if (-not (Test-Path "$env:LOCALAPPDATA\Programs\Ekushe\ekushe.exe")) { Write-Error "install failed"; exit 1 }
       - name: Package
+        if: steps.ver.outputs.exists == 'false'
         shell: pwsh
         run: |
           New-Item -ItemType Directory dist | Out-Null
@@ -39,8 +60,11 @@ jobs:
           Compress-Archive -Path target\release\ekushe_tsf.dll, target\release\ekushe-cli.exe -DestinationPath dist\Ekushe-Extras-x64.zip
           Get-FileHash dist\* -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $(Split-Path $_.Path -Leaf)" } | Set-Content dist\SHA256SUMS.txt
       - uses: softprops/action-gh-release@v2
+        if: steps.ver.outputs.exists == 'false'
         with:
-          name: Ekushe Next ${{ github.ref_name }}
+          tag_name: ${{ steps.ver.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: Ekushe Next ${{ steps.ver.outputs.tag }}
           body_path: .github/release/notes.md
-          prerelease: ${{ contains(github.ref_name, '-') }}
+          prerelease: ${{ contains(steps.ver.outputs.tag, '-') }}
           files: dist/*
