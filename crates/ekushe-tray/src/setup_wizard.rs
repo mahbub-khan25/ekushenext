@@ -229,10 +229,9 @@ pub fn perform_full_install(
     install_log("fonts and settings");
     ensure_self_configured();
 
-    // Copy current executable to %LOCALAPPDATA%\Programs\Ekushe\ekushe.exe & Uninstall-Ekushe.exe
+    // Copy this program to %LOCALAPPDATA%\Programs\Ekushe\ekushe.exe (once; it is also the uninstaller)
     let current_exe = env::current_exe().map_err(|e| e.to_string())?;
     let target_exe = root.join("ekushe.exe");
-    let uninstall_exe = root.join("Uninstall-Ekushe.exe");
 
     if current_exe != target_exe {
         install_log("stopping a running Ekushe");
@@ -240,8 +239,8 @@ pub fn perform_full_install(
         install_log("copying ekushe.exe");
         copy_checked(&current_exe, &target_exe)?;
     }
-    install_log("copying the uninstaller");
-    copy_checked(&current_exe, &uninstall_exe)?;
+    // Older versions kept a second copy as the uninstaller
+    let _ = fs::remove_file(root.join("Uninstall-Ekushe.exe"));
 
     // Also copy sibling ekushe_tsf.dll / ekushe-cli.exe if present next to installer
     if let Some(src_dir) = current_exe.parent() {
@@ -315,7 +314,7 @@ pub fn perform_full_install(
         set_hkcu_reg_sz(
             uninstall_key,
             "UninstallString",
-            &format!("\"{}\" --uninstall", uninstall_exe.to_string_lossy()),
+            &format!("\"{}\" --uninstall", target_exe.to_string_lossy()),
         )
         .map_err(|code| format!("could not register the uninstaller (registry error {code})"))?;
     }
@@ -333,8 +332,9 @@ pub fn perform_uninstall() -> Result<(), String> {
     let root = install_root_dir();
     stop_running_ekushe();
 
+    // Only if a tester registered the input method (its COM class exists)
     let tsf_dll = root.join("ekushe_tsf.dll");
-    if tsf_dll.exists() {
+    if tsf_dll.exists() && tsf_registered() {
         let _ = Command::new("regsvr32.exe")
             .args(["/u", "/s", &tsf_dll.to_string_lossy()])
             .status();
@@ -367,27 +367,65 @@ pub fn perform_uninstall() -> Result<(), String> {
     remove_install_folder(&root)
 }
 
-/// Stop other running copies of Ekushe (the tray app), but never this process.
+/// Ask other running copies of Ekushe to quit (the same as Exit in the tray menu: learned words are
+/// saved) and wait for them to finish. Never this process, never force.
 fn stop_running_ekushe() {
-    use std::os::windows::process::CommandExt;
-    let me = std::process::id().to_string();
-    if let Ok(child) = Command::new("taskkill.exe")
-        .args(["/F", "/IM", "ekushe.exe", "/FI", &format!("PID ne {me}")])
-        .creation_flags(0x0800_0000)
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .spawn()
-    {
-        wait_or_kill(child, 10);
+    use windows_sys::Win32::Foundation::{CloseHandle, WAIT_TIMEOUT};
+    use windows_sys::Win32::System::Threading::{
+        GetCurrentProcessId, OpenProcess, WaitForSingleObject,
+    };
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        FindWindowExW, GetWindowThreadProcessId, WM_CLOSE,
+    };
+    const SYNCHRONIZE: u32 = 0x0010_0000;
+    unsafe {
+        let class = wide_null("EkusheTrayHostClass");
+        let me = GetCurrentProcessId();
+        let mut after: HWND = ptr::null_mut();
+        loop {
+            let hwnd = FindWindowExW(ptr::null_mut(), after, class.as_ptr(), ptr::null());
+            if hwnd.is_null() {
+                break;
+            }
+            after = hwnd;
+            let mut pid = 0u32;
+            GetWindowThreadProcessId(hwnd, &mut pid);
+            if pid == 0 || pid == me {
+                continue;
+            }
+            let process = OpenProcess(SYNCHRONIZE, 0, pid);
+            PostMessageW(hwnd, WM_CLOSE, 0, 0);
+            if process.is_null() {
+                std::thread::sleep(std::time::Duration::from_millis(1500));
+            } else {
+                if WaitForSingleObject(process, 6000) == WAIT_TIMEOUT {
+                    install_log("an older Ekushe did not quit within 6 s");
+                }
+                CloseHandle(process);
+            }
+        }
     }
-    std::thread::sleep(std::time::Duration::from_millis(250));
+}
+
+/// True when the TSF input method's COM class is registered on this PC.
+fn tsf_registered() -> bool {
+    use windows_sys::Win32::System::Registry::{HKEY_LOCAL_MACHINE, KEY_READ};
+    unsafe {
+        let key = wide_null(r"Software\Classes\CLSID\{E21B0945-2102-1952-B09C-0AD55559B326}");
+        let mut h: HKEY = ptr::null_mut();
+        let ok = RegOpenKeyExW(HKEY_LOCAL_MACHINE, key.as_ptr(), 0, KEY_READ, &mut h) == 0;
+        if ok {
+            RegCloseKey(h);
+        }
+        ok
+    }
 }
 
 /// Copy a program file and confirm the copy is complete.
 fn copy_checked(from: &Path, to: &Path) -> Result<(), String> {
     let mut last_err = String::new();
-    // the old copy may still be closing after taskkill: retry briefly
-    for _ in 0..8 {
+    // an older copy may still be closing: retry for a few seconds
+    for _ in 0..20 {
         match fs::copy(from, to) {
             Ok(n) => {
                 let expected = fs::metadata(from).map(|m| m.len()).unwrap_or(n);
@@ -400,11 +438,13 @@ fn copy_checked(from: &Path, to: &Path) -> Result<(), String> {
         }
         std::thread::sleep(std::time::Duration::from_millis(250));
     }
-    Err(format!("could not copy {}: {last_err}", to.display()))
+    Err(format!(
+        "could not copy {}: {last_err}. If Ekushe is running, choose Exit in its tray menu and try again.",
+        to.display()
+    ))
 }
 
-/// Delete the installed program folder. Files in use by this running uninstaller are removed by a
-/// short-lived helper after it exits. User settings (config.toml) are kept.
+/// Delete the installed program folder. User settings and learned words (in %APPDATA%) are kept.
 fn remove_install_folder(root: &Path) -> Result<(), String> {
     if !root.exists() {
         return Ok(());
@@ -435,18 +475,20 @@ fn remove_install_folder(root: &Path) -> Result<(), String> {
             }
         }
     }
-    if in_use || fs::remove_dir(root).is_err() {
-        use std::os::windows::process::CommandExt;
-        // wait for this process to exit, then remove what is left
-        let cmd = format!(
-            "ping 127.0.0.1 -n 4 >nul & rmdir /S /Q \"{}\"",
-            root.display()
-        );
-        Command::new("cmd.exe")
-            .args(["/C", &cmd])
-            .creation_flags(0x0800_0000 | 0x0000_0008) // CREATE_NO_WINDOW | DETACHED_PROCESS
-            .spawn()
-            .map_err(|e| format!("could not schedule removal of {}: {e}", root.display()))?;
+    if in_use {
+        // A running program cannot delete itself, but it can be moved: park it in %TEMP%, which
+        // Windows cleans up, so the program folder can go now
+        if let Some(me) = &me {
+            let parked =
+                env::temp_dir().join(format!("ekushe-uninstalled-{}.exe", std::process::id()));
+            if fs::rename(me, &parked).is_err() {
+                install_log("could not move the running ekushe.exe out of the program folder");
+            }
+        }
+    }
+    let _ = fs::remove_dir(root);
+    if root.exists() {
+        install_log(&format!("left behind: {}", root.display()));
     }
     Ok(())
 }
@@ -1663,52 +1705,32 @@ fn write_if_missing(path: &Path, bytes: &[u8]) {
 }
 
 fn create_windows_shortcut(lnk_path: &Path, target_exe: &Path, work_dir: &Path, icon_path: &Path) {
-    let ps_cmd = format!(
-        "$wsh = New-Object -ComObject WScript.Shell; $sc = $wsh.CreateShortcut('{}'); $sc.TargetPath = '{}'; $sc.WorkingDirectory = '{}'; $sc.IconLocation = '{}'; $sc.Description = 'Ekushe Bangla Keyboard & Spell Checker'; $sc.Save()",
-        lnk_path.to_string_lossy().replace('\'', "''"),
-        target_exe.to_string_lossy().replace('\'', "''"),
-        work_dir.to_string_lossy().replace('\'', "''"),
-        icon_path.to_string_lossy().replace('\'', "''"),
-    );
-    use std::os::windows::process::CommandExt;
-    if let Ok(child) = Command::new("powershell.exe")
-        .args([
-            "-NoProfile",
-            "-NonInteractive",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-WindowStyle",
-            "Hidden",
-            "-Command",
-            &ps_cmd,
-        ])
-        .creation_flags(0x0800_0000)
-        .stdin(std::process::Stdio::null())
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .spawn()
-    {
-        // A shortcut is not worth hanging the install for
-        if !wait_or_kill(child, 20) {
-            install_log(&format!("shortcut timed out: {}", lnk_path.display()));
+    use windows::core::{Interface, HSTRING};
+    use windows::Win32::Foundation::TRUE;
+    use windows::Win32::System::Com::{
+        CoCreateInstance, CoInitializeEx, CoUninitialize, IPersistFile, CLSCTX_INPROC_SERVER,
+        COINIT_APARTMENTTHREADED,
+    };
+    use windows::Win32::UI::Shell::{IShellLinkW, ShellLink};
+    unsafe {
+        let init = CoInitializeEx(None, COINIT_APARTMENTTHREADED);
+        let made = (|| -> windows::core::Result<()> {
+            let link: IShellLinkW = CoCreateInstance(&ShellLink, None, CLSCTX_INPROC_SERVER)?;
+            link.SetPath(&HSTRING::from(target_exe.as_os_str()))?;
+            link.SetWorkingDirectory(&HSTRING::from(work_dir.as_os_str()))?;
+            link.SetIconLocation(&HSTRING::from(icon_path.as_os_str()), 0)?;
+            link.SetDescription(&HSTRING::from("Ekushe Bangla keyboard"))?;
+            link.cast::<IPersistFile>()?
+                .Save(&HSTRING::from(lnk_path.as_os_str()), TRUE)
+        })();
+        if init.is_ok() {
+            CoUninitialize();
         }
-    }
-}
-
-/// Wait up to `secs` for a helper program; kill it if it takes longer. Returns false on timeout.
-fn wait_or_kill(mut child: std::process::Child, secs: u64) -> bool {
-    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(secs);
-    loop {
-        match child.try_wait() {
-            Ok(Some(_)) => return true,
-            Ok(None) if std::time::Instant::now() < deadline => {
-                std::thread::sleep(std::time::Duration::from_millis(100))
-            }
-            _ => {
-                let _ = child.kill();
-                let _ = child.wait();
-                return false;
-            }
+        if let Err(e) = made {
+            install_log(&format!(
+                "shortcut not created ({}): {e}",
+                lnk_path.display()
+            ));
         }
     }
 }

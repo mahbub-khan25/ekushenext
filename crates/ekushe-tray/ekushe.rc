@@ -1,1 +1,34 @@
+#include <winver.h>
+
 1 ICON "../../assets/icons/ekushe.ico"
+1 24 "ekushe.manifest"
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION     0,1,0,2
+PRODUCTVERSION  0,1,0,2
+FILEFLAGSMASK   0x3fL
+FILEFLAGS       0x2L  /* VS_FF_PRERELEASE */
+FILEOS          0x40004L
+FILETYPE        0x1L
+FILESUBTYPE     0x0L
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904B0"
+    BEGIN
+      VALUE "CompanyName",      "Ekushe Next Contributors"
+      VALUE "FileDescription",  "Ekushe Next Bangla keyboard"
+      VALUE "FileVersion",      "0.1.0-beta.2"
+      VALUE "InternalName",     "ekushe"
+      VALUE "LegalCopyright",   "Ekushe Next Contributors, MPL-2.0"
+      VALUE "OriginalFilename", "ekushe.exe"
+      VALUE "ProductName",      "Ekushe Next"
+      VALUE "ProductVersion",   "0.1.0-beta.2"
+      VALUE "Comments",         "Open source: https://github.com/mahbub-khan25/ekushenext"
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x409, 1200
+  END
+END

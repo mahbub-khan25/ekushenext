@@ -170,6 +170,7 @@ dependencies = [
  "parking_lot",
  "serde",
  "serde_json",
+ "windows",
  "windows-sys 0.59.0",
 ]
 
