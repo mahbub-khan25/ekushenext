@@ -143,7 +143,7 @@ jobs:
       - name: Engine and Studio tests
         run: cargo test -p ekushe-core -p ekushe-ffi -p ekushe-studio --features "ekushe-ffi/studio ekushe-ffi/embedded-dict"
       - name: Build packages and type into a real IBus
-        run: platform/linux/build.sh "${VERSION}" --test
+        run: platform/linux/build.sh "$VERSION" --test
         env:
           VERSION: ${{ needs.version.outputs.tag }}
       - name: Install the .deb and type again
