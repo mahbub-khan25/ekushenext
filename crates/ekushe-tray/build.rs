@@ -20,11 +20,16 @@ fn main() {
             .arg(&res_path)
             .arg("ekushe.rc")
             .status();
-        if let Ok(st) = status {
-            if st.success() && res_path.exists() {
+        match status {
+            Ok(st) if st.success() && res_path.exists() => {
                 println!("cargo:rustc-link-arg-bins={}", res_path.display());
             }
+            _ => println!(
+                "cargo:warning=rc.exe failed: icon, version details and manifest not embedded"
+            ),
         }
+    } else {
+        println!("cargo:warning=rc.exe not found: icon, version details and manifest not embedded");
     }
 }
 
