@@ -6,6 +6,7 @@ members = [
     "crates/ekushe-cli",
     "crates/ekushe-tsf",
     "crates/ekushe-tray",
+    "crates/ekushe-studio",
 ]
 
 [workspace.package]

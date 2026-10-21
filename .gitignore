@@ -1,24 +1,23 @@
-# Build output
-/target/
-**/target/
 
+# Build output
+# Editors / OS
+# Generated dictionary files (rebuild with tools/dict-builder/build.sh)
 # Installers and promo renders: publish these on GitHub Releases instead
+**/target/
 *.exe
+*.gz
 *.mp4
+*.tgz
+.DS_Store
+.idea/
+.vscode/
+/target/
+Thumbs.db
+build/
+data/dictionary/ekushe.dict
+data/dictionary/roman/roman-index.tsv
+data/dictionary/roman/romanizations.tsv
+data/dictionary/words-*.tsv
 ekushe-promo/node_modules/
 ekushe-promo/out/
-
-# Generated dictionary files (rebuild with tools/dict-builder/build.sh)
-data/dictionary/ekushe.dict
-data/dictionary/words-*.tsv
-data/dictionary/roman/romanizations.tsv
-data/dictionary/roman/roman-index.tsv
 tools/dict-builder/work/
-*.gz
-*.tgz
-
-# Editors / OS
-.vscode/
-.idea/
-.DS_Store
-Thumbs.db

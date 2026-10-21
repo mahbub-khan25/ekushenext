@@ -1,0 +1,13 @@
+[package]
+name = "ekushe-studio"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Ekushe Studio as a desktop app (Linux and macOS): opens the Studio web app in the browser"
+
+[[bin]]
+name = "ekushe-studio"
+path = "src/main.rs"
+
+[dependencies]
+ekushe-ffi = { path = "../ekushe-ffi", features = ["studio", "embedded-dict"] }

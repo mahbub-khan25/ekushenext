@@ -127,6 +127,15 @@ unsafe fn cstr<'a>(p: *const c_char) -> Option<&'a str> {
 pub(crate) struct Shared {
     pub ekushe: Ekushe,
     pub saved_learned_version: u64,
+    /// The last key's result, for C callers that read it field by field (`ek_out_*`)
+    pub last: SessionOutput,
+}
+
+/// Remember `out` for the `ek_out_*` accessors and return it as JSON.
+fn record(sh: &mut Shared, out: SessionOutput) -> *mut c_char {
+    let j = json(&out);
+    sh.last = out;
+    j
 }
 
 pub(crate) static SHARED: Lazy<Mutex<Shared>> = Lazy::new(|| {
@@ -142,6 +151,7 @@ pub(crate) static SHARED: Lazy<Mutex<Shared>> = Lazy::new(|| {
     Mutex::new(Shared {
         ekushe,
         saved_learned_version,
+        last: SessionOutput::default(),
     })
 });
 
@@ -181,14 +191,17 @@ pub extern "C" fn ek_key(codepoint: u32) -> *mut c_char {
         {
             save_learned(sh);
         }
-        json(&out)
+        record(sh, out)
     })
 }
 
 /// Backspace (edits the word being typed, or undoes the last conversion). Returns JSON.
 #[no_mangle]
 pub extern "C" fn ek_backspace() -> *mut c_char {
-    with_shared(ptr::null_mut(), |sh| json(&sh.ekushe.backspace()))
+    with_shared(ptr::null_mut(), |sh| {
+        let out = sh.ekushe.backspace();
+        record(sh, out)
+    })
 }
 
 /// Commit candidate `index`; `trailing` is a character to add after it (0 = none). Returns JSON.
@@ -204,14 +217,56 @@ pub extern "C" fn ek_select(index: u32, trailing: u32) -> *mut c_char {
         if sh.ekushe.suggestions_engine().learned_version() >= sh.saved_learned_version + 10 {
             save_learned(sh);
         }
-        json(&out)
+        record(sh, out)
     })
+}
+
+// Field-by-field access to the last result (for C front ends without a JSON parser). Strings are
+// newly allocated; free them with `ekushe_string_free`.
+
+/// The word being typed (may be empty).
+#[no_mangle]
+pub extern "C" fn ek_out_preedit() -> *mut c_char {
+    with_shared(ptr::null_mut(), |sh| to_c(sh.last.preedit.clone()))
+}
+
+/// Text to write into the application, or null when nothing was committed.
+#[no_mangle]
+pub extern "C" fn ek_out_committed() -> *mut c_char {
+    with_shared(ptr::null_mut(), |sh| match &sh.last.committed {
+        Some(c) => to_c(c.clone()),
+        None => ptr::null_mut(),
+    })
+}
+
+#[no_mangle]
+pub extern "C" fn ek_out_candidate_count() -> u32 {
+    with_shared(0, |sh| sh.last.candidates.len() as u32)
+}
+
+/// Candidate `i` (null past the end).
+#[no_mangle]
+pub extern "C" fn ek_out_candidate(i: u32) -> *mut c_char {
+    with_shared(ptr::null_mut(), |sh| {
+        match sh.last.candidates.get(i as usize) {
+            Some(c) => to_c(c.text.clone()),
+            None => ptr::null_mut(),
+        }
+    })
+}
+
+#[no_mangle]
+pub extern "C" fn ek_out_selected() -> u32 {
+    with_shared(0, |sh| sh.last.selected_index as u32)
 }
 
 /// Forget the word being typed, the context word and the undo (caret moved, focus changed).
 #[no_mangle]
 pub extern "C" fn ek_reset() {
-    with_shared((), |sh| sh.ekushe.reset_composition());
+    with_shared((), |sh| {
+        sh.ekushe.reset_composition();
+        sh.last = SessionOutput::default();
+    });
 }
 
 #[no_mangle]
@@ -292,6 +347,11 @@ pub extern "C" fn ek_reload_config() {
             sh.ekushe.set_config(cfg);
         }
     });
+}
+
+/// Write learned words to disk if anything new was learned (Rust callers).
+pub fn save_learned_now() {
+    with_shared((), save_learned);
 }
 
 /// Write learned words to disk if anything new was learned.
