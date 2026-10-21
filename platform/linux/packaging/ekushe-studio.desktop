@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Ekushe Studio
+Name[bn]=একুশে স্টুডিও
+GenericName=Bangla writing tools
+Comment=Writing pad, conjunct guide, spell check, Bijoy converter and Ekushe keyboard settings
+Exec=ekushe-studio
+Icon=ekushe
+Terminal=false
+Categories=Utility;TextTools;Office;
+Keywords=Bangla;Bengali;Bijoy;Unicode;keyboard;spell;
+StartupNotify=false

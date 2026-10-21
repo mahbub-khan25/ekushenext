@@ -46,6 +46,20 @@ static FONTS: &[(&str, &[u8])] = &[
 ];
 
 static PORT: AtomicU16 = AtomicU16::new(0);
+/// When the last request arrived (seconds since the Unix epoch), for apps that quit when idle
+static LAST_REQUEST: AtomicU64 = AtomicU64::new(0);
+
+fn now_secs() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
+}
+
+/// Seconds since Studio last served a request (or since it started).
+pub fn idle_seconds() -> u64 {
+    now_secs().saturating_sub(LAST_REQUEST.load(Ordering::Relaxed))
+}
 /// Popup transparency setting (kept for the Studio slider; the macOS candidate window is drawn by
 /// the system)
 static OPACITY: AtomicU64 = AtomicU64::new(92);
@@ -82,6 +96,7 @@ pub fn start() -> u16 {
         return 0;
     };
     let port = listener.local_addr().map(|a| a.port()).unwrap_or(0);
+    LAST_REQUEST.store(now_secs(), Ordering::Relaxed);
     if PORT
         .compare_exchange(0, port, Ordering::SeqCst, Ordering::SeqCst)
         .is_err()
@@ -208,6 +223,7 @@ fn respond(s: &mut TcpStream, status: &str, ctype: &str, body: &[u8]) -> std::io
 
 fn handle(mut s: TcpStream, port: u16) -> std::io::Result<()> {
     let req = read_request(&mut s);
+    LAST_REQUEST.store(now_secs(), Ordering::Relaxed);
     let mut first = req.lines().next().unwrap_or("").split_whitespace();
     let (method, path) = (first.next().unwrap_or(""), first.next().unwrap_or("/"));
     let clean = path.split('?').next().unwrap_or("/");

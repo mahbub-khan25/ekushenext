@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- IBus component for Ekushe: copied to /usr/share/ibus/component/ekushe.xml -->
+<component>
+  <name>org.freedesktop.IBus.Ekushe</name>
+  <description>Ekushe Bangla input method</description>
+  <exec>@LIBEXECDIR@/ibus-engine-ekushe --ibus</exec>
+  <version>@VERSION@</version>
+  <author>Ekushe Next Contributors</author>
+  <license>MPL-2.0</license>
+  <homepage>https://github.com/mahbub-khan25/ekushenext</homepage>
+  <textdomain>ekushe</textdomain>
+  <engines>
+    <engine>
+      <name>ekushe</name>
+      <language>bn</language>
+      <license>MPL-2.0</license>
+      <author>Ekushe Next Contributors</author>
+      <icon>@DATADIR@/ekushe/ekushe.png</icon>
+      <layout>us</layout>
+      <longname>Ekushe Bangla</longname>
+      <description>Bangla phonetic typing with Ekushe's own dictionary</description>
+      <rank>80</rank>
+      <symbol>বাং</symbol>
+      <setup>@BINDIR@/ekushe-studio --settings</setup>
+    </engine>
+  </engines>
+</component>
