@@ -57,6 +57,8 @@ jobs:
           # One program, two names: "setup" in the name opens the installer
           Copy-Item target\release\ekushe.exe dist\Ekushe-Setup.exe
           Copy-Item target\release\ekushe.exe dist\Ekushe-Portable.exe
+          # Browsers block a bare .exe more often than a .zip
+          Compress-Archive -Path dist\Ekushe-Setup.exe -DestinationPath dist\Ekushe-Setup.zip
           Compress-Archive -Path target\release\ekushe_tsf.dll, target\release\ekushe-cli.exe -DestinationPath dist\Ekushe-Extras-x64.zip
           Get-FileHash dist\* -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $(Split-Path $_.Path -Leaf)" } | Set-Content dist\SHA256SUMS.txt
       - uses: softprops/action-gh-release@v2

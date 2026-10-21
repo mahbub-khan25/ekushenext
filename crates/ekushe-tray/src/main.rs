@@ -2234,7 +2234,17 @@ pub fn open_studio_window_tab(port: u16, tab: Option<&str>) {
             return;
         }
     }
-    let _ = Command::new("cmd").args(["/C", "start", "", &url]).spawn();
+    // The default browser, through the shell
+    unsafe {
+        windows_sys::Win32::UI::Shell::ShellExecuteW(
+            ptr::null_mut(),
+            wide_null("open").as_ptr(),
+            wide_null(&url).as_ptr(),
+            ptr::null(),
+            ptr::null(),
+            1, // SW_SHOWNORMAL
+        );
+    }
 }
 
 fn wide_null(s: &str) -> Vec<u16> {
