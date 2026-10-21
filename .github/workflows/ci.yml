@@ -144,6 +144,10 @@ jobs:
           path: pkgs
       - name: Install
         run: dnf install -y ./pkgs/*.rpm python3-gobject dbus-daemon dbus-tools
+      - name: Engine loads on Fedora
+        run: |
+          ldd /usr/libexec/ekushe/ibus-engine-ekushe | grep -i "not found" && exit 1 || true
+          /usr/libexec/ekushe/ibus-engine-ekushe --version
       - name: Type into IBus
         run: |
           rm -rf ~/.config/ibus/bus

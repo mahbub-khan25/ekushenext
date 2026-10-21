@@ -50,7 +50,17 @@ def key(keyval, mods=0):
     return handled
 
 
-pump(1.5)  # engine process starting
+# ibus-daemon starts the engine process on demand: wait until it answers (a probe key, then Escape)
+deadline = time.time() + 20
+while True:
+    pump(0.5)
+    if key(ord("x")):
+        key(IBus.KEY_Escape)
+        break
+    assert time.time() < deadline, "the Ekushe engine did not start (see ibus-daemon output above)"
+preedits.clear()
+commits.clear()
+print("engine started")
 for ch in "amar":
     assert key(ord(ch)), f"key {ch!r} was not handled"
 assert preedits and preedits[-1] == "আমার", f"pre-edit: {preedits[-3:]}"
