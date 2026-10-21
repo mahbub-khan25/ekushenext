@@ -85,6 +85,26 @@ jobs:
             target/release/ekushe_tsf.dll
             target/release/ekushe-cli.exe
 
+  macos:
+    name: macOS input method
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin, x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+      - name: Engine and Studio tests
+        run: cargo test -p ekushe-core -p ekushe-ffi --features "ekushe-ffi/studio ekushe-ffi/embedded-dict"
+      - name: Build Ekushe.app, .pkg and .zip
+        run: platform/macos/build.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ekushe-macos
+          path: |
+            build/macos/Ekushe-macOS.pkg
+            build/macos/Ekushe-macOS.zip
+
   dict-builder:
     name: Dictionary builder
     runs-on: ubuntu-latest

@@ -156,6 +156,8 @@ name = "ekushe-ffi"
 version = "0.1.0"
 dependencies = [
  "ekushe-core",
+ "once_cell",
+ "parking_lot",
  "serde_json",
 ]
 

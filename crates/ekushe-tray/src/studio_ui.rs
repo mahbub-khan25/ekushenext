@@ -6,7 +6,7 @@
 //! Siliguri; the user's chosen font (Kalpurush by default) is used for the writing itself.
 //!
 //! Tabs: writing pad, word X-ray and conjunct builder, conjunct and word guide, spell checker,
-//! Bijoy ⇄ Unicode converter, settings. `crates/ekushe-core/examples/studio_preview.rs` serves this
+//! Bijoy ⇄ Unicode converter, settings. `crates/ekushe-ffi/examples/studio_preview.rs` serves this
 //! page on any OS for design work.
 
 pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>

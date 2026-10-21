@@ -1,0 +1,12 @@
+#!/bin/bash
+# Runs after the installer copies Ekushe.app to /Library/Input Methods.
+APP="/Library/Input Methods/Ekushe.app"
+# Restart a running older copy so the new one loads
+/usr/bin/pkill -x Ekushe 2>/dev/null || true
+# Add Ekushe to the signed-in user's input sources (they still pick it from the menu bar)
+USER_NAME=$(/usr/bin/stat -f%Su /dev/console)
+if [ -n "$USER_NAME" ] && [ "$USER_NAME" != "root" ]; then
+  USER_ID=$(/usr/bin/id -u "$USER_NAME")
+  /bin/launchctl asuser "$USER_ID" /usr/bin/sudo -u "$USER_NAME" "$APP/Contents/MacOS/Ekushe" --register || true
+fi
+exit 0
