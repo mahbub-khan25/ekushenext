@@ -1,0 +1,46 @@
+name: Release
+
+# Push a tag like v0.1.0-beta.1 to publish a release. Tags with a dash (beta, rc) are marked
+# as pre-releases.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    name: Build and publish (Windows x64)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Tests
+        run: cargo test --workspace
+      - name: Release build
+        run: cargo build --release --workspace
+      - name: Install check
+        shell: pwsh
+        timeout-minutes: 5
+        run: |
+          Copy-Item target\release\ekushe.exe "$env:RUNNER_TEMP\Ekushe-Setup.exe"
+          $p = Start-Process -FilePath "$env:RUNNER_TEMP\Ekushe-Setup.exe" -ArgumentList '--auto-install','--no-launch' -PassThru -NoNewWindow -Wait
+          if ($p.ExitCode -ne 0) { exit $p.ExitCode }
+          if (-not (Test-Path "$env:LOCALAPPDATA\Programs\Ekushe\ekushe.exe")) { Write-Error "install failed"; exit 1 }
+      - name: Package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory dist | Out-Null
+          # One program, two names: "setup" in the name opens the installer
+          Copy-Item target\release\ekushe.exe dist\Ekushe-Setup.exe
+          Copy-Item target\release\ekushe.exe dist\Ekushe-Portable.exe
+          Compress-Archive -Path target\release\ekushe_tsf.dll, target\release\ekushe-cli.exe -DestinationPath dist\Ekushe-Extras-x64.zip
+          Get-FileHash dist\* -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $(Split-Path $_.Path -Leaf)" } | Set-Content dist\SHA256SUMS.txt
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: Ekushe Next ${{ github.ref_name }}
+          body_path: .github/release/notes.md
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          files: dist/*
