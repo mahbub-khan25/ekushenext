@@ -1,7 +1,7 @@
 **Beta.** Ekushe Next is a Bangla phonetic keyboard for Windows 10 and 11 (64-bit). It comes with its own dictionary, which puts the Bangla Academy standard spelling first.
 
 ### Download
-- **Ekushe-Setup.exe** installs it for your user account, with no admin rights needed. It starts with Windows, adds a Start Menu shortcut, and can be removed from Settings → Apps.
+- **Ekushe-Setup.exe** (or **Ekushe-Setup.zip**, if your browser blocks the .exe) installs it for your user account, with no admin rights needed. It starts with Windows, adds a Start Menu shortcut, and can be removed from Settings → Apps.
 - **Ekushe-Portable.exe** is the same program, run without installing. It doesn't start with Windows on its own.
 - **Ekushe-Extras-x64.zip** is for testers only. It contains the experimental Windows input method (`ekushe_tsf.dll`) and the command-line tool.
 

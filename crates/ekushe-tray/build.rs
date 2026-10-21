@@ -4,6 +4,7 @@ use std::process::Command;
 
 fn main() {
     println!("cargo:rerun-if-changed=ekushe.rc");
+    println!("cargo:rerun-if-changed=ekushe.manifest");
     println!("cargo:rerun-if-changed=../../assets/icons/ekushe.ico");
 
     if env::var("CARGO_CFG_TARGET_OS").unwrap_or_default() != "windows" {
