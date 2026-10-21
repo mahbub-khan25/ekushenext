@@ -30,10 +30,10 @@ use windows_sys::Win32::System::Registry::{
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, DrawIconEx, GetClientRect,
     GetCursorPos, GetMessageW, GetSystemMetrics, LoadCursorW, LoadIconW, LoadImageW, MessageBoxW,
-    PostQuitMessage, RegisterClassW, SendMessageTimeoutW, SetCursor, SetLayeredWindowAttributes,
+    PostMessageW, PostQuitMessage, RegisterClassW, SetCursor, SetLayeredWindowAttributes,
     SetProcessDPIAware, ShowWindow, TranslateMessage, DI_NORMAL, HICON, HWND_BROADCAST, IDC_ARROW,
-    IDC_HAND, IMAGE_ICON, LR_LOADFROMFILE, LWA_ALPHA, MB_OK, MSG, SMTO_ABORTIFHUNG, SM_CXSCREEN,
-    SM_CYSCREEN, SW_SHOW, WM_DESTROY, WM_FONTCHANGE, WM_LBUTTONDOWN, WM_MOUSEMOVE, WM_PAINT,
+    IDC_HAND, IMAGE_ICON, LR_LOADFROMFILE, LWA_ALPHA, MB_OK, MSG, SM_CXSCREEN, SM_CYSCREEN,
+    SW_SHOW, WM_CLOSE, WM_DESTROY, WM_FONTCHANGE, WM_LBUTTONDOWN, WM_MOUSEMOVE, WM_PAINT,
     WM_SETCURSOR, WNDCLASSW, WS_CAPTION, WS_EX_LAYERED, WS_OVERLAPPED, WS_SYSMENU, WS_VISIBLE,
 };
 
@@ -52,6 +52,12 @@ static mut IS_DARK_THEME: bool = false; // Default: Light Mode!
 static mut WIZARD_STEP: i32 = 0; // 0 = Setup Screen, 1 = Installation Success Screen, 2 = Uninstalled Screen
 static mut HOVER_ZONE: i32 = 0; // 0=none, 1=chk1, 2=chk2, 3=install/open_studio, 4=uninstall, 5=close/done, 6=theme
 static mut APP_ICON_HANDLE: HICON = ptr::null_mut();
+/// True while the install runs on its worker thread (the window stays responsive meanwhile)
+static mut INSTALLING: bool = false;
+/// Error text from the worker thread, shown when it reports back
+static INSTALL_ERROR: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
+/// Posted by the install thread when it is done (wparam 1 = success)
+const WM_INSTALL_DONE: u32 = 0x8000 + 40; // WM_APP + 40
 
 // Hit-test rectangles in client coordinates (840 x 536 client area)
 const RECT_BTN_THEME: RECT = RECT {
@@ -234,16 +240,8 @@ pub fn perform_full_install(
 
     // Broadcast WM_FONTCHANGE so all open Windows applications immediately see Kalpurush & SolaimanLipi
     unsafe {
-        let mut result: usize = 0;
-        let _ = SendMessageTimeoutW(
-            HWND_BROADCAST,
-            WM_FONTCHANGE,
-            0,
-            0,
-            SMTO_ABORTIFHUNG,
-            200,
-            &mut result,
-        );
+        // Posted, not sent: a slow or hung application must never hold up the installer
+        let _ = PostMessageW(HWND_BROADCAST, WM_FONTCHANGE, 0, 0);
     }
 
     let ico_path = icons_dir.join("ekushe.ico");
@@ -577,31 +575,34 @@ unsafe extern "system" fn installer_wnd_proc(
                         OPT_AUTO_STARTUP = !OPT_AUTO_STARTUP;
                         InvalidateRect(hwnd, ptr::null(), 0);
                     }
-                    3 => {
-                        match perform_full_install(OPT_CREATE_SHORTCUTS, OPT_AUTO_STARTUP, false) {
-                            Ok(target_exe) => {
-                                // Start Ekushe immediately in the System Tray so the 'বাং' icon is live!
-                                let root = install_root_dir();
-                                let _ = Command::new(&target_exe)
-                                    .arg("--minimized")
-                                    .current_dir(&root)
-                                    .spawn();
-                                WIZARD_STEP = 1;
-                                HOVER_ZONE = 0;
-                                InvalidateRect(hwnd, ptr::null(), 0);
-                            }
-                            Err(e) => {
-                                let msg = format!("ইনস্টলেশনে সমস্যা হয়েছে: {e}");
-                                MessageBoxW(
-                                    hwnd,
-                                    wide_null(&msg).as_ptr(),
-                                    wide_null("Ekushe Next Installer").as_ptr(),
-                                    MB_OK,
-                                );
-                            }
-                        }
+                    3 if !INSTALLING => {
+                        // Copying files, fonts and shortcuts takes a few seconds (antivirus scans the
+                        // new files): do it on a worker thread so this window keeps responding
+                        INSTALLING = true;
+                        InvalidateRect(hwnd, ptr::null(), 0);
+                        let (shortcuts, startup) = (OPT_CREATE_SHORTCUTS, OPT_AUTO_STARTUP);
+                        let target = hwnd as isize;
+                        std::thread::spawn(move || {
+                            let result = perform_full_install(shortcuts, startup, false);
+                            let ok = match result {
+                                Ok(target_exe) => {
+                                    // Start Ekushe in the tray right away
+                                    let _ = Command::new(&target_exe)
+                                        .arg("--minimized")
+                                        .current_dir(install_root_dir())
+                                        .spawn();
+                                    1
+                                }
+                                Err(e) => {
+                                    *INSTALL_ERROR.lock().unwrap_or_else(|p| p.into_inner()) =
+                                        Some(e);
+                                    0
+                                }
+                            };
+                            PostMessageW(target as HWND, WM_INSTALL_DONE, ok, 0);
+                        });
                     }
-                    4 => {
+                    4 if !INSTALLING => {
                         if let Err(e) = perform_uninstall() {
                             let msg = format!("আনইনস্টলে সমস্যা হয়েছে: {e}");
                             MessageBoxW(
@@ -615,7 +616,7 @@ unsafe extern "system" fn installer_wnd_proc(
                         HOVER_ZONE = 0;
                         InvalidateRect(hwnd, ptr::null(), 0);
                     }
-                    5 => {
+                    5 if !INSTALLING => {
                         DestroyWindow(hwnd);
                     }
                     _ => {}
@@ -647,6 +648,30 @@ unsafe extern "system" fn installer_wnd_proc(
                     DestroyWindow(hwnd);
                 }
             }
+            0
+        }
+        // Closing mid-install would leave a half-copied app behind
+        WM_CLOSE if INSTALLING => 0,
+        WM_INSTALL_DONE => {
+            INSTALLING = false;
+            if wparam == 1 {
+                WIZARD_STEP = 1;
+                HOVER_ZONE = 0;
+            } else {
+                let e = INSTALL_ERROR
+                    .lock()
+                    .unwrap_or_else(|p| p.into_inner())
+                    .take()
+                    .unwrap_or_default();
+                let msg = format!("ইনস্টল করা যায়নি: {e}");
+                MessageBoxW(
+                    hwnd,
+                    wide_null(&msg).as_ptr(),
+                    wide_null("Ekushe Next Installer").as_ptr(),
+                    MB_OK,
+                );
+            }
+            InvalidateRect(hwnd, ptr::null(), 0);
             0
         }
         WM_PAINT => {
@@ -1072,7 +1097,11 @@ unsafe fn paint_installer_canvas(hdc: HDC, rc_client: &RECT) {
         draw_text_centered(
             hdc,
             &RECT_BTN_INSTALL,
-            "✔ এক ক্লিকে ইনস্টল ও চালু করুন (Install & Launch)",
+            if INSTALLING {
+                "ইনস্টল হচ্ছে… (Installing…)"
+            } else {
+                "✔ এক ক্লিকে ইনস্টল ও চালু করুন (Install & Launch)"
+            },
         );
 
         let uninst_bg = if HOVER_ZONE == 4 {
