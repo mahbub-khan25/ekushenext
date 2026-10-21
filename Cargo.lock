@@ -165,6 +165,7 @@ version = "0.1.0"
 dependencies = [
  "dirs",
  "ekushe-core",
+ "miniz_oxide",
  "once_cell",
  "parking_lot",
  "serde",

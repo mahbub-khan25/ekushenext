@@ -26,6 +26,18 @@ jobs:
         run: |
           $p = Start-Process -FilePath target\release\ekushe.exe -ArgumentList '--self-test' -PassThru -NoNewWindow -Wait
           if ($p.ExitCode -ne 0) { exit $p.ExitCode }
+      - name: Candidate popup previews (PNG)
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath target\release\ekushe.exe -ArgumentList '--render-popup','popup-previews' -PassThru -NoNewWindow -Wait
+          if ($p.ExitCode -ne 0) { exit $p.ExitCode }
+          $n = (Get-ChildItem popup-previews -Filter *.png).Count
+          if ($n -lt 8) { Write-Error "expected popup previews, got $n"; exit 1 }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: popup-previews
+          path: popup-previews/*.png
       - name: Format
         run: cargo fmt --all -- --check
       - name: Clippy

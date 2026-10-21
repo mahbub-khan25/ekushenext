@@ -1,936 +1,634 @@
-//! Studio WebUI HTML/CSS/JS served by the running `ekushe.exe` tray daemon.
+//! Studio web UI (HTML/CSS/JS) served by the running `ekushe.exe` tray app on 127.0.0.1.
 //!
-//! Defaults to a modern Frosted Glass Light Mode (`:root`) with an instant one-click
-//! Light / Dark mode switcher (`[data-theme="dark"]`) and a live Popup & Glass Opacity
-//! slider (`70%–100%`) in the header bar.
+//! Frosted-glass design: translucent panels over a slowly drifting backdrop taken from the
+//! Bangladesh flag (green field, red sun) and krishnachura. Light, dark or follow-the-system theme;
+//! the glass strength follows the "popup transparency" setting. Bangla interface text uses Hind
+//! Siliguri; the user's chosen font (Kalpurush by default) is used for the writing itself.
 //!
-//! Includes unique daily-driver Bengali writing features beyond Avro / Lekho / OpenBangla:
-//! 1. Zero-Case-Memorization Live Phonetic Pad + Clickable Candidate & Conjunct Pills
-//! 2. Interactive "Word X-Ray & 2-Click Visual Conjunct Builder" (`🔬 শব্দ এক্স-রে ও ২-ক্লিক যুক্তবর্ণ নির্মাতা`)
-//! 3. One-Click Daily Bangla Writing Power-Toolbar (`🔢 123 ➔ ১২৩`, `৳ টাকা`, `📅 তারিখ`, `✨ স্মার্ট পলিশ`)
-//! 4. Series-Organized Connected Letters & Real-World Word Helper (`K/Ch/T/N/P/Sh/D/L-Series`)
+//! Tabs: writing pad, word X-ray and conjunct builder, conjunct and word guide, spell checker,
+//! Bijoy ⇄ Unicode converter, settings. `crates/ekushe-core/examples/studio_preview.rs` serves this
+//! page on any OS for design work.
 
 pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
-<html lang="bn" data-theme="light">
+<html lang="bn">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>একুশে নেক্সট স্টুডিও — Ekushe Next Modern Bangla Writing Suite</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>একুশে স্টুডিও</title>
 <link rel="icon" type="image/png" href="/logo.png">
 <style>
-  /* Bundled Bangladeshi & Bengali OpenType Fonts (100% Offline, Embedded in App) */
-  @font-face {
-    font-family: 'Kalpurush';
-    src: url('/fonts/Kalpurush.ttf') format('truetype');
-    font-weight: 400 700;
-    font-style: normal;
-    font-display: block;
+  @font-face { font-family: 'Kalpurush'; src: url('/fonts/Kalpurush.ttf') format('truetype'); font-display: swap; }
+  @font-face { font-family: 'SolaimanLipi'; src: url('/fonts/SolaimanLipi.ttf') format('truetype'); font-display: swap; }
+  @font-face { font-family: 'Siyam Rupali'; src: url('/fonts/SiyamRupali.ttf') format('truetype'); font-display: swap; }
+  @font-face { font-family: 'Hind Siliguri'; src: url('/fonts/HindSiliguri-Regular.ttf') format('truetype'); font-weight: 400; font-display: swap; }
+  @font-face { font-family: 'Hind Siliguri'; src: url('/fonts/HindSiliguri-Bold.ttf') format('truetype'); font-weight: 600 700; font-display: swap; }
+
+  :root {
+    --font-ui: 'Segoe UI Variable Text', 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Hind Siliguri', 'Noto Sans Bengali', sans-serif;
+    --font-bn: 'Kalpurush', 'SolaimanLipi', 'Hind Siliguri', sans-serif;
+    --glass-alpha: 0.5;
+
+    --green: #0B6B4A;
+    --forest: #06281D;
+    --red: #E0303F;
+    --coral: #F26B4F;
+    --mustard: #E9B949;
+    --mist: #EEF4F1;
+
+    --page: #E6EFEA;
+    --ink: #0E241B;
+    --ink-soft: #4C6359;
+    --ink-faint: #7C9089;
+    --accent: var(--green);
+    --accent-ink: #FFFFFF;
+    --accent-soft: rgba(11, 107, 74, 0.12);
+    --danger: #C4202E;
+    --glass-rgb: 255, 255, 255;
+    --etch: rgba(255, 255, 255, 0.30);
+    --etch-strong: rgba(255, 255, 255, 0.58);
+    --line: rgba(14, 36, 27, 0.10);
+    --line-bright: rgba(255, 255, 255, 0.75);
+    --shadow: 0 24px 60px -28px rgba(6, 40, 29, 0.45);
+    --sun: 0.85;
   }
-  @font-face {
-    font-family: 'SolaimanLipi';
-    src: url('/fonts/SolaimanLipi.ttf') format('truetype');
-    font-weight: 400 700;
-    font-style: normal;
-    font-display: block;
+  :root[data-theme="dark"] {
+    --page: #04140E;
+    --ink: #EAF3EE;
+    --ink-soft: #A7BDB3;
+    --ink-faint: #71877D;
+    --accent: #43C796;
+    --accent-ink: #03170F;
+    --accent-soft: rgba(67, 199, 150, 0.16);
+    --danger: #FF6B75;
+    --glass-rgb: 14, 30, 24;
+    --etch: rgba(255, 255, 255, 0.05);
+    --etch-strong: rgba(255, 255, 255, 0.10);
+    --line: rgba(255, 255, 255, 0.08);
+    --line-bright: rgba(255, 255, 255, 0.12);
+    --shadow: 0 24px 60px -24px rgba(0, 0, 0, 0.7);
+    --sun: 0.55;
   }
-  @font-face {
-    font-family: 'Siyam Rupali';
-    src: url('/fonts/SiyamRupali.ttf') format('truetype');
-    font-weight: 400 700;
-    font-style: normal;
-    font-display: block;
-  }
-  @font-face {
-    font-family: 'Hind Siliguri';
-    src: url('/fonts/HindSiliguri-Regular.ttf') format('truetype');
-    font-weight: 400;
-    font-style: normal;
-    font-display: block;
-  }
-  @font-face {
-    font-family: 'Hind Siliguri';
-    src: url('/fonts/HindSiliguri-Bold.ttf') format('truetype');
-    font-weight: 600 700;
-    font-style: normal;
-    font-display: block;
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --page: #04140E;
+      --ink: #EAF3EE;
+      --ink-soft: #A7BDB3;
+      --ink-faint: #71877D;
+      --accent: #43C796;
+      --accent-ink: #03170F;
+      --accent-soft: rgba(67, 199, 150, 0.16);
+      --danger: #FF6B75;
+      --glass-rgb: 14, 30, 24;
+      --etch: rgba(255, 255, 255, 0.05);
+      --etch-strong: rgba(255, 255, 255, 0.10);
+      --line: rgba(255, 255, 255, 0.08);
+      --line-bright: rgba(255, 255, 255, 0.12);
+      --shadow: 0 24px 60px -24px rgba(0, 0, 0, 0.7);
+      --sun: 0.55;
+    }
   }
 
-  /* DEFAULT: Modern Translucent Frosted-Glass Light Mode */
-  :root, [data-theme="light"] {
-    --font-bn: 'Kalpurush', 'SolaimanLipi', 'Siyam Rupali', 'Hind Siliguri', sans-serif;
-    --glass-alpha: 0.78;
-    --bg-page:
-      radial-gradient(circle at 12% 16%, rgba(16, 185, 129, 0.16) 0%, transparent 42%),
-      radial-gradient(circle at 88% 12%, rgba(217, 30, 46, 0.10) 0%, transparent 36%),
-      radial-gradient(circle at 50% 88%, rgba(13, 110, 78, 0.13) 0%, transparent 48%),
-      linear-gradient(145deg, #eef6f2 0%, #e3efe9 100%);
-    --bg-header: rgba(255, 255, 255, 0.76);
-    --bg-card: rgba(255, 255, 255, var(--glass-alpha));
-    --bg-card-sub: rgba(245, 251, 248, 0.74);
-    --bg-card-hover: rgba(232, 246, 239, 0.88);
-    --bg-input: rgba(255, 255, 255, 0.84);
-    --border-subtle: rgba(13, 110, 78, 0.18);
-    --border-specular: rgba(255, 255, 255, 0.85);
-    --border-active: #0d6e4e;
-    --brand-primary: #095239;
-    --brand-accent: #0d6e4e;
-    --crimson: #d91e2e;
-    --text-main: #0c2219;
-    --text-muted: #466357;
-    --chip-bg: rgba(229, 244, 236, 0.82);
-    --chip-text: #095239;
-    --shadow-card: 0 12px 32px rgba(9, 54, 38, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.85);
-  }
-
-  /* Optional Frosted-Glass Dark Mode */
-  [data-theme="dark"] {
-    --glass-alpha: 0.74;
-    --bg-page:
-      radial-gradient(circle at 16% 18%, rgba(16, 185, 129, 0.22) 0%, transparent 45%),
-      radial-gradient(circle at 85% 15%, rgba(225, 37, 53, 0.15) 0%, transparent 38%),
-      radial-gradient(circle at 18% 12%, #0c3b2c 0%, #051711 62%, #030e0a 100%);
-    --bg-header: rgba(6, 26, 19, 0.75);
-    --bg-card: rgba(11, 45, 34, var(--glass-alpha));
-    --bg-card-sub: rgba(7, 31, 23, 0.74);
-    --bg-card-hover: rgba(19, 72, 54, 0.86);
-    --bg-input: rgba(5, 22, 16, 0.82);
-    --border-subtle: rgba(229, 193, 104, 0.26);
-    --border-specular: rgba(255, 255, 255, 0.10);
-    --border-active: #e5c168;
-    --brand-primary: #f7df96;
-    --brand-accent: #e5c168;
-    --crimson: #ff4757;
-    --text-main: #f3f8f5;
-    --text-muted: #a6c7b9;
-    --chip-bg: rgba(229, 193, 104, 0.15);
-    --chip-text: #f7df96;
-    --shadow-card: 0 16px 38px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.10);
-  }
-
-  * {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    font-family: var(--font-bn);
-    font-feature-settings: "kern" 1, "liga" 1, "clig" 1, "calt" 1;
-    text-rendering: optimizeLegibility;
-    -webkit-font-smoothing: antialiased;
-  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
   body {
-    background: var(--bg-page);
-    background-attachment: fixed;
-    color: var(--text-main);
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    line-height: 1.52;
+    font-family: var(--font-ui);
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--ink);
+    background: var(--page);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
   }
-  header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 11px 24px;
-    background: var(--bg-header);
-    backdrop-filter: blur(22px) saturate(185%);
-    -webkit-backdrop-filter: blur(22px) saturate(185%);
-    border-bottom: 1px solid var(--border-subtle);
-    box-shadow: 0 4px 20px rgba(9, 54, 38, 0.05);
-    position: sticky;
-    top: 0;
-    z-index: 30;
-    gap: 12px;
-    flex-wrap: wrap;
+  button, input, select, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; background: none; border: 0; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ── Backdrop: the flag's red sun and green field, plus krishnachura, drifting behind the glass ── */
+  .backdrop { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+  .blob { position: absolute; border-radius: 50%; filter: blur(70px); will-change: transform; }
+  .blob.sun { width: 46vmax; height: 46vmax; left: 52%; top: -8%; background: radial-gradient(circle, var(--red) 0%, rgba(224,48,63,0.6) 45%, transparent 70%); opacity: var(--sun); mix-blend-mode: normal; animation: drift-a 38s ease-in-out infinite alternate; }
+  .blob.field { width: 70vmax; height: 50vmax; left: -18%; bottom: -22%; background: radial-gradient(ellipse, #0F8A5F 0%, rgba(11,107,74,0.55) 50%, transparent 72%); animation: drift-b 46s ease-in-out infinite alternate; }
+  .blob.flower { width: 30vmax; height: 30vmax; left: 8%; top: 4%; background: radial-gradient(circle, var(--coral) 0%, transparent 68%); opacity: 0.55; animation: drift-c 52s ease-in-out infinite alternate; }
+  .blob.light { width: 34vmax; height: 34vmax; right: -10%; bottom: 2%; background: radial-gradient(circle, var(--mustard) 0%, transparent 66%); opacity: 0.45; animation: drift-a 60s ease-in-out infinite alternate-reverse; }
+  :root[data-theme="dark"] .blob.field { background: radial-gradient(ellipse, #0B6B4A 0%, rgba(6,40,29,0.7) 55%, transparent 75%); }
+  :root[data-theme="dark"] .blob.light { opacity: 0.18; }
+  :root[data-theme="dark"] .blob.flower { opacity: 0.3; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .blob.field { background: radial-gradient(ellipse, #0B6B4A 0%, rgba(6,40,29,0.7) 55%, transparent 75%); }
+    :root:not([data-theme="light"]) .blob.light { opacity: 0.18; }
+    :root:not([data-theme="light"]) .blob.flower { opacity: 0.3; }
   }
-  .brand {
-    display: flex;
-    align-items: center;
-    gap: 12px;
+  @keyframes drift-a { to { transform: translate(-9vmax, 7vmax) scale(1.08); } }
+  @keyframes drift-b { to { transform: translate(8vmax, -6vmax) scale(1.05); } }
+  @keyframes drift-c { to { transform: translate(6vmax, 9vmax) scale(0.92); } }
+  @media (prefers-reduced-motion: reduce) { .blob { animation: none; } }
+
+  /* ── Glass ── */
+  .glass {
+    background: rgba(var(--glass-rgb), var(--glass-alpha));
+    -webkit-backdrop-filter: blur(30px) saturate(170%);
+    backdrop-filter: blur(30px) saturate(170%);
+    border: 1px solid var(--line-bright);
+    box-shadow: inset 0 1px 0 var(--line-bright), var(--shadow);
   }
-  .brand img {
-    width: 42px;
-    height: 42px;
-    border-radius: 11px;
-    box-shadow: 0 3px 10px rgba(0,0,0,0.14);
-  }
-  .brand-title h1 {
-    font-size: 1.22rem;
-    font-weight: 700;
-    color: var(--brand-primary);
-  }
-  .brand-title p {
-    font-size: 0.80rem;
-    color: var(--text-muted);
-  }
-  .status-bar {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-  .opacity-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: var(--bg-card-sub);
-    border: 1px solid var(--border-subtle);
-    padding: 5px 11px;
-    border-radius: 999px;
-    font-size: 0.82rem;
-    font-weight: 600;
-    color: var(--text-main);
-  }
-  .opacity-pill input[type="range"] {
-    width: 68px;
-    accent-color: var(--brand-accent);
-    cursor: pointer;
-  }
-  .font-QuickSelect, .theme-btn {
-    background: var(--bg-card-sub);
-    border: 1px solid var(--border-subtle);
-    color: var(--text-main);
-    padding: 6px 12px;
-    border-radius: 999px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    cursor: pointer;
-    width: auto;
-    backdrop-filter: blur(12px);
-  }
-  .theme-btn:hover, .font-QuickSelect:hover {
-    border-color: var(--border-active);
-    background: var(--bg-card-hover);
-  }
-  .mode-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    padding: 6px 14px;
-    border-radius: 999px;
-    font-weight: 700;
-    font-size: 0.86rem;
-    cursor: pointer;
-    border: 1px solid transparent;
-    transition: all 0.18s ease;
-    user-select: none;
-  }
-  .mode-pill.bangla {
-    background: linear-gradient(135deg, #0d6e4e 0%, #095239 100%);
-    color: #fff;
-    box-shadow: 0 3px 12px rgba(13, 110, 78, 0.28);
-  }
-  .mode-pill.english {
-    background: var(--bg-card-sub);
-    border-color: var(--border-subtle);
-    color: var(--text-main);
-  }
-  .hotkey-badge {
-    padding: 5px 11px;
-    border-radius: 999px;
-    background: var(--chip-bg);
-    border: 1px solid var(--border-subtle);
-    color: var(--chip-text);
-    font-size: 0.80rem;
-    font-weight: 600;
-  }
-  .layout {
+
+  .app {
+    position: relative; z-index: 1;
     display: grid;
-    grid-template-columns: 244px 1fr;
-    flex: 1;
-    max-width: 1400px;
-    width: 100%;
-    margin: 0 auto;
-    padding: 18px 22px;
+    grid-template-columns: 232px minmax(0, 1fr);
     gap: 18px;
+    max-width: 1380px;
+    min-height: 100vh;
+    margin: 0 auto;
+    padding: 18px;
   }
-  nav {
-    display: flex;
-    flex-direction: column;
-    gap: 7px;
+
+  /* ── Side rail ── */
+  .rail {
+    position: sticky; top: 18px;
+    height: calc(100vh - 36px);
+    border-radius: 26px;
+    padding: 18px 12px 14px;
+    display: flex; flex-direction: column; gap: 4px;
   }
+  .brand { display: flex; align-items: center; gap: 11px; padding: 2px 8px 18px; }
+  .brand img { width: 38px; height: 38px; border-radius: 11px; }
+  .brand-name { font-family: 'Hind Siliguri', var(--font-ui); font-weight: 700; font-size: 1.12rem; line-height: 1.1; }
+  .brand-sub { font-size: 0.78rem; color: var(--ink-faint); }
   .nav-btn {
-    display: flex;
-    align-items: center;
-    gap: 9px;
-    padding: 10px 14px;
-    border-radius: 12px;
-    background: var(--bg-card);
-    backdrop-filter: blur(18px) saturate(170%);
-    border: 1px solid var(--border-subtle);
-    color: var(--text-main);
-    font-size: 0.92rem;
-    font-weight: 600;
-    cursor: pointer;
+    display: flex; align-items: center; gap: 12px;
+    width: 100%; padding: 9px 12px;
+    border-radius: 14px;
     text-align: left;
-    transition: all 0.15s ease;
-    box-shadow: var(--shadow-card);
+    color: var(--ink-soft);
+    transition: background-color .15s ease, color .15s ease;
   }
-  .nav-btn:hover {
-    background: var(--bg-card-hover);
-    border-color: var(--border-active);
-    transform: translateX(2px);
-  }
-  .nav-btn.active {
-    background: linear-gradient(135deg, #0d6e4e 0%, #095239 100%);
-    border-color: var(--brand-accent);
-    color: #ffffff;
-    box-shadow: 0 6px 16px rgba(13, 110, 78, 0.26);
-  }
-  [data-theme="dark"] .nav-btn.active {
-    background: linear-gradient(135deg, #e5c168 0%, #cfa746 100%);
-    color: #061c15;
-  }
-  .why-ekushe-card {
-    margin-top: 10px;
-    padding: 12px 13px;
-    border-radius: 13px;
-    background: var(--bg-card-sub);
-    backdrop-filter: blur(16px);
-    border: 1px solid var(--border-subtle);
-    font-size: 0.80rem;
-    color: var(--text-muted);
-    line-height: 1.48;
-  }
-  .why-ekushe-card b {
-    color: var(--brand-primary);
-    display: block;
-    margin-bottom: 4px;
-    font-size: 0.84rem;
-  }
-  .panel {
-    display: none;
-    background: var(--bg-card);
-    backdrop-filter: blur(24px) saturate(185%);
-    -webkit-backdrop-filter: blur(24px) saturate(185%);
-    border: 1px solid var(--border-subtle);
-    border-radius: 18px;
-    padding: 20px 22px;
-    box-shadow: var(--shadow-card);
-  }
-  .panel.active { display: block; }
-  h2 {
-    font-size: 1.20rem;
-    color: var(--brand-primary);
-    margin-bottom: 4px;
-  }
-  .subtitle {
-    color: var(--text-muted);
-    font-size: 0.88rem;
-    margin-bottom: 12px;
-  }
-  code {
-    background: var(--chip-bg);
-    color: var(--chip-text);
-    padding: 2px 6px;
-    border-radius: 6px;
-    font-size: 0.88em;
-    font-weight: 700;
-  }
-  textarea, input[type="text"], select {
+  .nav-btn svg { width: 20px; height: 20px; flex: none; }
+  .nav-btn .lbl { display: flex; flex-direction: column; line-height: 1.2; }
+  .nav-btn .bn { font-family: 'Hind Siliguri', var(--font-ui); font-weight: 600; font-size: 0.97rem; }
+  .nav-btn .en { font-size: 0.74rem; color: var(--ink-faint); }
+  .nav-btn:hover { background: var(--etch); color: var(--ink); }
+  .nav-btn.active { background: var(--etch-strong); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+  .nav-btn.active svg { color: var(--accent); }
+  .rail-foot { margin-top: auto; padding: 12px 8px 2px; border-top: 1px solid var(--line); font-size: 0.8rem; color: var(--ink-faint); }
+  .rail-foot b { color: var(--ink-soft); font-weight: 600; }
+
+  /* ── Main sheet ── */
+  .sheet { border-radius: 30px; padding: 22px 28px 30px; min-width: 0; }
+  .topbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+  .page-title h1 { font-family: 'Hind Siliguri', var(--font-ui); font-size: 1.7rem; font-weight: 700; line-height: 1.2; letter-spacing: -0.01em; }
+  .page-title p { color: var(--ink-soft); font-size: 0.92rem; margin-top: 2px; max-width: 62ch; }
+  .top-actions { display: flex; align-items: center; gap: 8px; flex: none; }
+
+  .lang-switch { display: inline-flex; padding: 3px; border-radius: 999px; background: var(--etch); box-shadow: inset 0 0 0 1px var(--line); }
+  .lang-switch span { padding: 5px 14px; border-radius: 999px; font-weight: 600; font-size: 0.88rem; color: var(--ink-soft); transition: all .18s ease; }
+  .lang-switch.bangla .opt-bn, .lang-switch.english .opt-en { background: var(--accent); color: var(--accent-ink); box-shadow: 0 4px 14px -6px var(--accent); }
+  .icon-btn { width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center; color: var(--ink-soft); background: var(--etch); box-shadow: inset 0 0 0 1px var(--line); }
+  .icon-btn:hover { color: var(--ink); background: var(--etch-strong); }
+  .icon-btn svg { width: 18px; height: 18px; }
+
+  .panel { display: none; }
+  .panel.active { display: block; animation: rise .22s ease; }
+  @keyframes rise { from { opacity: 0; transform: translateY(4px); } }
+  @media (prefers-reduced-motion: reduce) { .panel.active { animation: none; } }
+
+  /* ── Building blocks ── */
+  .etched { background: var(--etch); border-radius: 20px; box-shadow: inset 0 0 0 1px var(--line); padding: 16px 18px; }
+  .section-title { font-family: 'Hind Siliguri', var(--font-ui); font-weight: 600; font-size: 1.05rem; margin-bottom: 2px; }
+  .hint { color: var(--ink-soft); font-size: 0.86rem; }
+  .stack { display: grid; gap: 14px; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .grow { flex: 1; min-width: 0; }
+
+  .field, textarea, select, input[type="text"] {
     width: 100%;
-    background: var(--bg-input);
-    backdrop-filter: blur(10px);
-    border: 1px solid var(--border-subtle);
-    border-radius: 12px;
-    color: var(--text-main);
-    padding: 10px 13px;
-    font-size: 1.05rem;
-    font-family: var(--font-bn);
-    line-height: 1.5;
-    outline: none;
-  }
-  textarea:focus, input[type="text"]:focus, select:focus {
-    border-color: var(--border-active);
-    box-shadow: 0 0 0 3px rgba(13, 110, 78, 0.14);
-  }
-  .chip-bar {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin: 8px 0;
-  }
-  .chip {
-    padding: 5px 12px;
-    border-radius: 999px;
-    background: var(--chip-bg);
-    border: 1px solid var(--border-subtle);
-    color: var(--chip-text);
-    cursor: pointer;
-    font-size: 0.88rem;
-    font-weight: 600;
-    transition: all 0.14s ease;
-  }
-  .chip:hover, .chip.primary {
-    background: var(--brand-accent);
-    border-color: var(--brand-accent);
-    color: #fff;
-  }
-  [data-theme="dark"] .chip:hover, [data-theme="dark"] .chip.primary {
-    color: #061c15;
-  }
-  .power-toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 7px;
-    margin: 10px 0 8px 0;
-    padding: 8px 11px;
-    border-radius: 12px;
-    background: var(--bg-card-sub);
-    border: 1px solid var(--border-subtle);
-  }
-  .power-toolbar .pt-label {
-    font-size: 0.80rem;
-    font-weight: 700;
-    color: var(--brand-primary);
-    margin-right: 4px;
-  }
-  .pt-btn {
-    padding: 4px 10px;
-    border-radius: 8px;
-    background: var(--bg-input);
-    border: 1px solid var(--border-subtle);
-    color: var(--text-main);
-    font-size: 0.81rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.12s ease;
-  }
-  .pt-btn:hover {
-    border-color: var(--border-active);
-    background: var(--bg-card-hover);
-    color: var(--brand-primary);
-    transform: translateY(-1px);
-  }
-  .quick-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
-    gap: 7px;
-    margin-top: 10px;
-  }
-  .sign-btn {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 8px 6px;
-    border-radius: 11px;
-    background: var(--bg-card-sub);
-    border: 1px solid var(--border-subtle);
-    color: var(--text-main);
-    cursor: pointer;
-    transition: transform 0.12s ease, border-color 0.12s ease, background 0.12s ease;
-  }
-  .sign-btn:hover {
-    transform: translateY(-2px);
-    border-color: var(--border-active);
-    background: var(--bg-card-hover);
-  }
-  .sign-btn .bn {
-    font-size: 1.28rem;
-    font-weight: 700;
-    color: var(--brand-primary);
-    line-height: 1.25;
-  }
-  .sign-btn .rm {
-    font-size: 0.76rem;
-    color: var(--crimson);
-    font-weight: 700;
-    margin-top: 2px;
-  }
-  .sign-btn .dc {
-    font-size: 0.73rem;
-    color: var(--text-muted);
-    text-align: center;
-  }
-  .atlas-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 11px;
-    margin-top: 12px;
-    max-height: 560px;
-    overflow-y: auto;
-    padding-right: 6px;
-  }
-  .atlas-card {
-    background: var(--bg-card-sub);
-    border: 1px solid var(--border-subtle);
+    background: var(--etch-strong);
+    border: 1px solid var(--line);
     border-radius: 14px;
-    padding: 12px 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 9px;
-    transition: all 0.14s ease;
-  }
-  .atlas-card:hover {
-    border-color: var(--border-active);
-    background: var(--bg-card-hover);
-    box-shadow: 0 4px 14px rgba(13, 110, 78, 0.08);
-  }
-  .atlas-card-top {
-    display: flex;
-    align-items: center;
-    gap: 11px;
-    cursor: pointer;
-  }
-  .atlas-glyph {
-    font-size: 1.72rem;
-    font-weight: 700;
-    color: var(--brand-primary);
-    min-width: 58px;
-    height: 52px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--bg-input);
-    border: 1px solid var(--border-subtle);
-    border-radius: 11px;
-    line-height: 1.2;
-  }
-  .atlas-meta {
-    flex: 1;
-    font-size: 0.85rem;
-  }
-  .atlas-meta .key {
-    color: var(--crimson);
-    font-weight: 700;
-    background: rgba(217, 30, 46, 0.09);
-    padding: 2px 7px;
-    border-radius: 6px;
-    font-family: 'Segoe UI', monospace;
-  }
-  .series-tag {
-    font-size: 0.72rem;
-    font-weight: 700;
-    color: var(--brand-primary);
-    background: rgba(13, 110, 78, 0.11);
-    padding: 2px 8px;
-    border-radius: 999px;
-    margin-left: 6px;
-  }
-  .word-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
-    padding-top: 6px;
-    border-top: 1px dashed var(--border-subtle);
-  }
-  .word-pill {
-    background: var(--bg-input);
-    border: 1px solid var(--border-subtle);
-    border-radius: 8px;
-    padding: 3px 8px;
-    font-size: 0.80rem;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    transition: all 0.12s ease;
-  }
-  .word-pill:hover {
-    border-color: var(--brand-accent);
-    background: var(--bg-card-hover);
-    transform: translateY(-1px);
-  }
-  .word-pill .wb {
-    font-weight: 700;
-    color: var(--text-main);
-    font-size: 0.90rem;
-  }
-  .word-pill .wr {
-    color: var(--crimson);
-    font-weight: 700;
-    font-size: 0.75rem;
-  }
-  .word-pill .wm {
-    color: var(--text-muted);
-    font-size: 0.72rem;
-  }
-  /* Word X-Ray & 2-Click Conjunct Builder */
-  .xray-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    margin-top: 12px;
-  }
-  @media (max-width: 960px) {
-    .xray-grid { grid-template-columns: 1fr; }
-  }
-  .glass-subcard {
-    background: var(--bg-card-sub);
-    border: 1px solid var(--border-subtle);
-    border-radius: 14px;
-    padding: 15px 16px;
-  }
-  .xray-tokens {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 7px;
-    margin-top: 12px;
-  }
-  .xray-token {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 7px 11px;
-    border-radius: 10px;
-    background: var(--bg-input);
-    border: 1px solid var(--border-subtle);
-    min-width: 56px;
-  }
-  .xray-token .xt-char {
-    font-size: 1.35rem;
-    font-weight: 700;
-    color: var(--brand-primary);
-  }
-  .xray-token .xt-key {
-    font-size: 0.75rem;
-    font-weight: 700;
-    color: var(--crimson);
-  }
-  .xray-token .xt-name {
-    font-size: 0.70rem;
-    color: var(--text-muted);
-  }
-  .consonant-matrix {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
-    gap: 5px;
-    margin-top: 7px;
-  }
-  .c-btn {
-    padding: 6px 4px;
-    border-radius: 8px;
-    background: var(--bg-input);
-    border: 1px solid var(--border-subtle);
-    color: var(--text-main);
-    font-size: 1.02rem;
-    font-weight: 700;
-    cursor: pointer;
-    text-align: center;
-    transition: all 0.12s ease;
-  }
-  .c-btn:hover, .c-btn.selected {
-    background: var(--brand-accent);
-    border-color: var(--brand-accent);
-    color: #fff;
-  }
-  .fusion-preview {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin-top: 12px;
     padding: 11px 14px;
-    border-radius: 12px;
-    background: var(--bg-input);
-    border: 1px solid var(--border-active);
+    outline: none;
+    transition: border-color .15s ease, box-shadow .15s ease;
   }
-  .fusion-big {
-    font-size: 2.0rem;
-    font-weight: 700;
-    color: var(--brand-primary);
-  }
-  .btn {
-    padding: 8px 15px;
-    border-radius: 10px;
-    border: 1px solid var(--brand-accent);
-    background: var(--brand-accent);
-    color: #ffffff;
-    font-weight: 700;
-    cursor: pointer;
-    font-size: 0.88rem;
-  }
-  [data-theme="dark"] .btn {
-    color: #061c15;
-  }
-  .btn.secondary {
-    background: var(--bg-card-sub);
-    border-color: var(--border-subtle);
-    color: var(--text-main);
-  }
-  .row {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    flex-wrap: wrap;
-    margin-top: 9px;
-  }
-  .form-group {
-    margin-bottom: 13px;
-  }
-  .form-group label {
-    display: block;
-    font-weight: 600;
-    margin-bottom: 4px;
-    color: var(--brand-primary);
-    font-size: 0.92rem;
-  }
-  .issue-card {
-    background: rgba(217, 30, 46, 0.08);
-    border: 1px solid rgba(217, 30, 46, 0.35);
-    border-radius: 10px;
-    padding: 11px;
-    margin-top: 9px;
+  textarea { resize: vertical; font-family: var(--font-bn); font-size: 1.25rem; line-height: 1.7; }
+  select { appearance: none; padding-right: 36px; background-image: linear-gradient(45deg, transparent 50%, var(--ink-soft) 50%), linear-gradient(135deg, var(--ink-soft) 50%, transparent 50%); background-position: calc(100% - 19px) 50%, calc(100% - 14px) 50%; background-size: 5px 5px; background-repeat: no-repeat; }
+  textarea:focus, select:focus, input[type="text"]:focus { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+  ::placeholder { color: var(--ink-faint); }
+
+  .btn { display: inline-flex; align-items: center; gap: 7px; padding: 9px 16px; border-radius: 12px; font-weight: 600; font-size: 0.92rem; background: var(--etch-strong); box-shadow: inset 0 0 0 1px var(--line); transition: transform .1s ease, background-color .15s ease; }
+  .btn:hover { background: rgba(var(--glass-rgb), 0.9); }
+  .btn:active { transform: scale(0.98); }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); box-shadow: 0 8px 22px -12px var(--accent); }
+  .btn svg { width: 16px; height: 16px; }
+
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px; font-size: 0.88rem; background: var(--etch); box-shadow: inset 0 0 0 1px var(--line); color: var(--ink-soft); transition: background-color .12s ease, color .12s ease; white-space: nowrap; }
+  .chip:hover { color: var(--ink); background: var(--etch-strong); }
+  .chip.primary { background: var(--ink); color: var(--page); box-shadow: none; }
+  .chip-bar { display: flex; flex-wrap: wrap; gap: 6px; }
+  .scroll-x { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+  kbd, code { font-family: var(--font-ui); font-size: 0.86em; padding: 1px 7px; border-radius: 7px; background: var(--etch-strong); box-shadow: inset 0 -1px 0 var(--line), inset 0 0 0 1px var(--line); color: var(--ink); font-weight: 600; }
+
+  /* ── Writing pad ── */
+  .composer { padding: 18px; border-radius: 24px; }
+  .roman-wrap { position: relative; }
+  .roman-wrap svg { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); width: 20px; height: 20px; color: var(--ink-faint); }
+  #romanInput { font-size: 1.15rem; padding: 14px 16px 14px 46px; border-radius: 16px; }
+  .candidates { display: flex; flex-wrap: wrap; gap: 6px; min-height: 44px; margin-top: 12px; }
+  .cand { display: inline-flex; align-items: baseline; gap: 6px; padding: 6px 14px 7px; border-radius: 14px; font-family: var(--font-bn); font-size: 1.22rem; background: var(--etch-strong); box-shadow: inset 0 0 0 1px var(--line); }
+  .cand .n { font-family: var(--font-ui); font-size: 0.72rem; color: var(--ink-faint); font-weight: 600; }
+  .cand .tag { font-family: var(--font-ui); font-size: 0.7rem; color: var(--ink-faint); }
+  .cand:hover { background: rgba(var(--glass-rgb), 0.95); }
+  .cand.top { background: var(--accent); color: var(--accent-ink); box-shadow: 0 10px 24px -14px var(--accent); }
+  .cand.top .n, .cand.top .tag { color: inherit; opacity: 0.75; }
+  .cand-empty { color: var(--ink-faint); font-size: 0.88rem; align-self: center; }
+  .hints { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .hints:empty { display: none; }
+  .hint-chip { display: inline-flex; align-items: baseline; gap: 6px; padding: 3px 10px; border-radius: 10px; font-size: 0.8rem; color: var(--ink-soft); background: var(--etch); }
+  .hint-chip b { font-family: var(--font-bn); font-size: 1.02rem; color: var(--ink); font-weight: 400; }
+  .hint-chip:hover { background: var(--etch-strong); }
+  .tips { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 12px; font-size: 0.82rem; color: var(--ink-faint); }
+
+  .pad-card { margin-top: 14px; border-radius: 24px; padding: 6px; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 2px; padding: 4px 6px 6px; }
+  .tool { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 10px; font-size: 0.84rem; color: var(--ink-soft); }
+  .tool svg { width: 16px; height: 16px; }
+  .tool:hover { background: var(--etch-strong); color: var(--ink); }
+  #banglaPad { min-height: 190px; border-radius: 18px; font-size: 1.4rem; padding: 16px 18px; background: rgba(var(--glass-rgb), 0.55); }
+  .pad-actions { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 8px 6px; }
+  .count { font-size: 0.8rem; color: var(--ink-faint); }
+
+  .letters-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 26px 0 12px; }
+  .seg { display: inline-flex; padding: 3px; border-radius: 12px; background: var(--etch); box-shadow: inset 0 0 0 1px var(--line); flex-wrap: wrap; }
+  .seg .chip { background: transparent; box-shadow: none; border-radius: 9px; }
+  .seg .chip.primary { background: var(--etch-strong); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,0.08), inset 0 0 0 1px var(--line); }
+  .quick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
+  .sign-btn { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 10px 6px 9px; border-radius: 16px; background: var(--etch); box-shadow: inset 0 0 0 1px var(--line); transition: transform .12s ease, background-color .12s ease; }
+  .sign-btn:hover { transform: translateY(-2px); background: var(--etch-strong); }
+  .sign-btn .bn { font-family: var(--font-bn); font-size: 1.65rem; line-height: 1.25; }
+  .sign-btn .rm { font-size: 0.78rem; font-weight: 600; color: var(--accent); }
+  .sign-btn .dc { font-size: 0.7rem; color: var(--ink-faint); text-align: center; }
+
+  /* ── X-ray ── */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .xray-tokens { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .xray-token { display: flex; flex-direction: column; align-items: center; padding: 10px 12px 8px; border-radius: 16px; background: var(--etch-strong); box-shadow: inset 0 0 0 1px var(--line); min-width: 64px; }
+  .xt-char { font-family: var(--font-bn); font-size: 1.9rem; line-height: 1.2; }
+  .xt-key { font-size: 0.78rem; font-weight: 600; color: var(--accent); }
+  .xt-name { font-size: 0.7rem; color: var(--ink-faint); }
+  #xraySummary { margin-top: 12px; color: var(--ink-soft); font-size: 0.92rem; }
+  .matrix-label { font-size: 0.82rem; color: var(--ink-soft); margin: 12px 0 6px; }
+  .consonant-matrix { display: grid; grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)); gap: 5px; }
+  .c-btn { padding: 4px 0; border-radius: 10px; font-family: var(--font-bn); font-size: 1.2rem; text-align: center; background: var(--etch); cursor: pointer; transition: background-color .12s ease; }
+  .c-btn:hover { background: var(--etch-strong); }
+  .c-btn.selected { background: var(--accent); color: var(--accent-ink); }
+  .fusion-preview { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-top: 16px; padding: 14px 16px; border-radius: 18px; background: var(--etch-strong); box-shadow: inset 0 0 0 1px var(--line); }
+  #fusionFormula { font-family: var(--font-bn); color: var(--ink-faint); font-size: 1rem; }
+  .fusion-big { font-family: var(--font-bn); font-size: 3rem; line-height: 1.1; }
+  #fusionRoman { font-size: 0.86rem; color: var(--accent); font-weight: 600; }
+
+  /* ── Guide ── */
+  .search-wrap { position: relative; margin: 12px 0 14px; }
+  .search-wrap svg { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: var(--ink-faint); }
+  #signSearch { padding-left: 44px; }
+  #signsToast { min-height: 1.4em; font-size: 0.86rem; color: var(--accent); font-weight: 600; }
+  .atlas-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
+  .atlas-card { padding: 14px; border-radius: 20px; background: var(--etch); box-shadow: inset 0 0 0 1px var(--line); display: flex; flex-direction: column; gap: 10px; }
+  .atlas-card-top { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+  .atlas-glyph { font-family: var(--font-bn); font-size: 2rem; min-width: 64px; height: 58px; display: grid; place-items: center; border-radius: 16px; background: var(--etch-strong); }
+  .atlas-meta { font-size: 0.86rem; color: var(--ink-soft); }
+  .atlas-meta .key { color: var(--accent); font-weight: 700; font-size: 0.95rem; }
+  .series-tag { font-size: 0.72rem; color: var(--ink-faint); margin-left: 6px; }
+  .word-list { display: flex; flex-wrap: wrap; gap: 5px; }
+  .word-pill { display: inline-flex; align-items: baseline; gap: 5px; padding: 3px 9px; border-radius: 10px; background: var(--etch-strong); cursor: pointer; font-size: 0.78rem; }
+  .word-pill:hover { box-shadow: inset 0 0 0 1px var(--accent); }
+  .word-pill .wb { font-family: var(--font-bn); font-size: 1rem; }
+  .word-pill .wr { color: var(--accent); font-weight: 600; }
+  .word-pill .wm { color: var(--ink-faint); }
+
+  /* ── Spell ── */
+  .issue { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 14px; border-radius: 16px; background: var(--etch); box-shadow: inset 0 0 0 1px var(--line); }
+  .issue .wrong { font-family: var(--font-bn); font-size: 1.2rem; color: var(--danger); text-decoration: underline wavy; text-underline-offset: 5px; }
+  .issue .kind { font-size: 0.78rem; color: var(--ink-faint); }
+  .issue .fix { font-family: var(--font-bn); font-size: 1.05rem; }
+  .ok-note { display: flex; align-items: center; gap: 8px; color: var(--accent); font-weight: 600; }
+
+  /* ── Settings ── */
+  .settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
+  .setting { display: grid; gap: 6px; margin-top: 12px; }
+  .setting > label { font-weight: 600; font-size: 0.9rem; }
+  .setting small, .toggle small { color: var(--ink-faint); font-size: 0.8rem; }
+  .theme-seg .chip { padding: 6px 14px; }
+  input[type="range"] { width: 100%; accent-color: var(--accent); }
+  .toggle { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; padding: 12px 0; border-top: 1px solid var(--line); cursor: pointer; }
+  .toggle:first-of-type { border-top: 0; }
+  .toggle span { display: grid; gap: 1px; }
+  .toggle b { font-weight: 600; font-size: 0.92rem; }
+  .switch { position: relative; flex: none; width: 42px; height: 24px; }
+  .switch input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+  .switch i { position: absolute; inset: 0; border-radius: 999px; background: var(--etch-strong); box-shadow: inset 0 0 0 1px var(--line); transition: background-color .18s ease; }
+  .switch i::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.25); transition: transform .18s ease; }
+  .switch input:checked + i { background: var(--accent); }
+  .switch input:checked + i::after { transform: translateX(18px); }
+  .switch input:focus-visible + i { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .font-sample { font-family: var(--font-bn); font-size: 1.35rem; padding: 6px 2px 0; }
+  .snip-chip code { margin-right: 2px; }
+  .snip-chip b { font-family: var(--font-bn); font-weight: 400; font-size: 1rem; color: var(--ink); }
+
+  /* ── Toast ── */
+  .toast { position: fixed; left: 50%; bottom: 28px; z-index: 50; transform: translate(-50%, 20px); opacity: 0; padding: 10px 18px; border-radius: 14px; font-weight: 600; font-size: 0.9rem; pointer-events: none; transition: opacity .2s ease, transform .2s ease; }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  /* ── Small screens: the rail becomes a bottom tab bar ── */
+  @media (max-width: 1020px) { .two-col { grid-template-columns: 1fr; } }
+  @media (max-width: 820px) {
+    .app { grid-template-columns: 1fr; padding: 12px 12px 96px; gap: 12px; }
+    .rail { position: fixed; z-index: 40; left: 10px; right: 10px; bottom: 10px; top: auto; height: auto; flex-direction: row; justify-content: space-around; padding: 6px; border-radius: 22px; gap: 0; }
+    .brand, .rail-foot { display: none; }
+    .nav-btn { flex-direction: column; gap: 2px; padding: 7px 2px; width: auto; flex: 1; align-items: center; }
+    .nav-btn .lbl { align-items: center; }
+    .nav-btn .bn { font-size: 0.7rem; font-weight: 600; text-align: center; }
+    .nav-btn .en { display: none; }
+    .sheet { padding: 18px 16px 24px; border-radius: 24px; }
+    .topbar { flex-direction: column-reverse; align-items: stretch; }
+    .top-actions { justify-content: space-between; }
+    .page-title h1 { font-size: 1.4rem; }
+    .toast { bottom: 96px; }
+    .rail { --glass-alpha: 0.82; }
+    .nav-btn .bn { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; font-size: 0.66rem; }
+    .tips { display: none; }
+    .hints .hint-chip:nth-child(n+5) { display: none; }
+    .composer { padding: 12px; }
   }
 </style>
 </head>
 <body>
-<header>
-  <div class="brand">
-    <img src="/logo.png" alt="Ekushe Next Logo">
-    <div class="brand-title">
-      <h1>একুশে নেক্সট (Ekushe Next) — Next-Gen Bangla Writing Suite</h1>
-      <p>Zero-Case Phonetic · ২-ক্লিক যুক্তবর্ণ ও শব্দ এক্স-রে · ডেইলি বাংলা পাওয়ার-টুলস · কালপুরুষ ফন্ট</p>
-    </div>
-  </div>
-  <div class="status-bar">
-    <div class="opacity-pill" title="অ্যাপ এবং ফ্লোটিং পপ-আপের স্বচ্ছতা (Frosted Glass & Popup Opacity)">
-      <span>💧 স্বচ্ছতা: <b id="opacityLabel">92%</b></span>
-      <input type="range" id="headerOpacitySlider" min="70" max="100" value="92" oninput="onOpacityChange(this.value)">
-    </div>
-    <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" title="Switch Light / Dark Mode">☀️ Light Mode</button>
-    <select class="font-QuickSelect" id="headerFontSelect" onchange="changeBanglaFont(this.value)" title="বাংলা ফন্ট নির্বাচন করুন (Select Bundled Bangladeshi Font)">
-      <option value="Kalpurush">ফন্ট: কালপুরুষ (Kalpurush)</option>
-      <option value="SolaimanLipi">ফন্ট: সোলাইমানলিপি (SolaimanLipi)</option>
-      <option value="Siyam Rupali">ফন্ট: সিয়াম রূপালী (Siyam Rupali)</option>
-      <option value="Hind Siliguri">ফন্ট: হিন্দ শিলিগুড়ি (Hind Siliguri)</option>
-    </select>
-    <span class="hotkey-badge" id="hotkeyBadge">Switch: Double-Tap Shift</span>
-    <div class="mode-pill bangla" id="modePill" onclick="toggleMode()">
-      <span id="modeText">বাং · বাংলা সক্রিয়</span>
-    </div>
-  </div>
-</header>
+<div class="backdrop" aria-hidden="true">
+  <div class="blob field"></div><div class="blob flower"></div><div class="blob sun"></div><div class="blob light"></div>
+</div>
 
-<div class="layout">
-  <nav>
-    <button class="nav-btn active" onclick="showTab('playground', this)">⌨️ স্মার্ট বাংলা রাইটিং প্যাড</button>
-    <button class="nav-btn" onclick="showTab('xray', this)">🔬 শব্দ এক্স-রে ও যুক্তবর্ণ নির্মাতা</button>
-    <button class="nav-btn" onclick="showTab('signs', this)">🔤 যুক্তবর্ণ ও শব্দ সহায়িকা (Helper)</button>
-    <button class="nav-btn" onclick="showTab('spell', this)">✅ বাংলা বানান পরীক্ষক</button>
-    <button class="nav-btn" onclick="showTab('converter', this)">🔄 বিজয় ⇄ ইউনিকোড কনভার্টার</button>
-    <button class="nav-btn" onclick="showTab('settings', this)">⚙️ সেটিংস, ফন্ট ও স্বচ্ছতা</button>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-pen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></symbol>
+    <symbol id="i-scan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5V5a2 2 0 0 1 2-2h13v16H6.5A2.5 2.5 0 0 0 4 21.5Z"/><path d="M8 7h7M8 11h5"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h9M4 12h6M4 17h5"/><path d="m14 16 3 3 5-6"/></symbol>
+    <symbol id="i-swap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4 3 8l4 4"/><path d="M3 8h13a4 4 0 0 1 4 4"/><path d="m17 20 4-4-4-4"/><path d="M21 16H8a4 4 0 0 1-4-4"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2.5"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></symbol>
+    <symbol id="i-keys" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="3"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18"/></symbol>
+  </defs>
+</svg>
 
-    <div class="why-ekushe-card">
-      <b>🚀 কেন একুশে নেক্সট অনন্য? (Why Ekushe Next?)</b>
-      • <b>Zero-Case Phonetic:</b> ছোট হাতের অক্ষরেই <code>srishti</code> ➔ <b>সৃষ্টি</b>, <code>smriti</code> ➔ <b>স্মৃতি</b>, <code>koshto</code> ➔ <b>কষ্ট</b><br>
-      • <b>Inline Mix-English:</b> বাংলা মোডে <code>/meeting</code> বা <code>Ctrl+Backspace</code> চেপেই ইংরেজি শব্দ!<br>
-      • <b>Smart Numbers:</b> বাংলা মোডে <code>০-৯</code> এবং ইংরেজি মোডে <code>0-9</code> স্বয়ংক্রিয়ভাবে কাজ করে।<br>
-      • <b>Quick Snippets:</b> <code>;salam</code> ➔ <b>আসসালামু আলাইকুম</b>, <code>;tk</code> ➔ <b>৳</b>
+<div class="app">
+  <nav class="rail glass" aria-label="Studio">
+    <div class="brand">
+      <img src="/logo.png" alt="">
+      <div><div class="brand-name">একুশে</div><div class="brand-sub">Ekushe Next Studio</div></div>
     </div>
+    <button class="nav-btn active" data-tab="playground"><svg><use href="#i-pen"/></svg><span class="lbl"><span class="bn">লেখার প্যাড</span><span class="en">Writing pad</span></span></button>
+    <button class="nav-btn" data-tab="xray"><svg><use href="#i-scan"/></svg><span class="lbl"><span class="bn">শব্দ এক্স-রে</span><span class="en">Word X-ray</span></span></button>
+    <button class="nav-btn" data-tab="signs"><svg><use href="#i-book"/></svg><span class="lbl"><span class="bn">যুক্তবর্ণ</span><span class="en">Conjunct guide</span></span></button>
+    <button class="nav-btn" data-tab="spell"><svg><use href="#i-check"/></svg><span class="lbl"><span class="bn">বানান</span><span class="en">Spell check</span></span></button>
+    <button class="nav-btn" data-tab="converter"><svg><use href="#i-swap"/></svg><span class="lbl"><span class="bn">রূপান্তর</span><span class="en">Bijoy ⇄ Unicode</span></span></button>
+    <button class="nav-btn" data-tab="settings"><svg><use href="#i-gear"/></svg><span class="lbl"><span class="bn">সেটিংস</span><span class="en">Settings</span></span></button>
+    <div class="rail-foot">বাংলা ⇄ English বদলাতে<br><b id="hotkeyBadge">Double-Tap Shift</b></div>
   </nav>
 
-  <main>
-    <!-- TAB 1: SMART BANGLA WRITING PAD + POWER TOOLBAR + QUICK CONJUNCTS -->
-    <section class="panel active" id="tab-playground">
-      <h2>স্মার্ট বাংলা রাইটিং প্যাড ও যুক্তবর্ণ (Smart Daily Bangla Writing Studio)</h2>
-      <p class="subtitle">ছোট হাতের অক্ষরেই সাবলীল বাংলা লিখুন (যেমন: <code>srishti</code> → <b>সৃষ্টি</b>, <code>smriti</code> → <b>স্মৃতি</b>)। <b>প্রো টিপস:</b> বাংলা লেখার মাঝখানে ইংরেজি শব্দ লিখতে আগে <code>/</code> দিন (যেমন: <code>/office</code> → <b>office</b>), শেষ শব্দটি বাংলা ⇄ ইংরেজি পাল্টাতে <b>Ctrl+Backspace</b> চাপুন, আর কুইক স্নিপেটের জন্য লিখুন <code>;salam</code> বা <code>;tk</code>!</p>
+  <main class="sheet glass">
+    <div class="topbar">
+      <div class="page-title"><h1 id="pageTitle">লেখার প্যাড</h1><p id="pageSub">রোমান হরফে লিখুন, একুশে বাংলা করে দেবে।</p></div>
+      <div class="top-actions">
+        <button class="lang-switch bangla" id="modePill" onclick="toggleMode()" title="বাংলা / English" aria-label="Switch language">
+          <span class="opt-bn">বাংলা</span><span class="opt-en">EN</span>
+        </button>
+        <button class="icon-btn" id="themeBtn" onclick="cycleTheme()" title="Theme" aria-label="Change theme"><svg><use href="#i-sun"/></svg></button>
+      </div>
+    </div>
 
-      <input type="text" id="romanInput" placeholder="এখানে লিখুন... যেমন: srishti / smriti / /office (ইংরেজি) / ;salam (স্নিপেট) / 2026 (সংখ্যা)" oninput="onRomanInput()">
-
-      <div class="chip-bar" id="candidateBar"></div>
-      <div class="chip-bar" id="hintBar"></div>
-
-      <!-- Daily Bangla Writing Power-Toolbar (Unique to Ekushe) -->
-      <div class="power-toolbar">
-        <span class="pt-label">⚡ স্মার্ট টুলস:</span>
-        <button class="pt-btn" onclick="convertPadDigitsToBangla()" title="ইংরেজি সংখ্যাকে বাংলা সংখ্যায় রূপান্তর করুন (2026 ➔ ২০২৬)">🔢 123 ➔ ১২৩</button>
-        <button class="pt-btn" onclick="convertPadDigitsToEnglish()" title="বাংলা সংখ্যাকে ইংরেজি সংখ্যায় রূপান্তর করুন (২০২৬ ➔ 2026)">🔢 ১২৩ ➔ 123</button>
-        <button class="pt-btn" onclick="insertTakaCurrency()" title="টাকার চিহ্ন ও কমা ফরম্যাট যুক্ত করুন (৳ ১,০০০/-)">৳ টাকা ফরম্যাট</button>
-        <button class="pt-btn" onclick="insertTodayBanglaDate()" title="আজকের বাংলা ও ইংরেজি তারিখ যুক্ত করুন">📅 আজকের তারিখ</button>
-        <button class="pt-btn" onclick="smartPolishBanglaPad()" title="ইংরেজি ফুলস্টপ (.) কে দাড়ি (।) এবং ভাঙ্গা ইউনিকোড ঠিক করুন">✨ স্মার্ট বিরামচিহ্ন ও স্পেসিং পলিশ</button>
-        <button class="pt-btn" onclick="inspectPadWordInXray()" title="প্যাডের শেষ শব্দটি কীভাবে গঠিত হয়েছে তা এক্স-রে তে দেখুন">🔬 শব্দ এক্স-রে</button>
+    <!-- Writing pad -->
+    <section class="panel active" id="tab-playground" data-title="লেখার প্যাড" data-sub="রোমান হরফে লিখুন, একুশে বাংলা করে দেবে। Space চাপলে প্রথম শব্দটি বসবে।">
+      <div class="composer etched">
+        <div class="roman-wrap">
+          <svg><use href="#i-keys"/></svg>
+          <input type="text" id="romanInput" placeholder="এখানে লিখুন — যেমন amar sonar bangla" oninput="onRomanInput()" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="candidates" id="candidateBar"><span class="cand-empty">লিখতে শুরু করলে শব্দের পরামর্শ এখানে দেখাবে</span></div>
+        <div class="hints" id="hintBar"></div>
+        <div class="tips">
+          <span><kbd>/office</kbd> ইংরেজি শব্দ রাখে</span>
+          <span><kbd>;salam</kbd> স্নিপেট বসায়</span>
+          <span><kbd>Ctrl</kbd>+<kbd>Backspace</kbd> শেষ শব্দ বাংলা ⇄ ইংরেজি</span>
+        </div>
       </div>
 
-      <textarea id="banglaPad" rows="4" placeholder="আপনার বাংলা লেখা এখানে তৈরি হবে...">আমি বাংলায় গান গাই। সৃষ্টি ও স্মৃতি আমাদের অনুপ্রেরণা।</textarea>
-      <div class="row">
-        <button class="btn" onclick="copyPad()">📋 কপি করুন (Copy Bangla)</button>
-        <button class="btn secondary" onclick="document.getElementById('banglaPad').value=''">মুছুন (Clear)</button>
-        <button class="btn secondary" onclick="showTab('xray', null)">🔬 ২-ক্লিক যুক্তবর্ণ নির্মাতা ও শব্দ এক্স-রে</button>
-        <button class="btn secondary" onclick="showTab('signs', null)">📖 সিরিজ অনুযায়ী সব যুক্তবর্ণ ও শব্দ</button>
+      <div class="pad-card etched">
+        <div class="toolbar" role="toolbar" aria-label="Writing tools">
+          <button class="tool" onclick="convertPadDigitsToBangla()" title="2026 → ২০২৬">১২৩ বাংলা সংখ্যা</button>
+          <button class="tool" onclick="convertPadDigitsToEnglish()" title="২০২৬ → 2026">123 ইংরেজি সংখ্যা</button>
+          <button class="tool" onclick="insertTakaCurrency()" title="৳ ১,০০০/-">৳ টাকা</button>
+          <button class="tool" onclick="insertTodayBanglaDate()">আজকের তারিখ</button>
+          <button class="tool" onclick="smartPolishBanglaPad()" title="ফুলস্টপকে দাড়ি করে, বাড়তি ফাঁকা সরায়"><svg><use href="#i-spark"/></svg>দাড়ি ও ফাঁকা ঠিক করুন</button>
+          <button class="tool" onclick="inspectPadWordInXray()"><svg><use href="#i-scan"/></svg>শেষ শব্দের এক্স-রে</button>
+        </div>
+        <textarea id="banglaPad" rows="5" placeholder="আপনার লেখা এখানে জমা হবে" oninput="updateCount()">আমি বাংলায় গান গাই। সৃষ্টি ও স্মৃতি আমাদের অনুপ্রেরণা।</textarea>
+        <div class="pad-actions">
+          <span class="count" id="padCount"></span>
+          <div class="row">
+            <button class="btn" onclick="clearPad()">মুছুন</button>
+            <button class="btn primary" onclick="copyPad()"><svg><use href="#i-copy"/></svg>কপি করুন</button>
+          </div>
+        </div>
       </div>
 
-      <div class="row" style="justify-content: space-between; margin-top: 16px;">
-        <h2 style="font-size:1.06rem; margin-bottom:0;">এক ক্লিকে যুক্তবর্ণ, ফলা, কার ও চিহ্ন (One-Click Connected Letters & Signs)</h2>
-        <div class="chip-bar" style="margin:0;">
-          <span class="chip primary" onclick="filterQuickGrid('ALL', this)">সব (All)</span>
-          <span class="chip" onclick="filterQuickGrid('Conjunct', this)">যুক্তবর্ণ (ক্ত, ক্ষ, জ্ঞ, ষ্ট, স্ব)</span>
-          <span class="chip" onclick="filterQuickGrid('Fola', this)">ফলা (ক্র, ক্য, স্ব, র্ক)</span>
-          <span class="chip" onclick="filterQuickGrid('Kar', this)">কার (কৃ, কা, কি, কী...)</span>
-          <span class="chip" onclick="filterQuickGrid('Mark', this)">চিহ্ন (চাঁ, বাং, দুঃ...)</span>
+      <div class="letters-head">
+        <div><div class="section-title">এক ক্লিকে যুক্তবর্ণ ও চিহ্ন</div><div class="hint">ক্লিক করলে প্যাডে বসবে। নিচের রোমান অক্ষরগুলো টাইপ করেও একই জিনিস পাবেন।</div></div>
+        <div class="seg">
+          <button class="chip primary" onclick="filterQuickGrid('ALL', this)">সব</button>
+          <button class="chip" onclick="filterQuickGrid('Conjunct', this)">যুক্তবর্ণ</button>
+          <button class="chip" onclick="filterQuickGrid('Fola', this)">ফলা</button>
+          <button class="chip" onclick="filterQuickGrid('Kar', this)">কার</button>
+          <button class="chip" onclick="filterQuickGrid('Mark', this)">চিহ্ন</button>
         </div>
       </div>
       <div class="quick-grid" id="quickSignsGrid"></div>
     </section>
 
-    <!-- TAB 2: WORD X-RAY & 2-CLICK VISUAL CONJUNCT BUILDER (UNIQUE TO EKUSHE) -->
-    <section class="panel" id="tab-xray">
-      <h2>🔬 শব্দ এক্স-রে ও ২-ক্লিক যুক্তবর্ণ নির্মাতা (Word X-Ray & Visual Conjunct Builder)</h2>
-      <p class="subtitle">যেকোনো জটিল বাংলা শব্দ কীভাবে ভাঙতে ও টাইপ করতে হয় তা তাৎক্ষণিক দেখুন, অথবা যেকোনো ২টি ব্যঞ্জনবর্ণে ক্লিক করে শর্টকাট মুখস্থ ছাড়াই যুক্তবর্ণ তৈরি করুন!</p>
-
-      <div class="xray-grid">
-        <!-- Left Card: Word X-Ray Decomposer -->
-        <div class="glass-subcard">
-          <h2 style="font-size:1.05rem;">🔍 বাংলা শব্দ এক্স-রে (Word X-Ray Inspector)</h2>
-          <p class="subtitle" style="margin-bottom:8px;">যেকোনো বাংলা শব্দ লিখুন বা পেস্ট করুন—প্রতিটি অক্ষর, কার, ফলা ও যুক্তবর্ণ কীভাবে গঠিত তা দেখুন:</p>
-          <input type="text" id="xrayInput" value="সৃষ্টি" placeholder="বাংলা শব্দ পেস্ট করুন, যেমন: সৃষ্টি, স্মৃতি, বিজ্ঞান, আশ্চর্য..." oninput="runWordXray()">
-          <div class="chip-bar">
-            <span class="chip" onclick="setXrayWord('সৃষ্টি')">সৃষ্টি</span>
-            <span class="chip" onclick="setXrayWord('স্মৃতি')">স্মৃতি</span>
-            <span class="chip" onclick="setXrayWord('বিজ্ঞান')">বিজ্ঞান</span>
-            <span class="chip" onclick="setXrayWord('শিক্ষা')">শিক্ষা</span>
-            <span class="chip" onclick="setXrayWord('স্বচ্ছ')">স্বচ্ছ</span>
-            <span class="chip" onclick="setXrayWord('শ্রেষ্ঠ')">শ্রেষ্ঠ</span>
-            <span class="chip" onclick="setXrayWord('আশ্চর্য')">আশ্চর্য</span>
-            <span class="chip" onclick="setXrayWord('উত্তেজনা')">উত্তেজনা</span>
+    <!-- Word X-ray and conjunct builder -->
+    <section class="panel" id="tab-xray" data-title="শব্দ এক্স-রে" data-sub="যেকোনো শব্দ ভেঙে দেখুন কোন অক্ষর কীভাবে টাইপ করতে হয়, বা দুটি অক্ষর বেছে যুক্তবর্ণ বানান।">
+      <div class="two-col">
+        <div class="etched">
+          <div class="section-title">শব্দ ভেঙে দেখুন</div>
+          <div class="hint" style="margin-bottom:10px">বাংলা শব্দ লিখুন বা পেস্ট করুন।</div>
+          <input type="text" id="xrayInput" value="সৃষ্টি" placeholder="যেমন: বিজ্ঞান" oninput="runWordXray()" style="font-family:var(--font-bn);font-size:1.25rem">
+          <div class="chip-bar" style="margin-top:10px">
+            <button class="chip" onclick="setXrayWord('সৃষ্টি')">সৃষ্টি</button>
+            <button class="chip" onclick="setXrayWord('স্মৃতি')">স্মৃতি</button>
+            <button class="chip" onclick="setXrayWord('বিজ্ঞান')">বিজ্ঞান</button>
+            <button class="chip" onclick="setXrayWord('শিক্ষা')">শিক্ষা</button>
+            <button class="chip" onclick="setXrayWord('শ্রেষ্ঠ')">শ্রেষ্ঠ</button>
+            <button class="chip" onclick="setXrayWord('আশ্চর্য')">আশ্চর্য</button>
           </div>
-          <div id="xraySummary" style="margin-top:8px;font-weight:700;color:var(--brand-primary);font-size:0.94rem;"></div>
+          <div id="xraySummary"></div>
           <div class="xray-tokens" id="xrayTokens"></div>
         </div>
-
-        <!-- Right Card: 2-Click Visual Conjunct Builder -->
-        <div class="glass-subcard">
-          <h2 style="font-size:1.05rem;">🧩 ২-ক্লিক ভিজ্যুয়াল যুক্তবর্ণ নির্মাতা (2-Click Conjunct Builder)</h2>
-          <p class="subtitle" style="margin-bottom:8px;">১ম ব্যঞ্জনবর্ণ এবং ২য় ব্যঞ্জনবর্ণে ক্লিক করুন—একুশে নিজে থেকেই যুক্তবর্ণ তৈরি করে দেবে:</p>
-          <div style="font-size:0.82rem;font-weight:700;color:var(--brand-primary);">১ম অক্ষর নির্বাচন করুন (1st Consonant):</div>
+        <div class="etched">
+          <div class="section-title">দুই ক্লিকে যুক্তবর্ণ</div>
+          <div class="hint">প্রথম অক্ষর, তারপর দ্বিতীয় অক্ষর বেছে নিন।</div>
+          <div class="matrix-label">প্রথম অক্ষর</div>
           <div class="consonant-matrix" id="cMatrix1"></div>
-          <div style="font-size:0.82rem;font-weight:700;color:var(--brand-primary);margin-top:9px;">২য় অক্ষর নির্বাচন করুন (2nd Consonant):</div>
+          <div class="matrix-label">দ্বিতীয় অক্ষর</div>
           <div class="consonant-matrix" id="cMatrix2"></div>
-
           <div class="fusion-preview">
             <div>
-              <div style="font-size:0.78rem;color:var(--text-muted);" id="fusionFormula">ষ + ্ + ট =</div>
+              <div id="fusionFormula">ষ + ্ + ট =</div>
               <div class="fusion-big" id="fusionResult">ষ্ট</div>
-              <div style="font-size:0.82rem;color:var(--crimson);font-weight:700;" id="fusionRoman">Type: sht / ShT</div>
+              <div id="fusionRoman"></div>
             </div>
-            <div class="row" style="margin:0;">
-              <button class="btn" onclick="insertBuiltConjunct()">➕ প্যাডে যুক্ত ও কপি করুন</button>
-            </div>
+            <button class="btn primary" onclick="insertBuiltConjunct()">প্যাডে বসান ও কপি করুন</button>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- TAB 3: SIGNS, CONJUNCTS & WORD EXAMPLES HELPER PAGE -->
-    <section class="panel" id="tab-signs">
-      <h2>যুক্তবর্ণ, কার-ফলা ও শব্দ উদাহরণ সহায়িকা (Connected Letters & Word Helper)</h2>
-      <p class="subtitle">সিরিজ অনুযায়ী সাজানো (<b>K-Series, Ch-Series, T-Series, N-Series, P-Series, Sh-Series, D-Series, L-Series, ফলা ও কার</b>)। যেকোনো <b>যুক্তবর্ণ</b> বা <b>উদাহরণ শব্দে</b> ক্লিক করলে সাথে সাথে ক্লিপবোর্ডে কপি হবে এবং টাইপিং প্যাডে যুক্ত হবে!</p>
-      <div class="row" style="justify-content: space-between; margin-bottom: 10px;">
-        <div class="chip-bar" id="atlasFilterBar" style="margin:0;">
-          <span class="chip primary" onclick="filterAtlasGrid('ALL', this)">সব (All Series)</span>
-          <span class="chip" onclick="filterAtlasGrid('K-Series', this)">K-Series (ক/ঙ: ক্ত, ক্ষ, ঙ্ক, ঙ্গ)</span>
-          <span class="chip" onclick="filterAtlasGrid('Ch-Series', this)">Ch-Series (চ/জ/ঞ: চ্চ, চ্ছ, জ্ঞ, ঞ্চ)</span>
-          <span class="chip" onclick="filterAtlasGrid('T-Series', this)">T-Series (ত/ট: ট্ট, ত্ত, ত্র, ত্ব)</span>
-          <span class="chip" onclick="filterAtlasGrid('N-Series', this)">N-Series (ন/ণ: ণ্ট, ণ্ঠ, ন্দ, ন্ধ, ন্ত)</span>
-          <span class="chip" onclick="filterAtlasGrid('P-Series', this)">P-Series (প/ম: প্ত, ম্প, ম্ব, ম্ভ)</span>
-          <span class="chip" onclick="filterAtlasGrid('Sh-Series', this)">Sh-Series (শ/ষ/স: শ্চ, ষ্ট, ষ্ঠ, স্ক, স্ত, স্থ, স্প, স্ব, স্ম)</span>
-          <span class="chip" onclick="filterAtlasGrid('D-Series', this)">D-Series (দ/ধ: দ্ধ, দ্ব, ধ্ব)</span>
-          <span class="chip" onclick="filterAtlasGrid('L-Series', this)">L/H-Series (ল/হ: ল্প, ল্ল, হ্ম)</span>
-          <span class="chip" onclick="filterAtlasGrid('Fola', this)">ফলা (্র, ্য, র্, ্ব, ্ম)</span>
-          <span class="chip" onclick="filterAtlasGrid('Kar', this)">কার (ৃ, া, ি, ী, ু, ূ)</span>
-          <span class="chip" onclick="filterAtlasGrid('Mark', this)">চিহ্ন (ঁ, ং, ঃ, ৎ)</span>
-        </div>
-        <div id="signsToast" style="color:var(--brand-primary);font-weight:700;font-size:0.90rem;"></div>
+    <!-- Conjunct and word guide -->
+    <section class="panel" id="tab-signs" data-title="যুক্তবর্ণ ও শব্দ" data-sub="উচ্চারণের ধারা অনুযায়ী সাজানো। যুক্তবর্ণ বা উদাহরণ শব্দে ক্লিক করলে কপি হবে ও প্যাডে বসবে।">
+      <div class="chip-bar scroll-x" id="atlasFilterBar">
+        <button class="chip primary" onclick="filterAtlasGrid('ALL', this)">সব</button>
+        <button class="chip" onclick="filterAtlasGrid('K-Series', this)">ক-ধারা</button>
+        <button class="chip" onclick="filterAtlasGrid('Ch-Series', this)">চ-ধারা</button>
+        <button class="chip" onclick="filterAtlasGrid('T-Series', this)">ত/ট-ধারা</button>
+        <button class="chip" onclick="filterAtlasGrid('N-Series', this)">ন/ণ-ধারা</button>
+        <button class="chip" onclick="filterAtlasGrid('P-Series', this)">প/ম-ধারা</button>
+        <button class="chip" onclick="filterAtlasGrid('Sh-Series', this)">শ/ষ/স-ধারা</button>
+        <button class="chip" onclick="filterAtlasGrid('D-Series', this)">দ/ধ-ধারা</button>
+        <button class="chip" onclick="filterAtlasGrid('L-Series', this)">ল/হ-ধারা</button>
+        <button class="chip" onclick="filterAtlasGrid('Fola', this)">ফলা</button>
+        <button class="chip" onclick="filterAtlasGrid('Kar', this)">কার</button>
+        <button class="chip" onclick="filterAtlasGrid('Mark', this)">চিহ্ন</button>
       </div>
-      <input type="text" id="signSearch" placeholder="যেকোনো যুক্তবর্ণ, বাংলা শব্দ, ইংরেজি উচ্চারণ বা অর্থ খুঁজুন: যেমন রক্ত, rokto, blood, সৃষ্টি, srishti, কষ্ট, জ্ঞ, kkh..." oninput="loadSigns(this.value)">
+      <div class="search-wrap">
+        <svg><use href="#i-search"/></svg>
+        <input type="text" id="signSearch" placeholder="খুঁজুন: রক্ত, rokto, blood, জ্ঞ, kkh" oninput="loadSigns(this.value)">
+      </div>
+      <div id="signsToast" role="status"></div>
       <div class="atlas-grid" id="atlasGrid"></div>
     </section>
 
-    <!-- TAB 4: SPELL CHECKER -->
-    <section class="panel" id="tab-spell">
-      <h2>বাংলা বানান পরীক্ষক (Bangla Spell Checker)</h2>
-      <p class="subtitle">হ্রস্ব-ই/দীর্ঘ-ঈ, হ্রস্ব-উ/দীর্ঘ-ঊ, শ/ষ/স, ন/ণ, জ/য, র/ড় জনিত ভুল বানান খুঁজে বের করে সঠিক পরামর্শ দেয়।</p>
+    <!-- Spell check -->
+    <section class="panel" id="tab-spell" data-title="বানান পরীক্ষা" data-sub="বাংলা একাডেমির প্রমিত বানান অনুযায়ী ভুল ও অপ্রমিত শব্দ দেখায়।">
       <textarea id="spellInput" rows="5">আমি বাংলাদেস এ বাস করি। মানুস মাত্রই জিবন ভালোবাসে।</textarea>
-      <div class="row">
-        <button class="btn" onclick="runSpellCheck()">🔍 বানান পরীক্ষা করুন (Check Spelling)</button>
-      </div>
-      <div id="spellResults" style="margin-top:14px;"></div>
+      <div class="row" style="margin-top:10px"><button class="btn primary" onclick="runSpellCheck()"><svg><use href="#i-check"/></svg>বানান পরীক্ষা করুন</button></div>
+      <div class="stack" id="spellResults" style="margin-top:16px"></div>
     </section>
 
-    <!-- TAB 5: BIJOY <-> UNICODE CONVERTER -->
-    <section class="panel" id="tab-converter">
-      <h2>বিজয় (ANSI / SutonnyMJ) ⇄ ইউনিকোড এবং বাংলিশ কনভার্টার</h2>
-      <p class="subtitle">যেকোনো অ্যাপে লেখা সিলেক্ট করে <b>Ctrl+Alt+C</b> চাপলে সরাসরি ইউনিকোড বাংলায় রূপান্তরিত হবে।</p>
-      <textarea id="convInput" rows="4" placeholder="এখানে বিজয় (SutonnyMJ), ইউনিকোড অথবা বাংলিশ টেক্সট পেস্ট করুন...">Avwg evsjvq Mvb MvB| evsjv†`k Avgvi Ÿ†`k|</textarea>
-      <div class="row">
-        <button class="btn" onclick="runConvert('bijoy2uni')">বিজয় ➔ ইউনিকোড (Bijoy to Unicode)</button>
-        <button class="btn secondary" onclick="runConvert('uni2bijoy')">ইউনিকোড ➔ বিজয় (Unicode to Bijoy)</button>
-        <button class="btn secondary" onclick="runConvert('banglish')">বাংলিশ ➔ বাংলা (Banglish to Bangla)</button>
-        <button class="btn secondary" onclick="navigator.clipboard.writeText(document.getElementById('convOutput').value)">📋 ফলাফল কপি করুন (Copy)</button>
+    <!-- Converter -->
+    <section class="panel" id="tab-converter" data-title="রূপান্তর" data-sub="বিজয় (SutonnyMJ) আর ইউনিকোডের মধ্যে, বা বাংলিশ থেকে বাংলায়। যেকোনো অ্যাপে লেখা বেছে Ctrl+Alt+C চাপলেও হয়।">
+      <div class="seg" id="convModes" style="margin-bottom:12px">
+        <button class="chip primary" onclick="runConvert('bijoy2uni', this)">বিজয় → ইউনিকোড</button>
+        <button class="chip" onclick="runConvert('uni2bijoy', this)">ইউনিকোড → বিজয়</button>
+        <button class="chip" onclick="runConvert('banglish', this)">বাংলিশ → বাংলা</button>
       </div>
-      <textarea id="convOutput" rows="4" style="margin-top:14px;" placeholder="রূপান্তরিত ফলাফল..."></textarea>
+      <div class="two-col">
+        <textarea id="convInput" rows="7" placeholder="এখানে লেখা পেস্ট করুন" oninput="runConvert()">Avwg evsjvq Mvb MvB| evsjv†`k Avgvi Ÿ†`k|</textarea>
+        <textarea id="convOutput" rows="7" placeholder="ফলাফল" readonly></textarea>
+      </div>
+      <div class="row" style="margin-top:10px;justify-content:flex-end"><button class="btn primary" onclick="copyText(document.getElementById('convOutput').value)"><svg><use href="#i-copy"/></svg>ফলাফল কপি করুন</button></div>
     </section>
 
-    <!-- TAB 6: SETTINGS -->
-    <section class="panel" id="tab-settings">
-      <h2>সেটিংস, ফন্ট ও স্বচ্ছতা (Settings, Fonts & Glass Transparency)</h2>
-      <p class="subtitle">সহজ ব্যবহারকারী এবং অ্যাডভান্সড ব্যবহারকারী—সবার জন্য তাৎক্ষণিক কাস্টমাইজেশন।</p>
-      <div class="form-group">
-        <label>পপ-আপ ও অ্যাপের স্বচ্ছতা (Floating Popup & Studio Glass Transparency: <span id="cfgOpacityVal">92%</span>)</label>
-        <input type="range" id="cfgOpacity" min="70" max="100" value="92" oninput="onOpacityChange(this.value)" style="width:100%;accent-color:var(--brand-accent);">
-      </div>
-      <div class="form-group">
-        <label>ডিফল্ট বাংলাদেশী বাংলা ফন্ট (Default Bundled Bangladeshi Font)</label>
-        <select id="cfgFont" onchange="changeBanglaFont(this.value)">
-          <option value="Kalpurush">কালপুরুষ (Kalpurush — বাংলাদেশী ডিফল্ট / OmicronLab Standard)</option>
-          <option value="SolaimanLipi">সোলাইমানলিপি (SolaimanLipi — একুশে ক্লাসিক স্ট্যান্ডার্ড)</option>
-          <option value="Siyam Rupali">সিয়াম রূপালী (Siyam Rupali — স্পষ্ট স্ক্রিন ফন্ট)</option>
-          <option value="Hind Siliguri">হিন্দ শিলিগুড়ি (Hind Siliguri — আধুনিক ইউআই ফন্ট)</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>কীবোর্ড পরিবর্তনের হটকি (Switch Between Normal Keyboard & Ekushe Next)</label>
-        <select id="cfgHotkey" onchange="saveSettings()">
-          <option value="DoubleTapShift">Double-Tap Shift (দুইবার Shift চাপুন — Recommended)</option>
-          <option value="CtrlSpace">Ctrl + Space</option>
-          <option value="F12">F12 (Classic Avro)</option>
-          <option value="CtrlAltB">Ctrl + Alt + B</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>টাইপিং মোড (Typing Mode)</label>
-        <select id="cfgMode" onchange="saveSettings()">
-          <option value="Smart">Smart Mode (ডিকশনারি সেরা শব্দটি বেছে নেয় — Default)</option>
-          <option value="PhoneticFirst">Phonetic-First (আপনার টাইপ করা বানান প্রথমে থাকবে)</option>
-          <option value="PhoneticOnly">Phonetic-Only (কোনো পপআপ ছাড়াই সরাসরি টাইপ)</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>কীবোর্ড লেআউট (Keyboard Layout)</label>
-        <select id="cfgLayout" onchange="saveSettings()">
-          <option value="AvroPhonetic">Ekushe Next Zero-Case Phonetic (Avro-compatible + Smart Lowercase)</option>
-          <option value="Probhat">প্রভাত (Probhat)</option>
-          <option value="NationalJatiya">জাতীয় (National / Jatiya)</option>
-          <option value="Bornona">বর্ণনা (Bornona)</option>
-          <option value="MunirOptima">মুনীর অপটিমা (Munir Optima)</option>
-        </select>
-      </div>
-      <div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-        <label style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;background:var(--bg-card-sub);border:1px solid var(--border-subtle);cursor:pointer;">
-          <input type="checkbox" id="cfgCompact" onchange="saveSettings()" style="width:18px;height:18px;accent-color:var(--brand-accent);">
-          <span><b>সংক্ষিপ্ত ফ্লোটিং পপ-আপ (Compact Popup)</b><br><small style="color:var(--text-muted)">পপ-আপের ৩য় যুক্তবর্ণ লাইন লুকিয়ে রাখুন (পপ-আপে 🔽 বাটনেও ক্লিক করা যায়)</small></span>
-        </label>
-        <label style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;background:var(--bg-card-sub);border:1px solid var(--border-subtle);cursor:pointer;">
-          <input type="checkbox" id="cfgTerminal" checked onchange="saveSettings()" style="width:18px;height:18px;accent-color:var(--brand-accent);">
-          <span><b>টার্মিনালে স্বয়ংক্রিয় ইংরেজি (Terminal Smart Guard)</b><br><small style="color:var(--text-muted)">Windows Terminal / CMD / PowerShell এ কমান্ড ভাঙা রোধে স্বয়ংক্রিয় ইংরেজি</small></span>
-        </label>
-      </div>
-
-      <div class="glass-subcard" style="margin-top:14px;">
-        <h2 style="font-size:1.02rem;margin-bottom:4px;">⚡ কুইক বাংলা স্নিপেট ও সংক্ষিপ্ত রূপ (Personal Bangla Text Snippets)</h2>
-        <p class="subtitle" style="margin-bottom:8px;">যেকোনো অ্যাপে শর্টকাট লিখে Space চাপলেই পুরো বাংলা বাক্য বা চিহ্ন বসে যাবে! যেমন: <code>;salam</code> ➔ <b>আসসালামু আলাইকুম</b>, <code>;tk</code> ➔ <b>৳</b>, <code>;bd</code> ➔ <b>গণপ্রজাতন্ত্রী বাংলাদেশ</b>। নিচে নিজের কাস্টম স্নিপেট যোগ করুন:</p>
-        <div class="row" style="margin-bottom:10px;">
-          <input type="text" id="newSnipKey" placeholder="শর্টকাট (যেমন: ;addr বা ;mail)" style="max-width:210px;">
-          <input type="text" id="newSnipVal" placeholder="পুরো বাংলা লেখা (যেমন: ধানমন্ডি, ঢাকা-১২০৯)" style="flex:1;">
-          <button class="btn" onclick="addCustomSnippet()">➕ স্নিপেট যোগ করুন</button>
+    <!-- Settings -->
+    <section class="panel" id="tab-settings" data-title="সেটিংস" data-sub="পরিবর্তন সঙ্গে সঙ্গে চালু ও সংরক্ষিত হয়।">
+      <div class="settings-grid">
+        <div class="etched">
+          <div class="section-title">চেহারা</div>
+          <div class="setting">
+            <label>থিম</label>
+            <div class="seg theme-seg" id="themeSeg">
+              <button class="chip" data-theme-opt="system" onclick="setTheme('system')">সিস্টেম</button>
+              <button class="chip" data-theme-opt="light" onclick="setTheme('light')">হালকা</button>
+              <button class="chip" data-theme-opt="dark" onclick="setTheme('dark')">গাঢ়</button>
+            </div>
+          </div>
+          <div class="setting">
+            <label for="cfgOpacity">কাচের স্বচ্ছতা <span id="cfgOpacityVal">92%</span></label>
+            <input type="range" id="cfgOpacity" min="70" max="100" value="92" oninput="onOpacityChange(this.value)">
+            <small>স্টুডিও আর টাইপ করার সময়ের পপ-আপ, দুটোতেই কাজ করে।</small>
+          </div>
+          <div class="setting">
+            <label for="cfgFont">বাংলা ফন্ট</label>
+            <select id="cfgFont" onchange="changeBanglaFont(this.value)">
+              <option value="Kalpurush">কালপুরুষ</option>
+              <option value="SolaimanLipi">সোলাইমানলিপি</option>
+              <option value="Siyam Rupali">সিয়াম রূপালী</option>
+              <option value="Hind Siliguri">হিন্দ শিলিগুড়ি</option>
+            </select>
+            <div class="font-sample">আমার সোনার বাংলা, আমি তোমায় ভালোবাসি।</div>
+          </div>
         </div>
-        <div class="chip-bar" id="snippetsList"></div>
-      </div>
 
-      <div id="settingsSavedMsg" style="color:var(--brand-primary);font-weight:700;margin-top:10px;"></div>
+        <div class="etched">
+          <div class="section-title">টাইপিং</div>
+          <div class="setting">
+            <label for="cfgHotkey">বাংলা ⇄ English বদলানোর কী</label>
+            <select id="cfgHotkey" onchange="saveSettings()">
+              <option value="DoubleTapShift">দুবার Shift (প্রস্তাবিত)</option>
+              <option value="CtrlSpace">Ctrl + Space</option>
+              <option value="F12">F12</option>
+              <option value="CtrlAltB">Ctrl + Alt + B</option>
+            </select>
+          </div>
+          <div class="setting">
+            <label for="cfgMode">টাইপিং মোড</label>
+            <select id="cfgMode" onchange="saveSettings()">
+              <option value="Smart">স্মার্ট — অভিধানের সেরা শব্দ আগে</option>
+              <option value="PhoneticFirst">ফোনেটিক আগে — যা টাইপ করলেন সেটাই আগে</option>
+              <option value="PhoneticOnly">শুধু ফোনেটিক — কোনো পপ-আপ নেই</option>
+            </select>
+          </div>
+          <div class="setting">
+            <label for="cfgLayout">কীবোর্ড লেআউট</label>
+            <select id="cfgLayout" onchange="saveSettings()">
+              <option value="AvroPhonetic">একুশে ফোনেটিক (অভ্র-সামঞ্জস্যপূর্ণ)</option>
+              <option value="Probhat">প্রভাত</option>
+              <option value="NationalJatiya">জাতীয়</option>
+              <option value="Bornona">বর্ণনা</option>
+              <option value="MunirOptima">মুনীর অপটিমা</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="etched">
+          <div class="section-title">আচরণ</div>
+          <label class="toggle">
+            <span><b>ছোট পপ-আপ</b><small>টাইপ করার সময়ের পপ-আপে যুক্তবর্ণের সারি লুকায়</small></span>
+            <span class="switch"><input type="checkbox" id="cfgCompact" onchange="saveSettings()"><i></i></span>
+          </label>
+          <label class="toggle">
+            <span><b>টার্মিনালে ইংরেজি</b><small>Windows Terminal, CMD, PowerShell-এ নিজে থেকে ইংরেজি</small></span>
+            <span class="switch"><input type="checkbox" id="cfgTerminal" checked onchange="saveSettings()"><i></i></span>
+          </label>
+        </div>
+
+        <div class="etched">
+          <div class="section-title">স্নিপেট</div>
+          <div class="hint">শর্টকাট লিখে Space চাপলে পুরো লেখাটা বসে যায়। ক্লিক করলে প্যাডে বসবে।</div>
+          <div class="setting">
+            <input type="text" id="newSnipKey" placeholder="শর্টকাট, যেমন ;addr">
+            <input type="text" id="newSnipVal" placeholder="পুরো লেখা, যেমন ধানমন্ডি, ঢাকা-১২০৯" style="font-family:var(--font-bn)">
+            <div><button class="btn primary" onclick="addCustomSnippet()">স্নিপেট যোগ করুন</button></div>
+          </div>
+          <div class="chip-bar" id="snippetsList" style="margin-top:12px"></div>
+        </div>
+      </div>
+      <div id="settingsSavedMsg" role="status" class="hint" style="margin-top:12px"></div>
     </section>
   </main>
 </div>
+
+<div class="toast glass" id="toast" role="status" aria-live="polite"></div>
 
 <script>
 // Every Studio API call carries this page's token; other websites cannot read or change settings.
@@ -943,10 +641,12 @@ window.fetch = (url, opts = {}) => {
   }
   return nativeFetch(url, opts);
 };
+
 let allSignItems = [];
 let currentSearchItems = [];
 let activeQuickKind = 'ALL';
 let activeAtlasKind = 'ALL';
+let activeConvMode = 'bijoy2uni';
 let selectedC1 = 'ষ';
 let selectedC2 = 'ট';
 
@@ -966,91 +666,99 @@ const CHAR_ROMAN_MAP = {
   'ট':'T','ঠ':'Th','ড':'D','ঢ':'Dh','ণ':'N','ত':'t','থ':'th','দ':'d','ধ':'dh','ন':'n',
   'প':'p','ফ':'ph','ব':'b/w','ভ':'bh','ম':'m','য':'z/y','র':'r','ল':'l','শ':'sh','ষ':'Sh/sh','স':'s','হ':'h',
   'ড়':'R','ঢ়':'Rh','য়':'y','ৎ':'t`','ং':'ng','ঃ':':','ঁ':'^',
-  'া':'a (আ-কার)','ি':'i (ই-কার)','ী':'I/ii (ঈ-কার)','ু':'u (উ-কার)','ূ':'U/uu (ঊ-কার)',
-  'ৃ':'ri/rri (ঋ-কার)','ে':'e (এ-কার)','ৈ':'OI (ঐ-কার)','ো':'o (ও-কার)','ৌ':'OU (ঔ-কার)','্':'+ (হসন্ত/যুক্ত)'
+  'া':'a','ি':'i','ী':'I / ii','ু':'u','ূ':'U / uu','ৃ':'ri','ে':'e','ৈ':'OI','ো':'o','ৌ':'OU','্':'+'
 };
+const KAR_NAMES = {'া':'আ-কার','ি':'ই-কার','ী':'ঈ-কার','ু':'উ-কার','ূ':'ঊ-কার','ৃ':'ঋ-কার','ে':'এ-কার','ৈ':'ঐ-কার','ো':'ও-কার','ৌ':'ঔ-কার'};
 
-function toggleTheme() {
+const esc = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const bnDigits = (n) => String(n).replace(/[0-9]/g, d => '০১২৩৪৫৬৭৮৯'[+d]);
+
+// ── Theme: system (default), light or dark ──
+function storedTheme() { try { return localStorage.getItem('ekushe_theme') || 'system'; } catch (e) { return 'system'; } }
+function setTheme(mode) {
   const html = document.documentElement;
-  const current = html.getAttribute('data-theme') || 'light';
-  const next = current === 'light' ? 'dark' : 'light';
-  html.setAttribute('data-theme', next);
-  localStorage.setItem('ekushe_theme', next);
-  document.getElementById('themeBtn').textContent = next === 'light' ? '☀️ Light Mode' : '🌙 Dark Mode';
+  if (mode === 'system') html.removeAttribute('data-theme'); else html.setAttribute('data-theme', mode);
+  try { localStorage.setItem('ekushe_theme', mode); } catch (e) {}
+  document.querySelectorAll('[data-theme-opt]').forEach(b => b.classList.toggle('primary', b.dataset.themeOpt === mode));
+  const dark = mode === 'dark' || (mode === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+  const use = document.querySelector('#themeBtn use');
+  if (use) use.setAttribute('href', dark ? '#i-moon' : '#i-sun');
+}
+function cycleTheme() {
+  const order = ['system', 'light', 'dark'];
+  const next = order[(order.indexOf(storedTheme()) + 1) % order.length];
+  setTheme(next);
+  toast({system: 'থিম: সিস্টেম অনুযায়ী', light: 'থিম: হালকা', dark: 'থিম: গাঢ়'}[next]);
+}
+setTheme(storedTheme());
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => setTheme(storedTheme()));
+
+let toastTimer = null;
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
+}
+function copyText(text) {
+  if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => toast('কপি হয়েছে'), () => toast('কপি করা যায়নি'));
 }
 
-(function initTheme() {
-  const saved = localStorage.getItem('ekushe_theme') || 'light';
-  document.documentElement.setAttribute('data-theme', saved);
-  const btn = document.getElementById('themeBtn');
-  if (btn) btn.textContent = saved === 'light' ? '☀️ Light Mode' : '🌙 Dark Mode';
-})();
-
+// 70–100 % → glass from airy to nearly solid
 function applyOpacityVisuals(pct) {
   const clamped = Math.max(70, Math.min(100, parseInt(pct || 92, 10)));
-  const glassAlpha = (clamped / 100) * 0.85;
-  document.documentElement.style.setProperty('--glass-alpha', glassAlpha.toFixed(2));
-  const lbl = document.getElementById('opacityLabel');
-  const cVal = document.getElementById('cfgOpacityVal');
-  const hSl = document.getElementById('headerOpacitySlider');
-  const cSl = document.getElementById('cfgOpacity');
-  if (lbl) lbl.textContent = clamped + '%';
-  if (cVal) cVal.textContent = clamped + '%';
-  if (hSl) hSl.value = clamped;
-  if (cSl) cSl.value = clamped;
+  const alpha = 0.22 + (clamped - 70) / 30 * 0.6;
+  document.documentElement.style.setProperty('--glass-alpha', alpha.toFixed(2));
+  const v = document.getElementById('cfgOpacityVal');
+  const s = document.getElementById('cfgOpacity');
+  if (v) v.textContent = bnDigits(clamped) + '%';
+  if (s) s.value = clamped;
 }
-
-async function onOpacityChange(pct) {
+let opacitySaveTimer = null;
+function onOpacityChange(pct) {
   applyOpacityVisuals(pct);
-  await saveSettings();
+  clearTimeout(opacitySaveTimer);
+  opacitySaveTimer = setTimeout(saveSettings, 250);
 }
 
 function applyCssFont(fontName) {
-  document.documentElement.style.setProperty(
-    '--font-bn',
-    `'${fontName}', 'Kalpurush', 'SolaimanLipi', 'Siyam Rupali', 'Hind Siliguri', sans-serif`
-  );
-  const hSel = document.getElementById('headerFontSelect');
-  const cSel = document.getElementById('cfgFont');
-  if (hSel) hSel.value = fontName;
-  if (cSel) cSel.value = fontName;
+  document.documentElement.style.setProperty('--font-bn', `'${fontName}', 'Kalpurush', 'SolaimanLipi', 'Hind Siliguri', sans-serif`);
+  const sel = document.getElementById('cfgFont');
+  if (sel) sel.value = fontName;
 }
-
 async function changeBanglaFont(fontName) {
   applyCssFont(fontName);
   await saveSettings();
 }
 
-function showTab(id, btn) {
+function showTab(id) {
   const panel = document.getElementById('tab-' + id);
   if (!panel) return;
-  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p === panel));
   document.querySelectorAll('.nav-btn').forEach(b => {
-    b.classList.remove('active');
-    if (!btn && (b.getAttribute('onclick') || '').includes("'" + id + "'")) {
-      b.classList.add('active');
-    }
+    const on = b.dataset.tab === id;
+    b.classList.toggle('active', on);
+    if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
   });
-  panel.classList.add('active');
-  if (btn) btn.classList.add('active');
+  document.getElementById('pageTitle').textContent = panel.dataset.title;
+  document.getElementById('pageSub').textContent = panel.dataset.sub;
   if (id === 'spell') runSpellCheck();
-  if (id === 'converter') runConvert('bijoy2uni');
+  if (id === 'converter') runConvert();
   if (id === 'xray') runWordXray();
+  if (id === 'playground') document.getElementById('romanInput').focus({ preventScroll: true });
 }
+document.querySelectorAll('.nav-btn').forEach(b => b.addEventListener('click', () => {
+  showTab(b.dataset.tab);
+  history.replaceState(null, '', '?tab=' + b.dataset.tab);
+}));
 
 async function refreshState() {
   const res = await fetch('/api/state');
   const st = await res.json();
   const pill = document.getElementById('modePill');
-  const txt = document.getElementById('modeText');
-  if (st.language === 'Bangla') {
-    pill.className = 'mode-pill bangla';
-    txt.textContent = 'বাং · বাংলা সক্রিয় (০-৯ · Tap Shift×2)';
-  } else {
-    pill.className = 'mode-pill english';
-    txt.textContent = 'EN · Default English (0-9)';
-  }
-  document.getElementById('hotkeyBadge').textContent = 'Switch: ' + st.hotkey_display;
+  pill.className = 'lang-switch ' + (st.language === 'Bangla' ? 'bangla' : 'english');
+  document.getElementById('hotkeyBadge').textContent = st.hotkey_display;
   document.getElementById('cfgHotkey').value = st.hotkey_id;
   document.getElementById('cfgMode').value = st.typing_mode;
   document.getElementById('cfgLayout').value = st.active_layout;
@@ -1060,18 +768,17 @@ async function refreshState() {
   if (trmEl && typeof st.auto_english_in_terminals === 'boolean') trmEl.checked = st.auto_english_in_terminals;
   if (Array.isArray(st.snippets)) {
     const sBox = document.getElementById('snippetsList');
-    if (sBox) {
-      sBox.innerHTML = st.snippets.map(([k, v]) =>
-        `<span class="chip" onclick="insertIntoPad('${v} ')" title="ক্লিক করলে রাইটিং প্যাডে যুক্ত হবে"><code>${k}</code> ➔ <b>${v}</b></span>`
-      ).join('');
-    }
+    sBox.innerHTML = '';
+    st.snippets.forEach(([k, v]) => {
+      const b = document.createElement('button');
+      b.className = 'chip snip-chip';
+      b.innerHTML = `<code>${esc(k)}</code><b>${esc(v)}</b>`;
+      b.onclick = () => { insertIntoPad(v + ' '); toast('প্যাডে বসানো হয়েছে'); };
+      sBox.appendChild(b);
+    });
   }
-  if (st.font_family) {
-    applyCssFont(st.font_family);
-  }
-  if (st.popup_opacity) {
-    applyOpacityVisuals(st.popup_opacity);
-  }
+  if (st.font_family) applyCssFont(st.font_family);
+  if (st.popup_opacity) applyOpacityVisuals(st.popup_opacity);
 }
 
 async function toggleMode() {
@@ -1079,361 +786,275 @@ async function toggleMode() {
   await refreshState();
 }
 
+// ── Writing pad ──
+let lastCandidates = [];
 async function onRomanInput() {
   const val = document.getElementById('romanInput').value;
+  const cBar = document.getElementById('candidateBar');
+  const hBar = document.getElementById('hintBar');
+  if (!val.trim()) {
+    lastCandidates = [];
+    cBar.innerHTML = '<span class="cand-empty">লিখতে শুরু করলে শব্দের পরামর্শ এখানে দেখাবে</span>';
+    hBar.innerHTML = '';
+    return;
+  }
   const res = await fetch('/api/suggest?q=' + encodeURIComponent(val));
   const data = await res.json();
-  const cBar = document.getElementById('candidateBar');
+  if (document.getElementById('romanInput').value !== val) return; // a newer keystroke won
+  lastCandidates = data.candidates;
   cBar.innerHTML = '';
   data.candidates.forEach((c, idx) => {
-    const el = document.createElement('span');
-    el.className = 'chip' + (idx === 0 ? ' primary' : '');
-    el.textContent = (idx + 1) + '. ' + c.text + (c.annotation ? ' (' + c.annotation + ')' : '');
-    el.onclick = () => insertIntoPad(c.text + ' ');
+    const el = document.createElement('button');
+    el.className = 'cand' + (idx === 0 ? ' top' : '');
+    el.innerHTML = `<span class="n">${idx + 1}</span>${esc(c.text)}${c.annotation ? `<span class="tag">${esc(c.annotation)}</span>` : ''}`;
+    el.onclick = () => commitCandidate(idx);
     cBar.appendChild(el);
   });
-
-  const hBar = document.getElementById('hintBar');
   hBar.innerHTML = '';
-  data.sign_hints.slice(0, 12).forEach(h => {
-    const el = document.createElement('span');
-    el.className = 'chip';
-    el.textContent = h.result_bangla + ' [' + h.key_hint + ' · ' + h.label + ']';
-    el.onclick = () => {
-      document.getElementById('romanInput').value = h.key_hint;
-      onRomanInput();
-    };
+  data.sign_hints.slice(0, 8).forEach(h => {
+    const el = document.createElement('button');
+    el.className = 'hint-chip';
+    el.title = h.label;
+    el.innerHTML = `<b>${esc(h.result_bangla)}</b>${esc(h.key_hint)}`;
+    el.onclick = () => { const r = document.getElementById('romanInput'); r.value = h.key_hint; r.focus(); onRomanInput(); };
     hBar.appendChild(el);
   });
 }
-
+function commitCandidate(idx) {
+  const c = lastCandidates[idx];
+  if (!c) return;
+  insertIntoPad(c.text + ' ');
+  const r = document.getElementById('romanInput');
+  r.value = '';
+  r.focus();
+  onRomanInput();
+}
 document.getElementById('romanInput').addEventListener('keydown', (e) => {
-  if (e.key === ' ' || e.key === 'Enter') {
-    const first = document.querySelector('#candidateBar .chip');
-    if (first) {
-      e.preventDefault();
-      const text = first.textContent.replace(/^\d+\.\s*/, '').replace(/\s*\(.*\)$/, '');
-      insertIntoPad(text + ' ');
-      document.getElementById('romanInput').value = '';
-      onRomanInput();
-    }
+  if ((e.key === ' ' || e.key === 'Enter') && lastCandidates.length) {
+    e.preventDefault();
+    commitCandidate(0);
+  } else if (/^[1-9]$/.test(e.key) && e.altKey && lastCandidates[+e.key - 1]) {
+    e.preventDefault();
+    commitCandidate(+e.key - 1);
   }
 });
 
-// ════════════════════════════════════════════════════════════════════════
-// Daily Bangla Writing Power-Toolbar Functions
-// ════════════════════════════════════════════════════════════════════════
+function updateCount() {
+  const t = document.getElementById('banglaPad').value.trim();
+  const words = t ? t.split(/\s+/).length : 0;
+  document.getElementById('padCount').textContent = `${bnDigits(words)} শব্দ`;
+}
+function insertIntoPad(str) {
+  const pad = document.getElementById('banglaPad');
+  pad.value += str;
+  updateCount();
+}
+function clearPad() {
+  document.getElementById('banglaPad').value = '';
+  updateCount();
+  document.getElementById('romanInput').focus();
+}
+function copyPad() { copyText(document.getElementById('banglaPad').value); }
+
 function convertPadDigitsToBangla() {
   const pad = document.getElementById('banglaPad');
-  const map = {'0':'০','1':'১','2':'২','3':'৩','4':'৪','5':'৫','6':'৬','7':'৭','8':'৮','9':'৯'};
-  pad.value = pad.value.replace(/[0-9]/g, d => map[d]);
+  pad.value = pad.value.replace(/[0-9]/g, d => '০১২৩৪৫৬৭৮৯'[+d]);
 }
-
 function convertPadDigitsToEnglish() {
   const pad = document.getElementById('banglaPad');
   const map = {'০':'0','১':'1','২':'2','৩':'3','৪':'4','৫':'5','৬':'6','৭':'7','৮':'8','৯':'9'};
   pad.value = pad.value.replace(/[০-৯]/g, d => map[d]);
 }
-
 function insertTakaCurrency() {
   const pad = document.getElementById('banglaPad');
-  // Convert any trailing number or insert sample formatted Taka
-  const replaced = pad.value.replace(/([0-9০-৯]{4,})/g, (m) => {
-    return '৳ ' + m + '/-';
-  });
-  if (replaced !== pad.value) {
-    pad.value = replaced;
-  } else {
-    insertIntoPad('৳ ১,০০০/- ');
-  }
+  const replaced = pad.value.replace(/([0-9০-৯]{4,})/g, m => '৳ ' + m + '/-');
+  if (replaced !== pad.value) pad.value = replaced; else insertIntoPad('৳ ১,০০০/- ');
 }
-
 function insertTodayBanglaDate() {
   const now = new Date();
-  const bnDigits = ['০','১','২','৩','৪','৫','৬','৭','৮','৯'];
-  const toBn = (n) => String(n).replace(/[0-9]/g, d => bnDigits[+d]);
-  const monthsBn = ['জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর'];
-  const stamp = `${toBn(now.getDate())} ${monthsBn[now.getMonth()]} ${toBn(now.getFullYear())} `;
-  insertIntoPad(stamp);
+  const months = ['জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর'];
+  insertIntoPad(`${bnDigits(now.getDate())} ${months[now.getMonth()]} ${bnDigits(now.getFullYear())} `);
 }
-
 function smartPolishBanglaPad() {
   const pad = document.getElementById('banglaPad');
   let t = pad.value;
-  // Normalize decomposed nukta characters to canonical Bangla Unicode
-  t = t.replace(/\u09AF\u09BC/g, 'য়').replace(/\u09A1\u09BC/g, 'ড়').replace(/\u09A2\u09BC/g, 'ঢ়');
-  // Replace English period after Bangla characters with Bangla Danda (।)
-  t = t.replace(/([\u0980-\u09FF])\./g, '$1।');
-  // Clean multiple spaces
+  t = t.replace(/য়/g, 'য়').replace(/ড়/g, 'ড়').replace(/ঢ়/g, 'ঢ়');
+  t = t.replace(/([ঀ-৿])\./g, '$1।');
   t = t.replace(/[ \t]{2,}/g, ' ');
   pad.value = t;
+  toast('দাড়ি ও ফাঁকা ঠিক করা হয়েছে');
 }
-
 function inspectPadWordInXray() {
-  const pad = document.getElementById('banglaPad').value.trim();
-  const words = pad.split(/\s+/);
-  const last = (words[words.length - 1] || 'সৃষ্টি').replace(/[।,.!?]/g, '');
+  const words = document.getElementById('banglaPad').value.trim().split(/\s+/);
+  const last = (words[words.length - 1] || '').replace(/[।,.!?]/g, '');
   document.getElementById('xrayInput').value = last || 'সৃষ্টি';
-  showTab('xray', null);
+  showTab('xray');
 }
 
-// ════════════════════════════════════════════════════════════════════════
-// Word X-Ray & 2-Click Visual Conjunct Builder
-// ════════════════════════════════════════════════════════════════════════
+// ── Word X-ray and conjunct builder ──
 function setXrayWord(w) {
   document.getElementById('xrayInput').value = w;
   runWordXray();
 }
-
 function runWordXray() {
   const word = (document.getElementById('xrayInput').value || '').trim();
   const box = document.getElementById('xrayTokens');
   const sum = document.getElementById('xraySummary');
   box.innerHTML = '';
-  if (!word) {
-    sum.textContent = '';
-    return;
-  }
-
-  // Check if this word or conjunct is in our curated helper database
+  if (!word) { sum.textContent = ''; return; }
   let matchedRoman = '';
   for (const it of allSignItems) {
-    if (it.words) {
-      const found = it.words.find(w => w.bangla === word);
-      if (found) {
-        matchedRoman = `${found.roman} (${found.meaning})`;
-        break;
-      }
-    }
+    const found = (it.words || []).find(w => w.bangla === word);
+    if (found) { matchedRoman = found.roman; break; }
   }
-
   const chars = Array.from(word);
-  let i = 0;
   const parts = [];
+  let i = 0;
   while (i < chars.length) {
-    // Detect C1 + Hasanta + C2 (+ Hasanta + C3) conjunct cluster
     if (i + 2 < chars.length && chars[i + 1] === '্') {
       if (i + 4 < chars.length && chars[i + 3] === '্') {
-        const cluster = chars.slice(i, i + 5).join('');
-        parts.push({ glyph: cluster, formula: `${chars[i]} + ্ + ${chars[i+2]} + ্ + ${chars[i+4]}`, type: 'যুক্তবর্ণ' });
-        i += 5;
-        continue;
+        parts.push({ glyph: chars.slice(i, i + 5).join(''), formula: `${chars[i]}+${chars[i+2]}+${chars[i+4]}`, type: 'যুক্তবর্ণ' });
+        i += 5; continue;
       }
       const cluster = chars.slice(i, i + 3).join('');
       const known = allSignItems.find(it => it.bangla === cluster);
       const keyHint = known ? known.primary_key : ((CHAR_ROMAN_MAP[chars[i]] || '') + (CHAR_ROMAN_MAP[chars[i+2]] || ''));
-      parts.push({
-        glyph: cluster,
-        formula: `${chars[i]} + ${chars[i+2]} (${keyHint})`,
-        type: 'যুক্তবর্ণ'
-      });
-      i += 3;
-      continue;
+      parts.push({ glyph: cluster, formula: keyHint, type: 'যুক্তবর্ণ' });
+      i += 3; continue;
     }
     const ch = chars[i];
-    const key = CHAR_ROMAN_MAP[ch] || ch;
-    const isKar = ch >= '\u09BE' && ch <= '\u09CC';
-    parts.push({
-      glyph: ch,
-      formula: key,
-      type: isKar ? 'কার (Vowel Sign)' : 'বর্ণ (Letter)'
-    });
+    const isKar = ch >= 'া' && ch <= 'ৌ';
+    parts.push({ glyph: ch, formula: CHAR_ROMAN_MAP[ch] || ch, type: isKar ? (KAR_NAMES[ch] || 'কার') : 'বর্ণ' });
     i++;
   }
-
-  sum.textContent = matchedRoman
-    ? `✨ "${word}" সহজে টাইপ করুন: ${matchedRoman}`
-    : `✨ "${word}" শব্দের অক্ষর ও যুক্তবর্ণ বিশ্লেষণ (${parts.length}টি অংশ):`;
-
+  sum.innerHTML = matchedRoman
+    ? `টাইপ করুন <kbd>${esc(matchedRoman)}</kbd>`
+    : `${bnDigits(parts.length)}টি অংশ`;
   parts.forEach(p => {
     const d = document.createElement('div');
     d.className = 'xray-token';
-    d.innerHTML = `<span class="xt-char">${p.glyph}</span><span class="xt-key">${p.formula}</span><span class="xt-name">${p.type}</span>`;
+    d.innerHTML = `<span class="xt-char">${esc(p.glyph)}</span><span class="xt-key">${esc(p.formula)}</span><span class="xt-name">${esc(p.type)}</span>`;
     box.appendChild(d);
   });
 }
-
 function initConjunctBuilder() {
   const m1 = document.getElementById('cMatrix1');
   const m2 = document.getElementById('cMatrix2');
-  if (!m1 || !m2) return;
-  m1.innerHTML = '';
-  m2.innerHTML = '';
-
+  m1.innerHTML = ''; m2.innerHTML = '';
   BANGLA_CONSONANTS.forEach(item => {
-    const b1 = document.createElement('div');
-    b1.className = 'c-btn' + (item.c === selectedC1 ? ' selected' : '');
-    b1.textContent = item.c;
-    b1.title = `${item.c} (${item.r})`;
-    b1.onclick = () => {
-      selectedC1 = item.c;
-      initConjunctBuilder();
-      updateFusionPreview();
-    };
-    m1.appendChild(b1);
-
-    const b2 = document.createElement('div');
-    b2.className = 'c-btn' + (item.c === selectedC2 ? ' selected' : '');
-    b2.textContent = item.c;
-    b2.title = `${item.c} (${item.r})`;
-    b2.onclick = () => {
-      selectedC2 = item.c;
-      initConjunctBuilder();
-      updateFusionPreview();
-    };
-    m2.appendChild(b2);
+    [[m1, 1], [m2, 2]].forEach(([m, which]) => {
+      const b = document.createElement('button');
+      const sel = which === 1 ? selectedC1 : selectedC2;
+      b.className = 'c-btn' + (item.c === sel ? ' selected' : '');
+      b.textContent = item.c;
+      b.title = item.r;
+      b.onclick = () => { if (which === 1) selectedC1 = item.c; else selectedC2 = item.c; initConjunctBuilder(); };
+      m.appendChild(b);
+    });
   });
   updateFusionPreview();
 }
-
 function updateFusionPreview() {
   const fused = selectedC1 + '্' + selectedC2;
-  document.getElementById('fusionFormula').textContent = `${selectedC1} + ্ + ${selectedC2} =`;
+  document.getElementById('fusionFormula').textContent = `${selectedC1} + ্ + ${selectedC2}`;
   document.getElementById('fusionResult').textContent = fused;
   const known = allSignItems.find(it => it.bangla === fused);
   const r1 = (BANGLA_CONSONANTS.find(x => x.c === selectedC1) || {r:''}).r;
   const r2 = (BANGLA_CONSONANTS.find(x => x.c === selectedC2) || {r:''}).r;
-  const romanHint = known
-    ? `${known.primary_key}${known.alt_keys && known.alt_keys.length ? ' / ' + known.alt_keys.join(', ') : ''}`
-    : `${r1}${r2}`;
-  document.getElementById('fusionRoman').textContent = `টাইপ শর্টকাট (Type): ${romanHint}`;
+  const hint = known ? [known.primary_key].concat(known.alt_keys || []).join(' / ') : r1 + r2;
+  document.getElementById('fusionRoman').textContent = 'টাইপ করুন: ' + hint;
 }
-
 function insertBuiltConjunct() {
   const fused = selectedC1 + '্' + selectedC2;
   insertIntoPad(fused);
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(fused);
-  }
+  copyText(fused);
 }
 
+// ── Guide ──
 function isBanglaConsonant(ch) {
   if (!ch) return false;
   const code = ch.charCodeAt(0);
   return (code >= 0x0995 && code <= 0x09B9) || code === 0x09DC || code === 0x09DD || code === 0x09DF;
 }
-
 function insertSignItemIntoPad(item) {
   const pad = document.getElementById('banglaPad');
-  const current = pad.value;
-  const lastChar = current.length > 0 ? current[current.length - 1] : '';
+  const lastChar = pad.value.slice(-1);
   let inserted = item.bangla;
   if ((item.kind === 'Kar' || item.kind === 'Fola') && !isBanglaConsonant(lastChar)) {
-    const cleanSyllable = item.display_bangla.split('/')[0].trim();
-    pad.value += cleanSyllable;
-    inserted = cleanSyllable;
-  } else {
-    pad.value += item.bangla;
+    inserted = item.display_bangla.split('/')[0].trim();
   }
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(item.bangla);
-  }
-  const toast = document.getElementById('signsToast');
-  if (toast) {
-    toast.textContent = `✓ '${inserted}' কপি হয়েছে এবং প্যাডে যুক্ত হয়েছে! (Type: ${item.primary_key})`;
-  }
+  insertIntoPad(inserted);
+  if (navigator.clipboard) navigator.clipboard.writeText(item.bangla);
+  toast(`${inserted} কপি হয়েছে · টাইপ: ${item.primary_key}`);
 }
-
 function insertWordExample(banglaWord, romanKey, meaning, ev) {
   if (ev) ev.stopPropagation();
   const pad = document.getElementById('banglaPad');
-  pad.value += (pad.value && !pad.value.endsWith(' ') ? ' ' : '') + banglaWord + ' ';
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(banglaWord);
-  }
-  const toast = document.getElementById('signsToast');
-  if (toast) {
-    toast.textContent = `✓ '${banglaWord}' কপি হয়েছে! (Type: ${romanKey} — ${meaning})`;
-  }
+  insertIntoPad((pad.value && !pad.value.endsWith(' ') ? ' ' : '') + banglaWord + ' ');
+  if (navigator.clipboard) navigator.clipboard.writeText(banglaWord);
+  toast(`${banglaWord} কপি হয়েছে · টাইপ: ${romanKey}`);
 }
-
-function insertIntoPad(str) {
-  const pad = document.getElementById('banglaPad');
-  pad.value += str;
-  pad.focus();
-}
-
-function copyPad() {
-  const pad = document.getElementById('banglaPad');
-  navigator.clipboard.writeText(pad.value);
-}
-
-function filterQuickGrid(kind, chipEl) {
-  activeQuickKind = kind;
+function markActive(chipEl) {
   if (chipEl && chipEl.parentElement) {
     chipEl.parentElement.querySelectorAll('.chip').forEach(c => c.classList.remove('primary'));
     chipEl.classList.add('primary');
   }
-  renderQuickGrid();
 }
-
-function filterAtlasGrid(kindOrSeries, chipEl) {
-  activeAtlasKind = kindOrSeries;
-  if (chipEl && chipEl.parentElement) {
-    chipEl.parentElement.querySelectorAll('.chip').forEach(c => c.classList.remove('primary'));
-    chipEl.classList.add('primary');
-  }
-  renderAtlasGrid();
-}
+function filterQuickGrid(kind, chipEl) { activeQuickKind = kind; markActive(chipEl); renderQuickGrid(); }
+function filterAtlasGrid(kind, chipEl) { activeAtlasKind = kind; markActive(chipEl); renderAtlasGrid(); }
 
 function renderQuickGrid() {
   const qGrid = document.getElementById('quickSignsGrid');
   qGrid.innerHTML = '';
-  const filtered = activeQuickKind === 'ALL'
-    ? allSignItems
-    : allSignItems.filter(it => it.kind === activeQuickKind || it.series === activeQuickKind);
-  filtered.slice(0, 36).forEach(item => {
-    const b = document.createElement('div');
+  const items = activeQuickKind === 'ALL' ? allSignItems : allSignItems.filter(it => it.kind === activeQuickKind || it.series === activeQuickKind);
+  items.slice(0, 36).forEach(item => {
+    const b = document.createElement('button');
     b.className = 'sign-btn';
-    const alts = item.alt_keys && item.alt_keys.length ? ' / ' + item.alt_keys[0] : '';
-    b.innerHTML = `<span class="bn">${item.display_bangla}</span><span class="rm">${item.primary_key}${alts}</span><span class="dc">${item.decomposition}</span>`;
+    b.title = item.decomposition;
+    b.innerHTML = `<span class="bn">${esc(item.display_bangla)}</span><span class="rm">${esc(item.primary_key)}</span><span class="dc">${esc(item.decomposition.split('(')[0])}</span>`;
     b.onclick = () => insertSignItemIntoPad(item);
     qGrid.appendChild(b);
   });
 }
-
 function renderAtlasGrid() {
   const atlas = document.getElementById('atlasGrid');
   atlas.innerHTML = '';
-  const filtered = activeAtlasKind === 'ALL'
-    ? currentSearchItems
-    : currentSearchItems.filter(it => it.series === activeAtlasKind || it.kind === activeAtlasKind);
-  filtered.forEach(item => {
+  const items = activeAtlasKind === 'ALL' ? currentSearchItems : currentSearchItems.filter(it => it.series === activeAtlasKind || it.kind === activeAtlasKind);
+  if (!items.length) {
+    atlas.innerHTML = '<div class="hint">কিছু পাওয়া যায়নি। অন্য বানানে বা রোমান হরফে খুঁজে দেখুন।</div>';
+    return;
+  }
+  items.forEach(item => {
     const card = document.createElement('div');
     card.className = 'atlas-card';
     const alts = item.alt_keys && item.alt_keys.length ? ' / ' + item.alt_keys.join(', ') : '';
-    const wordsHtml = (item.words || []).map(w =>
-      `<span class="word-pill" title="ক্লিক করে '${w.bangla}' কপি করুন (Type: ${w.roman})" onclick="insertWordExample('${w.bangla}', '${w.roman}', '${w.meaning.replace(/'/g, "\\'")}', event)">
-        <span class="wb">${w.bangla}</span>
-        <span class="wr">${w.roman}</span>
-        <span class="wm">(${w.meaning})</span>
-      </span>`
-    ).join('');
-
-    card.innerHTML = `
-      <div class="atlas-card-top" title="ক্লিক করে '${item.bangla}' কপি করুন">
-        <div class="atlas-glyph">${item.display_bangla}</div>
-        <div class="atlas-meta">
-          <div>
-            <span class="key">${item.primary_key}${alts}</span>
-            <span class="series-tag">${item.series || item.kind}</span>
-          </div>
-          <div style="font-weight:700;margin-top:4px;color:var(--text-main);">${item.decomposition}</div>
-        </div>
-      </div>
-      <div class="word-list">${wordsHtml}</div>
-    `;
-    card.querySelector('.atlas-card-top').onclick = () => insertSignItemIntoPad(item);
+    const top = document.createElement('div');
+    top.className = 'atlas-card-top';
+    top.title = 'ক্লিক করে কপি করুন';
+    top.innerHTML = `<div class="atlas-glyph">${esc(item.display_bangla)}</div><div class="atlas-meta"><div><span class="key">${esc(item.primary_key + alts)}</span><span class="series-tag">${esc(item.series || item.kind)}</span></div><div>${esc(item.decomposition)}</div></div>`;
+    top.onclick = () => insertSignItemIntoPad(item);
+    card.appendChild(top);
+    const list = document.createElement('div');
+    list.className = 'word-list';
+    (item.words || []).forEach(w => {
+      const p = document.createElement('span');
+      p.className = 'word-pill';
+      p.innerHTML = `<span class="wb">${esc(w.bangla)}</span><span class="wr">${esc(w.roman)}</span><span class="wm">${esc(w.meaning)}</span>`;
+      p.onclick = (ev) => insertWordExample(w.bangla, w.roman, w.meaning, ev);
+      list.appendChild(p);
+    });
+    card.appendChild(list);
     atlas.appendChild(card);
   });
 }
-
+let signsReq = 0;
 async function loadSigns(q) {
+  const my = ++signsReq;
   const res = await fetch('/api/signs?q=' + encodeURIComponent(q || ''));
   const items = await res.json();
+  if (my !== signsReq) return;
   currentSearchItems = items;
   renderAtlasGrid();
-
   if (!q) {
     allSignItems = items;
     renderQuickGrid();
@@ -1442,90 +1063,85 @@ async function loadSigns(q) {
   }
 }
 
+// ── Spell check ──
 async function runSpellCheck() {
   const text = document.getElementById('spellInput').value;
-  const res = await fetch('/api/spell', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ text })
-  });
+  const res = await fetch('/api/spell', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ text }) });
   const issues = await res.json();
   const box = document.getElementById('spellResults');
+  box.innerHTML = '';
   if (!issues.length) {
-    box.innerHTML = '<div style="color:#0d6e4e;font-weight:700;">✓ কোনো বানান ভুল পাওয়া যায়নি! (All words look good!)</div>';
+    box.innerHTML = '<div class="ok-note"><svg width="18" height="18"><use href="#i-check"/></svg>কোনো বানান ভুল পাওয়া যায়নি</div>';
     return;
   }
-  box.innerHTML = '';
   issues.forEach(iss => {
     const div = document.createElement('div');
-    div.className = 'issue-card';
-    const chips = iss.suggestions.map(s => `<span class="chip" onclick="replaceSpell('${iss.word}', '${s}')">${s}</span>`).join(' ');
-    div.innerHTML = `<b>সম্ভাব্য ভুল: <span style="color:var(--crimson)">${iss.word}</span></b> — সঠিক পরামর্শে ক্লিক করুন:<div class="chip-bar">${chips}</div>`;
+    div.className = 'issue';
+    const kind = iss.kind === 'non_standard' ? 'অপ্রমিত বানান' : 'সম্ভাব্য ভুল';
+    div.innerHTML = `<div><div class="wrong">${esc(iss.word)}</div><div class="kind">${kind}</div></div><div class="chip-bar grow"></div>`;
+    const bar = div.querySelector('.chip-bar');
+    iss.suggestions.forEach(s => {
+      const b = document.createElement('button');
+      b.className = 'chip fix';
+      b.textContent = s;
+      b.onclick = () => replaceSpell(iss.word, s);
+      bar.appendChild(b);
+    });
     box.appendChild(div);
   });
 }
-
 function replaceSpell(wrong, right) {
   const el = document.getElementById('spellInput');
   el.value = el.value.replace(wrong, right);
   runSpellCheck();
 }
 
-async function runConvert(mode) {
-  const text = document.getElementById('convInput').value;
-  const res = await fetch('/api/convert', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ mode, text })
-  });
-  const out = await res.json();
-  document.getElementById('convOutput').value = out.result;
+// ── Converter ──
+let convTimer = null;
+async function runConvert(mode, chipEl) {
+  if (mode) { activeConvMode = mode; markActive(chipEl || document.querySelector(`#convModes [onclick*="${mode}"]`)); }
+  clearTimeout(convTimer);
+  convTimer = setTimeout(async () => {
+    const text = document.getElementById('convInput').value;
+    const res = await fetch('/api/convert', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ mode: activeConvMode, text }) });
+    const out = await res.json();
+    document.getElementById('convOutput').value = out.result;
+  }, mode ? 0 : 150);
 }
 
+// ── Settings ──
 async function saveSettings(extra) {
   const opEl = document.getElementById('cfgOpacity');
-  const cmpEl = document.getElementById('cfgCompact');
-  const trmEl = document.getElementById('cfgTerminal');
   const body = Object.assign({
     hotkey: document.getElementById('cfgHotkey').value,
     typing_mode: document.getElementById('cfgMode').value,
     active_layout: document.getElementById('cfgLayout').value,
     font_family: document.getElementById('cfgFont').value,
     popup_opacity: opEl ? parseInt(opEl.value, 10) : 92,
-    compact_popup: cmpEl ? !!cmpEl.checked : false,
-    auto_english_in_terminals: trmEl ? !!trmEl.checked : true,
+    compact_popup: !!document.getElementById('cfgCompact').checked,
+    auto_english_in_terminals: !!document.getElementById('cfgTerminal').checked,
   }, extra || {});
-  await fetch('/api/settings', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify(body)
-  });
-  document.getElementById('settingsSavedMsg').textContent = '✓ সেটিংস, ফন্ট, স্নিপেট ও পপ-আপ স্বচ্ছতা সংরক্ষিত এবং সক্রিয় হয়েছে!';
+  const res = await fetch('/api/settings', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
+  document.getElementById('settingsSavedMsg').textContent = res.ok ? 'সংরক্ষিত হয়েছে' : 'সংরক্ষণ করা যায়নি — একুশে চালু আছে কি না দেখুন';
   await refreshState();
 }
-
 async function addCustomSnippet() {
   const kEl = document.getElementById('newSnipKey');
   const vEl = document.getElementById('newSnipVal');
   let key = (kEl.value || '').trim();
   const val = (vEl.value || '').trim();
-  if (!key || !val) return;
-  if (!key.startsWith(';') && !key.startsWith('/')) {
-    key = ';' + key;
-  }
+  if (!key || !val) { toast('শর্টকাট আর পুরো লেখা, দুটোই লিখুন'); return; }
+  if (!key.startsWith(';') && !key.startsWith('/')) key = ';' + key;
   await saveSettings({ snippet_trigger: key, snippet_expansion: val });
-  kEl.value = '';
-  vEl.value = '';
+  kEl.value = ''; vEl.value = '';
+  toast('স্নিপেট যোগ হয়েছে');
 }
 
 const initialTab = new URLSearchParams(window.location.search).get('tab');
-if (initialTab) {
-  showTab(initialTab, null);
-}
+showTab(initialTab && document.getElementById('tab-' + initialTab) ? initialTab : 'playground');
+updateCount();
 refreshState();
 loadSigns('');
-runSpellCheck();
-runConvert('bijoy2uni');
 </script>
 </body>
 </html>
