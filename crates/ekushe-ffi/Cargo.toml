@@ -3,7 +3,7 @@ name = "ekushe-ffi"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "C ABI / FFI bindings for ekushe-core across Windows, macOS, Linux, Android, and iOS"
+description = "C ABI for ekushe-core, used by the macOS input method (and future Linux, Android, iOS front ends)"
 
 [lib]
 crate-type = ["cdylib", "rlib", "staticlib"]
@@ -11,3 +11,15 @@ crate-type = ["cdylib", "rlib", "staticlib"]
 [dependencies]
 ekushe-core = { path = "../ekushe-core" }
 serde_json.workspace = true
+once_cell.workspace = true
+parking_lot.workspace = true
+
+[features]
+# Compile the dictionary into the library (the macOS input method ships this way)
+embedded-dict = ["ekushe-core/embedded-dict"]
+# The Studio web app (writing pad, guide, spell check, converter, settings) on 127.0.0.1
+studio = []
+
+[[example]]
+name = "studio_preview"
+required-features = ["studio"]
