@@ -196,7 +196,7 @@ export const SceneDemo: React.FC = () => {
   const pressT = k >= 0 ? (f - DEMO_KEYS_START - k * KEY_EVERY) / KEY_EVERY : 1;
   const o = Math.min(interpolate(f, [0, 20], [0, 1], clamp), interpolate(f, [395, 420], [1, 0], clamp));
   const panelW = V ? 1340 * u : Math.min(width - 300 * u, 2000 * u);
-  const keyW = (V ? 124 : 112) * u;
+  const keyW = (V ? 128 : 112) * u;
   return (
     <AbsoluteFill style={{ opacity: o }}>
       <Backdrop sun={0.7} field={0.9} />
@@ -205,11 +205,11 @@ export const SceneDemo: React.FC = () => {
           <div style={{ fontFamily: FONT_BN, fontWeight: 700, fontSize: (V ? 84 : 70) * u, color: C.white }}>যেভাবে বলেন, সেভাবে লিখুন</div>
           <Sub>Type it the way you say it</Sub>
         </div>
-        <Glass strong style={{ width: panelW, padding: `${40 * u}px ${50 * u}px`, minHeight: 300 * u }}>
+        <Glass strong style={{ width: panelW, padding: `${40 * u}px ${50 * u}px`, minHeight: (V ? 560 : 300) * u }}>
           <div style={{ display: 'flex', gap: 12 * u, marginBottom: 26 * u }}>
             {[C.red, C.mustard, C.greenBright].map((c) => <div key={c} style={{ width: 20 * u, height: 20 * u, borderRadius: '50%', background: c, opacity: 0.8 }} />)}
           </div>
-          <div style={{ fontFamily: FONT_DISPLAY, fontSize: (V ? 104 : 112) * u, color: C.white, lineHeight: 1.35, minHeight: 150 * u }}>
+          <div style={{ fontFamily: FONT_DISPLAY, fontSize: (V ? 128 : 112) * u, color: C.white, lineHeight: 1.35, minHeight: (V ? 330 : 150) * u }}>
             {text}
             {composing ? <span style={{ textDecoration: 'underline', textDecorationColor: C.greenBright, textUnderlineOffset: 16 * u, textDecorationThickness: 5 * u }}>{state.preedit}</span> : null}
             <span style={{ display: 'inline-block', width: 6 * u, height: 100 * u, background: C.greenBright, marginLeft: 6 * u, verticalAlign: 'middle', opacity: Math.floor(f / 30) % 2 ? 1 : 0.2 }} />
@@ -220,7 +220,7 @@ export const SceneDemo: React.FC = () => {
                 <div style={{ fontFamily: FONT_LATIN, fontSize: 26 * u, color: 'rgba(234,243,238,0.7)', fontWeight: 600 }}>{state.roman}</div>
                 <div style={{ display: 'flex', gap: 12 * u }}>
                   {state.candidates.slice(0, V ? 4 : 5).map((c, i) => (
-                    <div key={i} style={{ fontFamily: i === 0 || /[a-z]/.test(c) ? (/[a-z]/.test(c) ? FONT_LATIN : FONT_DISPLAY) : FONT_DISPLAY, fontSize: 46 * u, padding: `${6 * u}px ${20 * u}px`, borderRadius: 14 * u, background: i === 0 ? C.green : 'rgba(255,255,255,0.1)', color: C.white, display: 'flex', alignItems: 'baseline', gap: 10 * u }}>
+                    <div key={i} style={{ fontFamily: i === 0 || /[a-z]/.test(c) ? (/[a-z]/.test(c) ? FONT_LATIN : FONT_DISPLAY) : FONT_DISPLAY, fontSize: (V ? 54 : 46) * u, padding: `${6 * u}px ${20 * u}px`, borderRadius: 14 * u, background: i === 0 ? C.green : 'rgba(255,255,255,0.1)', color: C.white, display: 'flex', alignItems: 'baseline', gap: 10 * u }}>
                       <span style={{ fontFamily: FONT_LATIN, fontSize: 22 * u, opacity: 0.7 }}>{i + 1}</span>
                       {c}
                     </div>
@@ -231,7 +231,7 @@ export const SceneDemo: React.FC = () => {
           </div>
         </Glass>
         {/* Keyboard */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 * u, alignItems: 'center', transform: `scale(${V ? 1 : 0.9})` }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: (V ? 16 : 12) * u, alignItems: 'center', transform: `scale(${V ? 1 : 0.9})` }}>
           {KEY_ROWS.map((row) => (
             <div key={row} style={{ display: 'flex', gap: 12 * u }}>
               {row.split('').map((ch) => {
@@ -300,13 +300,13 @@ export const SceneSpeed: React.FC = () => {
   const { u, V } = useLayout();
   const o = Math.min(interpolate(f, [0, 20], [0, 1], clamp), interpolate(f, [275, 300], [1, 0], clamp));
   const ms = interpolate(ease(f, 20, 110), [0, 1], [100, 0.98]);
-  const barMax = (V ? 1150 : 1500) * u;
+  const barMax = (V ? 900 : 1500) * u;
   const grow = ease(f, 130, 200);
   return (
     <AbsoluteFill style={{ opacity: o }}>
       <Backdrop sun={0.5} field={0.8} />
       <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
-        <div style={{ fontFamily: FONT_BN, fontWeight: 600, fontSize: 60 * u, color: C.mist }}>প্রতিটি কী-চাপে সময় লাগে</div>
+        <div style={{ fontFamily: FONT_BN, fontWeight: 600, fontSize: (V ? 72 : 60) * u, color: C.mist }}>প্রতিটি কী-চাপে সময় লাগে</div>
         <div style={{ fontFamily: FONT_LATIN, fontWeight: 800, fontSize: (V ? 300 : 280) * u, lineHeight: 1.05, color: C.white, letterSpacing: '-0.03em', textShadow: `0 0 ${70 * u}px rgba(47,209,142,0.5)` }}>
           {ms.toFixed(2)}<span style={{ fontSize: 110 * u, fontWeight: 600, marginLeft: 16 * u, letterSpacing: 0 }}>ms</span>
         </div>
