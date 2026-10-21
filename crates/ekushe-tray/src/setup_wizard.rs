@@ -191,6 +191,20 @@ pub fn ensure_self_configured() {
     }
 }
 
+/// Install progress, one line per step, in `%TEMP%\ekushe-install.log`: if an install ever stalls
+/// or fails, the last line says where.
+pub fn install_log(step: &str) {
+    use std::io::Write;
+    let path = env::temp_dir().join("ekushe-install.log");
+    if let Ok(mut f) = fs::OpenOptions::new().create(true).append(true).open(path) {
+        let t = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        let _ = writeln!(f, "{t} {step}");
+    }
+}
+
 /// Performs a complete, zero-command installation of Ekushe onto the user's Windows PC.
 pub fn perform_full_install(
     create_desktop_shortcut: bool,
@@ -200,6 +214,7 @@ pub fn perform_full_install(
     let root = install_root_dir();
     let icons_dir = root.join("assets").join("icons");
     let fonts_dir = root.join("assets").join("fonts");
+    install_log(&format!("install start → {}", root.display()));
 
     fs::create_dir_all(&icons_dir).map_err(|e| e.to_string())?;
     fs::create_dir_all(&fonts_dir).map_err(|e| e.to_string())?;
@@ -211,6 +226,7 @@ pub fn perform_full_install(
     let _ = fs::write(icons_dir.join("tray_english.ico"), ICON_TRAY_ENGLISH_ICO);
 
     // Write & register all Bangladeshi fonts
+    install_log("fonts and settings");
     ensure_self_configured();
 
     // Copy current executable to %LOCALAPPDATA%\Programs\Ekushe\ekushe.exe & Uninstall-Ekushe.exe
@@ -219,9 +235,12 @@ pub fn perform_full_install(
     let uninstall_exe = root.join("Uninstall-Ekushe.exe");
 
     if current_exe != target_exe {
+        install_log("stopping a running Ekushe");
         stop_running_ekushe();
+        install_log("copying ekushe.exe");
         copy_checked(&current_exe, &target_exe)?;
     }
+    install_log("copying the uninstaller");
     copy_checked(&current_exe, &uninstall_exe)?;
 
     // Also copy sibling ekushe_tsf.dll / ekushe-cli.exe if present next to installer
@@ -245,6 +264,7 @@ pub fn perform_full_install(
     }
 
     let ico_path = icons_dir.join("ekushe.ico");
+    install_log("shortcuts");
 
     // Create Start Menu Shortcut
     if let Some(appdata) = dirs::data_dir() {
@@ -300,6 +320,7 @@ pub fn perform_full_install(
         .map_err(|code| format!("could not register the uninstaller (registry error {code})"))?;
     }
 
+    install_log("install finished");
     if launch_after && target_exe.exists() {
         let _ = Command::new(&target_exe).current_dir(&root).spawn();
     }
@@ -350,10 +371,15 @@ pub fn perform_uninstall() -> Result<(), String> {
 fn stop_running_ekushe() {
     use std::os::windows::process::CommandExt;
     let me = std::process::id().to_string();
-    let _ = Command::new("taskkill.exe")
+    if let Ok(child) = Command::new("taskkill.exe")
         .args(["/F", "/IM", "ekushe.exe", "/FI", &format!("PID ne {me}")])
         .creation_flags(0x0800_0000)
-        .output();
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+    {
+        wait_or_kill(child, 10);
+    }
     std::thread::sleep(std::time::Duration::from_millis(250));
 }
 
@@ -594,6 +620,7 @@ unsafe extern "system" fn installer_wnd_proc(
                                     1
                                 }
                                 Err(e) => {
+                                    install_log(&format!("install failed: {e}"));
                                     *INSTALL_ERROR.lock().unwrap_or_else(|p| p.into_inner()) =
                                         Some(e);
                                     0
@@ -663,7 +690,8 @@ unsafe extern "system" fn installer_wnd_proc(
                     .unwrap_or_else(|p| p.into_inner())
                     .take()
                     .unwrap_or_default();
-                let msg = format!("ইনস্টল করা যায়নি: {e}");
+                let log = env::temp_dir().join("ekushe-install.log");
+                let msg = format!("ইনস্টল করা যায়নি: {e}\n\nDetails: {}", log.display());
                 MessageBoxW(
                     hwnd,
                     wide_null(&msg).as_ptr(),
@@ -1643,17 +1671,46 @@ fn create_windows_shortcut(lnk_path: &Path, target_exe: &Path, work_dir: &Path, 
         icon_path.to_string_lossy().replace('\'', "''"),
     );
     use std::os::windows::process::CommandExt;
-    let _ = Command::new("powershell.exe")
+    if let Ok(child) = Command::new("powershell.exe")
         .args([
             "-NoProfile",
             "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
             "-WindowStyle",
             "Hidden",
             "-Command",
             &ps_cmd,
         ])
         .creation_flags(0x0800_0000)
-        .status();
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+    {
+        // A shortcut is not worth hanging the install for
+        if !wait_or_kill(child, 20) {
+            install_log(&format!("shortcut timed out: {}", lnk_path.display()));
+        }
+    }
+}
+
+/// Wait up to `secs` for a helper program; kill it if it takes longer. Returns false on timeout.
+fn wait_or_kill(mut child: std::process::Child, secs: u64) -> bool {
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(secs);
+    loop {
+        match child.try_wait() {
+            Ok(Some(_)) => return true,
+            Ok(None) if std::time::Instant::now() < deadline => {
+                std::thread::sleep(std::time::Duration::from_millis(100))
+            }
+            _ => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return false;
+            }
+        }
+    }
 }
 
 unsafe fn set_hkcu_reg_sz(subkey: &str, value_name: &str, data: &str) -> Result<(), u32> {

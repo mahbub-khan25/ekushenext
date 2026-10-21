@@ -26,6 +26,23 @@ jobs:
         run: |
           $p = Start-Process -FilePath target\release\ekushe.exe -ArgumentList '--self-test' -PassThru -NoNewWindow -Wait
           if ($p.ExitCode -ne 0) { exit $p.ExitCode }
+      - name: Install and uninstall (as a user would)
+        shell: pwsh
+        timeout-minutes: 5
+        run: |
+          Copy-Item target\release\ekushe.exe "$env:RUNNER_TEMP\Ekushe-Setup.exe"
+          $p = Start-Process -FilePath "$env:RUNNER_TEMP\Ekushe-Setup.exe" -ArgumentList '--auto-install','--no-launch' -PassThru -NoNewWindow -Wait
+          Get-Content "$env:TEMP\ekushe-install.log" -ErrorAction SilentlyContinue
+          if ($p.ExitCode -ne 0) { exit $p.ExitCode }
+          $root = "$env:LOCALAPPDATA\Programs\Ekushe"
+          foreach ($f in 'ekushe.exe','Uninstall-Ekushe.exe') { if (-not (Test-Path "$root\$f")) { Write-Error "missing $f"; exit 1 } }
+          $run = Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name EkusheBanglaKeyboard -ErrorAction SilentlyContinue
+          if (-not $run) { Write-Error "start-with-Windows entry missing"; exit 1 }
+          if (-not (Test-Path "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Ekushe Next Bangla Keyboard.lnk")) { Write-Error "Start Menu shortcut missing"; exit 1 }
+          Write-Host "installed OK"
+          $u = Start-Process -FilePath "$root\ekushe.exe" -ArgumentList '--uninstall' -PassThru -NoNewWindow -Wait
+          if ($u.ExitCode -ne 0) { exit $u.ExitCode }
+          Write-Host "uninstalled OK"
       - name: Candidate popup previews (PNG)
         shell: pwsh
         run: |
