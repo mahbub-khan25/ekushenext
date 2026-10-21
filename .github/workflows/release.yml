@@ -12,6 +12,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write   # lets the job sign in to Azure for code signing, without a stored password
 
 jobs:
   windows:
@@ -40,6 +41,47 @@ jobs:
       - name: Release build
         if: steps.ver.outputs.exists == 'false'
         run: cargo build --release --workspace
+      # Code signing with Azure Artifact Signing. Runs once the repository has the settings from
+      # docs/CODE_SIGNING.md; until then releases are published unsigned.
+      - name: Azure sign-in (code signing)
+        if: steps.ver.outputs.exists == 'false' && vars.SIGNING_ACCOUNT != ''
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Sign ekushe.exe, ekushe_tsf.dll, ekushe-cli.exe
+        if: steps.ver.outputs.exists == 'false' && vars.SIGNING_ACCOUNT != ''
+        uses: azure/artifact-signing-action@v2
+        with:
+          endpoint: ${{ vars.SIGNING_ENDPOINT }}
+          signing-account-name: ${{ vars.SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ vars.SIGNING_PROFILE }}
+          files: |
+            ${{ github.workspace }}\target\release\ekushe.exe
+            ${{ github.workspace }}\target\release\ekushe_tsf.dll
+            ${{ github.workspace }}\target\release\ekushe-cli.exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+          exclude-environment-credential: true
+          exclude-workload-identity-credential: true
+          exclude-managed-identity-credential: true
+          exclude-shared-token-cache-credential: true
+          exclude-visual-studio-credential: true
+          exclude-visual-studio-code-credential: true
+          exclude-azure-powershell-credential: true
+          exclude-azure-developer-cli-credential: true
+          exclude-interactive-browser-credential: true
+      - name: Check signatures
+        if: steps.ver.outputs.exists == 'false' && vars.SIGNING_ACCOUNT != ''
+        shell: pwsh
+        run: |
+          foreach ($f in 'ekushe.exe','ekushe_tsf.dll','ekushe-cli.exe') {
+            $sig = Get-AuthenticodeSignature "target\release\$f"
+            Write-Host "$f : $($sig.Status) — $($sig.SignerCertificate.Subject)"
+            if ($sig.Status -ne 'Valid') { Write-Error "$f is not validly signed"; exit 1 }
+          }
       - name: Install check
         if: steps.ver.outputs.exists == 'false'
         shell: pwsh
