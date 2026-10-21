@@ -32,6 +32,15 @@ caps = IBus.Capabilite.PREEDIT_TEXT | IBus.Capabilite.FOCUS | IBus.Capabilite.LO
 ic.set_capabilities(caps)
 ic.focus_in()
 ic.set_engine("ekushe")
+for _ in range(20):
+    desc = ic.get_engine()
+    if desc is not None and desc.get_name() == "ekushe":
+        break
+    time.sleep(0.25)
+    ic.focus_in()
+    ic.set_engine("ekushe")
+desc = ic.get_engine()
+print("input context engine:", desc.get_name() if desc else None, "| IBus", IBus.MAJOR_VERSION, IBus.MINOR_VERSION, IBus.MICRO_VERSION)
 
 
 def pump(seconds=0.3):
