@@ -31,14 +31,17 @@ ic.connect("update-preedit-text", lambda _ic, t, _c, _v: preedits.append(t.get_t
 caps = IBus.Capabilite.PREEDIT_TEXT | IBus.Capabilite.FOCUS | IBus.Capabilite.LOOKUP_TABLE
 ic.set_capabilities(caps)
 ic.focus_in()
+# Newer IBus (1.5.30+) ignores SetEngine from ordinary clients; the global engine (what
+# `ibus engine ekushe` sets) applies to the focused input context everywhere
+bus.set_global_engine("ekushe")
 ic.set_engine("ekushe")
-for _ in range(20):
+for _ in range(40):
     desc = ic.get_engine()
     if desc is not None and desc.get_name() == "ekushe":
         break
     time.sleep(0.25)
     ic.focus_in()
-    ic.set_engine("ekushe")
+    bus.set_global_engine("ekushe")
 desc = ic.get_engine()
 print("input context engine:", desc.get_name() if desc else None, "| IBus", IBus.MAJOR_VERSION, IBus.MINOR_VERSION, IBus.MICRO_VERSION)
 
