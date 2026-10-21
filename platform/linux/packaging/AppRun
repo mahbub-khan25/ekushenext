@@ -1,0 +1,10 @@
+#!/bin/sh
+# Ekushe AppImage: runs Ekushe Studio. "--install-keyboard" installs the Ekushe Bangla keyboard
+# (IBus input method) for this computer; IBus only loads keyboards installed system-wide, so this
+# asks for your password once.
+HERE="$(dirname "$(readlink -f "$0")")"
+case "$1" in
+  --install-keyboard)   exec sh "$HERE/usr/share/ekushe/keyboard.sh" install "$HERE" ;;
+  --uninstall-keyboard) exec sh "$HERE/usr/share/ekushe/keyboard.sh" uninstall "$HERE" ;;
+  *) exec "$HERE/usr/bin/ekushe-studio" "$@" ;;
+esac

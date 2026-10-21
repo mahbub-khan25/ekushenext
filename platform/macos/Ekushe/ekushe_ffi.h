@@ -20,3 +20,8 @@ void ek_save_learned(void);
 uint16_t ek_studio_start(void);
 char *ek_studio_url(const char *tab);
 void ekushe_string_free(char *s);
+char *ek_out_preedit(void);
+char *ek_out_committed(void);
+uint32_t ek_out_candidate_count(void);
+char *ek_out_candidate(uint32_t i);
+uint32_t ek_out_selected(void);

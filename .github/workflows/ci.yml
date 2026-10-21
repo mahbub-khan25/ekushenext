@@ -105,6 +105,50 @@ jobs:
             build/macos/Ekushe-macOS.pkg
             build/macos/Ekushe-macOS.zip
 
+  linux:
+    name: Linux (.deb, .rpm, AppImage)
+    runs-on: ubuntu-22.04   # oldest supported glibc, so the packages run on newer distributions too
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build tools
+        run: sudo apt-get update -q && sudo apt-get install -y -q libibus-1.0-dev ibus python3-gi gir1.2-ibus-1.0 dbus libfuse2
+      - name: Engine and Studio tests
+        run: cargo test -p ekushe-core -p ekushe-ffi -p ekushe-studio --features "ekushe-ffi/studio ekushe-ffi/embedded-dict"
+      - name: Build packages and type into a real IBus
+        run: platform/linux/build.sh 0.0.0-dev --test
+      - name: Install the .deb and type again
+        run: |
+          sudo apt-get install -y -q ./build/linux/ekushe_*_amd64.deb
+          rm -rf ~/.config/ibus/bus
+          dbus-run-session -- bash -c 'ibus-daemon --xim=false --panel=disable --emoji-extension=disable --cache=none --config=disable & for i in $(seq 1 50); do F=$(ls ~/.config/ibus/bus/* 2>/dev/null | head -1); [ -n "$F" ] && break; sleep 0.2; done; export $(grep "^IBUS_ADDRESS=" "$F"); python3 platform/linux/ibus/test_engine.py'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ekushe-linux
+          path: |
+            build/linux/*.deb
+            build/linux/*.rpm
+            build/linux/*.AppImage
+
+  fedora:
+    name: Fedora (install the .rpm and type)
+    needs: linux
+    runs-on: ubuntu-latest
+    container: fedora:41
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: ekushe-linux
+          path: pkgs
+      - name: Install
+        run: dnf install -y ./pkgs/*.rpm python3-gobject dbus-daemon dbus-tools
+      - name: Type into IBus
+        run: |
+          rm -rf ~/.config/ibus/bus
+          dbus-run-session -- bash -c 'ibus-daemon --xim=false --panel=disable --emoji-extension=disable --cache=none --config=disable & for i in $(seq 1 50); do F=$(ls ~/.config/ibus/bus/* 2>/dev/null | head -1); [ -n "$F" ] && break; sleep 0.2; done; export $(grep "^IBUS_ADDRESS=" "$F"); python3 platform/linux/ibus/test_engine.py'
+
   dict-builder:
     name: Dictionary builder
     runs-on: ubuntu-latest

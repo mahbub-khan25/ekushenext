@@ -162,6 +162,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "ekushe-studio"
+version = "0.1.0"
+dependencies = [
+ "ekushe-ffi",
+]
+
+[[package]]
 name = "ekushe-tray"
 version = "0.1.0"
 dependencies = [

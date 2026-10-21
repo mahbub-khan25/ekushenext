@@ -1,0 +1,49 @@
+# .deb and .rpm for Ekushe (built by platform/linux/build.sh with nfpm)
+name: ekushe
+arch: amd64
+platform: linux
+version: ${EKUSHE_VERSION}
+version_schema: semver
+section: utils
+priority: optional
+maintainer: Ekushe Next Contributors <khan.ytube24@gmail.com>
+description: |
+  Bangla phonetic keyboard (IBus input method) with Ekushe's own dictionary.
+  Bangla Academy standard spellings first, smart suggestions, conjunct hints, Backspace undo,
+  plus Ekushe Studio: writing pad, conjunct guide, spell checker and Bijoy <-> Unicode converter.
+vendor: Ekushe Next
+homepage: https://github.com/mahbub-khan25/ekushenext
+license: MPL-2.0
+contents:
+  - src: build/linux/stage/usr/libexec/ekushe/ibus-engine-ekushe
+    dst: /usr/libexec/ekushe/ibus-engine-ekushe
+    file_info: { mode: 0755 }
+  - src: build/linux/stage/usr/bin/ekushe-studio
+    dst: /usr/bin/ekushe-studio
+    file_info: { mode: 0755 }
+  - src: build/linux/stage/usr/share/ibus/component/ekushe.xml
+    dst: /usr/share/ibus/component/ekushe.xml
+  - src: build/linux/stage/usr/share/ekushe/ekushe.png
+    dst: /usr/share/ekushe/ekushe.png
+  - src: build/linux/stage/usr/share/icons/hicolor/256x256/apps/ekushe.png
+    dst: /usr/share/icons/hicolor/256x256/apps/ekushe.png
+  - src: build/linux/stage/usr/share/applications/ekushe-studio.desktop
+    dst: /usr/share/applications/ekushe-studio.desktop
+  - src: build/linux/stage/usr/share/doc/ekushe/LICENSE
+    dst: /usr/share/doc/ekushe/LICENSE
+  - src: build/linux/stage/usr/share/doc/ekushe/THIRD_PARTY_NOTICES.md
+    dst: /usr/share/doc/ekushe/THIRD_PARTY_NOTICES.md
+scripts:
+  postinstall: platform/linux/packaging/postinstall.sh
+  postremove: platform/linux/packaging/postremove.sh
+overrides:
+  deb:
+    depends:
+      - ibus
+      - libibus-1.0-5
+      - libglib2.0-0 | libglib2.0-0t64
+      - xdg-utils
+  rpm:
+    depends:
+      - ibus
+      - xdg-utils
