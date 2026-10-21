@@ -781,8 +781,10 @@ pub unsafe fn render(
                 hy as i32,
                 pal.muted,
             );
-            let mut bx = w - pad - hw;
+            // Right-aligned, helper outermost
+            let mut right = w - pad;
             for (lbl, bw, slot) in [(helper_lbl, hw, 0), (toggle_lbl, tw, 1)] {
+                let bx = right - bw;
                 let rect = r(bx, pad, bx + bw, pad + header_h);
                 c.rrect(bx, pad, bx + bw, pad + header_h, 8.0 * s, pal.etch, 0.0);
                 c.text(
@@ -797,7 +799,7 @@ pub unsafe fn render(
                 } else {
                     hits.compact = rect;
                 }
-                bx -= bw + 6.0 * s;
+                right = bx - 6.0 * s;
             }
 
             // Candidates
