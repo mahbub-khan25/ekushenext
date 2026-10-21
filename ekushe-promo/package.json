@@ -1,13 +1,13 @@
 {
   "name": "ekushe-promo",
   "version": "1.0.0",
-  "description": "Cinematic Remotion promo for Ekushe Bangla Typing App & International Mother Language Day",
+  "description": "Ekushe Next promo: 60 s, 60 fps, 2K, 16:9 and 9:16 (Remotion)",
   "scripts": {
-    "start": "remotion preview src/index.ts",
-    "build": "remotion render src/index.ts EkushePromo out/ekushe-next-promo.mp4",
-    "build:vertical": "remotion render src/index.ts EkushePromoVertical out/ekushe-next-promo-vertical.mp4",
-    "build:all": "remotion render src/index.ts EkushePromo out/ekushe-next-promo.mp4 && remotion render src/index.ts EkushePromoVertical out/ekushe-next-promo-vertical.mp4",
-    "upgrade": "remotion upgrade"
+    "start": "remotion studio src/index.ts",
+    "music": "python3 music/compose.py public/music/ekushe-score.wav",
+    "render:16x9": "remotion render src/index.ts EkusheNext-16x9 out/ekushe-next-promo-16x9-2k60.mp4 --crf=16 --jpeg-quality=95",
+    "render:9x16": "remotion render src/index.ts EkusheNext-9x16 out/ekushe-next-promo-9x16-2k60.mp4 --crf=16 --jpeg-quality=95",
+    "stills": "node stills.mjs 300 1030 1700 2400 2800 3150 3500"
   },
   "dependencies": {
     "react": "^18.3.1",
