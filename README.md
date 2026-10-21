@@ -90,6 +90,25 @@ cargo run --release -p ekushe-core --example engine_eval -- data/dictionary/ekus
 
 ---
 
+## Privacy
+
+Ekushe Next does not send anything over the network. Typing, learned words and settings stay on your
+computer (`%APPDATA%\Ekushe` on Windows, `~/Library/Application Support/Ekushe` on macOS, `~/.config/Ekushe`
+on Linux). Ekushe Studio runs on `127.0.0.1` only and refuses requests from other websites. There is no
+telemetry, no update check and no account.
+
+## What the installer changes
+
+The Windows installer, for your user account only (no administrator rights):
+- copies `ekushe.exe` to `%LOCALAPPDATA%\Programs\Ekushe`
+- installs the bundled Bangla fonts for your user
+- adds a Start Menu shortcut, and a desktop shortcut and "start with Windows" if you leave those ticked
+- registers Ekushe in **Settings → Apps**, where **Uninstall** removes all of the above (your settings
+  and learned words are kept)
+
+The macOS `.pkg` puts Ekushe in `/Library/Input Methods`; the Linux packages install the IBus engine,
+Ekushe Studio and an applications-menu entry. Removing the package removes them.
+
 ## License
 
 Ekushe Next is open source.
