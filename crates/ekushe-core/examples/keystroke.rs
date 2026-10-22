@@ -5,11 +5,20 @@ use ekushe_core::{config::Config, Ekushe};
 fn main() {
     let path = std::env::args().nth(1).expect("pilot.tsv");
     let mut ek = Ekushe::new(Config::default());
-    let words: Vec<String> = std::fs::read_to_string(path).unwrap().lines()
+    let words: Vec<String> = std::fs::read_to_string(path)
+        .unwrap()
+        .lines()
         .filter(|l| !l.starts_with('#') && !l.trim().is_empty())
-        .map(|l| l.split('\t').next().unwrap().to_string()).collect();
+        .map(|l| l.split('\t').next().unwrap().to_string())
+        .collect();
     // warm up (dictionary load, caches)
-    for c in "amar sonar bangla ".chars() { if c == ' ' { ek.select_candidate(0, Some(' ')); } else { ek.push_char(c, false); } }
+    for c in "amar sonar bangla ".chars() {
+        if c == ' ' {
+            ek.select_candidate(0, Some(' '));
+        } else {
+            ek.push_char(c, false);
+        }
+    }
     let mut times = Vec::new();
     let t_all = std::time::Instant::now();
     for w in &words {
