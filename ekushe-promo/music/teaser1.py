@@ -15,10 +15,12 @@ import sys
 src = (pathlib.Path(__file__).parent / 'compose.py').read_text()
 head, rest = src.split('# ───────────────────────── score ─────────────────────────')
 mix = rest.split('# ───────────────────────── mix: reverb, glue, master ─────────────────────────')[1]
-exec(head.replace('DUR = 60.0', 'DUR = 15.0'))
+exec(head.replace('DUR = 60.0', 'DUR = 19.0'))
 
 FPS = 60
-NAME_AT = [(380 + i * 40) / FPS for i in range(5)]  # must match src/teasers/Teaser1.tsx
+NAME_AT = [(380 + i * 40) / FPS for i in range(5)]  # these must match src/teasers/Teaser1.tsx
+KEY_AT = [(800 + 24 + i * 7) / FPS for i in range(28)]
+LOGO = 1025 / FPS
 
 
 def bell(m, d=2.4, gain=0.12):
@@ -54,11 +56,21 @@ for i in range(10):
 for at, m, d in [(11.4, 76, 0.45), (11.85, 79, 0.45), (12.3, 84, 0.9)]:
     place(flute(m, d, 0.13), at)
 
+# the glimpse: quiet and suspended (F then G, no drums), a soft click on every real keystroke
+place(pad([53, 57, 60, 65], 2.0, bright=1800, gain=0.13), 13.3)
+place(pad([55, 59, 62, 67], 2.0, bright=2000, gain=0.13), 15.2)
+place(pad([41], 3.9, bright=300, gain=0.12), 13.3)
+for i, at in enumerate(KEY_AT):
+    place(click(0.16), at, pan=-0.25 + 0.5 * (i % 2))
+for j, m in enumerate([72, 76, 79, 76, 74, 79, 83, 79]):
+    place(pluck_c(m, 1.2, 0.45), 13.4 + j * 0.45, gain=0.32, pan=0.3 - j * 0.08)
+place(riser(1.4, 0.22), LOGO - 1.4)
+
 # the logo: A major, impact, long flute note
-place(impact(0.45), 13.25)
-place(pad([45, 57, 61, 64, 69], 2.0, bright=3000, gain=0.20), 13.25)
-place(bell(81, 2.0, 0.14), 13.3)
-place(flute(81, 1.6, 0.12), 13.4)
+place(impact(0.45), LOGO)
+place(pad([45, 57, 61, 64, 69], 2.2, bright=3000, gain=0.20), LOGO)
+place(bell(81, 2.0, 0.14), LOGO + 0.05)
+place(flute(81, 1.5, 0.12), LOGO + 0.15)
 
 exec(mix.replace("lift = np.interp(np.arange(N) / SR, [0, 22.0, 23.5, 60], [1.7, 1.7, 1.0, 1.0])", "lift = np.ones(N)")
         .replace("'public/music/ekushe-score.wav'", "'public/music/teaser1.wav'"))

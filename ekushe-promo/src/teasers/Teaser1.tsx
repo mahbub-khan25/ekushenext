@@ -4,8 +4,14 @@ import { Fonts } from '../v2/Fonts';
 import { Backdrop, clamp, ease, Petals, RiseText, ShaheedMinar } from '../v2/parts';
 import { C, FONT_BN, FONT_DISPLAY, FONT_LATIN, useLayout } from '../v2/theme';
 
-/** Teaser 1 of 5: "The language they gave their lives for". 15 s at 60 fps. */
-export const TEASER1_FRAMES = 900;
+/** Teaser 1 of 5: "The language they gave their lives for". About 19 s at 60 fps. */
+export const TEASER1_FRAMES = 1130;
+// The real Studio writing pad, recorded one keystroke at a time (public/teaser1-typing/)
+export const TYPE_AT = 800;          // the glimpse starts
+export const KEY0 = TYPE_AT + 24;    // first keystroke
+export const KEY_EVERY = 7;          // frames per keystroke
+const TYPE_FRAMES = 29;              // 000.jpg … 028.jpg
+export const LOGO_AT = 1025;
 const NAMES = ['সালাম', 'বরকত', 'রফিক', 'জব্বার', 'শফিউর'];
 export const NAME_AT = (i: number) => 380 + i * 40; // the score places a soft bell on each
 
@@ -71,7 +77,37 @@ const Vow: React.FC = () => {
   );
 };
 
-/** 13.2–15 s: the series ending (same in every teaser). */
+
+/** 13.3–17.3 s: a glimpse of the real thing, recorded from the Studio writing pad one keystroke at
+ * a time: the box where Roman letters are typed, with Ekushe's suggestions (a###.jpg), and the
+ * Bangla line it writes (b###.jpg). Nothing else of the app is shown. */
+const A_RATIO = 438 / 2160; // tallest typing-box frame
+const B_RATIO = 216 / 1800;
+const Glimpse: React.FC = () => {
+  const f = useCurrentFrame(); // starts at TYPE_AT
+  const { u, V } = useLayout();
+  const k = f < KEY0 - TYPE_AT ? 0 : Math.min(TYPE_FRAMES - 1, Math.floor((f - (KEY0 - TYPE_AT)) / KEY_EVERY) + 1);
+  const n = String(k).padStart(3, '0');
+  const t = ease(f, 0, 240);
+  const o = Math.min(interpolate(f, [0, 20], [0, 1], clamp), interpolate(f, [218, 240], [1, 0], clamp));
+  const W = (V ? 1340 : 1760) * u;
+  const card: React.CSSProperties = { overflow: 'hidden', borderRadius: 36 * u, background: '#16231e', boxShadow: `0 0 0 ${2 * u}px rgba(255,255,255,0.14), 0 ${40 * u}px ${110 * u}px -${30 * u}px rgba(0,0,0,0.9), 0 0 ${140 * u}px -${40 * u}px rgba(224,48,63,0.35)` };
+  const fadeRight = 'linear-gradient(90deg, #000 72%, transparent 100%)';
+  return (
+    <AbsoluteFill style={{ opacity: o, alignItems: 'center', justifyContent: 'center', perspective: 2600 * u }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: (V ? 60 : 46) * u, transform: `rotateX(${interpolate(t, [0, 1], [10, 2])}deg) rotateY(${interpolate(t, [0, 1], [-7, 0])}deg) scale(${interpolate(t, [0, 1], [0.92, 1.03])})` }}>
+        <div style={{ ...card, width: W, height: W * A_RATIO, WebkitMaskImage: fadeRight, maskImage: fadeRight }}>
+          <Img src={staticFile(`teaser1-typing2/a${n}.jpg`)} style={{ width: W, display: 'block' }} />
+        </div>
+        <div style={{ ...card, width: W * 0.86, height: W * 0.86 * B_RATIO }}>
+          <Img src={staticFile(`teaser1-typing2/b${n}.jpg`)} style={{ width: W * 0.86, display: 'block' }} />
+        </div>
+      </div>
+    </AbsoluteFill>
+  );
+};
+
+/** The series ending (same in every teaser). */
 export const ComingSoon: React.FC = () => {
   const f = useCurrentFrame();
   const { u, V } = useLayout();
@@ -89,18 +125,19 @@ export const ComingSoon: React.FC = () => {
 
 export const Teaser1: React.FC = () => {
   const f = useCurrentFrame();
-  const sun = interpolate(f, [0, 150, 300, 690, 800, 900], [0, 0.15, 0.7, 0.75, 1, 1], clamp);
-  const field = interpolate(f, [0, 200, 700, 900], [0.05, 0.6, 0.75, 1], clamp);
-  const end = interpolate(f, [870, 900], [1, 0.9], clamp);
+  const sun = interpolate(f, [0, 150, 300, 690, 800, 1000, 1060], [0, 0.15, 0.7, 0.75, 0.45, 0.45, 1], clamp);
+  const field = interpolate(f, [0, 200, 700, 1000, 1130], [0.05, 0.6, 0.75, 0.6, 1], clamp);
+  const end = interpolate(f, [1100, 1130], [1, 0.9], clamp);
   return (
     <AbsoluteFill style={{ background: C.night, opacity: end }}>
       <Fonts />
-      <Backdrop sun={sun} field={field} warmth={interpolate(f, [690, 900], [0, 0.4], clamp)} />
-      <Petals count={30} opacity={interpolate(f, [0, 120, 860, 900], [0.25, 0.8, 0.8, 0.6], clamp)} />
+      <Backdrop sun={sun} field={field} warmth={interpolate(f, [1000, 1130], [0, 0.4], clamp)} />
+      <Petals count={30} opacity={interpolate(f, [0, 120, 790, 820, 1000, 1040], [0.25, 0.8, 0.8, 0.25, 0.25, 0.7], clamp)} />
       <Sequence from={0} durationInFrames={170}><Date1952 /></Sequence>
       <Sequence from={150} durationInFrames={550}><Martyrs /></Sequence>
       <Sequence from={680} durationInFrames={140}><Vow /></Sequence>
-      <Sequence from={795}><ComingSoon /></Sequence>
+      <Sequence from={TYPE_AT} durationInFrames={240}><Glimpse /></Sequence>
+      <Sequence from={LOGO_AT}><ComingSoon /></Sequence>
       <Audio src={staticFile('music/teaser1.wav')} />
     </AbsoluteFill>
   );
