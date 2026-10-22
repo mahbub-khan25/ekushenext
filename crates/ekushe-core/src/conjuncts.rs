@@ -2784,6 +2784,14 @@ pub fn contextual_sign_hints(roman: &str, bangla_preedit: &str) -> Vec<SignHint>
         });
     }
 
+    // Hasanta: end the word on a bare consonant (allah,, → আল্লাহ্)
+    hints.push(SignHint {
+        result_bangla: format!("{base}্"),
+        key_hint: format!("{roman},,"),
+        label: "হসন্ত".to_string(),
+        kind: SignKind::Mark,
+    });
+
     // Folas & Vowel Signs (without bare combining marks in `label`)
     hints.extend([
         SignHint {

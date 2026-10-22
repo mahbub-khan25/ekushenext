@@ -8,17 +8,27 @@ fn main() {
     let mut doc = String::new();
     let mut bad = 0;
     for line in std::fs::read_to_string(path).unwrap().lines() {
-        if line.is_empty() { doc.push('\n'); continue; }
-        if let Some(raw) = line.strip_prefix('@') { doc.push_str(raw); continue; }
+        if line.is_empty() {
+            doc.push('\n');
+            continue;
+        }
+        if let Some(raw) = line.strip_prefix('@') {
+            doc.push_str(raw);
+            continue;
+        }
         let (roman, target) = line.split_once('\t').unwrap();
         let mut out = Default::default();
-        for c in roman.chars() { out = ek.push_char(c, false); }
+        for c in roman.chars() {
+            out = ek.push_char(c, false);
+        }
         let out: ekushe_core::SessionOutput = out;
         let texts: Vec<String> = out.candidates.iter().map(|c| c.text.clone()).collect();
         let idx = texts.iter().position(|t| t == target);
         match idx {
             Some(i) => {
-                if i > 0 { println!("TAB x{i}: {roman} -> {target}   list={texts:?}"); }
+                if i > 0 {
+                    println!("TAB x{i}: {roman} -> {target}   list={texts:?}");
+                }
                 let o = ek.select_candidate(i, Some(' '));
                 doc.push_str(&o.committed.unwrap());
             }
