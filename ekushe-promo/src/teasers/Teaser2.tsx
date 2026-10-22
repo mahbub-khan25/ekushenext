@@ -3,11 +3,11 @@ import { AbsoluteFill, Audio, Img, interpolate, random, Sequence, spring, static
 import { Fonts } from '../v2/Fonts';
 import { Backdrop, clamp, ease, Petals } from '../v2/parts';
 import { C, FONT_BN, FONT_LATIN, useLayout } from '../v2/theme';
-import { ComingSoon } from './Teaser1';
+import { Burst, END_LEN, EndCard, Streaks, Sweep } from './common';
 
 /** Teaser 2 of 5: "Why is typing Bangla still this hard?" 20 s at 60 fps.
  * Act 1 the hook, act 2 three frustrations, "আর না।", then the real app fixes each one. */
-export const TEASER2_FRAMES = 1200;
+export const TEASER2_FRAMES = 1060 + END_LEN;
 export const T2 = { hook: 0, p1: 150, p2: 290, p3: 430, slam: 570, reveal: 660, r2: 800, r3: 930, logo: 1060 } as const;
 export const CONV_AT = T2.reveal + 40, CONV_EVERY = 4; // Bijoy typed into the converter, 20 keys
 export const PAD_AT = T2.r2 + 30, PAD_EVERY = 10;     // "kkhoma", 6 keys
@@ -63,7 +63,7 @@ const Hook: React.FC = () => {
   const n = Math.max(0, Math.min(g.length, Math.floor((f - 22) / 4)));
   const o = interpolate(f, [130, 150], [1, 0], clamp);
   return (
-    <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', flexDirection: 'column', opacity: o }}>
+    <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', flexDirection: 'column', opacity: o, transform: `scale(${1 + f * 0.0012})` }}>
       <div style={{ fontFamily: FONT_BN, fontWeight: 700, fontSize: (V ? 110 : 104) * u, color: C.white, display: 'flex', alignItems: 'center' }}>
         <span>{g.slice(0, n).join('')}</span>
         <span style={{ display: 'inline-block', width: 8 * u, height: 110 * u, marginLeft: 8 * u, background: C.greenBright, opacity: Math.floor(f / 18) % 2 || n < g.length ? 1 : 0, borderRadius: 4 * u }} />
@@ -250,20 +250,51 @@ const RevealSpelling: React.FC = () => {
   );
 };
 
+/** A slowly scrolling dot grid with a soft spotlight, behind the fixes. */
+const Grid: React.FC = () => {
+  const f = useCurrentFrame();
+  const { u } = useLayout();
+  const s = 64 * u;
+  return (
+    <AbsoluteFill style={{ backgroundImage: `radial-gradient(rgba(255,255,255,0.13) ${1.6 * u}px, transparent ${2 * u}px)`, backgroundSize: `${s}px ${s}px`, backgroundPosition: `0px ${(f * 0.6 * u) % s}px`, WebkitMaskImage: 'radial-gradient(60% 50% at 50% 50%, #000, transparent)', maskImage: 'radial-gradient(60% 50% at 50% 50%, #000, transparent)' }} />
+  );
+};
+
+/** A big tick that stamps in when a problem is solved. */
+const Stamp: React.FC<{ at: number }> = ({ at }) => {
+  const f = useCurrentFrame();
+  const { u, V } = useLayout();
+  const t = spring({ frame: f - at, fps: 60, config: { damping: 9, stiffness: 180 } });
+  if (f < at) return null;
+  const size = (V ? 150 : 130) * u;
+  return (
+    <AbsoluteFill style={{ alignItems: V ? 'center' : 'flex-end', justifyContent: V ? 'flex-end' : 'center', padding: V ? `0 0 ${330 * u}px` : `0 ${300 * u}px 0 0`, pointerEvents: 'none' }}>
+      <div style={{ width: size, height: size, borderRadius: 999, background: C.greenBright, display: 'grid', placeItems: 'center', transform: `scale(${t}) rotate(${(1 - t) * -40}deg)`, boxShadow: `0 0 ${80 * u}px rgba(47,209,142,0.7)`, opacity: interpolate(f, [at + 50, at + 64], [1, 0], clamp) }}>
+        <svg width={size * 0.55} height={size * 0.55} viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5" fill="none" stroke="#03170F" strokeWidth={3.2} strokeLinecap="round" strokeLinejoin="round" strokeDasharray={30} strokeDashoffset={30 * (1 - ease(f, at + 4, at + 18))} /></svg>
+      </div>
+    </AbsoluteFill>
+  );
+};
+
 export const Teaser2: React.FC = () => {
   const f = useCurrentFrame();
   // cold and tense while it's hard, warm again once it's fixed
-  const sun = interpolate(f, [0, T2.p1, T2.slam, T2.slam + 40, T2.reveal, T2.logo, 1200], [0, 0.18, 0.3, 0.05, 0.6, 0.6, 1], clamp);
-  const field = interpolate(f, [0, T2.reveal - 10, T2.reveal + 30, 1200], [0.08, 0.12, 0.75, 1], clamp);
+  const sun = interpolate(f, [0, T2.p1, T2.slam, T2.slam + 40, T2.reveal, T2.logo, 1240], [0, 0.18, 0.3, 0.05, 0.6, 0.6, 1], clamp);
+  const field = interpolate(f, [0, T2.reveal - 10, T2.reveal + 30, 1240], [0.08, 0.12, 0.75, 1], clamp);
   const cold = interpolate(f, [T2.p1, T2.p1 + 20, T2.slam + 30, T2.reveal], [0, 1, 1, 0], clamp);
   const alarm = f > T2.p1 && f < T2.slam ? 0.06 + 0.06 * Math.max(0, Math.sin(f / 7)) : 0;
   return (
     <AbsoluteFill style={{ background: C.night }}>
       <Fonts />
-      <Backdrop sun={sun} field={field} warmth={interpolate(f, [T2.reveal, 1200], [0, 0.4], clamp)} />
+      <Backdrop sun={sun} field={field} warmth={interpolate(f, [T2.reveal, 1240], [0, 0.4], clamp)} />
       <AbsoluteFill style={{ background: 'radial-gradient(120% 90% at 50% 50%, rgba(40,60,80,0.35), rgba(5,10,16,0.75))', opacity: cold * 0.9 }} />
       <AbsoluteFill style={{ boxShadow: 'inset 0 0 300px rgba(224,48,63,1)', opacity: alarm * 4 }} />
+      <AbsoluteFill style={{ opacity: interpolate(f, [T2.reveal, T2.reveal + 40, T2.logo - 10, T2.logo + 20], [0, 1, 1, 0], clamp) }}><Grid /></AbsoluteFill>
       <Petals count={26} opacity={interpolate(f, [T2.reveal, T2.reveal + 60], [0, 0.7], clamp)} />
+      {/* whips between the problems, and a rush of light into the fixes */}
+      <Streaks from={T2.p2 - 14} to={T2.p2 + 16} color="rgba(255,90,100,0.8)" seed="w1" />
+      <Streaks from={T2.p3 - 14} to={T2.p3 + 16} color="rgba(255,90,100,0.8)" seed="w2" />
+      <Streaks from={T2.reveal - 20} to={T2.reveal + 40} count={40} seed="w3" />
       <Sequence from={T2.hook} durationInFrames={150}><Hook /></Sequence>
       <Sequence from={T2.p1} durationInFrames={140}><PainBijoy /></Sequence>
       <Sequence from={T2.p2} durationInFrames={140}><PainConjunct /></Sequence>
@@ -272,7 +303,13 @@ export const Teaser2: React.FC = () => {
       <Sequence from={T2.reveal} durationInFrames={140}><RevealBijoy /></Sequence>
       <Sequence from={T2.r2} durationInFrames={130}><RevealConjunct /></Sequence>
       <Sequence from={T2.r3} durationInFrames={130}><RevealSpelling /></Sequence>
-      <Sequence from={T2.logo}><ComingSoon /></Sequence>
+      <Sweep at={CONV_AT + 84} dur={50} />
+      <Stamp at={CONV_AT + 84} />
+      <Burst at={T2.r2 + 100} y={0.62} seed="kk" />
+      <Stamp at={T2.r2 + 100} />
+      <Burst at={FIX_AT} y={0.5} seed="fx" />
+      <Stamp at={FIX_AT + 6} />
+      <Sequence from={T2.logo}><EndCard /></Sequence>
       <Audio src={staticFile('music/teaser2.wav')} />
     </AbsoluteFill>
   );

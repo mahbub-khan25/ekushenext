@@ -10,14 +10,14 @@ motif as the film and Teaser 1.
 
 python3 music/teaser2.py public/music/teaser2.wav
 """
-import pathlib
+import os
+import sys
 
-src = (pathlib.Path(__file__).parent / 'compose.py').read_text()
-head, rest = src.split('# ───────────────────────── score ─────────────────────────')
-mix = rest.split('# ───────────────────────── mix: reverb, glue, master ─────────────────────────')[1]
-exec(head.replace('DUR = 60.0', 'DUR = 20.0'))
+os.environ['TEASER_DUR'] = '20.7'
+sys.path.insert(0, os.path.dirname(__file__))
+from tlib import *  # noqa: E402,F403
 
-FPS = 60  # the marks below must match src/teasers/Teaser2.tsx
+# the marks below must match src/teasers/Teaser2.tsx
 P = [150 / FPS, 290 / FPS, 430 / FPS]
 HIT = 570 / FPS
 REVEAL = 660 / FPS
@@ -27,31 +27,6 @@ FIX = 992 / FPS
 LOGO = 1060 / FPS
 
 
-def bell(m, d=2.2, gain=0.12):
-    t = t_arr(d)
-    f = midi(m)
-    tone = sum(a * np.sin(2 * np.pi * f * k * t) * np.exp(-t * dec) for k, a, dec in [(1, 1, 1.6), (2.76, 0.35, 3.0), (5.4, 0.12, 5.0)])
-    return tone * env_adsr(len(t), 0.004, 0.1, 1.0, 0.5) * gain
-
-
-def glitch(d=0.18, gain=0.16):
-    n = int(d * SR)
-    x = rng.normal(0, 1, n)
-    x = np.round(x * 3) / 3                       # crushed
-    hold = 24
-    x = np.repeat(x[::hold], hold)[:n]            # sample-rate reduced
-    x *= (np.sin(2 * np.pi * 37 * t_arr(d)) > 0)  # stutter
-    return highpass(x, 600) * env_adsr(n, 0.002, 0.02, 0.8, 0.03) * gain
-
-
-def whoosh(d=0.35, gain=0.18):
-    n = int(d * SR)
-    x = rng.normal(0, 1, n)
-    out = np.zeros(n)
-    for i, fc in enumerate(np.linspace(600, 6000, 8)):
-        seg = slice(i * n // 8, (i + 1) * n // 8)
-        out[seg] = lowpass(x, fc)[seg]
-    return out * np.sin(np.linspace(0, np.pi, n)) * gain
 
 
 # 0–2.5: the cursor
@@ -105,11 +80,14 @@ place(bell(88, 1.4, 0.10), PAD_KEYS[-1] + 0.35)  # ক্ষমা lands
 place(bell(88, 1.4, 0.10), FIX)                    # the spelling fixed
 place(riser(1.2, 0.22), LOGO - 1.2)
 
-# 17.7: the logo
-place(impact(0.45), LOGO)
-place(pad([45, 57, 61, 64, 69], 2.3, bright=3000, gain=0.20), LOGO)
-place(bell(81, 2.0, 0.14), LOGO + 0.05)
-place(flute(81, 1.5, 0.12), LOGO + 0.15)
+# extra motion: whips between problems, a rush into the fixes, sparkles on each fix
+for at in (290 / FPS, 430 / FPS):
+    place(whoosh(0.4, 0.2), at - 0.25)
+place(whoosh(0.8, 0.22), REVEAL - 0.35)
+for at in ((700 + 84) / FPS, 900 / FPS, FIX):
+    sparkle(at, 0.08)
 
-exec(mix.replace("lift = np.interp(np.arange(N) / SR, [0, 22.0, 23.5, 60], [1.7, 1.7, 1.0, 1.0])", "lift = np.ones(N)")
-        .replace("'public/music/ekushe-score.wav'", "'public/music/teaser2.wav'"))
+# 17.7: the ending (logo, website, email)
+end_card(LOGO)
+
+finish('public/music/teaser2.wav')
