@@ -415,8 +415,14 @@ impl Ekushe {
     /// `bangla.` `keno?`) is not part of the word: the word is looked up on its own and the
     /// punctuation is added back to every candidate, so `bangla.` gives `বাংলা।`.
     fn phonetic_candidates(&self) -> (Vec<Candidate>, Vec<SignHint>) {
+        self.suggest_roman(&self.roman_buf)
+    }
+
+    /// Candidates for any Roman word (used by Studio's writing pad), with the same handling of
+    /// punctuation typed after the word as live typing.
+    pub fn suggest_roman(&self, roman: &str) -> (Vec<Candidate>, Vec<SignHint>) {
         let smart = self.config.typing_mode == TypingMode::Smart;
-        let (stem, tail) = split_trailing_punctuation(&self.roman_buf);
+        let (stem, tail) = split_trailing_punctuation(roman);
         let (mut cands, hints) = self.suggestions.suggest_with_context(
             stem,
             &self.phonetic,
