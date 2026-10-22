@@ -3,9 +3,10 @@ import { AbsoluteFill, Audio, Img, interpolate, Sequence, spring, staticFile, us
 import { Fonts } from '../v2/Fonts';
 import { Backdrop, clamp, ease, Petals, RiseText, ShaheedMinar } from '../v2/parts';
 import { C, FONT_BN, FONT_DISPLAY, FONT_LATIN, useLayout } from '../v2/theme';
+import { EndCard } from './common';
 
 /** Teaser 1 of 5: "The language they gave their lives for". About 19 s at 60 fps. */
-export const TEASER1_FRAMES = 1130;
+export const TEASER1_FRAMES = 1205;
 // The real Studio writing pad, recorded one keystroke at a time (public/teaser1-typing/)
 export const TYPE_AT = 800;          // the glimpse starts
 export const KEY0 = TYPE_AT + 24;    // first keystroke
@@ -126,18 +127,18 @@ export const ComingSoon: React.FC = () => {
 export const Teaser1: React.FC = () => {
   const f = useCurrentFrame();
   const sun = interpolate(f, [0, 150, 300, 690, 800, 1000, 1060], [0, 0.15, 0.7, 0.75, 0.45, 0.45, 1], clamp);
-  const field = interpolate(f, [0, 200, 700, 1000, 1130], [0.05, 0.6, 0.75, 0.6, 1], clamp);
-  const end = interpolate(f, [1100, 1130], [1, 0.9], clamp);
+  const field = interpolate(f, [0, 200, 700, 1000, 1205], [0.05, 0.6, 0.75, 0.6, 1], clamp);
+  const end = interpolate(f, [1180, 1205], [1, 0.9], clamp);
   return (
     <AbsoluteFill style={{ background: C.night, opacity: end }}>
       <Fonts />
-      <Backdrop sun={sun} field={field} warmth={interpolate(f, [1000, 1130], [0, 0.4], clamp)} />
+      <Backdrop sun={sun} field={field} warmth={interpolate(f, [1000, 1205], [0, 0.4], clamp)} />
       <Petals count={30} opacity={interpolate(f, [0, 120, 790, 820, 1000, 1040], [0.25, 0.8, 0.8, 0.25, 0.25, 0.7], clamp)} />
       <Sequence from={0} durationInFrames={170}><Date1952 /></Sequence>
       <Sequence from={150} durationInFrames={550}><Martyrs /></Sequence>
       <Sequence from={680} durationInFrames={140}><Vow /></Sequence>
       <Sequence from={TYPE_AT} durationInFrames={240}><Glimpse /></Sequence>
-      <Sequence from={LOGO_AT}><ComingSoon /></Sequence>
+      <Sequence from={LOGO_AT}><EndCard /></Sequence>
       <Audio src={staticFile('music/teaser1.wav')} />
     </AbsoluteFill>
   );
