@@ -770,6 +770,13 @@ unsafe fn refresh_candidate_overlay() {
                 .iter()
                 .map(|h| (h.result_bangla.clone(), h.key_hint.clone()))
                 .collect(),
+            // Tips (how to type a word on offer directly) lead the hint row: they are hints whose
+            // result is one of the candidates
+            tips: out
+                .sign_hints
+                .iter()
+                .take_while(|h| out.candidates.iter().any(|c| c.text == h.result_bangla))
+                .count(),
             compact: st.ekushe.config().compact_popup,
         });
         (st.overlay_hwnd as HWND, content)
@@ -1696,7 +1703,11 @@ unsafe extern "system" fn overlay_wnd_proc(
                     let _ = cfg.save_to(&Config::default_config_path());
                     st.ekushe.set_config(cfg.clone());
                     if cfg.compact_popup {
-                        st.last_output.sign_hints.clear();
+                        // keep only the tips for words on offer (they show in the compact popup too)
+                        let out = &mut st.last_output;
+                        let cands: Vec<String> =
+                            out.candidates.iter().map(|c| c.text.clone()).collect();
+                        out.sign_hints.retain(|h| cands.contains(&h.result_bangla));
                     } else {
                         let roman = st.last_output.roman_buffer.clone();
                         let pre = st.last_output.preedit.clone();

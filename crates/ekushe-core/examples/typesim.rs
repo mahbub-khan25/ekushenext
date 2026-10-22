@@ -7,12 +7,24 @@ fn main() {
     let mut ek = Ekushe::new(Config::default());
     let mut doc = String::new();
     for c in text.chars() {
-        let out = if c == '\n' { ek.commit_default(None) } else { ek.push_char(c, false) };
-        for _ in 0..out.delete_before { doc.pop(); }
-        if let Some(s) = out.committed { doc.push_str(&s); }
-        if c == '\n' { doc.push('\n'); }
+        let out = if c == '\n' {
+            ek.commit_default(None)
+        } else {
+            ek.push_char(c, false)
+        };
+        for _ in 0..out.delete_before {
+            doc.pop();
+        }
+        if let Some(s) = out.committed {
+            doc.push_str(&s);
+        }
+        if c == '\n' {
+            doc.push('\n');
+        }
     }
     let out = ek.commit_default(None);
-    if let Some(s) = out.committed { doc.push_str(&s); }
+    if let Some(s) = out.committed {
+        doc.push_str(&s);
+    }
     print!("{doc}");
 }

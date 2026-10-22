@@ -14,6 +14,7 @@ pub mod conjuncts;
 pub mod convert;
 pub mod dict;
 pub mod layout;
+pub mod marks;
 pub mod phonetic;
 pub mod roman;
 pub mod spell;
@@ -423,7 +424,7 @@ impl Ekushe {
     pub fn suggest_roman(&self, roman: &str) -> (Vec<Candidate>, Vec<SignHint>) {
         let smart = self.config.typing_mode == TypingMode::Smart;
         let (stem, tail) = split_trailing_punctuation(roman);
-        let (mut cands, hints) = self.suggestions.suggest_with_context(
+        let (mut cands, mut hints) = self.suggestions.suggest_with_context(
             stem,
             &self.phonetic,
             smart,
@@ -431,6 +432,15 @@ impl Ekushe {
             self.config.max_candidates,
             self.prev_word.as_deref(),
         );
+        // A deliberate mark (`,,` `^` `rri` `rr` `t``` `:` `Z` `+` `` ` ``) puts the word it asks for
+        // first; and words in the list with a mark the user did not type get a tip on how to type them.
+        let literal = self.phonetic.transliterate_word(stem);
+        marks::honor_marks(stem, &literal, &mut cands);
+        let first_for = |v: &str| self.suggest_roman(v).0.into_iter().next().map(|c| c.text);
+        let tips = marks::mark_tips(stem, &cands, &self.phonetic, &first_for);
+        if !tips.is_empty() {
+            hints.splice(0..0, tips);
+        }
         if !tail.is_empty() {
             let tail_bn = self.phonetic.transliterate_word(tail);
             for c in &mut cands {
@@ -462,8 +472,11 @@ impl Ekushe {
 
         let smart = self.config.typing_mode == TypingMode::Smart;
         let (candidates, mut sign_hints) = self.phonetic_candidates();
-        if !self.config.show_sign_and_conjunct_hints || self.config.compact_popup {
+        if !self.config.show_sign_and_conjunct_hints {
             sign_hints.clear();
+        } else if self.config.compact_popup {
+            // Compact popup: no conjunct table, but keep the tips for words on offer (হেঁসে: he^se)
+            sign_hints.retain(|h| candidates.iter().any(|c| c.text == h.result_bangla));
         }
 
         // Use Candidate #1 as the live preedit in Smart mode, OR whenever Candidate #1 is a

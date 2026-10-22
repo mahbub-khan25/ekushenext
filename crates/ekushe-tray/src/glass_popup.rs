@@ -547,6 +547,9 @@ pub enum Content {
         candidates: Vec<String>,
         selected: usize,
         hints: Vec<(String, String)>,
+        /// How many of `hints` (at the front) are tips for a word on offer (হেঁসে ← he^se):
+        /// highlighted, and shown even in the compact popup
+        tips: usize,
         compact: bool,
     },
     Badge(String),
@@ -703,6 +706,7 @@ pub unsafe fn render(
             candidates,
             selected,
             hints,
+            tips,
             compact,
         } => {
             let max_w = 760.0 * s;
@@ -739,8 +743,13 @@ pub unsafe fn render(
 
             let mut chips = Vec::new();
             let mut hx = pad;
-            if !*compact {
-                for (bn, key) in hints.iter().take(10) {
+            {
+                let shown = if *compact {
+                    (*tips).min(hints.len())
+                } else {
+                    hints.len()
+                };
+                for (bn, key) in hints.iter().take(shown.min(10)) {
                     let bw = probe.measure(fonts.bn_small, bn).0 as f32;
                     let kw = probe.measure(fonts.ui_small, key).0 as f32;
                     let cw = 10.0 * s + bw + 5.0 * s + kw + 10.0 * s;
@@ -842,8 +851,31 @@ pub unsafe fn render(
             if !chips.is_empty() {
                 let y1 = y0 + cand_h + 6.0 * s;
                 let hcy = (y1 + hint_h / 2.0) as i32;
-                for (bn, key, hx, cw, bw) in chips {
-                    c.rrect(hx, y1, hx + cw, y1 + hint_h, 9.0 * s, pal.etch, 0.0);
+                for (i, (bn, key, hx, cw, bw)) in chips.into_iter().enumerate() {
+                    if i < *tips {
+                        // A tip: how to type a word in the list directly. Accent-tinted so it is seen.
+                        let a = pal.accent;
+                        c.rrect(
+                            hx,
+                            y1,
+                            hx + cw,
+                            y1 + hint_h,
+                            9.0 * s,
+                            Rgba(a.0, a.1, a.2, 0.14),
+                            0.0,
+                        );
+                        c.rrect(
+                            hx,
+                            y1,
+                            hx + cw,
+                            y1 + hint_h,
+                            9.0 * s,
+                            Rgba(a.0, a.1, a.2, 0.65),
+                            1.2 * s,
+                        );
+                    } else {
+                        c.rrect(hx, y1, hx + cw, y1 + hint_h, 9.0 * s, pal.etch, 0.0);
+                    }
                     c.text(fonts.bn_small, &bn, (hx + 10.0 * s) as i32, hcy, pal.ink);
                     c.text(
                         fonts.ui_small,
@@ -922,6 +954,27 @@ pub fn render_previews(dir: &std::path::Path) -> std::io::Result<Vec<std::path::
                 ]
                 .map(|(a, b)| (a.to_string(), b.to_string()))
                 .to_vec(),
+                tips: 0,
+                compact: false,
+            },
+        ),
+        (
+            "tip",
+            Content::Candidates {
+                roman: "hese".into(),
+                candidates: ["হেসে", "হয়েছে", "হেঁসে", "হিসেবে"]
+                    .map(String::from)
+                    .to_vec(),
+                selected: 0,
+                hints: [
+                    ("হেঁসে", "he^se"),
+                    ("স্ব", "hesw"),
+                    ("স্ম", "hesm"),
+                    ("স্", "hese,,"),
+                ]
+                .map(|(a, b)| (a.to_string(), b.to_string()))
+                .to_vec(),
+                tips: 1,
                 compact: false,
             },
         ),
@@ -931,7 +984,8 @@ pub fn render_previews(dir: &std::path::Path) -> std::io::Result<Vec<std::path::
                 roman: "shikkha".into(),
                 candidates: ["শিক্ষা", "শিক্ষার", "শিক্ষক"].map(String::from).to_vec(),
                 selected: 1,
-                hints: vec![],
+                hints: vec![("শিক্ষা".to_string(), "shikkha".to_string())],
+                tips: 0,
                 compact: true,
             },
         ),

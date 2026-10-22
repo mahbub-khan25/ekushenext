@@ -274,6 +274,14 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
   .xray-token { display: flex; flex-direction: column; align-items: center; padding: 10px 12px 8px; border-radius: 16px; background: var(--etch-strong); box-shadow: inset 0 0 0 1px var(--line); min-width: 64px; }
   .xt-char { font-family: var(--font-bn); font-size: 1.9rem; line-height: 1.2; }
   .xt-key { font-size: 0.78rem; font-weight: 600; color: var(--accent); }
+  .marks-card { margin: 0 0 14px; padding: 12px 14px; border-radius: 14px; background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--line); }
+  .marks-card h3 { margin: 0 0 8px; font-size: 0.98rem; }
+  .marks-card .sub { margin: 0 0 10px; font-size: 0.85rem; color: var(--ink-soft); }
+  .marks-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+  .mark-item { display: flex; align-items: center; gap: 10px; padding: 7px 12px; border-radius: 10px; background: var(--etch); font-size: 0.9rem; white-space: nowrap; }
+  .mark-item b { min-width: 2.4em; text-align: center; font-size: 1.25rem; color: var(--accent); }
+  .mark-item kbd { margin-right: 4px; }
+  .mark-item span { display: block; margin-top: 2px; color: var(--ink-soft); font-size: 0.8rem; }
   .xt-name { font-size: 0.7rem; color: var(--ink-faint); }
   #xraySummary { margin-top: 12px; color: var(--ink-soft); font-size: 0.92rem; }
   .matrix-label { font-size: 0.82rem; color: var(--ink-soft); margin: 12px 0 6px; }
@@ -496,6 +504,21 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
 
     <!-- Conjunct and word guide -->
     <section class="panel" id="tab-signs" data-title="যুক্তবর্ণ ও শব্দ" data-sub="উচ্চারণের ধারা অনুযায়ী সাজানো। যুক্তবর্ণ বা উদাহরণ শব্দে ক্লিক করলে কপি হবে ও প্যাডে বসবে।">
+      <div class="marks-card" id="marksCard">
+        <h3>বিশেষ চিহ্ন: ঠিক যেটা চান, সেটাই প্রথমে</h3>
+        <p class="sub">এই চিহ্নগুলো লিখলে একুশে বোঝে আপনি ইচ্ছে করেই চাইছেন, তাই সেই বানানটিই এক নম্বরে আসে। তালিকার কোনো শব্দে এমন চিহ্ন থাকলে পপআপে তার লেখার উপায়ও দেখায় (যেমন হেঁসে: <kbd>he^se</kbd>)।</p>
+        <div class="marks-grid">
+          <div class="mark-item"><b>হ্</b><div><kbd>,,</kbd> হসন্ত<span>allah,, → আল্লাহ্</span></div></div>
+          <div class="mark-item"><b>চাঁ</b><div><kbd>^</kbd> চন্দ্রবিন্দু<span>he^se → হেঁসে</span></div></div>
+          <div class="mark-item"><b>কৃ</b><div><kbd>rri</kbd> ঋ-কার<span>krrishi → কৃষি</span></div></div>
+          <div class="mark-item"><b>র্ম</b><div><kbd>rr</kbd> রেফ<span>dhorrmo → ধর্ম</span></div></div>
+          <div class="mark-item"><b>ৎ</b><div><kbd>t``</kbd> খণ্ড-ত<span>hothat`` → হঠাৎ</span></div></div>
+          <div class="mark-item"><b>দুঃ</b><div><kbd>:</kbd> বিসর্গ<span>du:kho → দুঃখ</span></div></div>
+          <div class="mark-item"><b>ক্য</b><div><kbd>Z</kbd> য-ফলা<span>bakZo → বাক্য</span></div></div>
+          <div class="mark-item"><b>ক্ত</b><div><kbd>+</kbd> যুক্ত করুন<span>k+t → ক্ত</span></div></div>
+          <div class="mark-item"><b>লল</b><div><kbd>`</kbd> আলাদা রাখুন<span>bol`le → বললে</span></div></div>
+        </div>
+      </div>
       <div class="chip-bar scroll-x" id="atlasFilterBar">
         <button class="chip primary" onclick="filterAtlasGrid('ALL', this)">সব</button>
         <button class="chip" onclick="filterAtlasGrid('K-Series', this)">ক-ধারা</button>
