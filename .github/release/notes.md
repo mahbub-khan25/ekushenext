@@ -5,7 +5,7 @@
 - **Ekushe-Portable.exe** is the same program, run without installing. It doesn't start with Windows on its own.
 - **Ekushe-Extras-x64.zip** is for testers only. It contains the experimental Windows input method (`ekushe_tsf.dll`) and the command-line tool.
 
-Windows SmartScreen may warn you because the app isn't code-signed yet. Click **More info → Run anyway**.
+Windows builds are now code-signed by **A S M Mahbub Afzal Khan**. A brand-new certificate takes a little while to build reputation, so SmartScreen may still show a warning for a few days — if it does, click **More info → Run anyway**; the publisher shown should be A S M Mahbub Afzal Khan.
 
 ### Mac (first Mac beta)
 1. Download **Ekushe-macOS.pkg** and open it. Because the installer isn't notarized by Apple yet, macOS will say it can't verify it. Go to **System Settings → Privacy & Security**, scroll down and click **Open Anyway**, then enter your password.
