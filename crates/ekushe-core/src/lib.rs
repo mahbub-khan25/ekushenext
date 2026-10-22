@@ -297,15 +297,7 @@ impl Ekushe {
         if self.config.active_layout != LayoutId::AvroPhonetic {
             return self.commit_default(trailing);
         }
-        let smart = self.config.typing_mode == TypingMode::Smart;
-        let (cands, _) = self.suggestions.suggest_with_context(
-            &self.roman_buf,
-            &self.phonetic,
-            smart,
-            self.config.enable_emoji_suggestions,
-            self.config.max_candidates,
-            self.prev_word.as_deref(),
-        );
+        let (cands, _) = self.phonetic_candidates();
 
         let chosen = cands
             .get(index)
@@ -317,7 +309,10 @@ impl Ekushe {
         // (after Enter the application inserted the line break itself).
         self.last_commit_undo = None;
         if !roman.is_empty() {
-            self.suggestions.record_user_choice(&roman, &chosen);
+            let (stem, tail) = split_trailing_punctuation(&roman);
+            let tail_bn = self.phonetic.transliterate_word(tail);
+            let chosen_stem = chosen.strip_suffix(tail_bn.as_str()).unwrap_or(&chosen);
+            self.suggestions.record_user_choice(stem, chosen_stem);
             if trailing == Some(' ') {
                 self.last_commit_undo = Some((roman, chosen.clone()));
             }
@@ -416,6 +411,29 @@ impl Ekushe {
         Some((delete_utf16, replacement))
     }
 
+    /// Ranked candidates for the Roman buffer. Punctuation typed straight after a word (`gai,`
+    /// `bangla.` `keno?`) is not part of the word: the word is looked up on its own and the
+    /// punctuation is added back to every candidate, so `bangla.` gives `বাংলা।`.
+    fn phonetic_candidates(&self) -> (Vec<Candidate>, Vec<SignHint>) {
+        let smart = self.config.typing_mode == TypingMode::Smart;
+        let (stem, tail) = split_trailing_punctuation(&self.roman_buf);
+        let (mut cands, hints) = self.suggestions.suggest_with_context(
+            stem,
+            &self.phonetic,
+            smart,
+            self.config.enable_emoji_suggestions,
+            self.config.max_candidates,
+            self.prev_word.as_deref(),
+        );
+        if !tail.is_empty() {
+            let tail_bn = self.phonetic.transliterate_word(tail);
+            for c in &mut cands {
+                c.text.push_str(&tail_bn);
+            }
+        }
+        (cands, hints)
+    }
+
     fn build_phonetic_output(&self, committed: Option<String>) -> SessionOutput {
         if self.roman_buf.is_empty() {
             return SessionOutput {
@@ -437,14 +455,7 @@ impl Ekushe {
         }
 
         let smart = self.config.typing_mode == TypingMode::Smart;
-        let (candidates, mut sign_hints) = self.suggestions.suggest_with_context(
-            &self.roman_buf,
-            &self.phonetic,
-            smart,
-            self.config.enable_emoji_suggestions,
-            self.config.max_candidates,
-            self.prev_word.as_deref(),
-        );
+        let (candidates, mut sign_hints) = self.phonetic_candidates();
         if !self.config.show_sign_and_conjunct_hints || self.config.compact_popup {
             sign_hints.clear();
         }
@@ -482,6 +493,20 @@ impl Ekushe {
             delete_before: 0,
         }
     }
+}
+
+/// Split `gai,` into (`gai`, `,`). Only for a plain word (letters and digits, starting with a
+/// letter) followed by `. , ? ! ; ) "`; `,,` (hasanta), `...`, snippets (`;x`), English escapes
+/// (`/x`) and emoji codes (`:x:`) are left whole.
+fn split_trailing_punctuation(roman: &str) -> (&str, &str) {
+    let stem = roman.trim_end_matches(['.', ',', '?', '!', ';', ')', '"']);
+    let tail = &roman[stem.len()..];
+    let plain_word = stem.chars().next().is_some_and(|c| c.is_ascii_alphabetic())
+        && stem.chars().all(|c| c.is_ascii_alphanumeric());
+    if tail.is_empty() || !plain_word || tail.contains(",,") {
+        return (roman, "");
+    }
+    (stem, tail)
 }
 
 #[cfg(test)]

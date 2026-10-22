@@ -129,3 +129,16 @@ fn golden_session_workflow_and_bijoy() {
     let back = bijoy_to_unicode(&bijoy);
     assert_eq!(back, uni);
 }
+
+#[test]
+fn punctuation_right_after_a_word_stays_punctuation() {
+    let mut e = Ekushe::default();
+    let mut text = String::new();
+    for ch in "ami tumi, keno? bangla. ".chars() {
+        let out = e.push_char(ch, false);
+        if let Some(c) = out.committed {
+            text.push_str(&c);
+        }
+    }
+    assert_eq!(text, "আমি তুমি, কেন? বাংলা। ");
+}
