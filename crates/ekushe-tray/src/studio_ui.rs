@@ -788,6 +788,7 @@ async function toggleMode() {
 
 // ── Writing pad ──
 let lastCandidates = [];
+let lastQuery = '';
 async function onRomanInput() {
   const val = document.getElementById('romanInput').value;
   const cBar = document.getElementById('candidateBar');
@@ -802,6 +803,7 @@ async function onRomanInput() {
   const data = await res.json();
   if (document.getElementById('romanInput').value !== val) return; // a newer keystroke won
   lastCandidates = data.candidates;
+  lastQuery = val;
   cBar.innerHTML = '';
   data.candidates.forEach((c, idx) => {
     const el = document.createElement('button');
@@ -829,10 +831,26 @@ function commitCandidate(idx) {
   r.focus();
   onRomanInput();
 }
+// Space commits in typing order even when it is pressed before the word's suggestions arrive:
+// the word is taken off the input at once (so the next word can be typed straight away) and
+// placed in the pad when its own top suggestion is known.
+let commitChain = Promise.resolve();
 document.getElementById('romanInput').addEventListener('keydown', (e) => {
-  if ((e.key === ' ' || e.key === 'Enter') && lastCandidates.length) {
+  const r = e.currentTarget;
+  if ((e.key === ' ' || e.key === 'Enter') && r.value.trim()) {
     e.preventDefault();
-    commitCandidate(0);
+    const word = r.value;
+    const known = lastQuery === word ? lastCandidates : null;
+    r.value = '';
+    onRomanInput();
+    commitChain = commitChain.then(async () => {
+      let cands = known;
+      if (!cands) {
+        try { cands = (await (await fetch('/api/suggest?q=' + encodeURIComponent(word))).json()).candidates; }
+        catch (err) { cands = []; }
+      }
+      insertIntoPad((cands[0] ? cands[0].text : word) + ' ');
+    });
   } else if (/^[1-9]$/.test(e.key) && e.altKey && lastCandidates[+e.key - 1]) {
     e.preventDefault();
     commitCandidate(+e.key - 1);

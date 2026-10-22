@@ -1990,15 +1990,9 @@ fn handle_http_client(mut stream: TcpStream) -> std::io::Result<()> {
 
     if method == "GET" && clean_path == "/api/suggest" {
         let q = extract_query_param(path, "q");
-        let phon = ekushe_core::phonetic::PhoneticEngine::new();
         // Hold the shared lock only while ranking (~1 ms), never while writing to the socket:
         // the keyboard hook needs the same lock on every keystroke.
-        let (cands, hints) = {
-            let st = STATE.lock();
-            st.ekushe
-                .suggestions_engine()
-                .suggest(&q, &phon, false, true, 9)
-        };
+        let (cands, hints) = STATE.lock().ekushe.suggest_roman(&q);
         let json = serde_json::json!({
             "candidates": cands,
             "sign_hints": hints,

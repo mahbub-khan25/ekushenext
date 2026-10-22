@@ -17,7 +17,6 @@ use ekushe_core::config::{Config, InputLanguage, SwitchHotkey, TypingMode};
 use ekushe_core::conjuncts::search_signs_and_conjuncts;
 use ekushe_core::convert::{banglish_to_bangla, bijoy_to_unicode, unicode_to_bijoy};
 use ekushe_core::layout::LayoutId;
-use ekushe_core::phonetic::PhoneticEngine;
 
 use crate::SHARED;
 
@@ -297,13 +296,7 @@ fn handle(mut s: TcpStream, port: u16) -> std::io::Result<()> {
         }
         ("GET", "/api/suggest") => {
             let q = query(path, "q");
-            let (c, h) = SHARED.lock().ekushe.suggestions_engine().suggest(
-                &q,
-                &PhoneticEngine::new(),
-                false,
-                true,
-                9,
-            );
+            let (c, h) = SHARED.lock().ekushe.suggest_roman(&q);
             respond(
                 &mut s,
                 "200 OK",
