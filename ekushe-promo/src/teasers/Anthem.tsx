@@ -81,7 +81,7 @@ const camera = (g: number, V: boolean): Rect => {
   }
   const prev = camera(LAST_AT - 1, V);
   if (g < REVEAL_AT) return lerpR(prev, LAST_R(V), ease(g, LAST_AT - 10, LAST_AT + 40));
-  return lerpR(LAST_R(V), WHOLE, ease(g, REVEAL_AT, REVEAL_AT + 60));
+  return lerpR(LAST_R(V), V ? [-40, 20, 700, 803] : WHOLE, ease(g, REVEAL_AT, REVEAL_AT + 60));
 };
 
 /** A key on the keyboard, pressed at frame `at`. */
@@ -145,7 +145,7 @@ const Screen: React.FC<{ g: number; vw: number; vh: number }> = ({ g, vw, vh }) 
   return (
     <div style={{ position: 'relative', width: vw, height: vh, borderRadius: 28 * u, overflow: 'hidden', background: '#F2F2F0', boxShadow: `0 0 0 ${2 * u}px rgba(255,255,255,0.16), 0 ${50 * u}px ${130 * u}px -${30 * u}px rgba(0,0,0,0.9), 0 0 ${140 * u}px -${30 * u}px rgba(47,209,142,0.35)` }}>
       <Img src={staticFile(`anthem/${img}`)} style={{ position: 'absolute', left: ox, top: oy, width: CW * s, height: CW * s * (1311 / 1629), maxWidth: 'none' }} />
-      {reveal && (
+      {reveal && !V && (
         // the whole app at the end: the real full-screen capture
         <Img src={staticFile('anthem/final_full.jpg')} style={{ position: 'absolute', left: 0, top: 0, width: vw, height: vh, objectFit: 'contain', background: '#F2F2F0', opacity: full }} />
       )}
