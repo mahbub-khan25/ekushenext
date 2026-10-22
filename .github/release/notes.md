@@ -1,13 +1,19 @@
-**Beta.** Ekushe Next is a Bangla phonetic keyboard for **Windows 10/11 (64-bit)**, **macOS 11 or later** (Apple silicon and Intel) and, new in this beta, **Linux** (64-bit, IBus). It comes with its own dictionary, which puts the Bangla Academy standard spelling first.
+**Beta.** Ekushe Next is a Bangla phonetic keyboard for **Windows 10/11 (64-bit)**, **macOS 11 or later** (Apple silicon and Intel) and **Linux** (64-bit, IBus). It comes with its own dictionary, which puts the Bangla Academy standard spelling first.
+
+### What's new in this beta
+- **Marks you type on purpose come first.** `allah,,` gives **আল্লাহ্** (with hasanta), `he^se` gives **হেঁসে**, `kirrtti` gives **কীর্তি**, `du:kho` gives **দুঃখ** and `bakZo` gives **বাক্য**. This works for `,,` (hasanta), `^` or `~` (chandrabindu), `rri` (ঋ-কার), `rr` (রেফ), ``` t`` ``` (খণ্ড-ত), `:` (বিসর্গ), `Z` (য-ফলা), `+` (join) and `` ` `` (keep apart).
+- **Tips in the popup (Windows).** If a word in the list has a mark you didn't type, the hint row now starts with a highlighted tip. For example, type `hese` and **হেঁসে** is option 3, so the tip shows **হেঁসে he^se**. Click it, or type it that way next time. Tips still show when the conjunct row is hidden.
+- **A card of all the marks** at the top of Studio's conjunct guide (the **সহায়িকা** button in the popup).
+- **Punctuation stays put.** Typing punctuation right after a word keeps it: `gai,` gives **গাই,** and `bangla.` gives **বাংলা।**. Studio's writing pad also keeps fast typing in order.
 
 ### Download
 - **Ekushe-Setup.exe** (or **Ekushe-Setup.zip**, if your browser blocks the .exe) installs it for your user account, with no admin rights needed. It starts with Windows, adds a Start Menu shortcut, and can be removed from Settings → Apps.
 - **Ekushe-Portable.exe** is the same program, run without installing. It doesn't start with Windows on its own.
 - **Ekushe-Extras-x64.zip** is for testers only. It contains the experimental Windows input method (`ekushe_tsf.dll`) and the command-line tool.
 
-Windows builds are now code-signed by **A S M Mahbub Afzal Khan**. A brand-new certificate takes a little while to build reputation, so SmartScreen may still show a warning for a few days — if it does, click **More info → Run anyway**; the publisher shown should be A S M Mahbub Afzal Khan.
+Windows builds are code-signed by **A S M Mahbub Afzal Khan**. The certificate is new and still building reputation, so SmartScreen may show a warning. If it does, click **More info → Run anyway**; the publisher shown should be A S M Mahbub Afzal Khan.
 
-### Mac (first Mac beta)
+### Mac
 1. Download **Ekushe-macOS.pkg** and open it. Because the installer isn't notarized by Apple yet, macOS will say it can't verify it. Go to **System Settings → Privacy & Security**, scroll down and click **Open Anyway**, then enter your password.
 2. The installer puts Ekushe in `/Library/Input Methods` and adds it to your input sources. If it doesn't show up, log out and back in, then go to **System Settings → Keyboard → Text Input → Edit… → +**, choose **Bengali → Ekushe Bangla** and click Add.
 3. Pick **Ekushe Bangla** from the input menu in the menu bar (or press Control+Space / the 🌐 key to switch).
@@ -15,7 +21,7 @@ Windows builds are now code-signed by **A S M Mahbub Afzal Khan**. A brand-new c
 
 On a Mac, the suggestions appear in macOS's own candidate bar, and Control+Delete flips the last word between Bangla and Roman. **Ekushe-macOS.zip** has the same app for manual install: unzip it and move **Ekushe.app** into `~/Library/Input Methods`.
 
-### Linux (first Linux beta)
+### Linux
 Ekushe is an **IBus** keyboard. IBus is the standard on Ubuntu, Fedora, Debian and GNOME, and also works on KDE.
 
 | You use | Download | Install |
@@ -36,6 +42,7 @@ On Linux the suggestions appear in IBus's own candidate window. Backspace-undo a
 ### How to use
 - Type Bangla in Roman letters, e.g. `amar sonar bangla`. Space picks the highlighted word, Tab moves to the next suggestion, and Esc keeps what you typed.
 - Double-tap **Shift** to switch between Bangla and English.
+- For an exact spelling, add a mark: `,,` for hasanta, `^` for chandrabindu, `rr` for রেফ and so on. The full list is at the top of Studio's conjunct guide.
 - Press Backspace right after a word to get your Roman letters back. Ctrl+Backspace switches the last word between Bangla and English.
 - Right-click the tray icon to open **Studio**. It has a writing pad, a conjunct guide, a spell checker, a Bijoy ⇄ Unicode converter and settings.
 
