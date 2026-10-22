@@ -706,8 +706,9 @@ impl SuggestionEngine {
             kind: CandidateKind::Phonetic,
             annotation: None,
         };
-        // The first keystroke shows the plain letter (s → স) instead of jumping to a word.
-        if roman_input.chars().count() == 1 {
+        // The first keystroke shows the plain letter (s → স) instead of jumping to a word. An explicit
+        // hasanta (`,,`) is a deliberate spelling, so its exact output leads too (allah,, → আল্লাহ্).
+        if roman_input.chars().count() == 1 || roman_input.contains(",,") {
             push(candidates, phonetic(literal_bangla));
         }
         // Phonetic-First: the literal phonetic output leads when it is a real, standard word, not much rarer
