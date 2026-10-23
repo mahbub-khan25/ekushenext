@@ -802,13 +802,105 @@ impl SuggestionEngine {
 }
 
 /// Write `contents` to `path` via a temporary file + rename (no half-written file after a crash).
+///
+/// The files are the user's own (settings, snippets, learned words): on macOS and Linux the folder
+/// is created owner-only (0700) and the file is written owner-only (0600), whatever the umask. The
+/// temporary file gets a fresh, unpredictable name and is created new, so it can never be a link
+/// planted by someone else.
 pub fn write_atomic(path: &Path, contents: &str) -> std::io::Result<()> {
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)?;
+    use std::io::Write;
+    let parent = path
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."));
+    create_private_dir(parent)?;
+    let name = path
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let stamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    for attempt in 0..16u32 {
+        let tmp = parent.join(format!(
+            ".{name}.{}.{stamp:x}{attempt}.tmp",
+            std::process::id()
+        ));
+        let mut opts = fs::OpenOptions::new();
+        opts.write(true).create_new(true);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            opts.mode(0o600);
+        }
+        let mut f = match opts.open(&tmp) {
+            Ok(f) => f,
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(e) => return Err(e),
+        };
+        let written = f.write_all(contents.as_bytes()).and_then(|_| f.sync_all());
+        drop(f);
+        if let Err(e) = written.and_then(|_| fs::rename(&tmp, path)) {
+            let _ = fs::remove_file(&tmp);
+            return Err(e);
+        }
+        return Ok(());
     }
-    let tmp = path.with_extension("tmp");
-    fs::write(&tmp, contents)?;
-    fs::rename(&tmp, path)
+    Err(std::io::Error::new(
+        std::io::ErrorKind::AlreadyExists,
+        "no free temporary file name",
+    ))
+}
+
+/// Create `dir` (and parents) if missing; on macOS and Linux, Ekushe's own folder is owner-only.
+pub fn create_private_dir(dir: &Path) -> std::io::Result<()> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::{DirBuilderExt, PermissionsExt};
+        if !dir.exists() {
+            fs::DirBuilder::new()
+                .recursive(true)
+                .mode(0o700)
+                .create(dir)?;
+        }
+        let ours = dir
+            .file_name()
+            .is_some_and(|n| n.to_string_lossy().to_lowercase().contains("ekushe"));
+        if ours {
+            let _ = fs::set_permissions(dir, fs::Permissions::from_mode(0o700));
+        }
+        Ok(())
+    }
+    #[cfg(not(unix))]
+    {
+        fs::create_dir_all(dir)
+    }
+}
+
+/// On macOS and Linux, make Ekushe's settings folder and the files in it owner-only (files written
+/// by older versions were readable by other accounts). Does nothing elsewhere.
+pub fn tighten_permissions(dir: &Path) {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        if !dir.is_dir() {
+            return;
+        }
+        let _ = fs::set_permissions(dir, fs::Permissions::from_mode(0o700));
+        if let Ok(rd) = fs::read_dir(dir) {
+            for e in rd.flatten() {
+                let Ok(m) = fs::symlink_metadata(e.path()) else {
+                    continue;
+                };
+                if m.is_file() && m.permissions().mode() & 0o077 != 0 {
+                    let _ = fs::set_permissions(e.path(), fs::Permissions::from_mode(0o600));
+                }
+            }
+        }
+    }
+    #[cfg(not(unix))]
+    let _ = dir;
 }
 
 /// Normalize a Roman string into a consonant/vowel skeleton so beginners who write

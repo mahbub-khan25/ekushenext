@@ -8,6 +8,7 @@ char *ek_key(uint32_t codepoint);
 char *ek_backspace(void);
 char *ek_select(uint32_t index, uint32_t trailing);
 void ek_reset(void);
+void ek_set_private(bool is_private);
 bool ek_is_composing(void);
 bool ek_can_undo(void);
 uint8_t ek_language(void);

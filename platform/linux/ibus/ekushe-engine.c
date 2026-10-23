@@ -27,7 +27,12 @@ typedef struct {
     guint count;
     gchar *last_committed; /* last word committed with a space (what Backspace-undo expects) */
     gboolean shift_clean;
+    gboolean secret; /* password or PIN field: keys go straight to the application */
+    gboolean private_field; /* nothing learned here (password, PIN or a field marked private) */
 } EkusheEngine;
+
+/* IBUS_INPUT_HINT_PRIVATE (IBus 1.5.24+): the field asks not to be remembered */
+#define EKUSHE_HINT_PRIVATE (1 << 13)
 
 typedef struct {
     IBusEngineClass parent;
@@ -212,6 +217,10 @@ static gboolean ekushe_process_key_event(IBusEngine *e, guint keyval, guint keyc
     (void)keycode;
     gboolean is_shift = keyval == IBUS_KEY_Shift_L || keyval == IBUS_KEY_Shift_R;
 
+    /* Password and PIN fields: type plain characters, no pre-edit, nothing learned */
+    if (ek->secret)
+        return FALSE;
+
     if (modifiers & IBUS_RELEASE_MASK) {
         if (is_shift && ek->shift_clean) {
             ek->shift_clean = FALSE;
@@ -324,9 +333,23 @@ static void ekushe_enable(IBusEngine *e)
     IBUS_ENGINE_CLASS(ekushe_engine_parent_class)->enable(e);
 }
 
+static void ekushe_set_content_type(IBusEngine *e, guint purpose, guint hints)
+{
+    EkusheEngine *ek = (EkusheEngine *)e;
+    gboolean secret = purpose == IBUS_INPUT_PURPOSE_PASSWORD || purpose == IBUS_INPUT_PURPOSE_PIN;
+    gboolean private_field = secret || (hints & EKUSHE_HINT_PRIVATE);
+    if (secret != ek->secret)
+        finish(ek);
+    ek->secret = secret;
+    ek->private_field = private_field;
+    ek_set_private(private_field);
+}
+
 static void ekushe_focus_in(IBusEngine *e)
 {
     EkusheEngine *ek = (EkusheEngine *)e;
+    /* The Rust engine is shared by every field: tell it about this one */
+    ek_set_private(ek->private_field);
     ibus_engine_register_properties(e, ek->props);
     IBUS_ENGINE_CLASS(ekushe_engine_parent_class)->focus_in(e);
 }
@@ -406,6 +429,7 @@ static void ekushe_engine_class_init(EkusheEngineClass *klass)
     engine->disable = ekushe_disable;
     engine->candidate_clicked = ekushe_candidate_clicked;
     engine->property_activate = ekushe_property_activate;
+    engine->set_content_type = ekushe_set_content_type;
 }
 
 static void on_disconnected(IBusBus *bus, gpointer data)

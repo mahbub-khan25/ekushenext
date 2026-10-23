@@ -93,5 +93,22 @@ for ch in "bangla":
 assert not key(IBus.KEY_Return), "Enter must reach the application"
 assert commits[-1] == "বাংলা", f"commits: {commits}"
 print("Enter committed", repr(commits[-1]))
+
+# A password field: keys go straight to the application, nothing is pre-edited or learned
+ic.set_content_type(IBus.InputPurpose.PASSWORD, 0)
+pump(0.3)
+before = len(preedits), len(commits)
+for ch in "amar":
+    assert not key(ord(ch)), f"key {ch!r} was taken in a password field"
+assert (len(preedits), len(commits)) == before or not any(preedits[before[0]:]), f"pre-edit in a password field: {preedits[before[0]:]}"
+print("password field: keys passed through")
+# Back to an ordinary field: Bangla again
+ic.set_content_type(IBus.InputPurpose.FREE_FORM, 0)
+pump(0.3)
+for ch in "amar":
+    assert key(ord(ch)), f"key {ch!r} was not handled after leaving the password field"
+assert preedits[-1] == "আমার", f"pre-edit: {preedits[-3:]}"
+key(IBus.KEY_Escape)
+print("ordinary field again: Bangla")
 print("OK")
 sys.exit(0)

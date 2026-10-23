@@ -57,9 +57,15 @@ word shows inline, Tab cycles), and only 64-bit applications are covered. To try
 first (running both converts every key twice), then from an administrator prompt:
 
 ```powershell
-regsvr32 target\release\ekushe_tsf.dll      # adds "Ekushe Next Bangla" under Bangla (Bangladesh)
-regsvr32 /u target\release\ekushe_tsf.dll   # removes it
+mkdir "C:\Program Files\Ekushe Next" -Force
+copy target\release\ekushe_tsf.dll "C:\Program Files\Ekushe Next\"
+regsvr32 "C:\Program Files\Ekushe Next\ekushe_tsf.dll"      # adds "Ekushe Next Bangla" under Bangla (Bangladesh)
+regsvr32 /u "C:\Program Files\Ekushe Next\ekushe_tsf.dll"   # removes it
 ```
+
+Every program loads a registered input method, so it only registers from a folder that only
+administrators can change (Program Files or Windows); from anywhere else `regsvr32` fails with
+`0x80070005`.
 
 Then pick it with Win+Space. The installer copies the DLL but does not register it.
 
