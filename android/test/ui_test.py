@@ -37,6 +37,21 @@ def shot(name):
     print('screenshot', name)
 
 
+def dismiss_anr():
+    """A slow emulator's launcher sometimes freezes and shows "isn't responding" over the app: press Wait."""
+    try:
+        sh('uiautomator dump /sdcard/ui.xml >/dev/null')
+        xml = adb('exec-out', 'cat', '/sdcard/ui.xml')
+        for n in ET.fromstring(xml[xml.index('<'):]).iter('node'):
+            if n.get('text') == 'Wait' and n.get('package') == 'android':
+                x1, y1, x2, y2 = map(int, re.findall(r'\d+', n.get('bounds')))
+                sh(f'input tap {(x1 + x2) // 2} {(y1 + y2) // 2}')
+                print('dismissed a not-responding box')
+                time.sleep(1)
+    except (ValueError, ET.ParseError):
+        pass
+
+
 def keys(mode='LETTERS'):
     # Wait for the keyboard to finish sliding in, and for its logged position to stop changing
     last, steady = None, 0
@@ -109,9 +124,15 @@ sh(f'ime enable {IME}')
 sh(f'ime set {IME}')
 print('default keyboard:', sh('settings get secure default_input_method').strip())
 sh('settings put system screen_off_timeout 1800000')
+# The test phone's own launcher is slow to start: don't let its "not responding" box cover the app
+sh('settings put secure anr_show_background 0')
+sh('settings put global hide_error_dialogs 1')
+time.sleep(5)
+dismiss_anr()
 adb('logcat', '-c')
 sh(f'am start -W -n {PKG}/.MainActivity')
 time.sleep(3)
+dismiss_anr()
 shot('01-setup')
 
 # Focus the try-it box: the keyboard opens
@@ -235,6 +256,7 @@ def to_top():
 
 
 def keyboard_shot(name, word='bangla'):
+    dismiss_anr()
     to_top()
     text, b = field_text()
     if b is None:
