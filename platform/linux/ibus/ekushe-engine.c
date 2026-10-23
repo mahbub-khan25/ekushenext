@@ -390,6 +390,16 @@ static void ekushe_property_activate(IBusEngine *e, const gchar *name, guint sta
         open_studio(NULL);
     else if (g_strcmp0(name, "settings") == 0)
         open_studio("settings");
+    else if (g_strcmp0(name, "report") == 0) {
+        gchar *os = g_get_os_info(G_OS_INFO_KEY_PRETTY_NAME);
+        gchar *url = take(ek_report_url(os ? os : "Linux"));
+        g_free(os);
+        if (url) {
+            gchar *argv[] = {"xdg-open", url, NULL};
+            g_spawn_async(NULL, argv, NULL, G_SPAWN_SEARCH_PATH | G_SPAWN_STDOUT_TO_DEV_NULL | G_SPAWN_STDERR_TO_DEV_NULL, NULL, NULL, NULL, NULL);
+            g_free(url);
+        }
+    }
     else if (g_strcmp0(name, "language") == 0) {
         finish((EkusheEngine *)e);
         ek_toggle_language();
@@ -414,6 +424,9 @@ static void ekushe_engine_init(EkusheEngine *ek)
     ibus_prop_list_append(ek->props, ibus_property_new("language", PROP_TYPE_NORMAL,
         ibus_text_new_from_string("Bangla ⇄ English (double-tap Shift)"), NULL,
         NULL, TRUE, TRUE, PROP_STATE_UNCHECKED, NULL));
+    ibus_prop_list_append(ek->props, ibus_property_new("report", PROP_TYPE_NORMAL,
+        ibus_text_new_from_string("Report a problem"), "dialog-warning",
+        ibus_text_new_from_string("Tell us what went wrong (opens ekushenext.com)"), TRUE, TRUE, PROP_STATE_UNCHECKED, NULL));
 }
 
 static void ekushe_engine_finalize(GObject *obj)

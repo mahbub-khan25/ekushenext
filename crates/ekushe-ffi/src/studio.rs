@@ -260,6 +260,7 @@ fn handle(mut s: TcpStream, req: &str, port: u16) -> std::io::Result<()> {
                     "compact_popup": cfg.compact_popup,
                     "auto_english_in_terminals": cfg.auto_english_in_terminals,
                     "snippets": snippets,
+                    "report_url": ekushe_core::report_url(if cfg!(target_os = "macos") { "macOS" } else { "Linux" }, cfg),
                 })
             };
             respond(&mut s, "200 OK", ct, &json(v))

@@ -101,6 +101,7 @@ const CMD_LAYOUT_PROBHAT: usize = 1031;
 const CMD_LAYOUT_JATIYA: usize = 1032;
 const CMD_LAYOUT_BORNONA: usize = 1033;
 const CMD_LAYOUT_MUNIR: usize = 1034;
+const CMD_REPORT: usize = 1098;
 const CMD_EXIT: usize = 1099;
 
 struct AppSharedState {
@@ -1604,6 +1605,12 @@ unsafe fn show_tray_context_menu(hwnd: HWND) {
     AppendMenuW(
         menu,
         MF_STRING,
+        CMD_REPORT,
+        wide_null("🐞 সমস্যা জানান (Report a problem)").as_ptr(),
+    );
+    AppendMenuW(
+        menu,
+        MF_STRING,
         CMD_EXIT,
         wide_null("প্রস্থান করুন (Exit Ekushe Next)").as_ptr(),
     );
@@ -1715,6 +1722,10 @@ unsafe fn handle_tray_command(hwnd: HWND, cmd: usize) {
             st.ekushe.set_config(cfg);
             drop(st);
             show_mode_badge(&format!("কীবোর্ড লেআউট: {lay_name}"));
+        }
+        CMD_REPORT => {
+            let url = ekushe_core::report_url(&windows_name(), STATE.lock().ekushe.config());
+            open_in_browser(&url);
         }
         CMD_EXIT => {
             DestroyWindow(hwnd);
@@ -2023,6 +2034,7 @@ fn handle_http_client(mut stream: TcpStream, req: &str) -> std::io::Result<()> {
             "compact_popup": cfg.compact_popup,
             "auto_english_in_terminals": cfg.auto_english_in_terminals,
             "snippets": snippet_pairs,
+            "report_url": ekushe_core::report_url(&windows_name(), cfg),
         })
         .to_string();
         drop(st); // never hold the keyboard hook's lock while writing to the socket
@@ -2306,6 +2318,51 @@ fn open_url_in_app_window(url: &str) {
             ptr::null(),
             1, // SW_SHOWNORMAL
         );
+    }
+}
+
+/// A web page in the default browser.
+fn open_in_browser(url: &str) {
+    unsafe {
+        windows_sys::Win32::UI::Shell::ShellExecuteW(
+            ptr::null_mut(),
+            wide_null("open").as_ptr(),
+            wide_null(url).as_ptr(),
+            ptr::null(),
+            ptr::null(),
+            1, // SW_SHOWNORMAL
+        );
+    }
+}
+
+/// "Windows 11 (build 26100)" or "Windows 10 (build 19045)", for problem reports.
+pub(crate) fn windows_name() -> String {
+    use windows_sys::Win32::System::Registry::{RegGetValueW, HKEY_LOCAL_MACHINE, RRF_RT_REG_SZ};
+    let mut buf = [0u16; 32];
+    let mut len = (buf.len() * 2) as u32;
+    let ok = unsafe {
+        RegGetValueW(
+            HKEY_LOCAL_MACHINE,
+            wide_null(r"SOFTWARE\Microsoft\Windows NT\CurrentVersion").as_ptr(),
+            wide_null("CurrentBuildNumber").as_ptr(),
+            RRF_RT_REG_SZ,
+            ptr::null_mut(),
+            buf.as_mut_ptr().cast(),
+            &mut len,
+        )
+    } == 0;
+    let build: u32 = if ok {
+        String::from_utf16_lossy(&buf[..(len as usize / 2).saturating_sub(1)])
+            .trim()
+            .parse()
+            .unwrap_or(0)
+    } else {
+        0
+    };
+    match build {
+        0 => "Windows".into(),
+        b if b >= 22000 => format!("Windows 11 (build {b})"),
+        b => format!("Windows 10 (build {b})"),
     }
 }
 

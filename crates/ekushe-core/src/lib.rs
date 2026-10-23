@@ -10,6 +10,33 @@
 //! - [`config`]: Hotkeys (Double-Tap Shift default, Ctrl+Space, F12, Ctrl+Alt+B), modes, and per-app profiles
 
 pub mod config;
+
+/// This build's release, e.g. `v0.1.0-beta.10` (from .github/release/VERSION).
+pub fn release() -> &'static str {
+    include_str!("../../../.github/release/VERSION").trim()
+}
+
+/// The web form for reporting a problem, with this build's details filled in (nothing typed is
+/// included). `os` names the computer, e.g. `Windows 11` or `macOS`.
+pub fn report_url(os: &str, config: &config::Config) -> String {
+    let enc = |s: &str| {
+        s.bytes()
+            .map(|b| match b {
+                b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' => {
+                    (b as char).to_string()
+                }
+                _ => format!("%{b:02X}"),
+            })
+            .collect::<String>()
+    };
+    format!(
+        "https://ekushenext.com/report/?v={}&os={}&layout={}&mode={}&from=app",
+        enc(release().trim_start_matches('v')),
+        enc(os),
+        enc(&format!("{:?}", config.active_layout)),
+        enc(&format!("{:?}", config.typing_mode)),
+    )
+}
 pub mod conjuncts;
 pub mod convert;
 pub mod dict;
@@ -633,6 +660,14 @@ fn split_trailing_punctuation(roman: &str) -> (&str, &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn report_url_carries_the_build_details_only() {
+        let url = report_url("Windows 11 (build 26100)", &Config::default());
+        assert!(url.starts_with("https://ekushenext.com/report/?v=0.1.0"), "{url}");
+        assert!(url.contains("&os=Windows%2011%20%28build%2026100%29&layout=AvroPhonetic&mode=Smart&from=app"), "{url}");
+        assert!(release().starts_with('v'));
+    }
 
     #[test]
     fn terminals_follow_the_english_in_terminals_setting() {

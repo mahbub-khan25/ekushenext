@@ -53,6 +53,13 @@ enum Engine {
     static func appFocus(_ bundleID: String) { _ = bundleID.withCString { ek_app_focus($0) } }
     static func reloadConfig() { ek_reload_config() }
     static func saveLearned() { ek_save_learned() }
+    /// The web form for reporting a problem, with this build's details
+    static func reportURL() -> URL? {
+        let v = ProcessInfo.processInfo.operatingSystemVersion
+        let os = "macOS \(v.majorVersion).\(v.minorVersion).\(v.patchVersion)"
+        return os.withCString { take(ek_report_url($0)) }.flatMap(URL.init(string:))
+    }
+
     static func studioURL(tab: String? = nil) -> URL? {
         let s: String?
         if let tab = tab { s = tab.withCString { take(ek_studio_url($0)) } } else { s = take(ek_studio_url(nil)) }

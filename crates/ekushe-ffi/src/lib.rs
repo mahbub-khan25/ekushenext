@@ -387,6 +387,23 @@ pub extern "C" fn ek_studio_start() -> u16 {
     }
 }
 
+/// The web form for reporting a problem, with this build's details (`os`: e.g. `macOS 14.5`).
+///
+/// # Safety
+/// `os` must be a valid NUL-terminated UTF-8 string or null.
+#[no_mangle]
+pub unsafe extern "C" fn ek_report_url(os: *const c_char) -> *mut c_char {
+    let os = cstr(os).unwrap_or("").to_string();
+    let url = with_shared(String::new(), |sh| {
+        ekushe_core::report_url(&os, sh.ekushe.config())
+    });
+    if url.is_empty() {
+        ptr::null_mut()
+    } else {
+        to_c(url)
+    }
+}
+
 /// An address that opens Studio for this user with a fresh single-use launch code, e.g.
 /// `http://127.0.0.1:45210/?code=…&tab=settings`. `tab` may be null. Returns null when Studio cannot
 /// run. Open it straight away: the code works once and expires.
