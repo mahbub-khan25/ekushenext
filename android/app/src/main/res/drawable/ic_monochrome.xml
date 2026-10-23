@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Themed icon (Android 13+): the Shaheed Minar's five frames over a keyboard line -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#FFFFFFFF" android:pathData="M34,44h4v22h-4zM42,38h4v28h-4zM51,30h6v36h-6zM62,38h4v28h-4zM70,44h4v22h-4zM30,68h48v3H30zM34,74h40v3H34z" />
+</vector>

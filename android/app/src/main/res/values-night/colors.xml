@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ek_green">#2FD18E</color>
+    <color name="ek_bg">#03120C</color>
+    <color name="ek_card">#0E201A</color>
+    <color name="ek_text">#EEF4F1</color>
+    <color name="ek_sub">#A0B6AC</color>
+    <color name="ek_line">#26FFFFFF</color>
+    <color name="ek_red">#FF5A66</color>
+    <bool name="light_bars">false</bool>
+</resources>
