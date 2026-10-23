@@ -4,10 +4,15 @@ import android.content.Context
 
 /** The keyboard's own settings (the typing engine's settings live in its config.toml). */
 class Prefs(context: Context) {
+    companion object {
+        /** Where the background photo is kept (a private, resized copy) */
+        fun photoFile(context: Context) = java.io.File(context.filesDir, "keyboard_photo.jpg")
+    }
+
     private val p = context.applicationContext.getSharedPreferences("keyboard", Context.MODE_PRIVATE)
 
     var theme: String
-        get() = p.getString("theme", "system") ?: "system"
+        get() = p.getString("theme", "ekushe") ?: "ekushe"
         set(v) = p.edit().putString("theme", v).apply()
     var vibrate: Boolean
         get() = p.getBoolean("vibrate", true)
@@ -35,6 +40,22 @@ class Prefs(context: Context) {
     var recentEmoji: String
         get() = p.getString("recent_emoji", "") ?: ""
         set(v) = p.edit().putString("recent_emoji", v).apply()
+    /** Separate key shapes (true) or a flat look (false) */
+    var keyBorders: Boolean
+        get() = p.getBoolean("key_borders", true)
+        set(v) = p.edit().putBoolean("key_borders", v).apply()
+    /** A photo of the user's own behind the keys */
+    var photo: Boolean
+        get() = p.getBoolean("photo", false)
+        set(v) = p.edit().putBoolean("photo", v).apply()
+    /** How much the photo is dimmed (0–80 %) so the letters stay readable */
+    var photoDim: Int
+        get() = p.getInt("photo_dim", 35)
+        set(v) = p.edit().putInt("photo_dim", v).apply()
+    /** Changes whenever the photo is replaced, so the keyboard knows to load it again */
+    var photoStamp: Long
+        get() = p.getLong("photo_stamp", 0)
+        set(v) = p.edit().putLong("photo_stamp", v).apply()
     var seenTour: Boolean
         get() = p.getBoolean("seen_tour", false)
         set(v) = p.edit().putBoolean("seen_tour", v).apply()

@@ -18,6 +18,13 @@ import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
+import android.widget.SeekBar
+import android.widget.Toast
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.ImageDecoder
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -41,6 +48,40 @@ class MainActivity : AppCompatActivity() {
     private val subColor get() = ContextCompat.getColor(this, R.color.ek_sub)
     private val cardColor get() = ContextCompat.getColor(this, R.color.ek_card)
     private val lineColor get() = ContextCompat.getColor(this, R.color.ek_line)
+    // The background photo: picked with the system photo picker (no storage permission needed)
+    private val pickPhoto = registerForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) Thread {
+            val ok = runCatching { savePhoto(uri) }.isSuccess
+            runOnUiThread {
+                if (ok) { prefs.photo = true; prefs.photoStamp = System.currentTimeMillis() }
+                else Toast.makeText(this, "ছবিটি খোলা গেল না · Couldn't open that photo", Toast.LENGTH_SHORT).show()
+                build()
+            }
+        }.start()
+    }
+
+    /** Keep a private copy, small enough for a keyboard (the long side at most 1600 px) */
+    private fun savePhoto(uri: Uri) {
+        val max = 1600
+        val bmp: Bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            ImageDecoder.decodeBitmap(ImageDecoder.createSource(contentResolver, uri)) { d, info, _ ->
+                val big = maxOf(info.size.width, info.size.height)
+                if (big > max) d.setTargetSize(info.size.width * max / big, info.size.height * max / big)
+                d.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+            }
+        } else {
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            contentResolver.openInputStream(uri)!!.use { BitmapFactory.decodeStream(it, null, bounds) }
+            var sample = 1
+            while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= max) sample *= 2
+            contentResolver.openInputStream(uri)!!.use { BitmapFactory.decodeStream(it, null, BitmapFactory.Options().apply { inSampleSize = sample }) }!!
+        }
+        val f = Prefs.photoFile(this)
+        val tmp = java.io.File(f.path + ".new")
+        tmp.outputStream().use { bmp.compress(Bitmap.CompressFormat.JPEG, 88, it) }
+        tmp.renameTo(f)
+    }
+
     private fun dp(v: Float) = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v, resources.displayMetrics).toInt()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -196,7 +237,14 @@ class MainActivity : AppCompatActivity() {
 
     private fun keyboard() {
         val card = card()
-        card.addView(choice("থিম", "Theme", listOf("system" to "ফোনের মতো (System)", "light" to "হালকা (Light)", "dark" to "গাঢ় (Dark)"), prefs.theme) { prefs.theme = it })
+        card.addView(text("থিম", 15.5f, bnBold, textColor))
+        card.addView(text("Theme: tap one to use it", 12.5f, Typeface.DEFAULT, subColor))
+        spaceIn(card, 10f)
+        card.addView(themeGallery())
+        divider(card)
+        card.addView(switch("কীর আলাদা ঘর", "Key borders: separate keys, or a flat modern look", prefs.keyBorders) { prefs.keyBorders = it; build() })
+        divider(card)
+        photoSettings(card)
         divider(card)
         card.addView(choice("উচ্চতা", "Height", listOf("0" to "ছোট (Small)", "1" to "সাধারণ (Normal)", "2" to "বড় (Tall)"), prefs.height.toString()) { prefs.height = it.toInt() })
         divider(card)
@@ -208,6 +256,83 @@ class MainActivity : AppCompatActivity() {
         divider(card)
         card.addView(switch("শব্দ", "Sound on key press", prefs.sound) { prefs.sound = it })
         root.addView(card)
+    }
+
+    private fun themeGallery(): View {
+        val grid = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val choices = Themes.choices()
+        choices.chunked(2).forEach { pair ->
+            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            pair.forEachIndexed { i, t ->
+                row.addView(themeTile(t), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
+                    if (i == 0) marginEnd = dp(6f) else marginStart = dp(6f)
+                })
+            }
+            if (pair.size == 1) row.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f).apply { marginStart = dp(6f) })
+            grid.addView(row, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(12f) })
+        }
+        return grid
+    }
+
+    private fun themeTile(t: ThemeChoice): View {
+        val on = prefs.theme == t.id
+        val tile = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            tag = "theme:${t.id}"
+            setPadding(dp(5f), dp(5f), dp(5f), dp(8f))
+            background = GradientDrawable().apply {
+                cornerRadius = dp(16f).toFloat()
+                setColor(0)
+                setStroke(dp(if (on) 2.5f else 1f), if (on) green else lineColor)
+            }
+            setOnClickListener { prefs.theme = t.id; build() }
+            contentDescription = "${t.en} theme"
+        }
+        val preview = if (t.id == "system") ThemePreview(this, Palette.LIGHT, Palette.DARK, prefs.keyBorders)
+        else ThemePreview(this, Palette.byId(this, t.id), null, prefs.keyBorders)
+        tile.addView(preview)
+        val label = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(6f), dp(6f), dp(4f), 0) }
+        val names = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f) }
+        names.addView(text(t.bn, 14.5f, bnBold, if (on) green else textColor).apply { maxLines = 1 })
+        names.addView(text(t.en, 11.5f, Typeface.DEFAULT, subColor).apply { maxLines = 1 })
+        label.addView(names)
+        if (on) label.addView(text("✓", 18f, Typeface.DEFAULT_BOLD, green))
+        tile.addView(label)
+        return tile
+    }
+
+    private fun photoSettings(card: LinearLayout) {
+        val has = Prefs.photoFile(this).exists()
+        card.addView(switch("ছবির ব্যাকগ্রাউন্ড", "Photo background: your own picture behind the keys", prefs.photo && has) { on ->
+            if (on && !has) pickPhoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+            else { prefs.photo = on; prefs.photoStamp = System.currentTimeMillis() }
+            build()
+        })
+        if (!(prefs.photo && has)) return
+        spaceIn(card, 8f)
+        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        row.addView(ImageView(this).apply {
+            setImageBitmap(runCatching { BitmapFactory.decodeFile(Prefs.photoFile(context).path, BitmapFactory.Options().apply { inSampleSize = 8 }) }.getOrNull())
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            background = rounded(lineColor, dp(10f).toFloat())
+            clipToOutline = true
+            layoutParams = LinearLayout.LayoutParams(dp(96f), dp(60f))
+        })
+        row.addView(MaterialButton(this, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
+            text = "অন্য ছবি"; typeface = bn; isAllCaps = false
+            setOnClickListener { pickPhoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
+        }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginStart = dp(12f) })
+        card.addView(row)
+        spaceIn(card, 8f)
+        card.addView(text("ছবি কতটা হালকা বা গাঢ় হবে · Dim the photo so letters stay clear", 12.5f, bn, subColor))
+        card.addView(SeekBar(this).apply {
+            max = 80; progress = prefs.photoDim
+            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(s: SeekBar, v: Int, fromUser: Boolean) { if (fromUser) prefs.photoDim = v }
+                override fun onStartTrackingTouch(s: SeekBar) {}
+                override fun onStopTrackingTouch(s: SeekBar) {}
+            })
+        })
     }
 
     private fun snippets() {

@@ -198,5 +198,98 @@ sh('input swipe 500 1800 500 300 400')
 time.sleep(1)
 shot('14-settings-more')
 
+# ── Themes: tap each one in the gallery, then open the keyboard and photograph it
+def dump_nodes():
+    for _ in range(4):
+        try:
+            sh('uiautomator dump /sdcard/ui.xml >/dev/null')
+            xml = adb('exec-out', 'cat', '/sdcard/ui.xml')
+            return list(ET.fromstring(xml[xml.index('<'):]).iter('node'))
+        except (ValueError, ET.ParseError):
+            time.sleep(1)
+    return []
+
+
+def center(n):
+    x1, y1, x2, y2 = map(int, re.findall(r'\d+', n.get('bounds')))
+    return (x1 + x2) // 2, (y1 + y2) // 2, y1, y2
+
+
+def find(match, tries=14):
+    """Scroll down the settings page until a view matching `match` is fully on screen."""
+    for _ in range(tries):
+        for n in dump_nodes():
+            if match(n):
+                x, y, y1, y2 = center(n)
+                if y1 > 150 and y2 < 2050:
+                    return x, y
+        sh('input swipe 540 1700 540 1000 500')
+        time.sleep(0.8)
+    return None
+
+
+def to_top():
+    for _ in range(6):
+        sh('input swipe 540 500 540 2100 150')
+    time.sleep(0.8)
+
+
+def keyboard_shot(name, word='bangla'):
+    to_top()
+    text, b = field_text()
+    if b is None:
+        print('no text box for', name); failures.append(name); return
+    bx1, by1, bx2, by2 = map(int, re.findall(r'\d+', b))
+    tap((bx1 + bx2) // 2, (by1 + by2) // 2, 1.5)
+    km2, _ = keys()
+    if word:
+        tap(*km2['SPACE'], 0.3)
+        type_word(word, km2)
+        time.sleep(0.8)
+    shot(name)
+    sh('input keyevent KEYCODE_BACK')
+    time.sleep(0.8)
+
+
+THEMES = ['Ekushe', 'Krishnachura', 'Padma', 'Shapla', 'Kashful', 'Night', 'Follow system', 'Match my phone', 'Classic light', 'Classic dark']
+for i, t in enumerate(THEMES):
+    to_top()
+    at = find(lambda n, t=t: n.get('content-desc') == f'{t} theme')
+    if at is None:
+        print('no theme tile', t)
+        if t != 'Match my phone':
+            failures.append('theme ' + t)
+        continue
+    if i == 0:
+        sh('input swipe 540 1500 540 1100 400')  # show the gallery's first rows well
+        time.sleep(0.8)
+        shot('20-theme-gallery')
+        at = find(lambda n, t=t: n.get('content-desc') == f'{t} theme')
+    tap(at[0], at[1], 0.8)
+    keyboard_shot(f'2{i + 1}-theme-' + t.lower().replace(' ', '-'))
+
+# Flat keys (borders off), in the signature theme
+to_top()
+at = find(lambda n: n.get('content-desc') == 'Ekushe theme'); tap(at[0], at[1], 0.6)
+at = find(lambda n: (n.get('text') or '').startswith('কীর আলাদা ঘর'))
+if at: tap(at[0], at[1], 0.8); keyboard_shot('31-flat-keys')
+else: failures.append('borders switch')
+to_top()
+at = find(lambda n: (n.get('text') or '').startswith('কীর আলাদা ঘর'))
+if at: tap(at[0], at[1], 0.6)
+
+# A photo behind the keys (a test picture put where the app keeps its own copy)
+subprocess.run(['adb', 'push', str(Path(__file__).with_name('photo.png')), '/data/local/tmp/photo.png'], check=True, capture_output=True)
+sh(f'run-as {PKG} cp /data/local/tmp/photo.png files/keyboard_photo.jpg')
+sh('input keyevent KEYCODE_HOME'); time.sleep(1)
+sh(f'am start -W -n {PKG}/.MainActivity'); time.sleep(2)
+at = find(lambda n: (n.get('text') or '').startswith('ছবির ব্যাকগ্রাউন্ড'))
+if at:
+    tap(at[0], at[1], 1.2)
+    shot('32-photo-settings')
+    keyboard_shot('33-photo-keyboard')
+else:
+    failures.append('photo switch')
+
 print('FAILURES:', failures)
 sys.exit(1 if failures else 0)
