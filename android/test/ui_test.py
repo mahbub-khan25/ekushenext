@@ -42,14 +42,13 @@ def keys(mode='LETTERS'):
     last, steady = None, 0
     for _ in range(40):
         time.sleep(0.5)
-        moving = sh('dumpsys window | grep -c insets_animation || true').strip() not in ('', '0')
         log = adb('logcat', '-d', '-s', 'EkusheKeys:I')
         found = [json.loads(m) for m in re.findall(r'EkusheKeys: (\{.*\})', log)]
         found = [f for f in found if f['mode'] == mode]
         cur = found[-1] if found else None
-        if cur is not None and cur == last and not moving:
+        if cur is not None and cur == last:
             steady += 1
-            if steady >= 2:
+            if steady >= 3:
                 return {e['k']: (e['x'], e['y']) for e in cur['keys']}, cur['strip']
         else:
             steady = 0
