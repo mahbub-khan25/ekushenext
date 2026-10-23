@@ -190,13 +190,13 @@ tap(*km['LANG'], 2.5)
 now_ime = sh('settings get secure default_input_method').strip()
 expect('EN hands over to Gboard', now_ime.startswith('com.google.android.inputmethod.latin'), True)
 time.sleep(2)
-tap((x1 + x2) // 2, (y1 + y2) // 2, 3)  # the test phone hides a newly switched keyboard until the box is tapped
+tap(x2 - 40, y2 - 25, 3)  # (an empty corner of the box, so no word is selected) the test phone hides a newly switched keyboard until the box is tapped
 shot('10-gboard-english')
 # Gboard's globe key comes back here (the test does it directly), and in Bangla
 sh(f'ime set {IME}')
 time.sleep(2)
 dismiss_anr()
-tap((x1 + x2) // 2, (y1 + y2) // 2, 2)
+tap(x2 - 40, y2 - 25, 2)
 km, strip = keys()
 tap(*km['SPACE'], 0.3)
 type_word('ami ', km)
