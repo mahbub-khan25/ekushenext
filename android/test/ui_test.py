@@ -121,6 +121,7 @@ for _ in range(40):
     time.sleep(0.5)
 print('keyboards:', sh('ime list -a -s').split())
 sh(f'ime enable {IME}')
+sh('ime enable com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME')
 sh(f'ime set {IME}')
 print('default keyboard:', sh('settings get secure default_input_method').strip())
 sh('settings put system screen_off_timeout 1800000')
@@ -339,6 +340,11 @@ if at:
     sh('input keyevent KEYCODE_BACK'); time.sleep(0.8)
 else:
     failures.append('gboard switch')
+
+# Photo off, so the effects are easy to see
+to_top()
+at = find(lambda n: (n.get('text') or '').startswith('ছবির ব্যাকগ্রাউন্ড'))
+if at: tap(at[0], at[1], 0.8)
 
 for label, name in [('থ্রিডি', '3d'), ('আলো', 'glow'), ('ঢেউ', 'ripple'), ('লাফ', 'bounce')]:
     to_top()
