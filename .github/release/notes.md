@@ -1,9 +1,13 @@
-**Beta.** Ekushe Next is a Bangla phonetic keyboard for **Windows 10/11 (64-bit)**, **macOS 11 or later** (Apple silicon and Intel) and **Linux** (64-bit, IBus). It comes with its own dictionary, which puts the Bangla Academy standard spelling first.
+**Beta.** Ekushe Next is a Bangla phonetic keyboard for **Windows 10/11 (64-bit)**, **macOS 11 or later** (Apple silicon and Intel), **Linux** (64-bit, IBus) and **Android 7 or later**. It comes with its own dictionary, which puts the Bangla Academy standard spelling first.
 
 ### What's new in this beta
-- **Report a problem from the app.** Choose **🐞 সমস্যা জানান (Report a problem)** in the tray menu on Windows, **Report a Problem…** in the input menu on a Mac, **Report a problem** in the IBus menu on Linux, or the button at the bottom of Studio's settings. It opens a short form on ekushenext.com, with the version, computer, layout and typing mode filled in. Write what happened in Bangla or English; no account is needed, and nothing you have typed in other apps is sent.
+- **Ekushe Next for Android.** The same engine and dictionary, now as a phone keyboard: **Ekushe-Next-Android.apk** (Android 7 or later).
+  - Bangla letter hints on every key, press-and-hold for letters like ট, ৎ, ণ and ষ, suggestions and next-word predictions, ⌫ right after a word to get your letters back, and slide on Space to move the cursor.
+  - **English in Gboard:** tap **EN** and Gboard opens, with its autocorrect, glide typing and voice typing; its 🌐 key brings you back to Bangla. This can be turned off in the app's settings, and English is then typed in Ekushe Next itself.
+  - An emoji key next to Space, and themes: একুশে, কৃষ্ণচূড়া, পদ্মা, শাপলা, কাশফুল, রাত, your wallpaper's colours, or your own photo behind the keys. Key presses can be classic, 3D, glow, ripple or bounce.
+  - No internet permission at all: nothing you type can leave the phone. Password, email and web address boxes get plain English, and nothing is learned in them.
 
-Also in this beta (from beta.10): select text in any app and press **Ctrl+Alt+C** to turn old Bijoy or Banglish text into Bangla (Windows), and "English in terminals" now works both ways.
+Also in this beta (from beta.11): **Report a problem** from the app. Choose **🐞 সমস্যা জানান (Report a problem)** in the tray menu on Windows, **Report a Problem…** in the input menu on a Mac, **Report a problem** in the IBus menu on Linux, Studio's settings, or the Help section of the Android app. No account is needed.
 
 ### Download
 - **Ekushe-Setup.exe** (or **Ekushe-Setup.zip**, if your browser blocks the .exe) installs it for your user account, with no admin rights needed. It starts with Windows, adds a Start Menu shortcut, and can be removed from Settings → Apps.
@@ -57,3 +61,10 @@ If something goes wrong while installing, the steps are recorded in `%TEMP%\ekus
 The full guide (install, settings, every typing rule) is at https://ekushenext.com/guide/.
 
 Licence: code MPL-2.0, dictionary data CC BY-SA 4.0. See `THIRD_PARTY_NOTICES.md` for the fonts and data sources.
+
+### Android
+1. On your phone, download **Ekushe-Next-Android.apk** and open it. If the phone asks, allow installing apps from this source. If Google Play Protect says it doesn't recognise the app, tap **More details → Install anyway**.
+2. Open the **Ekushe Next** app and finish its two steps: turn the keyboard on, then choose it.
+3. Type in any app. Tap **EN** for English in Gboard; Gboard's 🌐 key brings you back.
+
+If you installed a test build of the Android app before, uninstall it first: test builds were signed with a different key, so the phone won't install this one over them. Updates from now on install straight over this version.
