@@ -101,6 +101,8 @@ text, bounds = field_text()
 x1, y1, x2, y2 = map(int, re.findall(r'\d+', bounds))
 tap((x1 + x2) // 2, (y1 + y2) // 2, 2.5)
 km, strip = keys()
+print('keys:', {k: km[k] for k in ['q', 'a', 'z', 'm', 'SPACE', 'DELETE']}, 'strip', strip)
+print(sh('dumpsys window | grep -E "InputMethod|mFrame" | head -20'))
 shot('02-keyboard-bangla')
 
 type_word('amar', km)
