@@ -22,6 +22,12 @@ data class Palette(
     val popup: Int,
     val divider: Int,
     val dark: Boolean,
+    /** Key shape: corner radius and the shadow under each key, in dp */
+    val keyRadius: Float = 7f,
+    val shadowDp: Float = 1.2f,
+    /** Enter's own colours, when they differ from the accent */
+    val enter: Int? = null,
+    val onEnter: Int? = null,
 ) {
     /** The same colours made see-through, for keys over a photo */
     fun overPhoto(): Palette = copy(
@@ -95,6 +101,35 @@ data class Palette(
             popup = c("#222222"), divider = c("#22FFFFFF"), dark = true,
         )
 
+        // একুশে ডিফল্ট: the familiar Android keyboard look, plain white keys on grey, a blue Enter
+        val DEFAULT_LIGHT = Palette(
+            background = c("#E8EAEF"), key = c("#FFFFFF"), keyPressed = c("#D3D7DE"), keyShadow = Color.TRANSPARENT,
+            functionKey = c("#D2D6DE"), text = c("#1F1F1F"), subtext = c("#5F6368"), hint = c("#80868B"),
+            accent = c("#3C7BF0"), onAccent = c("#FFFFFF"), strip = c("#E8EAEF"), chip = c("#F4F5F8"),
+            popup = c("#FFFFFF"), divider = c("#1F000000"), dark = false, keyRadius = 8f, shadowDp = 0f,
+        )
+        val DEFAULT_DARK = Palette(
+            background = c("#202124"), key = c("#3C4043"), keyPressed = c("#5F6368"), keyShadow = Color.TRANSPARENT,
+            functionKey = c("#2E3033"), text = c("#E8EAED"), subtext = c("#9AA0A6"), hint = c("#9AA0A6"),
+            accent = c("#8AB4F8"), onAccent = c("#202124"), strip = c("#202124"), chip = c("#2E3033"),
+            popup = c("#4A4E52"), divider = c("#22FFFFFF"), dark = true, keyRadius = 8f, shadowDp = 0f,
+        )
+        // একুশে মসৃণ: soft white keys with a thin shadow on light grey, grey Shift, ⌫ and Return
+        val SMOOTH_LIGHT = Palette(
+            background = c("#D1D4DA"), key = c("#FFFFFF"), keyPressed = c("#ECEEF1"), keyShadow = c("#8E9196"),
+            functionKey = c("#ACB1BA"), text = c("#000000"), subtext = c("#3C3C43"), hint = c("#8E8E93"),
+            accent = c("#007AFF"), onAccent = c("#FFFFFF"), strip = c("#D1D4DA"), chip = c("#E1E3E7"),
+            popup = c("#FFFFFF"), divider = c("#26000000"), dark = false, keyRadius = 5.5f, shadowDp = 1f,
+            enter = c("#ACB1BA"), onEnter = c("#000000"),
+        )
+        val SMOOTH_DARK = Palette(
+            background = c("#2B2B2D"), key = c("#6B6B6F"), keyPressed = c("#88888C"), keyShadow = c("#0D0D0D"),
+            functionKey = c("#46464A"), text = c("#FFFFFF"), subtext = c("#D0D0D5"), hint = c("#B4B4BA"),
+            accent = c("#0A84FF"), onAccent = c("#FFFFFF"), strip = c("#2B2B2D"), chip = c("#3A3A3D"),
+            popup = c("#6B6B6F"), divider = c("#22FFFFFF"), dark = true, keyRadius = 5.5f, shadowDp = 1f,
+            enter = c("#46464A"), onEnter = c("#FFFFFF"),
+        )
+
         fun systemDark(context: Context) =
             (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
 
@@ -129,6 +164,8 @@ data class Palette(
             "shapla" -> SHAPLA
             "kashful" -> KASHFUL
             "night" -> NIGHT
+            "default" -> if (systemDark(context)) DEFAULT_DARK else DEFAULT_LIGHT
+            "smooth" -> if (systemDark(context)) SMOOTH_DARK else SMOOTH_LIGHT
             "dynamic" -> dynamic(context)
             "light" -> LIGHT
             "dark" -> DARK
@@ -146,6 +183,8 @@ data class ThemeChoice(val id: String, val bn: String, val en: String)
 object Themes {
     fun choices(): List<ThemeChoice> = buildList {
         add(ThemeChoice("ekushe", "একুশে", "Ekushe"))
+        add(ThemeChoice("default", "একুশে ডিফল্ট", "Ekushe Default"))
+        add(ThemeChoice("smooth", "একুশে মসৃণ", "Ekushe Smooth"))
         add(ThemeChoice("krishnachura", "কৃষ্ণচূড়া", "Krishnachura"))
         add(ThemeChoice("padma", "পদ্মা", "Padma"))
         add(ThemeChoice("shapla", "শাপলা", "Shapla"))

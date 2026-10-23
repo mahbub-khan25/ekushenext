@@ -70,16 +70,17 @@ class ThemePreview(context: Context, private val palette: Palette, private val n
         val y = top + 3 * rowH
         key(c, p, RectF(pad + gap / 2, y + gap / 2, pad + 1.5f * unit - gap / 2, y + rowH - gap / 2), p.functionKey)
         key(c, p, RectF(pad + 1.5f * unit + gap / 2, y + gap / 2, pad + 8f * unit - gap / 2, y + rowH - gap / 2), if (borders) p.key else p.functionKey, always = true)
-        key(c, p, RectF(pad + 8f * unit + gap / 2, y + gap / 2, w - pad - gap / 2, y + rowH - gap / 2), p.accent, always = true)
+        key(c, p, RectF(pad + 8f * unit + gap / 2, y + gap / 2, w - pad - gap / 2, y + rowH - gap / 2), p.enter ?: p.accent, always = true)
     }
 
     private fun key(c: Canvas, p: Palette, r: RectF, color: Int, always: Boolean = false) {
         if (!borders && !always) return
-        if (borders) {
+        val rad = p.keyRadius / 7f * 3 * dp
+        if (borders && p.shadowDp > 0f) {
             paint.color = p.keyShadow
-            c.drawRoundRect(r.left, r.top + 0.8f * dp, r.right, r.bottom + 0.8f * dp, 3 * dp, 3 * dp, paint)
+            c.drawRoundRect(r.left, r.top + 0.8f * dp, r.right, r.bottom + 0.8f * dp, rad, rad, paint)
         }
         paint.color = color
-        c.drawRoundRect(r, 3 * dp, 3 * dp, paint)
+        c.drawRoundRect(r, rad, rad, paint)
     }
 }

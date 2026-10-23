@@ -9,6 +9,8 @@ rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-and
   -o "$HERE/app/src/main/jniLibs" build --release -p ekushe-android)
 mkdir -p "$HERE/app/src/main/assets"
 cp "$ROOT/data/dictionary/ekushe.dict.z" "$HERE/app/src/main/assets/ekushe.dict.z"
+mkdir -p "$HERE/app/src/main/assets/en"
+cp "$ROOT/data/english/words.txt" "$ROOT/data/english/next.tsv" "$HERE/app/src/main/assets/en/"
 mkdir -p "$HERE/app/src/main/assets/fonts"
 cp "$ROOT/assets/fonts/HindSiliguri-Regular.ttf" "$ROOT/assets/fonts/HindSiliguri-SemiBold.ttf" "$HERE/app/src/main/assets/fonts/"
 ls -la "$HERE/app/src/main/jniLibs"/*/ "$HERE/app/src/main/assets/"

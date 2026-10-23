@@ -231,11 +231,11 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
 
     private fun drawKey(c: Canvas, k: Key, slot: RectF, pressed: Boolean) {
         val p = palette
-        val radius = 7 * dp
+        val radius = p.keyRadius * dp
         val enter = k.type == KeyType.ENTER
         val shiftOn = k.type == KeyType.SHIFT && shift != Shift.OFF
         val base = when {
-            enter -> p.accent
+            enter -> p.enter ?: p.accent
             shiftOn -> if (shift == Shift.LOCKED) p.accent else p.keyPressed
             isFunction(k) -> p.functionKey
             else -> p.key
@@ -276,7 +276,7 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
                         c.drawRoundRect(RectF(r).apply { inset(-3 * dp, -3 * dp) }, radius + 3 * dp, radius + 3 * dp, keyPaint)
                     } else if (borders) {
                         keyPaint.color = p.keyShadow
-                        c.drawRoundRect(r.left, r.top + 1.2f * dp, r.right, r.bottom + 1.2f * dp, radius, radius, keyPaint)
+                        if (p.shadowDp > 0f) c.drawRoundRect(r.left, r.top + p.shadowDp * dp, r.right, r.bottom + p.shadowDp * dp, radius, radius, keyPaint)
                     }
                     keyPaint.color = if (pressed) blend(fill, p.accent, 0.18f) else fill
                     c.drawRoundRect(r, radius, radius, keyPaint)
@@ -289,7 +289,7 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
                 else -> {
                     if (borders) {
                         keyPaint.color = p.keyShadow
-                        c.drawRoundRect(r.left, r.top + 1.2f * dp, r.right, r.bottom + 1.2f * dp, radius, radius, keyPaint)
+                        if (p.shadowDp > 0f) c.drawRoundRect(r.left, r.top + p.shadowDp * dp, r.right, r.bottom + p.shadowDp * dp, radius, radius, keyPaint)
                     }
                     // the ripple shows the press itself, so the key keeps its colour
                     keyPaint.color = if (pressed && effect != "ripple") blend(fill, p.text, 0.16f) else fill
@@ -299,7 +299,7 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
         }
         if (effect == "ripple") drawRipples(c, slot, radius)
 
-        val fg = when { enter -> p.onAccent; shift == Shift.LOCKED && k.type == KeyType.SHIFT -> p.onAccent; else -> p.text }
+        val fg = when { enter -> p.onEnter ?: p.onAccent; shift == Shift.LOCKED && k.type == KeyType.SHIFT -> p.onAccent; else -> p.text }
         when (k.type) {
             KeyType.SPACE -> {
                 textPaint.typeface = bnFaceRegular

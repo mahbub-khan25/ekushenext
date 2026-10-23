@@ -14,7 +14,9 @@ import android.view.inputmethod.InputMethodManager
 /**
  * Ekushe Next as an Android keyboard. In Bangla, every key goes to the engine, which keeps the word
  * being typed (shown underlined in the app) and its suggestions; Space places the first suggestion.
- * In English, keys type themselves. Password and number fields get plain characters.
+ * In English, the word being typed is shown underlined too, with completions and corrections from
+ * English (a word list) and the phone's spell checker; Space places it, correcting a clear typo.
+ * Password and number fields get plain characters.
  */
 class EkusheIME : InputMethodService(), KeyboardListener {
     private lateinit var prefs: Prefs
@@ -29,11 +31,30 @@ class EkusheIME : InputMethodService(), KeyboardListener {
     /** We are changing the app's text ourselves (ignore the selection updates that causes) */
     private var editing = false
 
+    // ── English
+    /** The English word being typed (shown underlined in the app) */
+    private val en = StringBuilder()
+    /** What the strip shows for it; the first is what Space places */
+    private var enShown: List<String> = emptyList()
+    /** After Space corrected a word: (what was typed, what was placed), so ⌫ can take it back */
+    private var enUndo: Pair<String, String>? = null
+    /** A word the person took back from a correction: leave it as typed */
+    private var enKeep: String? = null
+    private var spell: EnglishSpell? = null
+
     override fun onCreate() {
         super.onCreate()
         prefs = Prefs(this)
         bangla = prefs.bangla
         Engine.start(this)
+        English.start(this)
+        spell = EnglishSpell(this) { word -> if (en.toString() == word) showEnglish(ask = false) }
+    }
+
+    override fun onDestroy() {
+        spell?.close()
+        English.save()
+        super.onDestroy()
     }
 
     override fun onCreateInputView(): View {
@@ -62,6 +83,7 @@ class EkusheIME : InputMethodService(), KeyboardListener {
         Engine.setPrivate(privateField)
         Engine.reset()
         last = Output()
+        en.clear(); enUndo = null; enKeep = null
         v.mode = when (cls) {
             InputType.TYPE_CLASS_NUMBER, InputType.TYPE_CLASS_DATETIME -> Mode.NUMBERS
             InputType.TYPE_CLASS_PHONE -> Mode.PHONE
@@ -79,6 +101,7 @@ class EkusheIME : InputMethodService(), KeyboardListener {
     override fun onFinishInputView(finishingInput: Boolean) {
         finishWord()
         Engine.save()
+        English.save()
         super.onFinishInputView(finishingInput)
     }
 
@@ -129,6 +152,11 @@ class EkusheIME : InputMethodService(), KeyboardListener {
 
     /** Close the word being typed, keeping what is shown */
     private fun finishWord() {
+        if (en.isNotEmpty()) {
+            currentInputConnection?.finishComposingText()
+            en.clear()
+            view?.showSuggestions(emptyList(), emptyList(), emptyList())
+        }
         if (last.composing) {
             currentInputConnection?.finishComposingText()
             Engine.reset()
@@ -140,6 +168,11 @@ class EkusheIME : InputMethodService(), KeyboardListener {
     override fun onUpdateSelection(oldSelStart: Int, oldSelEnd: Int, newSelStart: Int, newSelEnd: Int, candidatesStart: Int, candidatesEnd: Int) {
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
         if (editing) return
+        if (en.isNotEmpty() && (candidatesStart == -1 || newSelEnd != candidatesEnd || newSelStart != newSelEnd)) {
+            currentInputConnection?.finishComposingText()
+            en.clear(); enUndo = null
+            view?.showSuggestions(emptyList(), emptyList(), emptyList())
+        }
         // The cursor moved away from the word being typed (a tap in the text): the word stays as shown
         if (last.composing && (candidatesStart == -1 || newSelEnd != candidatesEnd || newSelStart != newSelEnd)) {
             currentInputConnection?.finishComposingText()
@@ -147,7 +180,7 @@ class EkusheIME : InputMethodService(), KeyboardListener {
             last = Output()
             view?.showSuggestions(emptyList(), emptyList(), emptyList())
         }
-        if (!last.composing) updateAutoShift()
+        if (!last.composing && en.isEmpty()) updateAutoShift()
     }
 
     /** English only: a capital letter at the start of a sentence (in Bangla, capitals change the sound) */
@@ -165,8 +198,20 @@ class EkusheIME : InputMethodService(), KeyboardListener {
     override fun onText(text: String) {
         val ic = currentInputConnection ?: return
         if (!typingBangla()) {
-            ic.commitText(text, 1)
-            updateAutoShift()
+            if (!englishHelp()) { ic.commitText(text, 1); updateAutoShift(); return }
+            for (ch in text) {
+                if ((ch.isLetter() && ch.code < 0x250) || (ch == '\'' && en.isNotEmpty())) {
+                    en.append(ch); enUndo = null
+                    showEnglish()
+                } else {
+                    // a mark or digit ends the word (correcting a clear typo before . , ! ? and the like)
+                    if (en.isNotEmpty()) placeEnglish(correct = ch in ".,!?;:)\"")
+                    ic.commitText(ch.toString(), 1)
+                    enUndo = null
+                    view?.showSuggestions(emptyList(), emptyList(), emptyList())
+                }
+            }
+            if (en.isEmpty()) updateAutoShift()
             return
         }
         for (ch in text) {
@@ -205,6 +250,15 @@ class EkusheIME : InputMethodService(), KeyboardListener {
             lastSpaceAt = now
             return
         }
+        if (en.isNotEmpty()) {
+            placeEnglish(correct = true)
+            ic.commitText(" ", 1)
+            lastSpaceAt = now
+            showNextEnglish()
+            updateAutoShift()
+            return
+        }
+        enUndo = null
         if (now - lastSpaceAt < 450) {
             val before = ic.getTextBeforeCursor(2, 0)?.toString() ?: ""
             if (before.length == 2 && before[1] == ' ' && before[0].isLetterOrDigit()) {
@@ -237,6 +291,25 @@ class EkusheIME : InputMethodService(), KeyboardListener {
                 return
             }
         }
+        if (!typingBangla() && en.isNotEmpty()) {
+            en.deleteCharAt(en.length - 1)
+            if (en.isEmpty()) {
+                editing = true; ic.commitText("", 1); editing = false
+                view?.showSuggestions(emptyList(), emptyList(), emptyList())
+                updateAutoShift()
+            } else showEnglish()
+            return
+        }
+        // Right after Space corrected a word: put back what was typed, and leave it as it is
+        enUndo?.let { (typed, placed) ->
+            enUndo = null
+            if (!typingBangla() && ic.getTextBeforeCursor(placed.length + 1, 0)?.toString() == "$placed ") {
+                editing = true; ic.deleteSurroundingText(placed.length + 1, 0); editing = false
+                en.append(typed); enKeep = typed
+                showEnglish()
+                return
+            }
+        }
         val sel = ic.getSelectedText(0)
         if (!sel.isNullOrEmpty()) ic.commitText("", 1)
         else {
@@ -249,6 +322,8 @@ class EkusheIME : InputMethodService(), KeyboardListener {
     override fun onEnter() {
         val ic = currentInputConnection ?: return
         if (last.composing) apply(Engine.commit())
+        if (en.isNotEmpty()) { placeEnglish(correct = true); view?.showSuggestions(emptyList(), emptyList(), emptyList()) }
+        enUndo = null
         val info = currentInputEditorInfo
         val action = (info?.imeOptions ?: 0) and EditorInfo.IME_MASK_ACTION
         val noAction = info == null || (info.imeOptions and EditorInfo.IME_FLAG_NO_ENTER_ACTION) != 0
@@ -262,6 +337,16 @@ class EkusheIME : InputMethodService(), KeyboardListener {
     }
 
     override fun onCandidate(index: Int) {
+        if (en.isNotEmpty()) {
+            val word = enShown.getOrNull(index) ?: return
+            val ic = currentInputConnection ?: return
+            editing = true; ic.commitText(word, 1); ic.commitText(" ", 1); editing = false
+            learnEnglish(word)
+            en.clear(); enUndo = null; enKeep = null
+            lastSpaceAt = System.currentTimeMillis()
+            showNextEnglish(); updateAutoShift()
+            return
+        }
         if (!last.composing) return
         apply(Engine.select(index, ' '))
         lastSpaceAt = System.currentTimeMillis()
@@ -269,11 +354,82 @@ class EkusheIME : InputMethodService(), KeyboardListener {
 
     override fun onPrediction(word: String) {
         val ic = currentInputConnection ?: return
+        if (!typingBangla()) {
+            // the sentence's first word gets its capital
+            val w = if (view?.shift == Shift.ON) word.replaceFirstChar { it.uppercase() } else word
+            ic.commitText("$w ", 1)
+            learnEnglish(w)
+            showNextEnglish(); updateAutoShift()
+            return
+        }
         ic.commitText("$word ", 1)
         // what comes after this one
         Engine.reset()
         last = Output()
         view?.showSuggestions(emptyList(), emptyList(), emptyList())
+    }
+
+    // ───────────────────────── English help ─────────────────────────
+
+    /** Suggestions and corrections in English: on, unless the field wants plain text */
+    private fun englishHelp() = !plainField && view?.mode == Mode.LETTERS
+
+    /** What Space should place instead of what was typed, if it's a clear typo (or "dont", "i") */
+    private fun englishFix(typed: String): String? {
+        if (!prefs.enAutocorrect || typed == enKeep) return null
+        English.canonical(typed)?.let { return it }
+        if (typed.length < 3 || English.known(typed)) return null
+        if (typed.drop(1).any { it.isUpperCase() }) return null // names, acronyms
+        spell?.answer(typed)?.let { a -> if (a.typo) a.suggestions.firstOrNull()?.let { return English.spell(typed, it) } }
+        return English.corrections(typed, 1).firstOrNull()
+    }
+
+    private fun showEnglish(ask: Boolean = true) {
+        val ic = currentInputConnection ?: return
+        val typed = en.toString()
+        editing = true; ic.setComposingText(typed, 1); editing = false
+        val fix = englishFix(typed)
+        val list = ArrayList<String>()
+        if (fix != null) { list += fix; list += typed } else list += typed
+        spell?.answer(typed)?.let { a -> if (a.typo) list += a.suggestions.take(2).map { English.spell(typed, it) } }
+        list += English.complete(typed, 3)
+        if (!English.known(typed)) list += English.corrections(typed, 2)
+        enShown = list.filter { it.isNotEmpty() }.distinct().take(6)
+        view?.showSuggestions(enShown.map { Candidate(it, "") }, emptyList(), emptyList())
+        if (ask && typed.length >= 3 && !English.known(typed)) spell?.ask(typed)
+    }
+
+    /** Place the English word being typed (corrected if asked and it's a clear typo) */
+    private fun placeEnglish(correct: Boolean) {
+        val ic = currentInputConnection ?: return
+        val typed = en.toString()
+        val word = (if (correct) englishFix(typed) else null) ?: typed
+        editing = true; ic.commitText(word, 1); editing = false
+        enUndo = if (word != typed) typed to word else null
+        if (typed != enKeep) enKeep = null
+        learnEnglish(word)
+        en.clear()
+    }
+
+    private fun learnEnglish(word: String) {
+        if (privateField) return
+        English.learn(word, previousWords().second)
+    }
+
+    /** The two words before the cursor (before the one just placed, when learning) */
+    private fun previousWords(): Pair<String?, String?> {
+        val before = currentInputConnection?.getTextBeforeCursor(60, 0)?.toString() ?: return null to null
+        val ws = Regex("[A-Za-z']+").findAll(before).map { it.value }.toList()
+        // a sentence end resets
+        val tail = before.trimEnd()
+        if (tail.endsWith('.') || tail.endsWith('!') || tail.endsWith('?')) return null to null
+        return ws.getOrNull(ws.size - 2) to ws.lastOrNull()
+    }
+
+    private fun showNextEnglish() {
+        if (!prefs.nextWordEnglish) { view?.showSuggestions(emptyList(), emptyList(), emptyList()); return }
+        val (a, b) = previousWords()
+        view?.showSuggestions(emptyList(), emptyList(), English.nextWords(a, b))
     }
 
     override fun onLanguageToggle() {
