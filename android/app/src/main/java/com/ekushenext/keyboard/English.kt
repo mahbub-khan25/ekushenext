@@ -154,6 +154,9 @@ object English {
             .map { spell(typed, it) }.distinct().take(max)
     }
 
+    /** The most likely of some guesses: the most common word (words not in the list come last, in order) */
+    fun best(guesses: List<String>): String? = guesses.withIndex().maxByOrNull { (i, w) -> score(w) - i * 1e-9 }?.value
+
     /** Likely words after the last one or two: what you wrote before, then the basics */
     fun nextWords(prev2: String?, prev: String?, max: Int = 3): List<String> {
         if (prev.isNullOrEmpty()) return emptyList()

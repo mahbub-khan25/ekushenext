@@ -340,8 +340,8 @@ class EkusheIME : InputMethodService(), KeyboardListener {
         if (en.isNotEmpty()) {
             val word = enShown.getOrNull(index) ?: return
             val ic = currentInputConnection ?: return
-            editing = true; ic.commitText(word, 1); ic.commitText(" ", 1); editing = false
             learnEnglish(word)
+            editing = true; ic.commitText(word, 1); ic.commitText(" ", 1); editing = false
             en.clear(); enUndo = null; enKeep = null
             lastSpaceAt = System.currentTimeMillis()
             showNextEnglish(); updateAutoShift()
@@ -357,8 +357,8 @@ class EkusheIME : InputMethodService(), KeyboardListener {
         if (!typingBangla()) {
             // the sentence's first word gets its capital
             val w = if (view?.shift == Shift.ON) word.replaceFirstChar { it.uppercase() } else word
-            ic.commitText("$w ", 1)
             learnEnglish(w)
+            ic.commitText("$w ", 1)
             showNextEnglish(); updateAutoShift()
             return
         }
@@ -380,8 +380,10 @@ class EkusheIME : InputMethodService(), KeyboardListener {
         English.canonical(typed)?.let { return it }
         if (typed.length < 3 || English.known(typed)) return null
         if (typed.drop(1).any { it.isUpperCase() }) return null // names, acronyms
-        spell?.answer(typed)?.let { a -> if (a.typo) a.suggestions.firstOrNull()?.let { return English.spell(typed, it) } }
-        return English.corrections(typed, 1).firstOrNull()
+        // the phone's guesses and the word list's, the most common word wins (teh → the, not tech)
+        val guesses = (spell?.answer(typed)?.takeIf { it.typo }?.suggestions?.take(3).orEmpty().map { English.spell(typed, it) } +
+            English.corrections(typed, 3)).distinct()
+        return English.best(guesses)
     }
 
     private fun showEnglish(ask: Boolean = true) {
@@ -404,19 +406,22 @@ class EkusheIME : InputMethodService(), KeyboardListener {
         val ic = currentInputConnection ?: return
         val typed = en.toString()
         val word = (if (correct) englishFix(typed) else null) ?: typed
+        learnEnglish(word)
         editing = true; ic.commitText(word, 1); editing = false
         enUndo = if (word != typed) typed to word else null
         if (typed != enKeep) enKeep = null
-        learnEnglish(word)
         en.clear()
     }
 
+    /** Learn a word, and what it followed. While it is still being typed, it is the last word before
+     *  the cursor itself, so what it followed is the one before that. */
     private fun learnEnglish(word: String) {
         if (privateField) return
-        English.learn(word, previousWords().second)
+        val (a, b) = previousWords()
+        English.learn(word, if (en.isNotEmpty()) a else b)
     }
 
-    /** The two words before the cursor (before the one just placed, when learning) */
+    /** The two words before the cursor (call before placing a word, to learn what it followed) */
     private fun previousWords(): Pair<String?, String?> {
         val before = currentInputConnection?.getTextBeforeCursor(60, 0)?.toString() ?: return null to null
         val ws = Regex("[A-Za-z']+").findAll(before).map { it.value }.toList()
