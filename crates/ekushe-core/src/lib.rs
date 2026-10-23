@@ -28,7 +28,7 @@ use crate::config::{Config, InputLanguage, TypingMode};
 use crate::conjuncts::SignHint;
 use crate::layout::{FixedLayout, LayoutId};
 use crate::phonetic::PhoneticEngine;
-use crate::suggest::{Candidate, SuggestionEngine};
+use crate::suggest::{Candidate, CandidateKind, SuggestionEngine};
 
 /// Snapshot of the current IME state returned after every key event.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -190,7 +190,7 @@ impl Ekushe {
             .app_languages
             .get(&key)
             .copied()
-            .or_else(|| self.config.per_app_defaults.get(&key).copied());
+            .or_else(|| self.default_language_for(&key));
         if let Some(lang) = next {
             if lang != self.language {
                 self.reset_composition();
@@ -199,6 +199,23 @@ impl Ekushe {
         }
         self.current_app = Some(key);
         self.language
+    }
+
+    /// The language an app starts in, before the user has switched there. Terminals start in English
+    /// while "English in terminals" is on, unless the user set them to Bangla in `per_app_defaults`;
+    /// with it off they are like any other app.
+    fn default_language_for(&self, app: &str) -> Option<InputLanguage> {
+        let configured = self.config.per_app_defaults.get(app).copied();
+        if is_terminal_app(app) {
+            if configured == Some(InputLanguage::Bangla) {
+                return configured;
+            }
+            return self
+                .config
+                .auto_english_in_terminals
+                .then_some(InputLanguage::English);
+        }
+        configured
     }
 
     /// Feed a printable character into the session.
@@ -444,6 +461,29 @@ impl Ekushe {
 
     /// Candidates for any Roman word (used by Studio's writing pad), with the same handling of
     /// punctuation typed after the word as live typing.
+    /// Convert selected text (Ctrl+Alt+C): Bijoy becomes Unicode; Banglish becomes Bangla word by word,
+    /// each word as Space would place it. `None` when there is nothing to convert.
+    pub fn convert_selection(&self, text: &str) -> Option<(String, convert::SelectionKind)> {
+        let kind = convert::detect_selection(text)?;
+        let out = match kind {
+            convert::SelectionKind::BijoyToUnicode => convert::bijoy_to_unicode(text),
+            convert::SelectionKind::BanglishToBangla => {
+                convert::map_words(text, |w| self.banglish_word(w))
+            }
+        };
+        (out != text).then_some((out, kind))
+    }
+
+    /// One Banglish word as Space would place it (the first suggestion that isn't an emoji).
+    pub fn banglish_word(&self, word: &str) -> String {
+        self.suggest_roman(word)
+            .0
+            .into_iter()
+            .find(|c| c.kind != CandidateKind::Emoji)
+            .map(|c| c.text)
+            .unwrap_or_else(|| word.to_string())
+    }
+
     pub fn suggest_roman(&self, roman: &str) -> (Vec<Candidate>, Vec<SignHint>) {
         let smart = self.config.typing_mode == TypingMode::Smart;
         let (stem, tail) = split_trailing_punctuation(roman);
@@ -540,6 +580,35 @@ impl Ekushe {
 /// Roman text that looks like a password, code or address rather than a word: letters mixed with
 /// digits (`abc123`, `2ta` too, which is fine to not learn), or symbols no Bangla word is typed with.
 /// Ekushe's own marks (`,,` `^` `~` `` ` `` `+` `:` `.` `t/`) and quotes do not count.
+/// Command-line apps, by Windows program name or macOS bundle ID (in small letters).
+pub fn is_terminal_app(app: &str) -> bool {
+    matches!(
+        app,
+        "windowsterminal.exe"
+            | "wt.exe"
+            | "openconsole.exe"
+            | "conhost.exe"
+            | "cmd.exe"
+            | "powershell.exe"
+            | "pwsh.exe"
+            | "mintty.exe"
+            | "putty.exe"
+            | "kitty.exe"
+            | "wezterm-gui.exe"
+            | "alacritty.exe"
+            | "conemu.exe"
+            | "conemu64.exe"
+            | "com.apple.terminal"
+            | "com.googlecode.iterm2"
+            | "dev.warp.warp-stable"
+            | "net.kovidgoyal.kitty"
+            | "org.alacritty"
+            | "com.github.wez.wezterm"
+            | "com.mitchellh.ghostty"
+            | "co.zeit.hyper"
+    )
+}
+
 pub fn looks_secret(roman: &str) -> bool {
     let letters = roman.chars().any(|c| c.is_ascii_alphabetic());
     let digits = roman.chars().any(|c| c.is_ascii_digit());
@@ -564,6 +633,58 @@ fn split_trailing_punctuation(roman: &str) -> (&str, &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn terminals_follow_the_english_in_terminals_setting() {
+        let mut ek = Ekushe::new(Config::default());
+        if ek.language() != InputLanguage::Bangla {
+            ek.toggle_language();
+        }
+        ek.on_app_focus("winword.exe");
+        assert_eq!(
+            ek.on_app_focus("WindowsTerminal.exe"),
+            InputLanguage::English
+        );
+        assert_eq!(
+            ek.on_app_focus("com.apple.Terminal"),
+            InputLanguage::English
+        );
+        // Switching to Bangla in a terminal is remembered there
+        ek.toggle_language();
+        ek.on_app_focus("winword.exe");
+        assert_eq!(ek.on_app_focus("com.apple.Terminal"), InputLanguage::Bangla);
+
+        // Off: a terminal is like any other app (the language stays as it was)
+        let mut ek = Ekushe::new(Config {
+            auto_english_in_terminals: false,
+            ..Config::default()
+        });
+        if ek.language() != InputLanguage::Bangla {
+            ek.toggle_language();
+        }
+        ek.on_app_focus("winword.exe");
+        assert_eq!(ek.on_app_focus("cmd.exe"), InputLanguage::Bangla);
+    }
+
+    #[test]
+    fn selected_text_is_converted() {
+        let ek = Ekushe::new(Config::default());
+        let (out, kind) = ek.convert_selection("amar bangla").unwrap();
+        assert_eq!(kind, convert::SelectionKind::BanglishToBangla);
+        assert_eq!(out, "আমার বাংলা");
+        let (out, kind) = ek.convert_selection("Avgvi †mvbvi evsjv").unwrap();
+        assert_eq!(kind, convert::SelectionKind::BijoyToUnicode);
+        assert_eq!(
+            convert::normalize_bangla_unicode(&out),
+            convert::normalize_bangla_unicode("আমার সোনার বাংলা")
+        );
+        assert!(ek.convert_selection("আমার সোনার বাংলা").is_none());
+        // Spacing and line breaks stay as they were
+        assert_eq!(
+            ek.convert_selection("ami  tumi\nami").unwrap().0,
+            "আমি  তুমি\nআমি"
+        );
+    }
 
     #[test]
     fn test_fixed_layouts_commit_their_text() {

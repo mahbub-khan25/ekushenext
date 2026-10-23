@@ -549,7 +549,7 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
     </section>
 
     <!-- Converter -->
-    <section class="panel" id="tab-converter" data-title="রূপান্তর" data-sub="বিজয় (SutonnyMJ) আর ইউনিকোডের মধ্যে, বা বাংলিশ থেকে বাংলায়। যেকোনো অ্যাপে লেখা বেছে Ctrl+Alt+C চাপলেও হয়।">
+    <section class="panel" id="tab-converter" data-title="রূপান্তর" data-sub="বিজয় (SutonnyMJ) আর ইউনিকোডের মধ্যে, বা বাংলিশ থেকে বাংলায়। উইন্ডোজে যেকোনো অ্যাপে লেখা বেছে Ctrl+Alt+C চাপলেও হয়।">
       <div class="seg" id="convModes" style="margin-bottom:12px">
         <button class="chip primary" onclick="runConvert('bijoy2uni', this)">বিজয় → ইউনিকোড</button>
         <button class="chip" onclick="runConvert('uni2bijoy', this)">ইউনিকোড → বিজয়</button>
@@ -630,7 +630,7 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
             <span class="switch"><input type="checkbox" id="cfgCompact" onchange="saveSettings()"><i></i></span>
           </label>
           <label class="toggle">
-            <span><b>টার্মিনালে ইংরেজি</b><small>Windows Terminal, CMD, PowerShell-এ নিজে থেকে ইংরেজি</small></span>
+            <span><b>টার্মিনালে ইংরেজি</b><small>টার্মিনাল (Windows Terminal, CMD, PowerShell, ম্যাকের Terminal) ইংরেজিতে শুরু হয়; দুবার Shift চাপলে সেখানেও বাংলা</small></span>
             <span class="switch"><input type="checkbox" id="cfgTerminal" checked onchange="saveSettings()"><i></i></span>
           </label>
         </div>

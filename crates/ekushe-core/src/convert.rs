@@ -26,6 +26,71 @@ pub fn banglish_to_bangla(input: &str) -> String {
     PhoneticEngine::new().transliterate(input)
 }
 
+/// What [`convert_selection`] did to a piece of text.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SelectionKind {
+    /// Old Bijoy (SutonnyMJ) text became Unicode Bangla
+    BijoyToUnicode,
+    /// Bangla written in Roman letters became Bangla
+    BanglishToBangla,
+}
+
+/// Work out whether `text` is Bijoy (SutonnyMJ) text or Banglish. `None` when there is nothing to
+/// convert: the text is already Bangla, or has no letters.
+///
+/// Bijoy text is plain ASCII plus a few Windows-1252 glyphs (`†` `‡` `©` `ÿ` …). Without those
+/// glyphs it still looks unlike English or Banglish: `v` (া) is everywhere and vowels are rare
+/// (`Avgvi evsjv` is আমার বাংলা).
+pub fn detect_selection(text: &str) -> Option<SelectionKind> {
+    if text.trim().is_empty() || text.chars().any(|c| ('\u{0980}'..='\u{09FF}').contains(&c)) {
+        return None;
+    }
+    let letters: Vec<char> = text.chars().filter(|c| c.is_ascii_alphabetic()).collect();
+    if letters.is_empty() {
+        return None;
+    }
+    let chars: Vec<char> = text.chars().collect();
+    let bijoy_glyph = chars.iter().enumerate().any(|(i, &c)| match c {
+        // Windows-1252 glyphs SutonnyMJ uses for Bangla signs (curly quotes and dashes are left out:
+        // ordinary English text has them too)
+        '†' | '‡' | 'ˆ' | '‰' | 'Š' | '‹' | 'Œ' | 'š' | '›' | 'œ' | 'Ÿ' | '™' => {
+            true
+        }
+        // Reph: © straight after a letter
+        '©' => i > 0 && chars[i - 1].is_ascii_alphabetic(),
+        '®' | '°' | '×' | '÷' => false,
+        c => ('\u{00A1}'..='\u{00FF}').contains(&c),
+    });
+    let n = letters.len() as f32;
+    let v = letters.iter().filter(|&&c| c == 'v').count() as f32 / n;
+    let vowels = letters.iter().filter(|&&c| "aeiou".contains(c)).count() as f32 / n;
+    Some(if bijoy_glyph || (v > 0.12 && vowels < 0.35) {
+        SelectionKind::BijoyToUnicode
+    } else {
+        SelectionKind::BanglishToBangla
+    })
+}
+
+/// Replace each run of non-space characters in `text` by `f(run)`, keeping spaces and line breaks.
+pub fn map_words(text: &str, mut f: impl FnMut(&str) -> String) -> String {
+    let mut out = String::with_capacity(text.len() * 3);
+    let mut start = None;
+    for (i, ch) in text.char_indices() {
+        if ch.is_whitespace() {
+            if let Some(s) = start.take() {
+                out.push_str(&f(&text[s..i]));
+            }
+            out.push(ch);
+        } else if start.is_none() {
+            start = Some(i);
+        }
+    }
+    if let Some(s) = start {
+        out.push_str(&f(&text[s..]));
+    }
+    out
+}
+
 /// SutonnyMJ / Bijoy ANSI token -> Unicode mapping table (ordered longest-first).
 const BIJOY_TO_UNI_TOKENS: &[(&str, &str)] = &[
     // Compound vowels
@@ -570,5 +635,27 @@ mod tests {
             normalize_bangla_unicode(&back),
             normalize_bangla_unicode(sample)
         );
+    }
+    #[test]
+    fn selection_kind_is_recognised() {
+        use SelectionKind::*;
+        assert_eq!(detect_selection("Avgvi †mvbvi evsjv"), Some(BijoyToUnicode));
+        assert_eq!(
+            detect_selection("Avwg evsjvq Mvb MvB"),
+            Some(BijoyToUnicode)
+        );
+        assert_eq!(detect_selection("Kg© I wbe©vPb"), Some(BijoyToUnicode));
+        assert_eq!(
+            detect_selection("amar sonar bangla"),
+            Some(BanglishToBangla)
+        );
+        assert_eq!(detect_selection("valobashi tomay"), Some(BanglishToBangla));
+        assert_eq!(
+            detect_selection("kemon acho? (c) 2026"),
+            Some(BanglishToBangla)
+        );
+        assert_eq!(detect_selection("আমার সোনার বাংলা"), None);
+        assert_eq!(detect_selection("  123 "), None);
+        assert_eq!(detect_selection(""), None);
     }
 }

@@ -4,6 +4,7 @@
 
 mod glass_popup;
 mod secure_field;
+mod selection;
 mod setup_wizard;
 mod studio_http;
 mod studio_ui;
@@ -74,7 +75,7 @@ static FONT_HINDSILIGURI_BOLD: &[u8] =
     include_bytes!("../../../assets/fonts/HindSiliguri-Bold.ttf");
 
 /// Magic extra info tag so our low-level keyboard hook never intercepts our own `SendInput` events.
-const EKUSHE_EXTRA_INFO: usize = 0xE21B_0945;
+pub(crate) const EKUSHE_EXTRA_INFO: usize = 0xE21B_0945;
 
 const WM_TRAYICON: u32 = WM_APP + 1;
 const TIMER_HIDE_BADGE: usize = 101;
@@ -198,6 +199,10 @@ const WM_EKUSHE_FORGET: u32 = WM_APP + 2;
 /// Another `ekushe.exe` started by the same user asks the running one to open Studio (only the
 /// running app can make Studio's one-time launch codes).
 const WM_EKUSHE_OPEN_STUDIO: u32 = WM_APP + 3;
+/// The convert-selection hotkey was pressed (the keyboard hook asks; the work runs elsewhere)
+const WM_EKUSHE_CONVERT_SELECTION: u32 = WM_APP + 4;
+/// Show a badge from another thread (`wparam`: which one, see `selection_badge`)
+const WM_EKUSHE_SELECTION_DONE: u32 = WM_APP + 5;
 const TIMER_SAVE_LEARNED: usize = 102;
 const ES_PASSWORD_STYLE: i32 = 0x0020;
 
@@ -791,6 +796,18 @@ unsafe fn present_overlay(content: glass_popup::Content) {
 }
 
 /// Show a short message (language switched, a setting changed) next to the caret for 1.6 s.
+/// The badge shown after converting a selection
+fn selection_badge(code: usize) -> &'static str {
+    match code {
+        0 => "বাং · বিজয় থেকে ইউনিকোডে বদলানো হয়েছে",
+        1 => "বাং · বাংলিশ থেকে বাংলায় বদলানো হয়েছে",
+        2 => "বাং · আগে লেখাটি বেছে নিন (select the text first)",
+        3 => "বাং · বদলানোর মতো কিছু নেই — লেখাটি আগেই বাংলা",
+        4 => "বাং · লেখাটি অনেক লম্বা — স্টুডিওর রূপান্তর ব্যবহার করুন",
+        _ => "বাং · এই উইন্ডোর লেখা বদলানো গেল না",
+    }
+}
+
 unsafe fn show_mode_badge(banner: &str) {
     let overlay_hwnd = {
         let mut st = STATE.lock();
@@ -842,30 +859,6 @@ unsafe fn refresh_candidate_overlay() {
             ShowWindow(overlay_hwnd, SW_HIDE);
         }
     }
-}
-
-/// Fast, zero-privilege check for whether the active foreground window is a Terminal / Console app
-/// (`Windows Terminal`, `Command Prompt`, `PowerShell`, `Git Bash / mintty`, `PuTTY`).
-unsafe fn is_foreground_terminal_window() -> bool {
-    let fg = GetForegroundWindow();
-    if fg.is_null() {
-        return false;
-    }
-    let mut cls_buf = [0u16; 96];
-    let len = GetClassNameW(fg, cls_buf.as_mut_ptr(), cls_buf.len() as i32);
-    if len <= 0 {
-        return false;
-    }
-    let cls = String::from_utf16_lossy(&cls_buf[..len as usize]);
-    matches!(
-        cls.as_str(),
-        "CASCADIA_HOSTING_WINDOW_CLASS"
-            | "ConsoleWindowClass"
-            | "mintty"
-            | "PuTTY"
-            | "VirtualConsoleClass"
-            | "org.wezfurlong.wezterm"
-    )
 }
 
 /// The control that has keyboard focus in the foreground window (null if unknown).
@@ -1113,6 +1106,21 @@ unsafe extern "system" fn keyboard_hook_proc(code: i32, wparam: WPARAM, lparam: 
             return CallNextHookEx(ptr::null_mut(), code, wparam, lparam);
         }
 
+        // Convert the selected text (Bijoy or Banglish) in any app, in either language
+        let convert_hotkey = selection::Hotkey::parse(&st.ekushe.config().convert_selection_hotkey);
+        if convert_hotkey
+            .is_some_and(|hk| hk.matches(vk, ctrl_down, alt_down, shift_down, win_down))
+        {
+            if st.injected_utf16_len > 0 || !st.last_output.preedit.is_empty() {
+                forget_composition(&mut st);
+            }
+            let tray = st.tray_hwnd as HWND;
+            drop(st);
+            refresh_candidate_overlay();
+            PostMessageW(tray, WM_EKUSHE_CONVERT_SELECTION, 0, 0);
+            return 1;
+        }
+
         // Ctrl+Backspace in Bangla mode: Flip the last committed word between Bangla ⇄ English!
         if st.ekushe.language() == InputLanguage::Bangla
             && ctrl_down
@@ -1139,10 +1147,9 @@ unsafe extern "system" fn keyboard_hook_proc(code: i32, wparam: WPARAM, lparam: 
             }
             return CallNextHookEx(ptr::null_mut(), code, wparam, lparam);
         }
-        // English mode and terminals (auto-pause) type plain characters
-        if st.ekushe.language() == InputLanguage::English
-            || (st.ekushe.config().auto_english_in_terminals && is_foreground_terminal_window())
-        {
+        // English mode types plain characters. (Terminals start in English through the per-app
+        // language; Bangla still works there after switching.)
+        if st.ekushe.language() == InputLanguage::English {
             return CallNextHookEx(ptr::null_mut(), code, wparam, lparam);
         }
 
@@ -1374,6 +1381,30 @@ unsafe extern "system" fn tray_wnd_proc(
         WM_EKUSHE_OPEN_STUDIO => {
             let port = STATE.lock().studio_port;
             open_studio_window_tab(port, None);
+            0
+        }
+        WM_EKUSHE_CONVERT_SELECTION => {
+            let tray = hwnd as isize;
+            selection::start(
+                |w| STATE.lock().ekushe.banglish_word(w),
+                move |outcome| {
+                    let code = match outcome {
+                        selection::Outcome::Converted(
+                            ekushe_core::convert::SelectionKind::BijoyToUnicode,
+                        ) => 0,
+                        selection::Outcome::Converted(_) => 1,
+                        selection::Outcome::NothingSelected => 2,
+                        selection::Outcome::NothingToConvert => 3,
+                        selection::Outcome::TooLong => 4,
+                        selection::Outcome::Failed => 5,
+                    };
+                    unsafe { PostMessageW(tray as HWND, WM_EKUSHE_SELECTION_DONE, code, 0) };
+                },
+            );
+            0
+        }
+        WM_EKUSHE_SELECTION_DONE => {
+            show_mode_badge(selection_badge(wparam));
             0
         }
         WM_EKUSHE_FORGET => {
