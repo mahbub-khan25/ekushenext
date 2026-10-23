@@ -1,10 +1,16 @@
 **Beta.** Ekushe Next is a Bangla phonetic keyboard for **Windows 10/11 (64-bit)**, **macOS 11 or later** (Apple silicon and Intel) and **Linux** (64-bit, IBus). It comes with its own dictionary, which puts the Bangla Academy standard spelling first.
 
-### What's new in this beta
-- **Marks you type on purpose come first.** `allah,,` gives **আল্লাহ্** (with hasanta), `he^se` gives **হেঁসে**, `kirrtti` gives **কীর্তি**, `du:kho` gives **দুঃখ** and `bakZo` gives **বাক্য**. This works for `,,` (hasanta), `^` or `~` (chandrabindu), `rri` (ঋ-কার), `rr` (রেফ), ``` t`` ``` (খণ্ড-ত), `:` (বিসর্গ), `Z` (য-ফলা), `+` (join) and `` ` `` (keep apart).
-- **Tips in the popup (Windows).** If a word in the list has a mark you didn't type, the hint row now starts with a highlighted tip. For example, type `hese` and **হেঁসে** is option 3, so the tip shows **হেঁসে he^se**. Click it, or type it that way next time. Tips still show when the conjunct row is hidden.
-- **A card of all the marks** at the top of Studio's conjunct guide (the **সহায়িকা** button in the popup).
-- **Punctuation stays put.** Typing punctuation right after a word keeps it: `gai,` gives **গাই,** and `bangla.` gives **বাংলা।**. Studio's writing pad also keeps fast typing in order.
+### What's new in this beta: a security update
+An independent security review of beta.8 found nothing reachable from the internet, but a few things a program or another account on the same computer could misuse. This beta fixes all of them.
+
+- **Password boxes are left alone, everywhere.** In a password or PIN field Ekushe now types plain characters: no Bangla conversion, no suggestion popup, nothing remembered. On Windows this now works in Chrome, Edge, Firefox, Electron apps and Store apps too (before, only classic Windows password boxes were recognised). On Linux it follows the field's password/PIN and "private" settings, and on a Mac, macOS already keeps keyboards out of password boxes.
+- **Nothing that looks like a password is remembered**, in any field: letters mixed with digits (`hunter2`, `abc123`), or symbols such as `@ # $ %`. Ordinary words and Ekushe's marks (`,,` `^` `rr` …) are learned as before.
+- **Studio only opens for you.** Studio's page now gets its access key only when Ekushe opens it from its own menu, with a fresh one-time code. Opened any other way, it asks you to use Ekushe's menu instead. Reloading an open Studio window still works.
+- **Studio can't be jammed.** A slow or oversized request can no longer hold Studio up.
+- **Private settings files on Mac and Linux.** Settings, snippets and learned words are now readable only by your own account (older files are fixed automatically).
+- **Safer builds.** The build pipeline now uses fixed, verified versions of every outside tool, and only the Windows build step can use the code-signing certificate.
+
+Also in this beta (from beta.8): marks you type on purpose come first (`allah,,` gives **আল্লাহ্**, `he^se` gives **হেঁসে**), tips in the popup show how to type a marked word, and Studio's conjunct guide opens with a card of all the marks.
 
 ### Download
 - **Ekushe-Setup.exe** (or **Ekushe-Setup.zip**, if your browser blocks the .exe) installs it for your user account, with no admin rights needed. It starts with Windows, adds a Start Menu shortcut, and can be removed from Settings → Apps.
@@ -49,7 +55,7 @@ On Linux the suggestions appear in IBus's own candidate window. Backspace-undo a
 ### Known limits in this beta
 - The frosted-glass blur behind the suggestion popup needs Windows "Transparency effects" turned on. At 100% opacity in Studio, the popup is solid.
 - Some apps, such as Chrome and Word, don't report where the text cursor is. In those apps the popup appears near the mouse instead.
-- Password boxes in browsers and Store apps aren't detected yet. Switch to English (double-tap Shift) before typing a password there.
+- On Windows, a password box is recognised a moment after you click into it. Typing straight away usually works; if you see Bangla in a password box, switch to English (double-tap Shift) and type it again.
 - The Windows input method in the Extras zip is an early preview. Don't run it at the same time as the main app.
 
 If something goes wrong while installing, the steps are recorded in `%TEMP%\ekushe-install.log`. Please attach that file when you report the problem.
