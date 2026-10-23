@@ -151,7 +151,7 @@ object Themes {
         add(ThemeChoice("shapla", "শাপলা", "Shapla"))
         add(ThemeChoice("kashful", "কাশফুল", "Kashful"))
         add(ThemeChoice("night", "রাত", "Night"))
-        add(ThemeChoice("system", "ফোনের মতো আলো-আঁধার", "Follow system"))
+        add(ThemeChoice("system", "ফোনের মতো", "Follow system"))
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) add(ThemeChoice("dynamic", "ফোনের রঙে", "Match my phone"))
         add(ThemeChoice("light", "সবুজ দিন", "Classic light"))
         add(ThemeChoice("dark", "সবুজ রাত", "Classic dark"))
