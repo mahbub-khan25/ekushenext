@@ -195,24 +195,32 @@ shot('09-symbols')
 sk, _ = keys('SYMBOLS')
 tap(*sk['LETTERS'], 0.8)
 
-# English: the EN key hands over to Gboard
-tap(*km['LANG'], 2.5)
-now_ime = sh('settings get secure default_input_method').strip()
-expect('EN hands over to Gboard', now_ime.startswith('com.google.android.inputmethod.latin'), True)
-time.sleep(2)
-tap(x2 - 40, y2 - 25, 3)  # (an empty corner of the box, so no word is selected) the test phone hides a newly switched keyboard until the box is tapped
-shot('10-gboard-english')
-# Gboard's globe key comes back here (the test does it directly), and in Bangla
-sh(f'ime set {IME}')
-time.sleep(2)
-dismiss_anr()
-tap(x2 - 40, y2 - 25, 2)
-km, strip = keys()
-tap(*km['SPACE'], 0.3)
-type_word('ami ', km)
-time.sleep(0.5)
+# English, typed in Ekushe Next: completions, a typo fixed by Space, ⌫ to take the fix back
+tap(*km['LANG'], 0.8)
+def typed(word, pause=0.15):
+    for ch in word:
+        tap(*km[ch] if ch != ' ' else km['SPACE'], pause)
+    time.sleep(0.6)
+typed(' beau')
+shot('10-english-completions')
+for _ in range(4):
+    tap(*km['DELETE'], 0.12)
+typed('teh ')
 got = field_text()[0] or ''
-expect('back in Bangla after Gboard', 'আমি ' in got, True)
+expect('english typo fixed by Space', got.endswith('the '), True)
+shot('10b-english-next-word')
+tap(*km['DELETE'], 0.6)
+got = field_text()[0] or ''
+expect('⌫ puts back what was typed', got.endswith('teh'), True)
+typed(' ')
+got = field_text()[0] or ''
+expect('the word you took back stays', got.endswith('teh '), True)
+typed('dont i ')
+got = field_text()[0] or ''
+expect("dont → don't, i → I", got.endswith("don't I "), True)
+typed('thank ')
+shot('10c-english-thank')
+tap(*km['LANG'], 0.8)
 
 # The emoji key next to Space
 tap(*km['EMOJI'], 1)
@@ -296,7 +304,7 @@ def keyboard_shot(name, word='bangla'):
 
 
 ensure_app()
-THEMES = ['Ekushe', 'Krishnachura', 'Padma', 'Shapla', 'Kashful', 'Night', 'Follow system', 'Match my phone', 'Classic light', 'Classic dark']
+THEMES = ['Ekushe', 'Ekushe Default', 'Ekushe Smooth', 'Krishnachura', 'Padma', 'Shapla', 'Kashful', 'Night', 'Follow system', 'Match my phone', 'Classic light', 'Classic dark']
 for i, t in enumerate(THEMES):
     to_top()
     at = find(lambda n, t=t: n.get('content-desc') == f'{t} theme')
@@ -312,6 +320,16 @@ for i, t in enumerate(THEMES):
         at = find(lambda n, t=t: n.get('content-desc') == f'{t} theme')
     tap(at[0], at[1], 0.8)
     keyboard_shot(f'2{i + 1}-theme-' + t.lower().replace(' ', '-'))
+
+# The two look-alike themes follow the phone into dark mode
+sh('cmd uimode night yes'); time.sleep(2); ensure_app()
+for t in ['Ekushe Default', 'Ekushe Smooth']:
+    to_top()
+    at = find(lambda n, t=t: n.get('content-desc') == f'{t} theme')
+    if at:
+        tap(at[0], at[1], 0.8)
+        keyboard_shot('29d-dark-' + t.lower().replace(' ', '-'))
+sh('cmd uimode night no'); time.sleep(2); ensure_app()
 
 # Flat keys (borders off), in the signature theme
 to_top()
@@ -337,7 +355,7 @@ if at:
 else:
     failures.append('photo switch')
 
-# Our own English (Gboard setting off), then each key-press effect while a key is held
+# Gboard for English, when it's turned on: EN hands over, and Gboard's globe key comes back in Bangla
 to_top()
 at = find(lambda n: (n.get('text') or '').startswith('ইংরেজির জন্য Gboard'))
 if at:
@@ -345,17 +363,30 @@ if at:
     to_top()
     text, b = field_text()
     bx1, by1, bx2, by2 = map(int, re.findall(r'\d+', b))
-    tap((bx1 + bx2) // 2, (by1 + by2) // 2, 1.5)
+    tap(bx2 - 40, by2 - 25, 1.5)
     km3, _ = keys()
-    tap(*km3['LANG'], 0.8)
-    for ch in ' hello ':
+    tap(*km3['LANG'], 2.5)
+    now_ime = sh('settings get secure default_input_method').strip()
+    expect('EN hands over to Gboard (when on)', now_ime.startswith('com.google.android.inputmethod.latin'), True)
+    time.sleep(2)
+    tap(bx2 - 40, by2 - 25, 3)
+    shot('34-gboard-english')
+    sh(f'ime set {IME}')
+    time.sleep(2)
+    dismiss_anr()
+    tap(bx2 - 40, by2 - 25, 2)
+    km3, _ = keys()
+    tap(*km3['SPACE'], 0.3)
+    for ch in 'ami ':
         tap(*km3[ch] if ch != ' ' else km3['SPACE'], 0.15)
-    time.sleep(0.4)
+    time.sleep(0.5)
     got = field_text()[0] or ''
-    expect('english typing in Ekushe Next', 'hello ' in got or 'Hello ' in got, True)
-    shot('34-own-english')
-    tap(*km3['LANG'], 0.6)
+    expect('back in Bangla after Gboard', 'আমি ' in got, True)
     sh('input keyevent KEYCODE_BACK'); time.sleep(0.8)
+    # and off again
+    to_top()
+    at = find(lambda n: (n.get('text') or '').startswith('ইংরেজির জন্য Gboard'))
+    if at: tap(at[0], at[1], 0.8)
 else:
     failures.append('gboard switch')
 

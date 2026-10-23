@@ -65,8 +65,16 @@ class Prefs(context: Context) {
         set(v) = p.edit().putBoolean("emoji_key", v).apply()
     /** English is typed in Gboard: the EN key hands over, Gboard's 🌐 key comes back */
     var gboardEnglish: Boolean
-        get() = p.getBoolean("gboard_english", true)
+        get() = p.getBoolean("gboard_english", false)
         set(v) = p.edit().putBoolean("gboard_english", v).apply()
+    /** English: correct a clear typo when Space is pressed */
+    var enAutocorrect: Boolean
+        get() = p.getBoolean("en_autocorrect", true)
+        set(v) = p.edit().putBoolean("en_autocorrect", v).apply()
+    /** English: suggest the next word */
+    var nextWordEnglish: Boolean
+        get() = p.getBoolean("en_next_word", true)
+        set(v) = p.edit().putBoolean("en_next_word", v).apply()
     var seenTour: Boolean
         get() = p.getBoolean("seen_tour", false)
         set(v) = p.edit().putBoolean("seen_tour", v).apply()

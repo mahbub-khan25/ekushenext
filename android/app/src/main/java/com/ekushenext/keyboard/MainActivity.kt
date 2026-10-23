@@ -90,6 +90,7 @@ class MainActivity : AppCompatActivity() {
         bn = runCatching { Typeface.createFromAsset(assets, "fonts/HindSiliguri-Regular.ttf") }.getOrDefault(Typeface.DEFAULT)
         bnBold = runCatching { Typeface.createFromAsset(assets, "fonts/HindSiliguri-SemiBold.ttf") }.getOrDefault(Typeface.DEFAULT_BOLD)
         Engine.start(this)
+        English.start(this)
         scroll = ScrollView(this).apply { isFillViewport = true }
         root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(18f), dp(24f), dp(18f), dp(40f)) }
         scroll.addView(root)
@@ -132,6 +133,8 @@ class MainActivity : AppCompatActivity() {
         setup()
         settingsAnchor = section("টাইপিং", "Typing")
         typing()
+        section("ইংরেজি", "English")
+        english()
         section("কিবোর্ড", "Keyboard")
         keyboard()
         section("স্নিপেট", "Snippets")
@@ -237,8 +240,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun keyboard() {
         val card = card()
-        englishSetting(card)
-        divider(card)
         card.addView(text("থিম", 15.5f, bnBold, textColor))
         card.addView(text("Theme: tap one to use it", 12.5f, Typeface.DEFAULT, subColor))
         spaceIn(card, 10f)
@@ -270,15 +271,34 @@ class MainActivity : AppCompatActivity() {
         root.addView(card)
     }
 
+    private fun english() {
+        val card = card()
+        card.addView(text("EN চাপলে একুশে নেক্সটেই ইংরেজি লেখা যায়: শব্দ পূরণ, বানান ঠিক করা, পরের শব্দ। Tap EN to type English right here, with word completion, spelling fixes and next words.", 13f, bn, subColor))
+        spaceIn(card, 10f)
+        card.addView(switch("ইংরেজি অটোকারেক্ট", "Space fixes a clear typo (teh → the, dont → don't). ⌫ right after puts back what you typed.", prefs.enAutocorrect) { prefs.enAutocorrect = it })
+        divider(card)
+        card.addView(switch("ইংরেজিতে পরের শব্দ", "Suggest the next word in English", prefs.nextWordEnglish) { prefs.nextWordEnglish = it })
+        if (Build.VERSION.SDK_INT >= 31) {
+            val tsm = getSystemService(TEXT_SERVICES_MANAGER_SERVICE) as android.view.textservice.TextServicesManager
+            if (!tsm.isSpellCheckerEnabled) {
+                spaceIn(card, 8f)
+                card.addView(text("ফোনের বানান পরীক্ষক বন্ধ আছে, তাই শুধু একুশের নিজের শব্দতালিকা থেকে বানান ঠিক হবে। চালু করতে: Settings → System → Languages → Spell checker. The phone's spell checker is off, so spelling fixes come from Ekushe's own word list only.", 12.5f, bn, subColor))
+            }
+        }
+        divider(card)
+        englishSetting(card)
+        root.addView(card)
+    }
+
     private fun englishSetting(card: LinearLayout) {
         val on = Gboard.enabledId(this) != null
         val installed = Gboard.installed(this)
         val sub = when {
-            on -> "EN চাপলে Gboard খোলে, তার 🌐 বোতামে বাংলায় ফেরা যায়। Tap EN to type English in Gboard: autocorrect, glide typing, voice and all. Its 🌐 key brings you back."
+            on -> "চাইলে EN চাপলে Gboard খুলবে (গ্লাইড টাইপিং, ভয়েস), তার 🌐 বোতামে বাংলায় ফেরা যায়। Optional: EN opens Gboard instead, with glide typing and voice; its 🌐 key brings you back."
             installed -> "Gboard is on this phone but turned off as a keyboard. Turn it on to type English in it."
-            else -> "Gboard isn't on this phone, so English is typed here in Ekushe Next."
+            else -> "Gboard isn't on this phone."
         }
-        card.addView(switch("ইংরেজির জন্য Gboard", sub, prefs.gboardEnglish && installed) { prefs.gboardEnglish = it }.apply {
+        card.addView(switch("ইংরেজির জন্য Gboard", sub, prefs.gboardEnglish && installed) { prefs.gboardEnglish = it; build() }.apply {
             if (!installed) { isEnabled = false; alpha = 0.55f }
         })
         if (installed && !on && prefs.gboardEnglish) {
@@ -321,6 +341,8 @@ class MainActivity : AppCompatActivity() {
             contentDescription = "${t.en} theme"
         }
         val preview = if (t.id == "system") ThemePreview(this, Palette.LIGHT, Palette.DARK, prefs.keyBorders)
+        else if (t.id == "default") ThemePreview(this, Palette.DEFAULT_LIGHT, Palette.DEFAULT_DARK, prefs.keyBorders)
+        else if (t.id == "smooth") ThemePreview(this, Palette.SMOOTH_LIGHT, Palette.SMOOTH_DARK, prefs.keyBorders)
         else ThemePreview(this, Palette.byId(this, t.id), null, prefs.keyBorders)
         tile.addView(preview)
         val label = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(6f), dp(6f), dp(4f), 0) }
@@ -409,7 +431,7 @@ class MainActivity : AppCompatActivity() {
             setOnClickListener {
                 AlertDialog.Builder(this@MainActivity)
                     .setMessage("আপনার বেছে নেওয়া যত শব্দ একুশে শিখেছে, সব মুছে যাবে। Forget every learned word?")
-                    .setPositiveButton("মুছুন") { _, _ -> Engine.forgetLearned() }
+                    .setPositiveButton("মুছুন") { _, _ -> Engine.forgetLearned(); English.forget() }
                     .setNegativeButton("না", null).show()
             }
         })
