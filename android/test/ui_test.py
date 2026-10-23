@@ -52,6 +52,16 @@ def dismiss_anr():
         pass
 
 
+def ensure_app():
+    """Wake the test phone, unlock it, and bring the app to the front."""
+    sh('input keyevent KEYCODE_WAKEUP')
+    sh('wm dismiss-keyguard')
+    time.sleep(0.8)
+    sh(f'am start -W -n {PKG}/.MainActivity')
+    time.sleep(1.5)
+    dismiss_anr()
+
+
 def keys(mode='LETTERS'):
     # Wait for the keyboard to finish sliding in, and for its logged position to stop changing
     last, steady = None, 0
@@ -210,8 +220,11 @@ shot('11-emoji-key')
 tap(int(int(re.search(r'(\d+)x', sh('wm size')).group(1)) / 9 / 2), int(strip + 4 * 54 * (int(re.findall(r'(\d+)', sh('wm density'))[-1]) / 160)), 0.8)  # ABC
 
 # Dark theme
+sh('input keyevent KEYCODE_BACK')
+time.sleep(0.8)
 sh('cmd uimode night yes')
 time.sleep(2)
+ensure_app()
 tap((x1 + x2) // 2, (y1 + y2) // 2, 1.5)
 shot('12-dark')
 sh('cmd uimode night no')
@@ -220,6 +233,7 @@ time.sleep(1)
 # Settings page
 sh('input keyevent KEYCODE_BACK')
 time.sleep(1)
+ensure_app()
 sh('input swipe 500 1800 500 400 400')
 time.sleep(1)
 shot('13-settings')
@@ -281,6 +295,7 @@ def keyboard_shot(name, word='bangla'):
     time.sleep(0.8)
 
 
+ensure_app()
 THEMES = ['Ekushe', 'Krishnachura', 'Padma', 'Shapla', 'Kashful', 'Night', 'Follow system', 'Match my phone', 'Classic light', 'Classic dark']
 for i, t in enumerate(THEMES):
     to_top()
@@ -300,7 +315,8 @@ for i, t in enumerate(THEMES):
 
 # Flat keys (borders off), in the signature theme
 to_top()
-at = find(lambda n: n.get('content-desc') == 'Ekushe theme'); tap(at[0], at[1], 0.6)
+at = find(lambda n: n.get('content-desc') == 'Ekushe theme')
+if at: tap(at[0], at[1], 0.6)
 at = find(lambda n: (n.get('text') or '').startswith('কীর আলাদা ঘর'))
 if at: tap(at[0], at[1], 0.8); keyboard_shot('31-flat-keys')
 else: failures.append('borders switch')
