@@ -26,7 +26,7 @@
 #![cfg(windows)]
 #![allow(non_snake_case)]
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::ffi::c_void;
 use std::mem::ManuallyDrop;
 use std::path::PathBuf;
@@ -65,6 +65,12 @@ use windows::Win32::UI::TextServices::{
     INSERT_TEXT_AT_SELECTION_FLAGS, TF_AE_NONE, TF_ANCHOR_END, TF_ANCHOR_START,
     TF_DEFAULT_SELECTION, TF_ES_ASYNCDONTCARE, TF_ES_READWRITE, TF_IAS_QUERYONLY, TF_SELECTION,
     TF_SELECTIONSTYLE,
+};
+use windows::Win32::UI::TextServices::{
+    ITfCompartmentMgr, ITfInputScope, InputScope, GUID_COMPARTMENT_EMPTYCONTEXT,
+    GUID_COMPARTMENT_KEYBOARD_DISABLED, GUID_PROP_INPUTSCOPE, IS_ALPHANUMERIC_PIN,
+    IS_ALPHANUMERIC_PIN_SET, IS_NUMERIC_PASSWORD, IS_NUMERIC_PIN, IS_PASSWORD, TF_ES_READ,
+    TF_ES_SYNC,
 };
 use windows_core::IUnknownImpl;
 
@@ -187,8 +193,24 @@ const CATEGORIES: [GUID; 4] = [
     GUID_TFCAT_TIPCAP_UIELEMENTENABLED, // no own UI that would need hiding in full-screen apps
 ];
 
+/// Machine-wide registration makes every program load this DLL, so it must live where only
+/// administrators can change it (Program Files or Windows); registering a copy in a user-writable
+/// folder would let that user swap in other code. Returns the folder rules as an error otherwise.
+fn in_protected_folder(path: &str) -> bool {
+    let p = path.to_lowercase().replace('/', "\\");
+    ["ProgramFiles", "ProgramW6432", "SystemRoot"]
+        .iter()
+        .filter_map(|v| std::env::var(v).ok())
+        .map(|d| format!("{}\\", d.trim_end_matches('\\').to_lowercase()))
+        .any(|d| p.starts_with(&d) && !p[d.len()..].contains("..\\"))
+}
+
 unsafe fn register() -> Result<()> {
     let path = dll_path();
+    if !in_protected_folder(&path) {
+        // 0x80070005: copy the DLL into C:\Program Files\Ekushe Next\ first (see the README)
+        return Err(windows::Win32::Foundation::E_ACCESSDENIED.into());
+    }
     let clsid_key = format!("Software\\Classes\\CLSID\\{EKUSHE_CLSID_STR}");
     set_reg_sz(
         HKEY_LOCAL_MACHINE,
@@ -543,6 +565,62 @@ impl TextService_Impl {
         }
     }
 
+    /// Bangla typing is about to start a word in a private field (checked once per word, not while
+    /// a word is open).
+    fn starting_word_in_private_field(&self, ctx: &ITfContext) -> bool {
+        {
+            let st = self.state.borrow();
+            if st.ekushe.language() == InputLanguage::English || st.ekushe.is_composing() {
+                return false;
+            }
+        }
+        self.field_is_private(ctx)
+    }
+
+    /// Whether the focused field is private: the application turned the keyboard off for it (TSF's
+    /// keyboard-disabled or empty-context compartments, which browsers set for password fields), or
+    /// gave it a password or PIN input scope. Keys there are typed as plain characters: no preview,
+    /// nothing learned.
+    fn field_is_private(&self, context: &ITfContext) -> bool {
+        let (thread_mgr, client_id) = {
+            let st = self.state.borrow();
+            (st.thread_mgr.clone(), st.client_id)
+        };
+        unsafe {
+            let flag = |cm: &ITfCompartmentMgr, g: &GUID| -> bool {
+                cm.GetCompartment(g)
+                    .and_then(|c| c.GetValue())
+                    .ok()
+                    .and_then(|v| i32::try_from(&v).ok())
+                    .is_some_and(|n| n != 0)
+            };
+            if let Some(cm) = thread_mgr
+                .as_ref()
+                .and_then(|t| t.cast::<ITfCompartmentMgr>().ok())
+            {
+                if flag(&cm, &GUID_COMPARTMENT_KEYBOARD_DISABLED) {
+                    return true;
+                }
+            }
+            if let Ok(cm) = context.cast::<ITfCompartmentMgr>() {
+                if flag(&cm, &GUID_COMPARTMENT_KEYBOARD_DISABLED)
+                    || flag(&cm, &GUID_COMPARTMENT_EMPTYCONTEXT)
+                {
+                    return true;
+                }
+            }
+            // The input scope is a text property: read it in a short read-only edit session
+            let secret = Rc::new(Cell::new(false));
+            let session: ITfEditSession = ScopeSession {
+                context: context.clone(),
+                secret: secret.clone(),
+            }
+            .into();
+            let _ = context.RequestEditSession(client_id, &session, TF_ES_SYNC | TF_ES_READ);
+            secret.get()
+        }
+    }
+
     /// Run `action`. Returns whether the key was eaten.
     fn execute(&self, context: &ITfContext, action: KeyAction) -> Result<bool> {
         match action {
@@ -740,6 +818,11 @@ impl ITfKeyEventSink_Impl for TextService_Impl {
             st.shift_clean_down = !key_down(VK_CONTROL) && !key_down(VK_MENU);
             return Ok(FALSE);
         }
+        if let Some(ctx) = context {
+            if self.starting_word_in_private_field(ctx) {
+                return Ok(FALSE);
+            }
+        }
         let action = {
             let mut st = self.state.borrow_mut();
             st.shift_clean_down = false;
@@ -771,6 +854,9 @@ impl ITfKeyEventSink_Impl for TextService_Impl {
         let Some(ctx) = context else {
             return Ok(FALSE);
         };
+        if self.starting_word_in_private_field(ctx) {
+            return Ok(FALSE);
+        }
         let action = {
             let mut st = self.state.borrow_mut();
             st.shift_clean_down = false;
@@ -977,9 +1063,71 @@ impl ITfEditSession_Impl for EditSession_Impl {
     }
 }
 
+/// Reads the input scope at the caret: password and PIN scopes make the field private.
+#[implement(ITfEditSession)]
+struct ScopeSession {
+    context: ITfContext,
+    secret: Rc<Cell<bool>>,
+}
+
+impl ITfEditSession_Impl for ScopeSession_Impl {
+    fn DoEditSession(&self, ec: u32) -> Result<()> {
+        unsafe {
+            let prop = self.context.GetProperty(&GUID_PROP_INPUTSCOPE)?;
+            let mut sel = [TF_SELECTION::default()];
+            let mut fetched = 0u32;
+            self.context
+                .GetSelection(ec, TF_DEFAULT_SELECTION, &mut sel, &mut fetched)?;
+            let range = std::mem::ManuallyDrop::take(&mut sel[0].range);
+            let (true, Some(range)) = (fetched > 0, range) else {
+                return Ok(());
+            };
+            let value = prop.GetValue(ec, &range)?;
+            let Ok(unk) = windows_core::IUnknown::try_from(&value) else {
+                return Ok(());
+            };
+            let scope: ITfInputScope = unk.cast()?;
+            let mut list: *mut InputScope = std::ptr::null_mut();
+            let mut count = 0u32;
+            scope.GetInputScopes(&mut list, &mut count)?;
+            if !list.is_null() {
+                let scopes = std::slice::from_raw_parts(list, count as usize);
+                let secret = [
+                    IS_PASSWORD,
+                    IS_NUMERIC_PASSWORD,
+                    IS_NUMERIC_PIN,
+                    IS_ALPHANUMERIC_PIN,
+                    IS_ALPHANUMERIC_PIN_SET,
+                ];
+                self.secret.set(scopes.iter().any(|s| secret.contains(s)));
+                windows::Win32::System::Com::CoTaskMemFree(Some(list as *const _));
+            }
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn registration_needs_a_protected_folder() {
+        assert!(!in_protected_folder(
+            r"C:\Users\someone\Downloads\ekushe_tsf.dll"
+        ));
+        assert!(!in_protected_folder(
+            r"D:\a\ekushenext\target\release\ekushe_tsf.dll"
+        ));
+        if let Ok(pf) = std::env::var("ProgramFiles") {
+            assert!(in_protected_folder(&format!(
+                r"{pf}\Ekushe Next\ekushe_tsf.dll"
+            )));
+            assert!(!in_protected_folder(&format!(
+                r"{pf}\..\Users\x\ekushe_tsf.dll"
+            )));
+        }
+    }
 
     #[test]
     fn guids_match_their_strings() {

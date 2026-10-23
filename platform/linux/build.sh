@@ -33,10 +33,22 @@ install -Dm644 platform/linux/packaging/ekushe-studio.desktop "$STAGE/usr/share/
 install -Dm644 LICENSE "$STAGE/usr/share/doc/ekushe/LICENSE"
 install -Dm644 THIRD_PARTY_NOTICES.md "$STAGE/usr/share/doc/ekushe/THIRD_PARTY_NOTICES.md"
 
+# Packaging tools are fixed versions, checked against these SHA-256 sums before they run
+fetch_verified() { # url file sha256
+  curl -fsSL -o "$2" "$1"
+  if ! echo "$3  $2" | sha256sum -c --status -; then
+    echo "Checksum mismatch for $1" >&2
+    rm -f "$2"
+    exit 1
+  fi
+}
+
 echo "› .deb and .rpm"
 NFPM=$(command -v nfpm || true)
 if [ -z "$NFPM" ]; then
-  curl -sSL https://github.com/goreleaser/nfpm/releases/download/v2.41.1/nfpm_2.41.1_Linux_x86_64.tar.gz | tar xz -C "$TOOLS" nfpm
+  fetch_verified https://github.com/goreleaser/nfpm/releases/download/v2.41.1/nfpm_2.41.1_Linux_x86_64.tar.gz \
+    "$TOOLS/nfpm.tar.gz" b3cf95aa6dabed836d09ad7f0c190a13c74c5b1304db60846f0f702ee407f430
+  tar xzf "$TOOLS/nfpm.tar.gz" -C "$TOOLS" nfpm
   NFPM="$TOOLS/nfpm"
 fi
 export EKUSHE_VERSION="$VERSION"
@@ -53,10 +65,14 @@ cp platform/linux/packaging/ekushe-studio.desktop "$APPDIR/ekushe-studio.desktop
 cp assets/icons/logo_256.png "$APPDIR/ekushe.png"
 TOOL=$(command -v appimagetool || true)
 if [ -z "$TOOL" ]; then
-  curl -sSL -o "$TOOLS/appimagetool" https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+  fetch_verified https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage \
+    "$TOOLS/appimagetool" ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0
   chmod +x "$TOOLS/appimagetool"; TOOL="$TOOLS/appimagetool"
 fi
-APPIMAGE_EXTRACT_AND_RUN=1 ARCH=x86_64 VERSION="$VERSION" "$TOOL" --no-appstream "$APPDIR" "$OUT/Ekushe-${VERSION}-x86_64.AppImage"
+# The AppImage runtime (the small program at the front of the AppImage), also a fixed version
+fetch_verified https://github.com/AppImage/type2-runtime/releases/download/20251108/runtime-x86_64 \
+  "$TOOLS/runtime-x86_64" 2fca8b443c92510f1483a883f60061ad09b46b978b2631c807cd873a47ec260d
+APPIMAGE_EXTRACT_AND_RUN=1 ARCH=x86_64 VERSION="$VERSION" "$TOOL" --no-appstream --runtime-file "$TOOLS/runtime-x86_64" "$APPDIR" "$OUT/Ekushe-${VERSION}-x86_64.AppImage"
 
 ls -la "$OUT"/*.deb "$OUT"/*.rpm "$OUT"/*.AppImage
 

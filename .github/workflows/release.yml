@@ -10,9 +10,9 @@ on:
     tags: ['v*']
   workflow_dispatch:
 
+# Read-only by default; each job gets only what it needs (signing and publishing below)
 permissions:
-  contents: write
-  id-token: write   # lets the Windows job sign in to Azure for code signing, without a stored password
+  contents: read
 
 jobs:
   version:
@@ -21,7 +21,7 @@ jobs:
       tag: ${{ steps.ver.outputs.tag }}
       exists: ${{ steps.ver.outputs.exists }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - id: ver
         env:
           GH_TOKEN: ${{ github.token }}
@@ -33,12 +33,17 @@ jobs:
   windows:
     name: Windows x64
     needs: version
+    permissions:
+      contents: read
+      id-token: write   # lets this job sign in to Azure for code signing, without a stored password
     if: needs.version.outputs.exists == 'false'
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
       - name: Tests
         run: cargo test --workspace
       - name: Release build
@@ -47,14 +52,14 @@ jobs:
       # docs/CODE_SIGNING.md; until then releases are published unsigned.
       - name: Azure sign-in (code signing)
         if: vars.SIGNING_ACCOUNT != ''
-        uses: azure/login@v2
+        uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       - name: Sign ekushe.exe, ekushe_tsf.dll, ekushe-cli.exe
         if: vars.SIGNING_ACCOUNT != ''
-        uses: azure/artifact-signing-action@v2
+        uses: azure/artifact-signing-action@c7ab2a863ab5f9a846ddb8265964877ef296ee82 # v2
         with:
           endpoint: ${{ vars.SIGNING_ENDPOINT }}
           signing-account-name: ${{ vars.SIGNING_ACCOUNT }}
@@ -102,7 +107,7 @@ jobs:
           # Browsers block a bare .exe more often than a .zip
           Compress-Archive -Path dist\Ekushe-Setup.exe -DestinationPath dist\Ekushe-Setup.zip
           Compress-Archive -Path target\release\ekushe_tsf.dll, target\release\ekushe-cli.exe -DestinationPath dist\Ekushe-Extras-x64.zip
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: release-windows
           path: dist/*
@@ -113,16 +118,17 @@ jobs:
     if: needs.version.outputs.exists == 'false'
     runs-on: macos-14
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
+          toolchain: stable
           targets: aarch64-apple-darwin, x86_64-apple-darwin
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
       - name: Engine tests
         run: cargo test -p ekushe-core -p ekushe-ffi --features "ekushe-ffi/studio ekushe-ffi/embedded-dict"
       - name: Build Ekushe.app, .pkg and .zip
         run: platform/macos/build.sh "${{ needs.version.outputs.tag }}"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: release-macos
           path: |
@@ -135,9 +141,11 @@ jobs:
     if: needs.version.outputs.exists == 'false'
     runs-on: ubuntu-22.04   # oldest supported glibc, so the packages run on newer distributions too
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
       - name: Build tools
         run: sudo apt-get update -q && sudo apt-get install -y -q libibus-1.0-dev ibus python3-gi gir1.2-ibus-1.0 dbus libfuse2
       - name: Engine and Studio tests
@@ -151,7 +159,7 @@ jobs:
           sudo apt-get install -y -q ./build/linux/ekushe_*_amd64.deb
           rm -rf ~/.config/ibus/bus
           dbus-run-session -- bash -c 'ibus-daemon --xim=false --panel=disable --emoji-extension=disable --cache=none --config=disable & for i in $(seq 1 50); do F=$(ls ~/.config/ibus/bus/* 2>/dev/null | head -1); [ -n "$F" ] && break; sleep 0.2; done; export $(grep "^IBUS_ADDRESS=" "$F"); python3 platform/linux/ibus/test_engine.py'
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: release-linux
           path: |
@@ -165,8 +173,8 @@ jobs:
     runs-on: ubuntu-latest
     container: fedora:41
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: release-linux
           path: pkgs
@@ -184,15 +192,17 @@ jobs:
   publish:
     needs: [version, windows, macos, linux, fedora]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # creates the GitHub release
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           path: dist
           merge-multiple: true
       - name: Checksums
         run: cd dist && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           tag_name: ${{ needs.version.outputs.tag }}
           target_commitish: ${{ github.sha }}

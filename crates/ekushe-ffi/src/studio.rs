@@ -3,15 +3,18 @@
 //! typing straight away and are written to `config.toml`.
 //!
 //! Same protections as the Windows tray's Studio: the Host must be loopback, a foreign Origin is
-//! refused, and every `/api/*` call needs the per-run token embedded in the served page.
+//! refused, every `/api/*` call needs the per-run key, and the page only carries that key when it is
+//! opened with a fresh one-time launch code ([`launch_url`]). Requests are bounded in size and time,
+//! and a slow client cannot hold the server (see `studio_http.rs`).
 
+#[path = "../../ekushe-tray/src/studio_http.rs"]
+mod studio_http;
 #[path = "../../ekushe-tray/src/studio_ui.rs"]
 mod studio_ui;
 
-use std::io::{Read, Write};
+use std::io::Write;
 use std::net::{TcpListener, TcpStream};
 use std::sync::atomic::{AtomicU16, AtomicU64, Ordering};
-use std::sync::OnceLock;
 
 use ekushe_core::config::{Config, InputLanguage, SwitchHotkey, TypingMode};
 use ekushe_core::conjuncts::search_signs_and_conjuncts;
@@ -64,23 +67,7 @@ pub fn idle_seconds() -> u64 {
 static OPACITY: AtomicU64 = AtomicU64::new(92);
 
 fn token() -> &'static str {
-    static T: OnceLock<String> = OnceLock::new();
-    T.get_or_init(|| {
-        use std::hash::{BuildHasher, Hasher};
-        let mut out = String::new();
-        for i in 0..2u64 {
-            let mut h = std::collections::hash_map::RandomState::new().build_hasher();
-            h.write_u64(i);
-            h.write_u128(
-                std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .map(|d| d.as_nanos())
-                    .unwrap_or(0),
-            );
-            out.push_str(&format!("{:016x}", h.finish()));
-        }
-        out
-    })
+    studio_http::token()
 }
 
 /// Start the server on a background thread (once). Returns its port, or 0 if no port was free.
@@ -102,11 +89,7 @@ pub fn start() -> u16 {
     {
         return PORT.load(Ordering::SeqCst); // another thread won
     }
-    std::thread::spawn(move || {
-        for stream in listener.incoming().flatten() {
-            let _ = handle(stream, port);
-        }
-    });
+    std::thread::spawn(move || studio_http::serve(listener, move |s| handle_conn(s, port)));
     port
 }
 
@@ -115,36 +98,86 @@ pub fn serve_blocking(port: u16) -> std::io::Result<()> {
     let listener = TcpListener::bind(("127.0.0.1", port))?;
     let port = listener.local_addr()?.port();
     PORT.store(port, Ordering::SeqCst);
-    for stream in listener.incoming().flatten() {
-        let _ = handle(stream, port);
-    }
+    println!("Open {}", launch_url(None).unwrap_or_default());
+    studio_http::serve(listener, move |s| handle_conn(s, port));
     Ok(())
 }
 
-fn read_request(s: &mut TcpStream) -> String {
-    let _ = s.set_read_timeout(Some(std::time::Duration::from_millis(800)));
-    let mut data = Vec::new();
-    let mut buf = [0u8; 8192];
-    loop {
-        match s.read(&mut buf) {
-            Ok(0) | Err(_) => break,
-            Ok(n) => {
-                data.extend_from_slice(&buf[..n]);
-                if let Some(end) = data.windows(4).position(|w| w == b"\r\n\r\n") {
-                    let head = String::from_utf8_lossy(&data[..end]).to_ascii_lowercase();
-                    let len = head
-                        .lines()
-                        .find_map(|l| l.strip_prefix("content-length:"))
-                        .and_then(|v| v.trim().parse::<usize>().ok())
-                        .unwrap_or(0);
-                    if data.len() >= end + 4 + len || data.len() > 1 << 20 {
-                        break;
-                    }
-                }
+/// An address that opens Studio for the person running this process (`tab`: e.g. `"settings"`).
+///
+/// On macOS and Linux other accounts can see the command line of a browser, so the one-time launch
+/// code is not put there: it goes in a small page in a folder only this user can read, and the
+/// returned `file://` address opens that page, which forwards to Studio.
+pub fn launch_url(tab: Option<&str>) -> Option<String> {
+    let port = start();
+    if port == 0 {
+        return None;
+    }
+    let url = studio_http::launch_url(port, tab);
+    #[cfg(unix)]
+    {
+        if let Some(file) = private_launch_page(&url) {
+            return Some(file);
+        }
+    }
+    Some(url)
+}
+
+#[cfg(unix)]
+fn private_launch_page(url: &str) -> Option<String> {
+    use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt, PermissionsExt};
+    let base = std::env::var_os("XDG_RUNTIME_DIR")
+        .map(std::path::PathBuf::from)
+        .filter(|p| p.is_dir())
+        .or_else(|| std::env::var_os("HOME").map(|h| std::path::PathBuf::from(h).join(".cache")))?;
+    let dir = base.join("ekushe-studio");
+    let _ = std::fs::DirBuilder::new()
+        .recursive(true)
+        .mode(0o700)
+        .create(&dir);
+    let meta = std::fs::symlink_metadata(&dir).ok()?;
+    if !meta.is_dir() {
+        return None;
+    }
+    let _ = std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o700));
+    // Old launch pages are useless (their codes expire) — tidy them away
+    if let Ok(rd) = std::fs::read_dir(&dir) {
+        for e in rd.flatten() {
+            let old = e
+                .metadata()
+                .ok()
+                .and_then(|m| m.modified().ok())
+                .and_then(|t| t.elapsed().ok());
+            if old.is_some_and(|d| d.as_secs() > 300) {
+                let _ = std::fs::remove_file(e.path());
             }
         }
     }
-    String::from_utf8_lossy(&data).into_owned()
+    let path = dir.join(format!("open-{}.html", studio_http::random_hex(8)));
+    let html = format!(
+        "<!doctype html><meta charset=\"utf-8\"><title>Ekushe Studio</title>\
+         <meta http-equiv=\"refresh\" content=\"0;url={url}\">\
+         <p><a href=\"{url}\">Ekushe Studio</a></p>"
+    );
+    let mut f = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o600)
+        .open(&path)
+        .ok()?;
+    f.write_all(html.as_bytes()).ok()?;
+    // Percent-encode the path (a home folder can contain spaces)
+    let enc: String = path
+        .to_string_lossy()
+        .bytes()
+        .map(|b| match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'/' | b'.' | b'-' | b'_' | b'~' => {
+                (b as char).to_string()
+            }
+            _ => format!("%{b:02X}"),
+        })
+        .collect();
+    Some(format!("file://{enc}"))
 }
 
 fn header<'a>(req: &'a str, name: &str) -> Option<&'a str> {
@@ -220,8 +253,18 @@ fn respond(s: &mut TcpStream, status: &str, ctype: &str, body: &[u8]) -> std::io
     s.write_all(body)
 }
 
-fn handle(mut s: TcpStream, port: u16) -> std::io::Result<()> {
-    let req = read_request(&mut s);
+fn handle_conn(mut s: TcpStream, port: u16) {
+    match studio_http::read_request(&mut s) {
+        Ok(req) => {
+            let _ = handle(s, &req, port);
+        }
+        Err(studio_http::ReadError::Status(st)) => studio_http::respond_error(&mut s, st),
+        Err(studio_http::ReadError::Closed) => {}
+    }
+}
+
+fn handle(mut s: TcpStream, req: &str, port: u16) -> std::io::Result<()> {
+    let req = req.to_string();
     LAST_REQUEST.store(now_secs(), Ordering::Relaxed);
     let mut first = req.lines().next().unwrap_or("").split_whitespace();
     let (method, path) = (first.next().unwrap_or(""), first.next().unwrap_or("/"));
@@ -240,7 +283,7 @@ fn handle(mut s: TcpStream, port: u16) -> std::io::Result<()> {
 
     match (method, clean) {
         ("GET", "/") | ("GET", "/index.html") => {
-            let html = studio_ui::STUDIO_HTML.replace("__EKUSHE_TOKEN__", token());
+            let html = studio_http::studio_page(studio_ui::STUDIO_HTML, path);
             respond(
                 &mut s,
                 "200 OK",
@@ -415,6 +458,7 @@ fn handle(mut s: TcpStream, port: u16) -> std::io::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::Read;
 
     fn http(port: u16, req: String) -> String {
         let mut s = TcpStream::connect(("127.0.0.1", port)).unwrap();
@@ -428,6 +472,7 @@ mod tests {
     fn studio_serves_page_and_guards_api() {
         let port = start();
         assert_ne!(port, 0);
+        // Without a launch code the page has no key; with one it has, once
         let page = http(
             port,
             format!("GET / HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nConnection: close\r\n\r\n"),
@@ -435,8 +480,26 @@ mod tests {
         assert!(
             page.starts_with("HTTP/1.1 200")
                 && page.contains("tab-signs")
-                && page.contains(token())
+                && !page.contains(token())
         );
+        let url = studio_http::launch_url(port, Some("signs"));
+        let path = &url[url.find("/?").unwrap()..];
+        let launch =
+            format!("GET {path} HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nConnection: close\r\n\r\n");
+        assert!(http(port, launch.clone()).contains(token()));
+        assert!(
+            !http(port, launch).contains(token()),
+            "a launch code works once"
+        );
+        #[cfg(unix)]
+        {
+            let file = launch_url(None).unwrap();
+            let p = file.strip_prefix("file://").unwrap().replace("%20", " ");
+            use std::os::unix::fs::PermissionsExt;
+            let mode = std::fs::metadata(&p).unwrap().permissions().mode() & 0o777;
+            assert_eq!(mode, 0o600);
+            let _ = std::fs::remove_file(&p);
+        }
         let no_token = http(
             port,
             format!(

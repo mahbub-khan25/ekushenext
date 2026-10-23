@@ -5,16 +5,20 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   windows:
     name: Windows build and tests
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
+          toolchain: stable
           components: rustfmt, clippy
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
       - name: Tests (core engine, dictionary, converter)
         run: cargo test --workspace
       - name: Release build (tray app with embedded dictionary, TSF DLL, CLI)
@@ -67,7 +71,7 @@ jobs:
           if ($p.ExitCode -ne 0) { exit $p.ExitCode }
           $n = (Get-ChildItem popup-previews -Filter *.png).Count
           if ($n -lt 8) { Write-Error "expected popup previews, got $n"; exit 1 }
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: popup-previews
@@ -76,7 +80,7 @@ jobs:
         run: cargo fmt --all -- --check
       - name: Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: ekushe-windows-x64
@@ -89,16 +93,17 @@ jobs:
     name: macOS input method
     runs-on: macos-14
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
+          toolchain: stable
           targets: aarch64-apple-darwin, x86_64-apple-darwin
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
       - name: Engine and Studio tests
         run: cargo test -p ekushe-core -p ekushe-ffi --features "ekushe-ffi/studio ekushe-ffi/embedded-dict"
       - name: Build Ekushe.app, .pkg and .zip
         run: platform/macos/build.sh
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ekushe-macos
           path: |
@@ -109,9 +114,11 @@ jobs:
     name: Linux (.deb, .rpm, AppImage)
     runs-on: ubuntu-22.04   # oldest supported glibc, so the packages run on newer distributions too
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
       - name: Build tools
         run: sudo apt-get update -q && sudo apt-get install -y -q libibus-1.0-dev ibus python3-gi gir1.2-ibus-1.0 dbus libfuse2
       - name: Engine and Studio tests
@@ -123,7 +130,7 @@ jobs:
           sudo apt-get install -y -q ./build/linux/ekushe_*_amd64.deb
           rm -rf ~/.config/ibus/bus
           dbus-run-session -- bash -c 'ibus-daemon --xim=false --panel=disable --emoji-extension=disable --cache=none --config=disable & for i in $(seq 1 50); do F=$(ls ~/.config/ibus/bus/* 2>/dev/null | head -1); [ -n "$F" ] && break; sleep 0.2; done; export $(grep "^IBUS_ADDRESS=" "$F"); python3 platform/linux/ibus/test_engine.py'
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ekushe-linux
           path: |
@@ -137,8 +144,8 @@ jobs:
     runs-on: ubuntu-latest
     container: fedora:41
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: ekushe-linux
           path: pkgs
@@ -158,8 +165,10 @@ jobs:
     name: Dictionary builder
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
       - name: Build and test
         working-directory: tools/dict-builder
         run: cargo test --release

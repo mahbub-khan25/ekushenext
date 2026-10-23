@@ -150,12 +150,10 @@ impl Config {
         toml::from_str(&raw).map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))
     }
 
+    /// Save (owner-only on macOS and Linux, replaced in one step so a crash never leaves half a file).
     pub fn save_to(&self, path: &Path) -> std::io::Result<()> {
-        if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent)?;
-        }
         let serialized = toml::to_string_pretty(self)
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
-        fs::write(path, serialized)
+        crate::suggest::write_atomic(path, &serialized)
     }
 }

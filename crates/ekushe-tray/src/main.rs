@@ -3,7 +3,9 @@
 //! Floating Candidate + Sign/Conjunct Hints Overlay, and Ekushe Studio Server.
 
 mod glass_popup;
+mod secure_field;
 mod setup_wizard;
+mod studio_http;
 mod studio_ui;
 
 use std::env;
@@ -43,19 +45,20 @@ use windows_sys::Win32::UI::Shell::{
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     AppendMenuW, CallNextHookEx, CreatePopupMenu, CreateWindowExW, DefWindowProcW, DestroyMenu,
-    DestroyWindow, DispatchMessageW, GetAncestor, GetClassNameW, GetCursorPos, GetForegroundWindow,
-    GetGUIThreadInfo, GetMessageW, GetSystemMetrics, GetWindowLongW, GetWindowThreadProcessId,
-    KillTimer, LoadCursorW, LoadIconW, LoadImageW, PostMessageW, PostQuitMessage, RegisterClassW,
-    SetCursor, SetForegroundWindow, SetMenuDefaultItem, SetTimer, SetWindowPos, SetWindowsHookExW,
-    ShowWindow, TrackPopupMenu, TranslateMessage, UnhookWindowsHookEx, WindowFromPoint, GA_ROOT,
-    GUITHREADINFO, GWL_STYLE, HHOOK, HICON, HWND_TOPMOST, IDC_HAND, IDI_APPLICATION, IMAGE_ICON,
-    KBDLLHOOKSTRUCT, LR_LOADFROMFILE, MF_CHECKED, MF_SEPARATOR, MF_STRING, MF_UNCHECKED, MSG,
-    MSLLHOOKSTRUCT, SM_CXSCREEN, SM_CYSCREEN, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE,
-    SWP_SHOWWINDOW, SW_HIDE, TPM_BOTTOMALIGN, TPM_LEFTALIGN, TPM_RETURNCMD, TPM_RIGHTBUTTON,
-    WH_KEYBOARD_LL, WH_MOUSE_LL, WM_APP, WM_COMMAND, WM_CONTEXTMENU, WM_DESTROY, WM_KEYDOWN,
-    WM_KEYUP, WM_LBUTTONDBLCLK, WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MOUSEACTIVATE, WM_NULL, WM_PAINT,
-    WM_RBUTTONUP, WM_SETCURSOR, WM_SYSKEYDOWN, WM_TIMER, WNDCLASSW, WS_EX_LAYERED,
-    WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_POPUP,
+    DestroyWindow, DispatchMessageW, FindWindowW, GetAncestor, GetClassNameW, GetCursorPos,
+    GetForegroundWindow, GetGUIThreadInfo, GetMessageW, GetSystemMetrics, GetWindowLongW,
+    GetWindowThreadProcessId, KillTimer, LoadCursorW, LoadIconW, LoadImageW, PostMessageW,
+    PostQuitMessage, RegisterClassW, SetCursor, SetForegroundWindow, SetMenuDefaultItem, SetTimer,
+    SetWindowPos, SetWindowsHookExW, ShowWindow, TrackPopupMenu, TranslateMessage,
+    UnhookWindowsHookEx, WindowFromPoint, GA_ROOT, GUITHREADINFO, GWL_STYLE, HHOOK, HICON,
+    HWND_TOPMOST, IDC_HAND, IDI_APPLICATION, IMAGE_ICON, KBDLLHOOKSTRUCT, LR_LOADFROMFILE,
+    MF_CHECKED, MF_SEPARATOR, MF_STRING, MF_UNCHECKED, MSG, MSLLHOOKSTRUCT, SM_CXSCREEN,
+    SM_CYSCREEN, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_SHOWWINDOW, SW_HIDE, TPM_BOTTOMALIGN,
+    TPM_LEFTALIGN, TPM_RETURNCMD, TPM_RIGHTBUTTON, WH_KEYBOARD_LL, WH_MOUSE_LL, WM_APP, WM_COMMAND,
+    WM_CONTEXTMENU, WM_DESTROY, WM_KEYDOWN, WM_KEYUP, WM_LBUTTONDBLCLK, WM_LBUTTONDOWN,
+    WM_LBUTTONUP, WM_MOUSEACTIVATE, WM_NULL, WM_PAINT, WM_RBUTTONUP, WM_SETCURSOR, WM_SYSKEYDOWN,
+    WM_TIMER, WNDCLASSW, WS_EX_LAYERED, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST,
+    WS_POPUP,
 };
 
 /// Embedded 256x256 PNG logo for the Studio UI (`/logo.png`)
@@ -192,6 +195,9 @@ static COMPOSITION_STALE: AtomicBool = AtomicBool::new(false);
 static OVERLAY_HWND: AtomicIsize = AtomicIsize::new(0);
 static TRAY_HWND: AtomicIsize = AtomicIsize::new(0);
 const WM_EKUSHE_FORGET: u32 = WM_APP + 2;
+/// Another `ekushe.exe` started by the same user asks the running one to open Studio (only the
+/// running app can make Studio's one-time launch codes).
+const WM_EKUSHE_OPEN_STUDIO: u32 = WM_APP + 3;
 const TIMER_SAVE_LEARNED: usize = 102;
 const ES_PASSWORD_STYLE: i32 = 0x0020;
 
@@ -283,7 +289,14 @@ fn main() {
     if !args.iter().any(|a| a == "--self-test") {
         if let Some(existing_port) = check_existing_studio_port() {
             if open_studio_on_launch || args.iter().any(|a| a == "--open-studio") {
-                open_studio_window_tab(existing_port, None);
+                // The running app opens Studio (FindWindow only sees this user's desktop)
+                let host =
+                    unsafe { FindWindowW(wide_null("EkusheTrayHostClass").as_ptr(), ptr::null()) };
+                if host.is_null() {
+                    open_studio_plain(existing_port);
+                } else {
+                    unsafe { PostMessageW(host, WM_EKUSHE_OPEN_STUDIO, 0, 0) };
+                }
             }
             return;
         }
@@ -393,6 +406,8 @@ fn main() {
         SetTimer(tray_hwnd, TIMER_SAVE_LEARNED, 15_000, None);
         // Mouse clicks can move the caret; the mouse hook makes sure a half-typed word is then forgotten
         MOUSE_HOOK = SetWindowsHookExW(WH_MOUSE_LL, Some(mouse_hook_proc), hinstance, 0);
+        // Watches for password boxes in browsers and Store apps
+        secure_field::start();
 
         // Show initial floating badge ("বাং · একুশে বাংলা সক্রিয়") and optionally open Studio
         show_mode_badge("বাং · বাংলায় লিখছেন — দুবার Shift চাপলে English");
@@ -485,6 +500,40 @@ fn run_self_test(port: u16) {
         assert!(raw(bad).starts_with("HTTP/1.1 403"), "Studio accepted a foreign request");
     }
     println!("✓ Studio rejects requests without the token, foreign Host and foreign Origin");
+
+    // 1c. The page only carries the key for a fresh one-time launch code
+    assert!(
+        !http_get("/").contains(studio_token()),
+        "the plain page must not carry the key"
+    );
+    let launch = studio_http::launch_url(port, Some("signs"));
+    let launch_path = &launch[launch.find("/?").unwrap()..];
+    assert!(http_get(launch_path).contains(studio_token()));
+    assert!(
+        !http_get(launch_path).contains(studio_token()),
+        "a launch code must work once"
+    );
+    println!("✓ Studio key only with a one-time launch code");
+
+    // 1d. A slow client does not block Studio; an oversized request is refused
+    let mut slow = TcpStream::connect(("127.0.0.1", port)).expect("connect studio server");
+    let _ = slow.write_all(b"GET / HTTP/1.1\r\nHost: x\r\n");
+    let t0 = std::time::Instant::now();
+    assert!(http_get("/api/state").contains("\"language\""));
+    assert!(
+        t0.elapsed() < std::time::Duration::from_secs(2),
+        "a slow client blocked Studio"
+    );
+    drop(slow);
+    let big = format!(
+        "GET / HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nX-Pad: {}\r\n\r\n",
+        "a".repeat(studio_http::MAX_HEADER + 100)
+    );
+    assert!(
+        raw(big).starts_with("HTTP/1.1 431"),
+        "oversized request accepted"
+    );
+    println!("✓ Studio stays responsive with a slow client and refuses oversized requests");
 
     // 2. Verify /api/state
     let r_state = http_get("/api/state");
@@ -835,8 +884,8 @@ unsafe fn focused_control() -> HWND {
     }
 }
 
-/// True for standard Windows password boxes (Edit / RichEdit with `ES_PASSWORD`). Browser and UWP
-/// password fields are not detectable this way; the TSF input method will cover those.
+/// True for standard Windows password boxes (Edit / RichEdit with `ES_PASSWORD`). Password fields in
+/// browsers and Store apps are found by `secure_field` (UI Automation).
 unsafe fn is_password_field(h: HWND) -> bool {
     if h.is_null() {
         return false;
@@ -1026,8 +1075,16 @@ unsafe extern "system" fn keyboard_hook_proc(code: i32, wparam: WPARAM, lparam: 
                 }
             }
         }
-        // Password boxes: type plain characters, no preview, nothing learned
-        if is_password_field(focus) {
+        // Password boxes (classic ones, and those in browsers and Store apps that UI Automation
+        // reports): type plain characters, no preview, nothing learned
+        secure_field::set_active(st.ekushe.language() == InputLanguage::Bangla);
+        let root = GetAncestor(focus, GA_ROOT) as isize;
+        if is_password_field(focus) || secure_field::is_secret(root) {
+            if st.injected_utf16_len > 0 || !st.last_output.preedit.is_empty() {
+                forget_composition(&mut st);
+                drop(st);
+                refresh_candidate_overlay();
+            }
             return CallNextHookEx(ptr::null_mut(), code, wparam, lparam);
         }
         st.comp_focus = focus as isize;
@@ -1310,6 +1367,11 @@ unsafe extern "system" fn tray_wnd_proc(
     match msg {
         WM_TIMER if wparam == TIMER_SAVE_LEARNED => {
             save_learned_words_if_changed();
+            0
+        }
+        WM_EKUSHE_OPEN_STUDIO => {
+            let port = STATE.lock().studio_port;
+            open_studio_window_tab(port, None);
             0
         }
         WM_EKUSHE_FORGET => {
@@ -1783,74 +1845,29 @@ fn start_studio_server() -> u16 {
     let port_file = setup_wizard::install_root_dir().join("studio_port.txt");
     let _ = std::fs::write(port_file, port.to_string());
 
+    // One thread per connection (at most a few at once), every request bounded in size and time
     std::thread::spawn(move || {
-        for stream in listener.incoming().flatten() {
-            let _ = handle_http_client(stream);
-        }
+        studio_http::serve(listener, |mut stream| {
+            match studio_http::read_request(&mut stream) {
+                Ok(req) => {
+                    let _ = handle_http_client(stream, &req);
+                }
+                Err(studio_http::ReadError::Status(st)) => {
+                    studio_http::respond_error(&mut stream, st)
+                }
+                Err(studio_http::ReadError::Closed) => {}
+            }
+        })
     });
 
     port
 }
 
-fn read_full_http_request(stream: &mut TcpStream) -> std::io::Result<String> {
-    let _ = stream.set_read_timeout(Some(std::time::Duration::from_millis(800)));
-    let mut data: Vec<u8> = Vec::with_capacity(8192);
-    let mut chunk = [0u8; 4096];
-    let mut header_end: Option<usize> = None;
-    let mut content_len: usize = 0;
-
-    loop {
-        match stream.read(&mut chunk) {
-            Ok(0) => break,
-            Ok(n) => {
-                data.extend_from_slice(&chunk[..n]);
-                if header_end.is_none() {
-                    if let Some(pos) = data.windows(4).position(|w| w == b"\r\n\r\n") {
-                        let end = pos + 4;
-                        header_end = Some(end);
-                        let hdr_str = String::from_utf8_lossy(&data[..end]);
-                        for line in hdr_str.lines() {
-                            let lower = line.to_ascii_lowercase();
-                            if let Some(rest) = lower.strip_prefix("content-length:") {
-                                content_len = rest.trim().parse().unwrap_or(0);
-                            }
-                        }
-                    }
-                }
-                if let Some(end) = header_end {
-                    if data.len() >= end + content_len {
-                        break;
-                    }
-                }
-            }
-            Err(_) => break,
-        }
-    }
-
-    Ok(String::from_utf8_lossy(&data).into_owned())
-}
-
-/// Secret the Studio page sends with every `/api/*` request. Other web pages open in the browser can
-/// reach 127.0.0.1 too; without the token they cannot read settings or change them.
+/// Key the Studio page sends with every `/api/*` request. Other web pages open in the browser can
+/// reach 127.0.0.1 too; without the key they cannot read settings or change them. The page only
+/// carries it when Ekushe opened it with a one-time launch code (see `studio_http.rs`).
 fn studio_token() -> &'static str {
-    static TOKEN: std::sync::OnceLock<String> = std::sync::OnceLock::new();
-    TOKEN.get_or_init(|| {
-        use std::hash::{BuildHasher, Hasher};
-        let mut out = String::new();
-        for i in 0..2u64 {
-            // RandomState is seeded from the OS random source
-            let mut h = std::collections::hash_map::RandomState::new().build_hasher();
-            h.write_u64(i);
-            h.write_u128(
-                std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .map(|d| d.as_nanos())
-                    .unwrap_or(0),
-            );
-            out.push_str(&format!("{:016x}", h.finish()));
-        }
-        out
-    })
+    studio_http::token()
 }
 
 /// Value of an HTTP header (case-insensitive name), trimmed.
@@ -1885,8 +1902,8 @@ fn studio_request_allowed(req: &str, method: &str, clean_path: &str, port: u16) 
     method == "GET"
 }
 
-fn handle_http_client(mut stream: TcpStream) -> std::io::Result<()> {
-    let req = read_full_http_request(&mut stream)?;
+fn handle_http_client(mut stream: TcpStream, req: &str) -> std::io::Result<()> {
+    let req = req.to_string();
     if req.is_empty() {
         return Ok(());
     }
@@ -1912,7 +1929,7 @@ fn handle_http_client(mut stream: TcpStream) -> std::io::Result<()> {
     }
 
     if method == "GET" && (clean_path == "/" || clean_path.starts_with("/index")) {
-        let html = studio_ui::STUDIO_HTML.replace("__EKUSHE_TOKEN__", studio_token());
+        let html = studio_http::studio_page(studio_ui::STUDIO_HTML, path);
         return write_http_response(
             &mut stream,
             "200 OK",
@@ -2221,11 +2238,18 @@ pub fn open_studio_window(port: u16) {
     open_studio_window_tab(port, None);
 }
 
+/// Open Studio in this app's server, with a fresh one-time launch code so the page gets its key.
 pub fn open_studio_window_tab(port: u16, tab: Option<&str>) {
-    let url = match tab {
-        Some(t) => format!("http://127.0.0.1:{port}/?tab={t}"),
-        None => format!("http://127.0.0.1:{port}/"),
-    };
+    open_url_in_app_window(&studio_http::launch_url(port, tab));
+}
+
+/// Open Studio's address without a launch code (it then asks to be opened from the tray menu).
+fn open_studio_plain(port: u16) {
+    open_url_in_app_window(&format!("http://127.0.0.1:{port}/"));
+}
+
+fn open_url_in_app_window(url: &str) {
+    let url = url.to_string();
     let edge_paths = [
         r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
         r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",

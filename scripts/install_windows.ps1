@@ -1,8 +1,9 @@
 # Ekushe Next - Windows One-Step Installer
 # Builds or copies the release binaries (ekushe.exe, ekushe_tsf.dll, ekushe-cli.exe),
 # installs icons & Bangladeshi fonts (Kalpurush, SolaimanLipi, Siyam Rupali, Hind Siliguri)
-# to %LOCALAPPDATA%\Programs\Ekushe and user Windows Fonts, registers TSF profile in HKCU,
-# creates Start Menu shortcut with ekushe.ico, and optionally enables Run-at-Startup.
+# to %LOCALAPPDATA%\Programs\Ekushe and user Windows Fonts, creates Start Menu shortcut with
+# ekushe.ico, and optionally enables Run-at-Startup. The TSF input method preview is not registered
+# from here (it must be registered from Program Files; see the README).
 
 param(
     [switch]$NoLaunch,
@@ -68,12 +69,8 @@ foreach ($bin in @("ekushe.exe", "ekushe-cli.exe", "ekushe_tsf.dll", "ekushe_ffi
     }
 }
 
-# Register per-user TSF DLL (no admin UAC required since it writes to HKCU\Software\Classes)
-$tsfDll = Join-Path $installDir "ekushe_tsf.dll"
-if (Test-Path $tsfDll) {
-    & regsvr32.exe /s $tsfDll
-    Write-Host "  [OK] Registered Ekushe Next TSF Text Service (HKCU)" -ForegroundColor Green
-}
+# The TSF input method preview is registered machine-wide, so it is not registered from this
+# user-writable folder; see the README to try it from Program Files.
 
 # Create Start Menu shortcut with ekushe.ico
 $wsh = New-Object -ComObject WScript.Shell

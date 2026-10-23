@@ -24,19 +24,15 @@ fn main() {
         println!("ekushe-studio {}", env!("CARGO_PKG_VERSION"));
         return;
     }
-    let port = ekushe_ffi::studio::start();
-    if port == 0 {
+    let tab = args.iter().any(|a| a == "--settings").then_some("settings");
+    // A fresh one-time address for this user (a private page that forwards to Studio)
+    let Some(url) = ekushe_ffi::studio::launch_url(tab) else {
         eprintln!("Ekushe Studio: no free port on 127.0.0.1");
         std::process::exit(1);
-    }
-    let tab = if args.iter().any(|a| a == "--settings") {
-        "?tab=settings"
-    } else {
-        ""
     };
-    let url = format!("http://127.0.0.1:{port}/{tab}");
-    println!("Ekushe Studio: {url}");
-    if !args.iter().any(|a| a == "--no-browser") {
+    if args.iter().any(|a| a == "--no-browser") {
+        println!("Ekushe Studio: {url}");
+    } else {
         open_in_browser(&url);
     }
     loop {

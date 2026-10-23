@@ -139,6 +139,8 @@ fn record(sh: &mut Shared, out: SessionOutput) -> *mut c_char {
 }
 
 pub(crate) static SHARED: Lazy<Mutex<Shared>> = Lazy::new(|| {
+    // Settings, snippets and learned words are the user's own: owner-only (older versions were not)
+    ekushe_core::suggest::tighten_permissions(&Config::default_dir());
     let cfg = Config::load_from(&Config::default_config_path()).unwrap_or_default();
     let mut ekushe = Ekushe::new(cfg);
     let _ = ekushe
@@ -269,6 +271,18 @@ pub extern "C" fn ek_reset() {
     });
 }
 
+/// The focused field is private (a password, PIN or "private" field) or not. In a private field
+/// nothing is learned and no context is kept; front ends type passwords as plain characters.
+#[no_mangle]
+pub extern "C" fn ek_set_private(private: bool) {
+    with_shared((), |sh| {
+        sh.ekushe.set_private_field(private);
+        if private {
+            sh.last = SessionOutput::default();
+        }
+    });
+}
+
 #[no_mangle]
 pub extern "C" fn ek_is_composing() -> bool {
     with_shared(false, |sh| sh.ekushe.is_composing())
@@ -373,20 +387,26 @@ pub extern "C" fn ek_studio_start() -> u16 {
     }
 }
 
-/// Studio address with its access token, e.g. `http://127.0.0.1:45210/?tab=settings`.
-/// `tab` may be null. Returns null when Studio is not running.
+/// An address that opens Studio for this user with a fresh one-time launch code (on macOS and Linux
+/// a `file://` page in a private folder that forwards to Studio). `tab` may be null (e.g.
+/// `"settings"`). Returns null when Studio cannot run. Open it straight away: the code expires.
 ///
 /// # Safety
 /// `tab` must be a valid NUL-terminated UTF-8 string or null.
 #[no_mangle]
 pub unsafe extern "C" fn ek_studio_url(tab: *const c_char) -> *mut c_char {
-    let port = ek_studio_start();
-    if port == 0 {
-        return ptr::null_mut();
+    #[cfg(feature = "studio")]
+    {
+        let tab = cstr(tab);
+        match catch_unwind(|| studio::launch_url(tab)).ok().flatten() {
+            Some(u) => to_c(u),
+            None => ptr::null_mut(),
+        }
     }
-    match cstr(tab) {
-        Some(t) if !t.is_empty() => to_c(format!("http://127.0.0.1:{port}/?tab={t}")),
-        _ => to_c(format!("http://127.0.0.1:{port}/")),
+    #[cfg(not(feature = "studio"))]
+    {
+        let _ = tab;
+        ptr::null_mut()
     }
 }
 

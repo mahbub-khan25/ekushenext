@@ -654,8 +654,45 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
 <div class="toast glass" id="toast" role="status" aria-live="polite"></div>
 
 <script>
-// Every Studio API call carries this page's token; other websites cannot read or change settings.
-const EKUSHE_TOKEN = "__EKUSHE_TOKEN__";
+// Every Studio API call carries this page's key; other websites cannot read or change settings.
+// The server only puts the key in the page when Ekushe opened it with a one-time launch code; the tab
+// keeps it (session storage is per tab and per port) so reloading still works.
+const EKUSHE_TOKEN = (() => {
+  const served = "__EKUSHE_TOKEN__";
+  let t = served;
+  try {
+    if (served) sessionStorage.setItem('ekushe_key', served);
+    else t = sessionStorage.getItem('ekushe_key') || '';
+  } catch (e) {}
+  // Take the used-up launch code out of the address bar (keep ?tab=)
+  const q = new URLSearchParams(window.location.search);
+  if (q.has('code')) {
+    q.delete('code');
+    const rest = q.toString();
+    history.replaceState(null, '', window.location.pathname + (rest ? '?' + rest : '') + window.location.hash);
+  }
+  return t;
+})();
+if (!EKUSHE_TOKEN) {
+  document.addEventListener('DOMContentLoaded', () => {
+    const d = document.createElement('div');
+    d.id = 'needLaunch';
+    d.setAttribute('role', 'alert');
+    d.style.cssText = 'position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:var(--bg,#f4f6f5);color:var(--ink,#0e241b);font:16px/1.6 var(--font-ui,system-ui),sans-serif;text-align:center;padding:24px';
+    const box = document.createElement('div');
+    box.style.maxWidth = '640px';
+    const h = document.createElement('h2');
+    h.textContent = 'স্টুডিও একুশে নেক্সট থেকে খুলুন';
+    const p1 = document.createElement('p');
+    p1.textContent = 'নিরাপত্তার জন্য স্টুডিও শুধু একুশের মেনু থেকে খোলা যায়। উইন্ডোজে ট্রে আইকনে রাইট-ক্লিক করে "একুশে নেক্সট স্টুডিও খুলুন" বেছে নিন; ম্যাক ও লিনাক্সে কিবোর্ড মেনু থেকে "Open Ekushe Studio"।';
+    const p2 = document.createElement('p');
+    p2.style.opacity = '0.7';
+    p2.textContent = 'For your security, Studio only opens from Ekushe\'s menu: right-click the tray icon on Windows, or use the keyboard menu on Mac and Linux.';
+    box.append(h, p1, p2);
+    d.append(box);
+    document.body.append(d);
+  });
+}
 const nativeFetch = window.fetch.bind(window);
 window.fetch = (url, opts = {}) => {
   if (typeof url === 'string' && url.startsWith('/api/')) {

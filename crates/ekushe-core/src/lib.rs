@@ -83,6 +83,9 @@ pub struct Ekushe {
     current_app: Option<String>,
     /// Language last used in each application this session
     app_languages: HashMap<String, InputLanguage>,
+    /// The host says the focused field is private (a password, PIN or "incognito" field): nothing
+    /// typed there is learned or kept as context
+    private_field: bool,
 }
 
 impl Default for Ekushe {
@@ -116,6 +119,7 @@ impl Ekushe {
             prev_word: None,
             current_app: None,
             app_languages: HashMap::new(),
+            private_field: false,
         }
     }
 
@@ -313,8 +317,12 @@ impl Ekushe {
             let (stem, tail) = split_trailing_punctuation(&roman);
             let tail_bn = self.phonetic.transliterate_word(tail);
             let chosen_stem = chosen.strip_suffix(tail_bn.as_str()).unwrap_or(&chosen);
-            self.suggestions.record_user_choice(stem, chosen_stem);
-            if trailing == Some(' ') {
+            // Never learn from a private field, or anything that looks like a password or code
+            // (letters mixed with digits, or symbols such as @ # $ %)
+            if !self.private_field && !looks_secret(stem) {
+                self.suggestions.record_user_choice(stem, chosen_stem);
+            }
+            if trailing == Some(' ') && !self.private_field {
                 self.last_commit_undo = Some((roman, chosen.clone()));
             }
         }
@@ -387,6 +395,21 @@ impl Ekushe {
     /// True while a word is being typed (Roman or fixed-layout buffer not empty).
     pub fn is_composing(&self) -> bool {
         !self.roman_buf.is_empty() || !self.fixed_buf.is_empty()
+    }
+
+    /// Tell the engine the focused field is private (password, PIN, a field marked private) or not.
+    /// In a private field nothing is learned and no word is kept for context or undo. Hosts should
+    /// also not show a preview there, and for passwords type plain characters instead.
+    pub fn set_private_field(&mut self, private: bool) {
+        if private != self.private_field {
+            self.private_field = private;
+            self.reset_composition();
+        }
+    }
+
+    /// Whether the focused field was marked private ([`Self::set_private_field`]).
+    pub fn is_private_field(&self) -> bool {
+        self.private_field
     }
 
     /// Forget the word being composed, the context word and the last-commit undo. Hosts call this when
@@ -512,6 +535,18 @@ impl Ekushe {
             delete_before: 0,
         }
     }
+}
+
+/// Roman text that looks like a password, code or address rather than a word: letters mixed with
+/// digits (`abc123`, `2ta` too, which is fine to not learn), or symbols no Bangla word is typed with.
+/// Ekushe's own marks (`,,` `^` `~` `` ` `` `+` `:` `.`) do not count.
+pub fn looks_secret(roman: &str) -> bool {
+    let letters = roman.chars().any(|c| c.is_ascii_alphabetic());
+    let digits = roman.chars().any(|c| c.is_ascii_digit());
+    let symbols = roman
+        .chars()
+        .any(|c| "@#$%&*=_|<>{}[]\\/'\"!?;".contains(c));
+    (letters && digits) || symbols || roman.chars().count() > 40
 }
 
 /// Split `gai,` into (`gai`, `,`). Only for a plain word (letters and digits, starting with a
