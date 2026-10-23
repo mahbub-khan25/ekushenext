@@ -143,11 +143,15 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
     // Debug builds report where each key is, so the automated test can tap them
     private val debuggable = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
     private var logged = false
+    private var loggedAt = IntArray(2)
     private fun logKeys() {
-        if (!debuggable || logged || placed.isEmpty()) return
-        logged = true
+        if (!debuggable || placed.isEmpty()) return
         val loc = IntArray(2)
         getLocationOnScreen(loc)
+        // again whenever the keyboard has moved (it slides in when it opens)
+        if (logged && loc.contentEquals(loggedAt)) return
+        logged = true
+        loggedAt = loc
         val keys = placed.joinToString(",") { (k, r) ->
             val id = if (k.type == KeyType.CHAR) k.text.replace("\\", "\\\\").replace("\"", "\\\"") else k.type.name
             "{\"k\":\"$id\",\"x\":${(loc[0] + r.centerX()).toInt()},\"y\":${(loc[1] + r.centerY()).toInt()}}"
