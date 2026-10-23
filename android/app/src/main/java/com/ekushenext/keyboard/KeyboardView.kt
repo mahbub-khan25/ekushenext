@@ -144,6 +144,14 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
     private val debuggable = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
     private var logged = false
     private var loggedAt = IntArray(2)
+    // The slide-in animation moves the window without redrawing, so look again a few times after
+    private var relogLeft = 0
+    private val relog = object : Runnable {
+        override fun run() {
+            logKeys()
+            if (--relogLeft > 0) postDelayed(this, 500)
+        }
+    }
     private fun logKeys() {
         if (!debuggable || placed.isEmpty()) return
         val loc = IntArray(2)
@@ -167,6 +175,7 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
         drawStrip(c)
         if (mode == Mode.EMOJI) { drawEmoji(c); return }
         logKeys()
+        if (debuggable) { removeCallbacks(relog); relogLeft = 8; postDelayed(relog, 500) }
         for ((k, r) in placed) drawKey(c, k, r, pressedKey == k)
         pressedKey?.let { k -> placed.firstOrNull { it.key == k }?.let { if (k.type == KeyType.CHAR && altsOpen == null) drawPreview(c, k, it.rect) } }
         altsOpen?.let { drawAlts(c, it) }
