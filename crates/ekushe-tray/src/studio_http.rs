@@ -389,7 +389,10 @@ mod http_tests {
             match s.read(&mut b) {
                 Ok(0) => break,
                 Ok(n) => {
+                    // The answer has started: read the rest of it
                     out.extend_from_slice(&b[..n]);
+                    s.set_read_timeout(Some(Duration::from_secs(2))).unwrap();
+                    let _ = s.read_to_end(&mut out);
                     break;
                 }
                 Err(_) => {}
