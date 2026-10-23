@@ -56,6 +56,13 @@ class Prefs(context: Context) {
     var photoStamp: Long
         get() = p.getLong("photo_stamp", 0)
         set(v) = p.edit().putLong("photo_stamp", v).apply()
+    /** How a key shows it was pressed: classic, 3d, glow, ripple, bounce */
+    var pressEffect: String
+        get() = p.getString("press_effect", "classic") ?: "classic"
+        set(v) = p.edit().putString("press_effect", v).apply()
+    var emojiKey: Boolean
+        get() = p.getBoolean("emoji_key", true)
+        set(v) = p.edit().putBoolean("emoji_key", v).apply()
     var seenTour: Boolean
         get() = p.getBoolean("seen_tour", false)
         set(v) = p.edit().putBoolean("seen_tour", v).apply()

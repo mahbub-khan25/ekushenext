@@ -75,7 +75,18 @@ object Layouts {
     private val commaAlts = listOf(Alt(",,", ",,", "হসন্ত"), Alt("+", "+", "যুক্ত"), Alt("`", "`", "আলাদা"), Alt(";", ";"), Alt("'", "'"), Alt("\"", "\""), Alt("-", "-"))
     private val periodAlts = listOf(Alt("..", "..", "বিন্দু"), Alt("?", "?"), Alt("!", "!"), Alt(":", ":", "ঃ"), Alt("^", "^", "ঁ"), Alt("/", "/", "English"), Alt("$", "$", "৳"))
 
-    fun bottomRow(switchType: KeyType, switchLabel: String) = listOf(
+    /** An emoji key on the bottom row, like Gboard and Samsung (a setting) */
+    var emojiKey = true
+
+    fun bottomRow(switchType: KeyType, switchLabel: String) = if (emojiKey) listOf(
+        Key(switchType, switchLabel, width = 1.3f),
+        Key(KeyType.LANG, "বাং", width = 1f),
+        Key(KeyType.CHAR, ",", ",", alts = commaAlts),
+        Key(KeyType.EMOJI, "☺", width = 1f),
+        Key(KeyType.SPACE, " ", " ", width = 3.4f),
+        Key(KeyType.CHAR, ".", ".", alts = periodAlts),
+        Key(KeyType.ENTER, "↵", "\n", width = 1.3f),
+    ) else listOf(
         Key(switchType, switchLabel, width = 1.5f),
         Key(KeyType.LANG, "বাং", width = 1f),
         Key(KeyType.CHAR, ",", ",", alts = commaAlts),
