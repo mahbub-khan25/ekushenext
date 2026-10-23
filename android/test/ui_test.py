@@ -64,12 +64,18 @@ def type_word(word, km):
 
 
 def field_text():
-    sh('uiautomator dump /sdcard/ui.xml >/dev/null')
-    xml = adb('exec-out', 'cat', '/sdcard/ui.xml')
-    root = ET.fromstring(xml[xml.index('<'):])
-    for n in root.iter('node'):
-        if n.get('class') == 'android.widget.EditText' and n.get('package') == PKG:
-            return n.get('text') or '', n.get('bounds')
+    # uiautomator sometimes catches the screen mid-change; look again a few times
+    for _ in range(6):
+        try:
+            sh('uiautomator dump /sdcard/ui.xml >/dev/null')
+            xml = adb('exec-out', 'cat', '/sdcard/ui.xml')
+            root = ET.fromstring(xml[xml.index('<'):])
+            for n in root.iter('node'):
+                if n.get('class') == 'android.widget.EditText' and n.get('package') == PKG:
+                    return n.get('text') or '', n.get('bounds')
+        except (ValueError, ET.ParseError):
+            pass
+        time.sleep(1.5)
     return None, None
 
 
