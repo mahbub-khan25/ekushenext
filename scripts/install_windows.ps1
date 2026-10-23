@@ -70,7 +70,14 @@ foreach ($bin in @("ekushe.exe", "ekushe-cli.exe", "ekushe_tsf.dll", "ekushe_ffi
 }
 
 # The TSF input method preview is registered machine-wide, so it is not registered from this
-# user-writable folder; see the README to try it from Program Files.
+# user-writable folder; see the README to try it from Program Files. Older versions of this script
+# did register it from here: undo that (needs an administrator prompt; harmless otherwise).
+$tsfDll = Join-Path $installDir "ekushe_tsf.dll"
+$tsfKey = "HKLM:\Software\Classes\CLSID\{E21B0945-2102-1952-B09C-0AD55559B326}\InprocServer32"
+$registered = (Get-ItemProperty -Path $tsfKey -ErrorAction SilentlyContinue).'(default)'
+if ($registered -and (Test-Path $tsfDll) -and ($registered -ieq $tsfDll)) {
+    & regsvr32.exe /u /s $tsfDll
+}
 
 # Create Start Menu shortcut with ekushe.ico
 $wsh = New-Object -ComObject WScript.Shell

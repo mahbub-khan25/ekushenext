@@ -34,7 +34,7 @@ fn password_like_text_is_not_learned() {
     type_and_pick(&mut ek, "he^se");
     assert!(ek.suggestions_engine().learned_version() >= 3);
     for ok in [
-        "amar", "allah,,", "he^se", "du:kho", "k+t", "bol`le", "hothat``",
+        "amar", "allah,,", "he^se", "du:kho", "k+t", "bol`le", "hothat``", "hothat/", "\"ami",
     ] {
         assert!(!looks_secret(ok), "{ok}");
     }
@@ -71,6 +71,18 @@ fn saved_files_are_owner_only() {
         1,
         "no temporary files left"
     );
+    // A settings file reached through a link stays a link, and the target is updated
+    let real = base.join("real.toml");
+    std::fs::write(&real, "").unwrap();
+    let link = dir.join("linked.toml");
+    std::os::unix::fs::symlink(&real, &link).unwrap();
+    ekushe_core::suggest::write_atomic(&link, "x = 1\n").unwrap();
+    assert!(std::fs::symlink_metadata(&link)
+        .unwrap()
+        .file_type()
+        .is_symlink());
+    assert_eq!(std::fs::read_to_string(&real).unwrap(), "x = 1\n");
+    std::fs::remove_file(&link).unwrap();
     let cfg = dir.join("config.toml");
     ekushe_core::config::Config::default()
         .save_to(&cfg)

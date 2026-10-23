@@ -25,7 +25,7 @@ fn main() {
         return;
     }
     let tab = args.iter().any(|a| a == "--settings").then_some("settings");
-    // A fresh one-time address for this user (a private page that forwards to Studio)
+    // A fresh one-time address (only the first page opened with it gets Studio's key)
     let Some(url) = ekushe_ffi::studio::launch_url(tab) else {
         eprintln!("Ekushe Studio: no free port on 127.0.0.1");
         std::process::exit(1);
