@@ -79,9 +79,16 @@ def expect(label, got, want):
         failures.append(label)
 
 
-adb('install', '-r', '-g', APK)
+print(adb('install', '-r', '-g', APK))
+# The system takes a moment to notice a newly installed keyboard
+for _ in range(40):
+    if IME in sh('ime list -a -s'):
+        break
+    time.sleep(0.5)
+print('keyboards:', sh('ime list -a -s').split())
 sh(f'ime enable {IME}')
 sh(f'ime set {IME}')
+print('default keyboard:', sh('settings get secure default_input_method').strip())
 sh('settings put system screen_off_timeout 1800000')
 adb('logcat', '-c')
 sh(f'am start -W -n {PKG}/.MainActivity')
