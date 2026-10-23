@@ -86,7 +86,7 @@ const Icon: React.FC<{ kind: 'web' | 'mail'; size: number }> = ({ kind, size }) 
 );
 
 /** One address pill: icon, the address typing itself in, a glow and a sheen when it completes. */
-const AddressPill: React.FC<{ kind: 'web' | 'mail'; text: string; at: number }> = ({ kind, text, at }) => {
+export const AddressPill: React.FC<{ kind: 'web' | 'mail'; text: string; at: number }> = ({ kind, text, at }) => {
   const f = useCurrentFrame();
   const { u, V } = useLayout();
   const pop = spring({ frame: f - at, fps: 60, config: { damping: 13, stiffness: 150 } });
