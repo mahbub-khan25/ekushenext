@@ -1,10 +1,9 @@
 **Beta.** Ekushe Next is a Bangla phonetic keyboard for **Windows 10/11 (64-bit)**, **macOS 11 or later** (Apple silicon and Intel) and **Linux** (64-bit, IBus). It comes with its own dictionary, which puts the Bangla Academy standard spelling first.
 
 ### What's new in this beta
-- **Convert selected text in any app (Windows).** Select some text and press **Ctrl+Alt+C**. Old Bijoy (SutonnyMJ) text becomes Unicode, and Banglish (`amar sonar bangla`) becomes Bangla, word by word, the way Space would place it. Whatever was on your clipboard is put back afterwards. Studio's converter already promised this shortcut; now it works.
-- **"English in terminals" now does what it says.** With it on (the default), terminals such as Windows Terminal, Command Prompt and PowerShell, and Terminal or iTerm on a Mac, start in English, and double-tap Shift now gives you Bangla there too (before, Bangla was blocked in terminals). With it off, a terminal is like any other app.
+- **Report a problem from the app.** Choose **🐞 সমস্যা জানান (Report a problem)** in the tray menu on Windows, **Report a Problem…** in the input menu on a Mac, **Report a problem** in the IBus menu on Linux, or the button at the bottom of Studio's settings. It opens a short form on ekushenext.com, with the version, computer, layout and typing mode filled in. Write what happened in Bangla or English; no account is needed, and nothing you have typed in other apps is sent.
 
-Also in this beta (from beta.9): password boxes are left alone in every app, nothing that looks like a password is remembered, Studio opens only from Ekushe's own menu, and settings files on Mac and Linux are private to your account.
+Also in this beta (from beta.10): select text in any app and press **Ctrl+Alt+C** to turn old Bijoy or Banglish text into Bangla (Windows), and "English in terminals" now works both ways.
 
 ### Download
 - **Ekushe-Setup.exe** (or **Ekushe-Setup.zip**, if your browser blocks the .exe) installs it for your user account, with no admin rights needed. It starts with Windows, adds a Start Menu shortcut, and can be removed from Settings → Apps.
@@ -53,7 +52,7 @@ On Linux the suggestions appear in IBus's own candidate window. Backspace-undo a
 - On Windows, a password box is recognised a moment after you click into it. Typing straight away usually works; if you see Bangla in a password box, switch to English (double-tap Shift) and type it again.
 - The Windows input method in the Extras zip is an early preview. Don't run it at the same time as the main app.
 
-If something goes wrong while installing, the steps are recorded in `%TEMP%\ekushe-install.log`. Please attach that file when you report the problem.
+If something goes wrong while installing, the steps are recorded in `%TEMP%\ekushe-install.log`. Please paste its last lines into your report at https://ekushenext.com/report/.
 
 The full guide (install, settings, every typing rule) is at https://ekushenext.com/guide/.
 
