@@ -73,6 +73,12 @@ def field_text():
             for n in root.iter('node'):
                 if n.get('class') == 'android.widget.EditText' and n.get('package') == PKG:
                     return n.get('text') or '', n.get('bounds')
+            # A slow emulator can pop an "isn't responding" box over the app: press Wait
+            for n in root.iter('node'):
+                if n.get('text') == 'Wait' and n.get('package') == 'android':
+                    x1, y1, x2, y2 = map(int, re.findall(r'\d+', n.get('bounds')))
+                    sh(f'input tap {(x1 + x2) // 2} {(y1 + y2) // 2}')
+                    print('dismissed a not-responding box')
         except (ValueError, ET.ParseError):
             pass
         time.sleep(1.5)
