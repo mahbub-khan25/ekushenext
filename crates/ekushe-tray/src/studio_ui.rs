@@ -647,6 +647,10 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
         </div>
       </div>
       <div id="settingsSavedMsg" role="status" class="hint" style="margin-top:12px"></div>
+      <div class="etched" style="margin-top:18px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+        <div><div class="section-title">কোনো সমস্যা হচ্ছে?</div><div class="hint">কী হয়েছে লিখে পাঠান, কোনো অ্যাকাউন্ট লাগবে না। আপনার লেখা কিছু পাঠানো হয় না।</div></div>
+        <a class="btn primary" id="reportLink" href="https://ekushenext.com/report/" target="_blank" rel="noopener">সমস্যা জানান</a>
+      </div>
     </section>
   </main>
 </div>
@@ -848,6 +852,7 @@ async function refreshState() {
   }
   if (st.font_family) applyCssFont(st.font_family);
   if (st.popup_opacity) applyOpacityVisuals(st.popup_opacity);
+  if (st.report_url && /^https:\/\/ekushenext\.com\//.test(st.report_url)) document.getElementById('reportLink').href = st.report_url;
 }
 
 async function toggleMode() {

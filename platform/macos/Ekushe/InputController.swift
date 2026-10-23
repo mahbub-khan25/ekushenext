@@ -247,6 +247,10 @@ final class EkusheInputController: IMKInputController {
                               action: #selector(toggleLanguage(_:)), keyEquivalent: "")
         lang.target = self
         menu.addItem(lang)
+        menu.addItem(.separator())
+        let report = NSMenuItem(title: "Report a Problem…", action: #selector(reportProblem(_:)), keyEquivalent: "")
+        report.target = self
+        menu.addItem(report)
         return menu
     }
 
@@ -256,6 +260,10 @@ final class EkusheInputController: IMKInputController {
 
     @objc func openSettings(_ sender: Any?) {
         if let url = Engine.studioURL(tab: "settings") { NSWorkspace.shared.open(url) }
+    }
+
+    @objc func reportProblem(_ sender: Any?) {
+        if let url = Engine.reportURL() { NSWorkspace.shared.open(url) }
     }
 
     @objc func toggleLanguage(_ sender: Any?) {

@@ -20,6 +20,7 @@ void ek_reload_config(void);
 void ek_save_learned(void);
 uint16_t ek_studio_start(void);
 char *ek_studio_url(const char *tab);
+char *ek_report_url(const char *os);
 void ekushe_string_free(char *s);
 char *ek_out_preedit(void);
 char *ek_out_committed(void);
