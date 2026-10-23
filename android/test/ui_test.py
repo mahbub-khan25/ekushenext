@@ -38,16 +38,23 @@ def shot(name):
 
 
 def keys(mode='LETTERS'):
-    time.sleep(1.0)
-    for _ in range(20):
+    # Wait for the keyboard to finish sliding in, and for its logged position to stop changing
+    last, steady = None, 0
+    for _ in range(40):
+        time.sleep(0.5)
+        moving = sh('dumpsys window | grep -c insets_animation || true').strip() not in ('', '0')
         log = adb('logcat', '-d', '-s', 'EkusheKeys:I')
         found = [json.loads(m) for m in re.findall(r'EkusheKeys: (\{.*\})', log)]
         found = [f for f in found if f['mode'] == mode]
-        if found:
-            k = found[-1]
-            return {e['k']: (e['x'], e['y']) for e in k['keys']}, k['strip']
-        time.sleep(0.5)
-    raise SystemExit(f'no key positions for {mode}')
+        cur = found[-1] if found else None
+        if cur is not None and cur == last and not moving:
+            steady += 1
+            if steady >= 2:
+                return {e['k']: (e['x'], e['y']) for e in cur['keys']}, cur['strip']
+        else:
+            steady = 0
+        last = cur
+    raise SystemExit(f'no steady key positions for {mode}')
 
 
 def tap(x, y, pause=0.12):
