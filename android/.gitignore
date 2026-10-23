@@ -8,3 +8,4 @@ keystore.properties
 app/src/main/jniLibs/
 app/src/main/assets/ekushe.dict.z
 app/src/main/assets/fonts/
+__pycache__/
