@@ -184,22 +184,27 @@ shot('09-symbols')
 sk, _ = keys('SYMBOLS')
 tap(*sk['LETTERS'], 0.8)
 
-# English
-tap(*km['LANG'], 0.6)
-shot('10-english')
-for ch in 'hello ':
-    tap(*km[ch] if ch != ' ' else km['SPACE'], 0.15)
-time.sleep(0.4)
-got = field_text()[0]
-expect('english typing', got.endswith('Hello ') or got.endswith('hello '), True)
-tap(*km['LANG'], 0.6)
+# English: the EN key hands over to Gboard
+tap(*km['LANG'], 2.5)
+now_ime = sh('settings get secure default_input_method').strip()
+expect('EN hands over to Gboard', now_ime.startswith('com.google.android.inputmethod.latin'), True)
+shot('10-gboard-english')
+# Gboard's globe key comes back here (the test does it directly), and in Bangla
+sh(f'ime set {IME}')
+time.sleep(2)
+dismiss_anr()
+before = field_text()[0] or ''
+km, strip = keys()
+tap(*km['SPACE'], 0.3)
+type_word('ami ', km)
+time.sleep(0.5)
+got = field_text()[0] or ''
+expect('back in Bangla after Gboard', got.endswith('আমি '), True)
 
-# Emoji panel from the toolbar (shown while nothing is being typed)
-density = int(re.findall(r'(\d+)', sh('wm density'))[-1]) / 160
-width = int(re.search(r'(\d+)x', sh('wm size')).group(1))
-tap(int(width - 2.5 * 52 * density - 8 * density), strip, 1)
-shot('11-emoji')
-tap(int(width / 9 / 2), int(strip + 4 * 54 * density), 0.8)  # ABC
+# The emoji key next to Space
+tap(*km['EMOJI'], 1)
+shot('11-emoji-key')
+tap(int(int(re.search(r'(\d+)x', sh('wm size')).group(1)) / 9 / 2), int(strip + 4 * 54 * (int(re.findall(r'(\d+)', sh('wm density'))[-1]) / 160)), 0.8)  # ABC
 
 # Dark theme
 sh('cmd uimode night yes')
@@ -312,6 +317,47 @@ if at:
     keyboard_shot('33-photo-keyboard')
 else:
     failures.append('photo switch')
+
+# Our own English (Gboard setting off), then each key-press effect while a key is held
+to_top()
+at = find(lambda n: (n.get('text') or '').startswith('ইংরেজির জন্য Gboard'))
+if at:
+    tap(at[0], at[1], 0.8)
+    to_top()
+    text, b = field_text()
+    bx1, by1, bx2, by2 = map(int, re.findall(r'\d+', b))
+    tap((bx1 + bx2) // 2, (by1 + by2) // 2, 1.5)
+    km3, _ = keys()
+    tap(*km3['LANG'], 0.8)
+    for ch in ' hello ':
+        tap(*km3[ch] if ch != ' ' else km3['SPACE'], 0.15)
+    time.sleep(0.4)
+    got = field_text()[0] or ''
+    expect('english typing in Ekushe Next', got.endswith('hello ') or got.endswith('Hello '), True)
+    shot('34-own-english')
+    tap(*km3['LANG'], 0.6)
+    sh('input keyevent KEYCODE_BACK'); time.sleep(0.8)
+else:
+    failures.append('gboard switch')
+
+for label, name in [('থ্রিডি', '3d'), ('আলো', 'glow'), ('ঢেউ', 'ripple'), ('লাফ', 'bounce')]:
+    to_top()
+    at = find(lambda n, l=label: (n.get('text') or '').lstrip('○● ').startswith(l))
+    if not at:
+        failures.append('effect ' + name); continue
+    tap(at[0], at[1], 0.8)
+    to_top()
+    text, b = field_text()
+    bx1, by1, bx2, by2 = map(int, re.findall(r'\d+', b))
+    tap((bx1 + bx2) // 2, (by1 + by2) // 2, 1.5)
+    km4, _ = keys()
+    # hold the f key (it has no long-press choices) down while the screen is captured
+    gx, gy = km4['f']
+    hold = subprocess.Popen(['adb', 'shell', f'input swipe {gx} {gy} {gx} {gy} 2500'])
+    time.sleep(1.0 if name != 'ripple' else 0.12)
+    shot(f'4{["3d", "glow", "ripple", "bounce"].index(name)}-effect-{name}')
+    hold.wait()
+    sh('input keyevent KEYCODE_BACK'); time.sleep(0.8)
 
 print('FAILURES:', failures)
 sys.exit(1 if failures else 0)

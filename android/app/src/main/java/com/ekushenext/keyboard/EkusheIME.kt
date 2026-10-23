@@ -283,12 +283,30 @@ class EkusheIME : InputMethodService(), KeyboardListener {
             view?.invalidate()
             return
         }
+        // English in Gboard: hand over, and come back in Bangla when Gboard's 🌐 key returns here
+        if (bangla && prefs.gboardEnglish) {
+            val id = Gboard.enabledId(this)
+            if (id != null && handOver(id)) return
+            view?.stripMessage = if (Gboard.installed(this)) "Gboard চালু নেই · turn on Gboard in Settings" else "Gboard নেই · Gboard isn't on this phone"
+        }
         bangla = !bangla
         prefs.bangla = bangla
         view?.bangla = bangla
         view?.shift = Shift.OFF
         updateAutoShift()
     }
+
+    /** Switch to another keyboard; false if Android refused */
+    private fun handOver(id: String): Boolean = runCatching {
+        prefs.bangla = true
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) switchInputMethod(id)
+        else {
+            val token = window?.window?.attributes?.token ?: return false
+            @Suppress("DEPRECATION")
+            (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).setInputMethod(token, id)
+        }
+        true
+    }.getOrDefault(false)
 
     override fun onSwitchInputMethod() {
         val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
