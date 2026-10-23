@@ -8,6 +8,7 @@ import { Teaser3, TEASER3_FRAMES } from './teasers/Teaser3';
 import { Teaser4, TEASER4_FRAMES } from './teasers/Teaser4';
 import { Teaser5, TEASER5_FRAMES } from './teasers/Teaser5';
 import { Anthem, ANTHEM_FRAMES } from './teasers/Anthem';
+import { Reveal, REVEAL_FRAMES } from './teasers/Reveal';
 
 /** 60 s, 60 fps, 2K: 2560×1440 (16:9, YouTube) and 1440×2560 (9:16, Reels / Shorts / TikTok). */
 export const Root: React.FC = () => (
@@ -28,5 +29,8 @@ export const Root: React.FC = () => (
     {/* Real example: the national anthem typed live in a note app */}
     <Composition id="Anthem-16x9" component={Anthem} durationInFrames={ANTHEM_FRAMES} fps={60} width={2560} height={1440} />
     <Composition id="Anthem-9x16" component={Anthem} durationInFrames={ANTHEM_FRAMES} fps={60} width={1440} height={2560} />
+    {/* Launch-date reveal: 30 October 2026, then every top feature */}
+    <Composition id="Reveal-16x9" component={Reveal} durationInFrames={REVEAL_FRAMES} fps={60} width={2560} height={1440} />
+    <Composition id="Reveal-9x16" component={Reveal} durationInFrames={REVEAL_FRAMES} fps={60} width={1440} height={2560} />
   </>
 );
