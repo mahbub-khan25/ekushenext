@@ -242,7 +242,7 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
         }
         // Flat look: only Space, Enter and a held key keep a shape
         val shaped = borders || pressed || enter || shiftOn || k.type == KeyType.SPACE
-        val depth = 3.5f * dp
+        val depth = 4.5f * dp
         // where the key's face is drawn (and its label with it)
         val r = when {
             effect == "3d" && shaped -> if (pressed) RectF(slot.left, slot.top + depth, slot.right, slot.bottom) else RectF(slot.left, slot.top, slot.right, slot.bottom - depth)
@@ -255,11 +255,20 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
                 "3d" -> {
                     // the key's side: a darker edge below the face, gone when it is pressed down
                     if (!pressed) {
-                        keyPaint.color = withAlphaOf(blend(fill, android.graphics.Color.BLACK, if (p.dark) 0.5f else 0.24f), fill)
+                        keyPaint.color = withAlphaOf(blend(fill, android.graphics.Color.BLACK, if (p.dark) 0.62f else 0.3f), fill)
                         c.drawRoundRect(slot.left, slot.top + depth, slot.right, slot.bottom, radius, radius, keyPaint)
                     }
                     keyPaint.color = if (pressed) withAlphaOf(blend(fill, p.text, 0.1f), fill) else fill
                     c.drawRoundRect(r, radius, radius, keyPaint)
+                    // light catching the top of a raised key
+                    if (!pressed) {
+                        keyPaint.color = Palette.alpha(android.graphics.Color.WHITE, if (p.dark) 0.10f else 0.55f)
+                        c.save(); c.clipRect(r.left, r.top, r.right, r.top + radius)
+                        c.drawRoundRect(r.left + 1.5f * dp, r.top + 1f * dp, r.right - 1.5f * dp, r.top + 2 * radius, radius, radius, keyPaint)
+                        c.restore()
+                        keyPaint.color = fill
+                        c.drawRoundRect(r.left + 1.5f * dp, r.top + 2.2f * dp, r.right - 1.5f * dp, r.bottom, radius, radius, keyPaint)
+                    }
                 }
                 "glow" -> {
                     if (pressed) {
