@@ -140,8 +140,8 @@ const DateReveal: React.FC = () => {
     <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', flexDirection: 'column', opacity: 1 - out, transform: `translateX(${shake}px)` }}>
       <AbsoluteFill style={{ background: `radial-gradient(circle at 50% ${V ? 46 : 52}%, rgba(233,185,73,${0.35 * flare * (1 - ease(G, LOCK.flare + 30, LOCK.flare + 160))}) 0%, rgba(224,48,63,${0.25 * flare}) 25%, transparent 60%)` }} />
       <div style={{ opacity: enter, transform: `translateY(${(1 - enter) * 40 * u}px)`, textAlign: 'center' }}>
-        <div style={{ fontFamily: FONT_LATIN, fontWeight: 700, letterSpacing: '0.42em', fontSize: 30 * u, color: C.mustard }}>LAUNCHING</div>
-        <Big size={V ? 96 : 84} style={{ marginTop: 8 * u }}>উদ্বোধনের দিন</Big>
+        <div style={{ fontFamily: FONT_LATIN, fontWeight: 700, letterSpacing: '0.42em', fontSize: 30 * u, color: C.mustard }}>BETA LAUNCH</div>
+        <Big size={V ? 96 : 84} style={{ marginTop: 8 * u }}>বেটা উদ্বোধনের দিন</Big>
       </div>
       <div style={{ display: 'flex', flexDirection: V ? 'column' : 'row', alignItems: 'center', gap: (V ? 26 : 30) * u, marginTop: 50 * u, opacity: enter, transform: `scale(${0.9 + enter * 0.1 + flare * 0.04})` }}>
         <Reel items={days} target={29} spins={3} start={40} land={LOCK.day - R.date} size={s * u} row={s * 1.4 * u} width={(V ? 420 : 300) * u} color={C.mustard} />
@@ -150,7 +150,7 @@ const DateReveal: React.FC = () => {
       </div>
       <div style={{ marginTop: 46 * u, opacity: ease(G, LOCK.flare, LOCK.flare + 30), transform: `translateY(${(1 - ease(G, LOCK.flare, LOCK.flare + 30)) * 30 * u}px)`, textAlign: 'center' }}>
         <div style={{ fontFamily: FONT_LATIN, fontWeight: 700, fontSize: (V ? 70 : 64) * u, color: C.white, letterSpacing: '0.02em' }}>October 30, 2026</div>
-        <Sub style={{ marginTop: 8 * u }}>Free for Windows, macOS and Linux</Sub>
+        <Sub style={{ marginTop: 8 * u }}>Public beta · free for Windows, macOS and Linux</Sub>
       </div>
       <Burst at={LOCK.day - R.date} x={V ? 0.5 : 0.24} y={V ? 0.36 : 0.52} count={14} spread={0.16} seed="d1" />
       <Burst at={LOCK.month - R.date} x={0.5} y={V ? 0.5 : 0.52} count={14} spread={0.16} seed="d2" />
@@ -400,7 +400,8 @@ const Finale: React.FC = () => {
       <div style={{ position: 'absolute', top: (V ? 420 : 170) * u, textAlign: 'center', opacity: t, transform: `translateY(${(1 - t) * 40 * u}px)` }}>
         <Big size={V ? 104 : 96} style={{ fontWeight: 600 }}>দেখা হবে</Big>
         <Big size={V ? 200 : 190} style={{ color: C.mustard, textShadow: `0 0 ${80 * u}px rgba(233,185,73,0.5)` }}>৩০ অক্টোবর</Big>
-        <Sub size={40} style={{ marginTop: 8 * u }}>See you on October 30</Sub>
+        <div style={{ display: 'inline-block', marginTop: 14 * u, fontFamily: FONT_BN, fontWeight: 600, fontSize: 48 * u, color: '#03170F', background: C.mustard, borderRadius: 999, padding: `${6 * u}px ${30 * u}px` }}>বেটা সংস্করণ নিয়ে</div>
+        <Sub size={40} style={{ marginTop: 14 * u }}>See you on October 30, for the beta</Sub>
       </div>
     </AbsoluteFill>
   );
@@ -416,8 +417,8 @@ const End: React.FC = () => {
       <Img src={staticFile('assets/logo_512.png')} style={{ width: (V ? 240 : 200) * u, height: (V ? 240 : 200) * u, borderRadius: 50 * u, transform: `scale(${0.6 + pop * 0.4})`, opacity: Math.min(1, pop * 1.5), boxShadow: `0 ${30 * u}px ${80 * u}px rgba(0,0,0,0.55), 0 0 ${120 * u}px rgba(224,48,63,0.5)` }} />
       <div style={{ fontFamily: FONT_BN, fontWeight: 700, fontSize: (V ? 130 : 112) * u, color: C.white, marginTop: 22 * u, lineHeight: 1.1, opacity: ease(f, 10, 30) }}>একুশে নেক্সট</div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 18 * u, marginTop: 14 * u, opacity: ease(f, 22, 42), flexWrap: 'wrap', justifyContent: 'center' }}>
-        <span style={{ fontFamily: FONT_BN, fontWeight: 600, fontSize: (V ? 58 : 52) * u, color: C.mustard }}>উদ্বোধন ৩০ অক্টোবর ২০২৬</span>
-        <span style={{ fontFamily: FONT_LATIN, fontWeight: 500, fontSize: 34 * u, color: 'rgba(234,243,238,0.7)' }}>Launching October 30, 2026</span>
+        <span style={{ fontFamily: FONT_BN, fontWeight: 600, fontSize: (V ? 58 : 52) * u, color: C.mustard }}>বেটা উদ্বোধন ৩০ অক্টোবর ২০২৬</span>
+        <span style={{ fontFamily: FONT_LATIN, fontWeight: 500, fontSize: 34 * u, color: 'rgba(234,243,238,0.7)' }}>Beta launch October 30, 2026</span>
       </div>
       <div style={{ display: 'flex', flexDirection: V ? 'column' : 'row', alignItems: 'center', gap: (V ? 26 : 30) * u, marginTop: (V ? 56 : 46) * u }}>
         <AddressPill kind="web" text="www.ekushenext.com" at={58} />
@@ -444,7 +445,7 @@ export const Reveal: React.FC = () => {
         <Sequence from={R.logo} durationInFrames={R.date - R.logo}><Logo /></Sequence>
         <Sequence from={R.date} durationInFrames={R.features - R.date}><DateReveal /></Sequence>
         {FEATURE_SCENES.map((s, i) => (
-          <Sequence key={i} from={R.features + i * FEAT_LEN} durationInFrames={FEAT_LEN}>
+          <Sequence key={i} from={R.features + i * FEAT_LEN - (i ? 10 : 0)} durationInFrames={FEAT_LEN + (i ? 10 : 0)}>
             <Feature i={i} title={s.title} sub={s.sub}>{s.body}</Feature>
           </Sequence>
         ))}
