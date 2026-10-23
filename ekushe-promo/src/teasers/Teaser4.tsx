@@ -167,7 +167,7 @@ const Tagline: React.FC = () => {
   );
 };
 
-export const Teaser4: React.FC = () => {
+export const Teaser4: React.FC<{ audio?: boolean }> = ({ audio = true }) => {
   const f = useCurrentFrame();
   const sun = interpolate(f, [0, T4.rapid, T4.open, T4.race, T4.tag, T4.end], [0.25, 0.1, 0.15, 0.55, 0.9, 1], clamp);
   const dark = interpolate(f, [T4.rapid - 10, T4.rapid + 10, T4.open, T4.open + 10], [0, 0.55, 0.55, 0], clamp);
@@ -186,7 +186,7 @@ export const Teaser4: React.FC = () => {
       <Sequence from={T4.tag} durationInFrames={100}><Tagline /></Sequence>
       <Burst at={T4.tag + 8} y={0.45} count={40} seed="g" />
       <Sequence from={T4.end}><EndCard /></Sequence>
-      <Audio src={staticFile('music/teaser4.wav')} />
+      {audio && <Audio src={staticFile('music/teaser4.wav')} />}
     </AbsoluteFill>
   );
 };

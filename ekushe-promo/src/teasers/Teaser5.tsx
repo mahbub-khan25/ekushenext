@@ -169,7 +169,7 @@ const Platforms: React.FC = () => {
   );
 };
 
-export const Teaser5: React.FC = () => {
+export const Teaser5: React.FC<{ audio?: boolean }> = ({ audio = true }) => {
   const f = useCurrentFrame();
   const sun = interpolate(f, [0, T5.title, T5.look, T5.platforms, T5.end], [0.25, 0.7, 0.55, 0.85, 1], clamp);
   return (
@@ -185,7 +185,7 @@ export const Teaser5: React.FC = () => {
       <Sequence from={T5.look} durationInFrames={570}><FullLook /></Sequence>
       <Sequence from={T5.platforms} durationInFrames={140}><Platforms /></Sequence>
       <Sequence from={T5.end}><EndCard /></Sequence>
-      <Audio src={staticFile('music/teaser5.wav')} />
+      {audio && <Audio src={staticFile('music/teaser5.wav')} />}
     </AbsoluteFill>
   );
 };

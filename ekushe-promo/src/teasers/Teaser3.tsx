@@ -157,7 +157,7 @@ const Tagline: React.FC = () => {
   );
 };
 
-export const Teaser3: React.FC = () => {
+export const Teaser3: React.FC<{ audio?: boolean }> = ({ audio = true }) => {
   const f = useCurrentFrame();
   const sun = interpolate(f, [0, 60, T3.popup, T3.ring, T3.tag, T3.end], [0.3, 0.7, 0.55, 0.6, 1, 1], clamp);
   return (
@@ -176,7 +176,7 @@ export const Teaser3: React.FC = () => {
       <Burst at={T3.head + 30} y={0.45} seed="h" count={40} />
       <Burst at={T3.tag + 10} y={0.45} seed="t" count={40} />
       <Sequence from={T3.end}><EndCard /></Sequence>
-      <Audio src={staticFile('music/teaser3.wav')} />
+      {audio && <Audio src={staticFile('music/teaser3.wav')} />}
     </AbsoluteFill>
   );
 };
