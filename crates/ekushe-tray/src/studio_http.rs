@@ -27,7 +27,9 @@ pub const REQUEST_DEADLINE: Duration = Duration::from_secs(5);
 /// Time allowed for writing a response
 pub const WRITE_DEADLINE: Duration = Duration::from_secs(5);
 /// Connections served at the same time; more get "503 busy" straight away
-pub const MAX_CONNECTIONS: usize = 8;
+pub const MAX_CONNECTIONS: usize = 16;
+/// A connection that sends nothing at all (browsers open spare ones) is closed after this long
+pub const IDLE_DEADLINE: Duration = Duration::from_secs(2);
 /// How long a launch code stays valid
 pub const CODE_LIFETIME: Duration = Duration::from_secs(120);
 
@@ -49,7 +51,15 @@ pub fn read_request(s: &mut TcpStream) -> Result<String, ReadError> {
     let mut head_end: Option<usize> = None;
     let mut body_len = 0usize;
     loop {
-        let Some(left) = REQUEST_DEADLINE.checked_sub(start.elapsed()) else {
+        if data.is_empty() && start.elapsed() >= IDLE_DEADLINE {
+            return Err(ReadError::Closed);
+        }
+        let limit = if data.is_empty() {
+            IDLE_DEADLINE
+        } else {
+            REQUEST_DEADLINE
+        };
+        let Some(left) = limit.checked_sub(start.elapsed()) else {
             return Err(if data.is_empty() {
                 ReadError::Closed
             } else {
@@ -168,8 +178,12 @@ where
     for stream in listener.incoming().flatten() {
         if active.fetch_add(1, Ordering::SeqCst) >= MAX_CONNECTIONS {
             active.fetch_sub(1, Ordering::SeqCst);
+            // Answer at once, without reading: the accept loop must never wait on a client
             let mut s = stream;
-            respond_error(&mut s, "503 Service Unavailable");
+            let _ = s.set_write_timeout(Some(Duration::from_millis(200)));
+            let _ = s.write_all(
+                b"HTTP/1.1 503 Service Unavailable\r\nContent-Length: 0\r\nRetry-After: 1\r\nConnection: close\r\n\r\n",
+            );
             continue;
         }
         let (h, a) = (handler.clone(), active.clone());

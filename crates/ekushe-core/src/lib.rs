@@ -539,13 +539,11 @@ impl Ekushe {
 
 /// Roman text that looks like a password, code or address rather than a word: letters mixed with
 /// digits (`abc123`, `2ta` too, which is fine to not learn), or symbols no Bangla word is typed with.
-/// Ekushe's own marks (`,,` `^` `~` `` ` `` `+` `:` `.`) do not count.
+/// Ekushe's own marks (`,,` `^` `~` `` ` `` `+` `:` `.` `t/`) and quotes do not count.
 pub fn looks_secret(roman: &str) -> bool {
     let letters = roman.chars().any(|c| c.is_ascii_alphabetic());
     let digits = roman.chars().any(|c| c.is_ascii_digit());
-    let symbols = roman
-        .chars()
-        .any(|c| "@#$%&*=_|<>{}[]\\/'\"!?;".contains(c));
+    let symbols = roman.chars().any(|c| "@#$%&*=_|<>{}[]\\'!?;".contains(c));
     (letters && digits) || symbols || roman.chars().count() > 40
 }
 

@@ -809,6 +809,14 @@ impl SuggestionEngine {
 /// planted by someone else.
 pub fn write_atomic(path: &Path, contents: &str) -> std::io::Result<()> {
     use std::io::Write;
+    // A settings file kept elsewhere through a link (dotfiles) is written where the link points
+    let resolved;
+    let path = if fs::symlink_metadata(path).is_ok_and(|m| m.file_type().is_symlink()) {
+        resolved = fs::canonicalize(path)?;
+        resolved.as_path()
+    } else {
+        path
+    };
     let parent = path
         .parent()
         .filter(|p| !p.as_os_str().is_empty())
@@ -818,6 +826,7 @@ pub fn write_atomic(path: &Path, contents: &str) -> std::io::Result<()> {
         .file_name()
         .map(|n| n.to_string_lossy().into_owned())
         .unwrap_or_default();
+    remove_stale_temporaries(parent, &name);
     let stamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_nanos())
@@ -839,7 +848,9 @@ pub fn write_atomic(path: &Path, contents: &str) -> std::io::Result<()> {
             Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
             Err(e) => return Err(e),
         };
-        let written = f.write_all(contents.as_bytes()).and_then(|_| f.sync_all());
+        // No flush to disk here: this runs while typing, and the rename already makes the change
+        // all-or-nothing
+        let written = f.write_all(contents.as_bytes());
         drop(f);
         if let Err(e) = written.and_then(|_| fs::rename(&tmp, path)) {
             let _ = fs::remove_file(&tmp);
@@ -851,6 +862,27 @@ pub fn write_atomic(path: &Path, contents: &str) -> std::io::Result<()> {
         std::io::ErrorKind::AlreadyExists,
         "no free temporary file name",
     ))
+}
+
+/// Temporary files of `name` left behind by a crash (older than an hour).
+fn remove_stale_temporaries(dir: &Path, name: &str) {
+    let prefix = format!(".{name}.");
+    let Ok(rd) = fs::read_dir(dir) else { return };
+    for e in rd.flatten() {
+        let file = e.file_name().to_string_lossy().into_owned();
+        if !(file.starts_with(&prefix) && file.ends_with(".tmp")) {
+            continue;
+        }
+        let old = e
+            .metadata()
+            .ok()
+            .and_then(|m| m.modified().ok())
+            .and_then(|t| t.elapsed().ok())
+            .is_some_and(|d| d.as_secs() > 3600);
+        if old {
+            let _ = fs::remove_file(e.path());
+        }
+    }
 }
 
 /// Create `dir` (and parents) if missing; on macOS and Linux, Ekushe's own folder is owner-only.

@@ -64,7 +64,7 @@ regsvr32 /u "C:\Program Files\Ekushe Next\ekushe_tsf.dll"   # removes it
 ```
 
 Every program loads a registered input method, so it only registers from a folder that only
-administrators can change (Program Files or Windows); from anywhere else `regsvr32` fails with
+administrators can change (Program Files or Windows\System32); from anywhere else `regsvr32` fails with
 `0x80070005`.
 
 Then pick it with Win+Space. The installer copies the DLL but does not register it.

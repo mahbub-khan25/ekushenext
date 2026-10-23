@@ -673,25 +673,30 @@ const EKUSHE_TOKEN = (() => {
   }
   return t;
 })();
+// Shown when this page has no valid key: opened without a launch code, or Ekushe restarted since
+function showNeedLaunch() {
+  if (document.getElementById('needLaunch')) return;
+  try { sessionStorage.removeItem('ekushe_key'); } catch (e) {}
+  const d = document.createElement('div');
+  d.id = 'needLaunch';
+  d.setAttribute('role', 'alert');
+  d.style.cssText = 'position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:var(--bg,#f4f6f5);color:var(--ink,#0e241b);font:16px/1.6 var(--font-ui,system-ui),sans-serif;text-align:center;padding:24px';
+  const box = document.createElement('div');
+  box.style.maxWidth = '640px';
+  const h = document.createElement('h2');
+  h.textContent = 'স্টুডিও একুশে নেক্সট থেকে খুলুন';
+  const p1 = document.createElement('p');
+  p1.textContent = 'নিরাপত্তার জন্য স্টুডিও শুধু একুশের মেনু থেকে খোলা যায়। উইন্ডোজে ট্রে আইকনে রাইট-ক্লিক করে "একুশে নেক্সট স্টুডিও খুলুন" বেছে নিন; ম্যাক ও লিনাক্সে কিবোর্ড মেনু থেকে "Open Ekushe Studio"।';
+  const p2 = document.createElement('p');
+  p2.style.opacity = '0.7';
+  p2.textContent = 'For your security, Studio only opens from Ekushe\'s menu: right-click the tray icon on Windows, or use the keyboard menu on Mac and Linux.';
+  box.append(h, p1, p2);
+  d.append(box);
+  document.body.append(d);
+}
 if (!EKUSHE_TOKEN) {
-  document.addEventListener('DOMContentLoaded', () => {
-    const d = document.createElement('div');
-    d.id = 'needLaunch';
-    d.setAttribute('role', 'alert');
-    d.style.cssText = 'position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:var(--bg,#f4f6f5);color:var(--ink,#0e241b);font:16px/1.6 var(--font-ui,system-ui),sans-serif;text-align:center;padding:24px';
-    const box = document.createElement('div');
-    box.style.maxWidth = '640px';
-    const h = document.createElement('h2');
-    h.textContent = 'স্টুডিও একুশে নেক্সট থেকে খুলুন';
-    const p1 = document.createElement('p');
-    p1.textContent = 'নিরাপত্তার জন্য স্টুডিও শুধু একুশের মেনু থেকে খোলা যায়। উইন্ডোজে ট্রে আইকনে রাইট-ক্লিক করে "একুশে নেক্সট স্টুডিও খুলুন" বেছে নিন; ম্যাক ও লিনাক্সে কিবোর্ড মেনু থেকে "Open Ekushe Studio"।';
-    const p2 = document.createElement('p');
-    p2.style.opacity = '0.7';
-    p2.textContent = 'For your security, Studio only opens from Ekushe\'s menu: right-click the tray icon on Windows, or use the keyboard menu on Mac and Linux.';
-    box.append(h, p1, p2);
-    d.append(box);
-    document.body.append(d);
-  });
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', showNeedLaunch);
+  else showNeedLaunch();
 }
 const nativeFetch = window.fetch.bind(window);
 window.fetch = (url, opts = {}) => {
@@ -699,7 +704,11 @@ window.fetch = (url, opts = {}) => {
     opts = Object.assign({}, opts);
     opts.headers = Object.assign({}, opts.headers || {}, { 'X-Ekushe-Token': EKUSHE_TOKEN });
   }
-  return nativeFetch(url, opts);
+  const p = nativeFetch(url, opts);
+  if (typeof url === 'string' && url.startsWith('/api/')) {
+    p.then((r) => { if (r.status === 403) showNeedLaunch(); }).catch(() => {});
+  }
+  return p;
 };
 
 let allSignItems = [];

@@ -103,81 +103,17 @@ pub fn serve_blocking(port: u16) -> std::io::Result<()> {
     Ok(())
 }
 
-/// An address that opens Studio for the person running this process (`tab`: e.g. `"settings"`).
-///
-/// On macOS and Linux other accounts can see the command line of a browser, so the one-time launch
-/// code is not put there: it goes in a small page in a folder only this user can read, and the
-/// returned `file://` address opens that page, which forwards to Studio.
+/// An address that opens Studio for the person running this process (`tab`: e.g. `"settings"`),
+/// with a fresh single-use launch code: only the first page loaded with it gets Studio's key, and the
+/// code expires after two minutes. (A file page in a private folder would hide the code from other
+/// accounts' process lists on Linux, but sandboxed browsers such as Ubuntu's Firefox snap cannot open
+/// such files, so the plain address is used; the browser uses the code within a second.)
 pub fn launch_url(tab: Option<&str>) -> Option<String> {
     let port = start();
     if port == 0 {
         return None;
     }
-    let url = studio_http::launch_url(port, tab);
-    #[cfg(unix)]
-    {
-        if let Some(file) = private_launch_page(&url) {
-            return Some(file);
-        }
-    }
-    Some(url)
-}
-
-#[cfg(unix)]
-fn private_launch_page(url: &str) -> Option<String> {
-    use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt, PermissionsExt};
-    let base = std::env::var_os("XDG_RUNTIME_DIR")
-        .map(std::path::PathBuf::from)
-        .filter(|p| p.is_dir())
-        .or_else(|| std::env::var_os("HOME").map(|h| std::path::PathBuf::from(h).join(".cache")))?;
-    let dir = base.join("ekushe-studio");
-    let _ = std::fs::DirBuilder::new()
-        .recursive(true)
-        .mode(0o700)
-        .create(&dir);
-    let meta = std::fs::symlink_metadata(&dir).ok()?;
-    if !meta.is_dir() {
-        return None;
-    }
-    let _ = std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o700));
-    // Old launch pages are useless (their codes expire) — tidy them away
-    if let Ok(rd) = std::fs::read_dir(&dir) {
-        for e in rd.flatten() {
-            let old = e
-                .metadata()
-                .ok()
-                .and_then(|m| m.modified().ok())
-                .and_then(|t| t.elapsed().ok());
-            if old.is_some_and(|d| d.as_secs() > 300) {
-                let _ = std::fs::remove_file(e.path());
-            }
-        }
-    }
-    let path = dir.join(format!("open-{}.html", studio_http::random_hex(8)));
-    let html = format!(
-        "<!doctype html><meta charset=\"utf-8\"><title>Ekushe Studio</title>\
-         <meta http-equiv=\"refresh\" content=\"0;url={url}\">\
-         <p><a href=\"{url}\">Ekushe Studio</a></p>"
-    );
-    let mut f = std::fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .mode(0o600)
-        .open(&path)
-        .ok()?;
-    f.write_all(html.as_bytes()).ok()?;
-    // Percent-encode the path (a home folder can contain spaces)
-    let enc: String = path
-        .to_string_lossy()
-        .bytes()
-        .map(|b| match b {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'/' | b'.' | b'-' | b'_' | b'~' => {
-                (b as char).to_string()
-            }
-            _ => format!("%{b:02X}"),
-        })
-        .collect();
-    Some(format!("file://{enc}"))
+    Some(studio_http::launch_url(port, tab))
 }
 
 fn header<'a>(req: &'a str, name: &str) -> Option<&'a str> {
@@ -389,7 +325,7 @@ fn handle(mut s: TcpStream, req: &str, port: u16) -> std::io::Result<()> {
             if let Some(o) = p["popup_opacity"].as_u64() {
                 OPACITY.store(o.clamp(70, 100), Ordering::Relaxed);
             }
-            let cfg = {
+            {
                 let mut sh = SHARED.lock();
                 let mut cfg = sh.ekushe.config().clone();
                 if let Some(h) = p["hotkey"].as_str() {
@@ -431,11 +367,16 @@ fn handle(mut s: TcpStream, req: &str, port: u16) -> std::io::Result<()> {
                     cfg.custom_snippets
                         .insert(trig.to_string(), exp.to_string());
                 }
-                sh.ekushe.set_config(cfg.clone());
-                cfg
+                sh.ekushe.set_config(cfg);
+            }
+            // Written outside the engine lock (typing must not wait for the disk), one save at a
+            // time and always the newest settings, so two quick changes cannot land out of order
+            static SAVING: std::sync::Mutex<()> = std::sync::Mutex::new(());
+            let ok = {
+                let _one = SAVING.lock().unwrap_or_else(|e| e.into_inner());
+                let newest = SHARED.lock().ekushe.config().clone();
+                newest.save_to(&Config::default_config_path()).is_ok()
             };
-            // Written outside the lock
-            let ok = cfg.save_to(&Config::default_config_path()).is_ok();
             respond(
                 &mut s,
                 if ok {
@@ -491,15 +432,9 @@ mod tests {
             !http(port, launch).contains(token()),
             "a launch code works once"
         );
-        #[cfg(unix)]
-        {
-            let file = launch_url(None).unwrap();
-            let p = file.strip_prefix("file://").unwrap().replace("%20", " ");
-            use std::os::unix::fs::PermissionsExt;
-            let mode = std::fs::metadata(&p).unwrap().permissions().mode() & 0o777;
-            assert_eq!(mode, 0o600);
-            let _ = std::fs::remove_file(&p);
-        }
+        assert!(launch_url(Some("settings"))
+            .unwrap()
+            .contains("&tab=settings"));
         let no_token = http(
             port,
             format!(

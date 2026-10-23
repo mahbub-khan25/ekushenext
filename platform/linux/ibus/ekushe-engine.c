@@ -29,6 +29,7 @@ typedef struct {
     gboolean shift_clean;
     gboolean secret; /* password or PIN field: keys go straight to the application */
     gboolean private_field; /* nothing learned here (password, PIN or a field marked private) */
+    gboolean focused;
 } EkusheEngine;
 
 /* IBUS_INPUT_HINT_PRIVATE (IBus 1.5.24+): the field asks not to be remembered */
@@ -308,6 +309,7 @@ static gboolean ekushe_process_key_event(IBusEngine *e, guint keyval, guint keyc
 
 static void ekushe_focus_out(IBusEngine *e)
 {
+    ((EkusheEngine *)e)->focused = FALSE;
     finish((EkusheEngine *)e);
     IBUS_ENGINE_CLASS(ekushe_engine_parent_class)->focus_out(e);
 }
@@ -337,18 +339,24 @@ static void ekushe_set_content_type(IBusEngine *e, guint purpose, guint hints)
 {
     EkusheEngine *ek = (EkusheEngine *)e;
     gboolean secret = purpose == IBUS_INPUT_PURPOSE_PASSWORD || purpose == IBUS_INPUT_PURPOSE_PIN;
-    gboolean private_field = secret || (hints & EKUSHE_HINT_PRIVATE);
-    if (secret != ek->secret)
+    gboolean private_field = secret || (hints & EKUSHE_HINT_PRIVATE) != 0;
+    if (secret == ek->secret && private_field == ek->private_field)
+        return;
+    /* Close the open word as shown before the field's rules change */
+    if (ek->focused)
         finish(ek);
     ek->secret = secret;
     ek->private_field = private_field;
-    ek_set_private(private_field);
+    /* The Rust engine is shared by every field: only the focused one sets it (focus_in resyncs) */
+    if (ek->focused)
+        ek_set_private(private_field);
 }
 
 static void ekushe_focus_in(IBusEngine *e)
 {
     EkusheEngine *ek = (EkusheEngine *)e;
     /* The Rust engine is shared by every field: tell it about this one */
+    ek->focused = TRUE;
     ek_set_private(ek->private_field);
     ibus_engine_register_properties(e, ek->props);
     IBUS_ENGINE_CLASS(ekushe_engine_parent_class)->focus_in(e);

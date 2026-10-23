@@ -1075,18 +1075,6 @@ unsafe extern "system" fn keyboard_hook_proc(code: i32, wparam: WPARAM, lparam: 
                 }
             }
         }
-        // Password boxes (classic ones, and those in browsers and Store apps that UI Automation
-        // reports): type plain characters, no preview, nothing learned
-        secure_field::set_active(st.ekushe.language() == InputLanguage::Bangla);
-        let root = GetAncestor(focus, GA_ROOT) as isize;
-        if is_password_field(focus) || secure_field::is_secret(root) {
-            if st.injected_utf16_len > 0 || !st.last_output.preedit.is_empty() {
-                forget_composition(&mut st);
-                drop(st);
-                refresh_candidate_overlay();
-            }
-            return CallNextHookEx(ptr::null_mut(), code, wparam, lparam);
-        }
         st.comp_focus = focus as isize;
 
         let switch_triggered = match &st.ekushe.config().switch_hotkey {
@@ -1109,6 +1097,20 @@ unsafe extern "system" fn keyboard_hook_proc(code: i32, wparam: WPARAM, lparam: 
             };
             show_mode_badge(msg);
             return 1;
+        }
+
+        // Password boxes (classic ones, and those in browsers and Store apps that UI Automation
+        // reports): type plain characters, no preview, nothing learned. The language hotkey above
+        // still works here.
+        secure_field::set_active(st.ekushe.language() == InputLanguage::Bangla);
+        let root = GetAncestor(focus, GA_ROOT) as isize;
+        if is_password_field(focus) || secure_field::is_secret(root) {
+            if st.injected_utf16_len > 0 || !st.last_output.preedit.is_empty() {
+                forget_composition(&mut st);
+                drop(st);
+                refresh_candidate_overlay();
+            }
+            return CallNextHookEx(ptr::null_mut(), code, wparam, lparam);
         }
 
         // Ctrl+Backspace in Bangla mode: Flip the last committed word between Bangla ⇄ English!

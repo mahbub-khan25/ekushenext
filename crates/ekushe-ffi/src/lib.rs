@@ -387,9 +387,9 @@ pub extern "C" fn ek_studio_start() -> u16 {
     }
 }
 
-/// An address that opens Studio for this user with a fresh one-time launch code (on macOS and Linux
-/// a `file://` page in a private folder that forwards to Studio). `tab` may be null (e.g.
-/// `"settings"`). Returns null when Studio cannot run. Open it straight away: the code expires.
+/// An address that opens Studio for this user with a fresh single-use launch code, e.g.
+/// `http://127.0.0.1:45210/?code=…&tab=settings`. `tab` may be null. Returns null when Studio cannot
+/// run. Open it straight away: the code works once and expires.
 ///
 /// # Safety
 /// `tab` must be a valid NUL-terminated UTF-8 string or null.

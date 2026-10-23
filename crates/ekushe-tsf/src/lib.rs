@@ -194,13 +194,22 @@ const CATEGORIES: [GUID; 4] = [
 ];
 
 /// Machine-wide registration makes every program load this DLL, so it must live where only
-/// administrators can change it (Program Files or Windows); registering a copy in a user-writable
+/// administrators can change it (Program Files or Windows\System32); registering a copy in a user-writable
 /// folder would let that user swap in other code. Returns the folder rules as an error otherwise.
 fn in_protected_folder(path: &str) -> bool {
     let p = path.to_lowercase().replace('/', "\\");
-    ["ProgramFiles", "ProgramW6432", "SystemRoot"]
+    let mut roots: Vec<String> = ["ProgramFiles", "ProgramW6432"]
         .iter()
         .filter_map(|v| std::env::var(v).ok())
+        .collect();
+    // Under Windows only the system folders (Windows\Temp, for one, is writable by everyone)
+    if let Ok(w) = std::env::var("SystemRoot") {
+        let w = w.trim_end_matches('\\').to_string();
+        roots.push(format!("{w}\\System32"));
+        roots.push(format!("{w}\\SysWOW64"));
+    }
+    roots
+        .iter()
         .map(|d| format!("{}\\", d.trim_end_matches('\\').to_lowercase()))
         .any(|d| p.starts_with(&d) && !p[d.len()..].contains("..\\"))
 }
@@ -818,6 +827,8 @@ impl ITfKeyEventSink_Impl for TextService_Impl {
             st.shift_clean_down = !key_down(VK_CONTROL) && !key_down(VK_MENU);
             return Ok(FALSE);
         }
+        // Any other key cancels a pending Shift tap (capitals in a password box must not switch)
+        self.state.borrow_mut().shift_clean_down = false;
         if let Some(ctx) = context {
             if self.starting_word_in_private_field(ctx) {
                 return Ok(FALSE);
@@ -854,6 +865,7 @@ impl ITfKeyEventSink_Impl for TextService_Impl {
         let Some(ctx) = context else {
             return Ok(FALSE);
         };
+        self.state.borrow_mut().shift_clean_down = false;
         if self.starting_word_in_private_field(ctx) {
             return Ok(FALSE);
         }
