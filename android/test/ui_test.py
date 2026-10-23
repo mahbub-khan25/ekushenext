@@ -38,6 +38,7 @@ def shot(name):
 
 
 def keys(mode='LETTERS'):
+    time.sleep(1.0)
     for _ in range(20):
         log = adb('logcat', '-d', '-s', 'EkusheKeys:I')
         found = [json.loads(m) for m in re.findall(r'EkusheKeys: (\{.*\})', log)]
