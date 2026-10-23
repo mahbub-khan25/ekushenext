@@ -246,6 +246,16 @@ class MainActivity : AppCompatActivity() {
         divider(card)
         photoSettings(card)
         divider(card)
+        card.addView(choice("কী চাপার ধরন", "Key press effect: how a key shows it was pressed", listOf(
+            "classic" to "সাধারণ: কী একটু গাঢ় হয় (Classic)",
+            "3d" to "থ্রিডি: কী নিচে দেবে যায় (3D)",
+            "glow" to "আলো: কীর চারপাশে আলো (Glow)",
+            "ripple" to "ঢেউ: আঙুলের জায়গা থেকে ঢেউ (Ripple)",
+            "bounce" to "লাফ: কী একটু ছোট হয়ে ফেরে (Bounce)",
+        ), prefs.pressEffect) { prefs.pressEffect = it })
+        divider(card)
+        card.addView(switch("ইমোজি বোতাম", "An emoji key next to Space, like Gboard", prefs.emojiKey) { prefs.emojiKey = it })
+        divider(card)
         card.addView(choice("উচ্চতা", "Height", listOf("0" to "ছোট (Small)", "1" to "সাধারণ (Normal)", "2" to "বড় (Tall)"), prefs.height.toString()) { prefs.height = it.toInt() })
         divider(card)
         card.addView(switch("কীতে বাংলা অক্ষর দেখান", "Show the Bangla letter on each key", prefs.keyHints) { prefs.keyHints = it })

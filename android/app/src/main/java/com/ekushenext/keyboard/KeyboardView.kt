@@ -100,8 +100,11 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
     private val photoPaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
     private var borders = true
 
+    private var effect = "classic"
+
     fun refreshTheme() {
         borders = prefs.keyBorders
+        effect = prefs.pressEffect
         var p = Palette.of(context)
         if (prefs.photo) {
             if (photo == null || photoStamp != prefs.photoStamp) {
@@ -125,6 +128,7 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
     }
 
     private fun buildKeys() {
+        Layouts.emojiKey = prefs.emojiKey
         rows = when (mode) {
             Mode.LETTERS -> Layouts.letters(prefs.numberRow)
             Mode.SYMBOLS -> Layouts.symbols()
@@ -220,7 +224,12 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
         else -> k.label
     }
 
-    private fun drawKey(c: Canvas, k: Key, r: RectF, pressed: Boolean) {
+    // ── key-press effects
+    private class Ripple(val slot: RectF, val x: Float, val y: Float, val start: Long)
+    private val ripples = ArrayList<Ripple>()
+    private val rippleMs = 360L
+
+    private fun drawKey(c: Canvas, k: Key, slot: RectF, pressed: Boolean) {
         val p = palette
         val radius = 7 * dp
         val enter = k.type == KeyType.ENTER
@@ -233,15 +242,53 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
         }
         // Flat look: only Space, Enter and a held key keep a shape
         val shaped = borders || pressed || enter || shiftOn || k.type == KeyType.SPACE
-        if (shaped) {
-            if (borders) {
-                keyPaint.color = p.keyShadow
-                c.drawRoundRect(r.left, r.top + 1.2f * dp, r.right, r.bottom + 1.2f * dp, radius, radius, keyPaint)
-            }
-            val fill = if (!borders && !pressed && k.type == KeyType.SPACE) p.functionKey else base
-            keyPaint.color = if (pressed) blend(fill, p.text, 0.16f) else fill
-            c.drawRoundRect(r, radius, radius, keyPaint)
+        val depth = 3.5f * dp
+        // where the key's face is drawn (and its label with it)
+        val r = when {
+            effect == "3d" && shaped -> if (pressed) RectF(slot.left, slot.top + depth, slot.right, slot.bottom) else RectF(slot.left, slot.top, slot.right, slot.bottom - depth)
+            effect == "bounce" && pressed -> RectF(slot).apply { inset(slot.width() * 0.07f, slot.height() * 0.08f) }
+            else -> slot
         }
+        if (shaped) {
+            val fill = if (!borders && !pressed && k.type == KeyType.SPACE) p.functionKey else base
+            when (effect) {
+                "3d" -> {
+                    // the key's side: a darker edge below the face, gone when it is pressed down
+                    if (!pressed) {
+                        keyPaint.color = withAlphaOf(blend(fill, android.graphics.Color.BLACK, if (p.dark) 0.5f else 0.24f), fill)
+                        c.drawRoundRect(slot.left, slot.top + depth, slot.right, slot.bottom, radius, radius, keyPaint)
+                    }
+                    keyPaint.color = if (pressed) withAlphaOf(blend(fill, p.text, 0.1f), fill) else fill
+                    c.drawRoundRect(r, radius, radius, keyPaint)
+                }
+                "glow" -> {
+                    if (pressed) {
+                        keyPaint.color = Palette.alpha(p.accent, 0.35f)
+                        c.drawRoundRect(RectF(r).apply { inset(-3 * dp, -3 * dp) }, radius + 3 * dp, radius + 3 * dp, keyPaint)
+                    } else if (borders) {
+                        keyPaint.color = p.keyShadow
+                        c.drawRoundRect(r.left, r.top + 1.2f * dp, r.right, r.bottom + 1.2f * dp, radius, radius, keyPaint)
+                    }
+                    keyPaint.color = if (pressed) blend(fill, p.accent, 0.18f) else fill
+                    c.drawRoundRect(r, radius, radius, keyPaint)
+                    if (pressed) {
+                        keyPaint.style = Paint.Style.STROKE; keyPaint.strokeWidth = 2 * dp; keyPaint.color = p.accent
+                        c.drawRoundRect(r, radius, radius, keyPaint)
+                        keyPaint.style = Paint.Style.FILL
+                    }
+                }
+                else -> {
+                    if (borders) {
+                        keyPaint.color = p.keyShadow
+                        c.drawRoundRect(r.left, r.top + 1.2f * dp, r.right, r.bottom + 1.2f * dp, radius, radius, keyPaint)
+                    }
+                    // the ripple shows the press itself, so the key keeps its colour
+                    keyPaint.color = if (pressed && effect != "ripple") blend(fill, p.text, 0.16f) else fill
+                    c.drawRoundRect(r, radius, radius, keyPaint)
+                }
+            }
+        }
+        if (effect == "ripple") drawRipples(c, slot, radius)
 
         val fg = when { enter -> p.onAccent; shift == Shift.LOCKED && k.type == KeyType.SHIFT -> p.onAccent; else -> p.text }
         when (k.type) {
@@ -267,7 +314,7 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
                 textPaint.typeface = if (bnLabel) bnFace else Typeface.DEFAULT
                 textPaint.color = fg
                 textPaint.textSize = when {
-                    k.type == KeyType.DELETE || k.type == KeyType.SHIFT || k.type == KeyType.ENTER -> 21 * dp
+                    k.type == KeyType.DELETE || k.type == KeyType.SHIFT || k.type == KeyType.ENTER || k.type == KeyType.EMOJI -> 21 * dp
                     isFunction(k) -> 14.5f * dp
                     t.length > 2 -> 14 * dp
                     bnLabel -> 21 * dp
@@ -638,6 +685,11 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
     private fun press(hit: Placed, x: Float, y: Float) {
         val k = hit.key
         pressedKey = k; pressedRect = hit.rect; downX = x; downY = y
+        if (effect == "ripple") {
+            val now = android.os.SystemClock.uptimeMillis()
+            ripples.removeAll { now - it.start > rippleMs }
+            ripples += Ripple(hit.rect, x, y, now)
+        }
         longFired = false; spaceDragging = false; spaceAnchorX = x; repeatCount = 0
         listener.onKeyFeedback(this, HapticFeedbackConstants.KEYBOARD_TAP)
         when (k.type) {
@@ -705,8 +757,12 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
             KeyType.MORE_SYMBOLS -> mode = Mode.MORE_SYMBOLS
             KeyType.LETTERS -> mode = Mode.LETTERS
             KeyType.LANG -> listener.onLanguageToggle()
-            KeyType.EMOJI -> { mode = Mode.EMOJI }
+            KeyType.EMOJI -> openEmoji()
         }
+    }
+
+    private fun openEmoji() {
+        emojiScroll = 0f; emojiGroup = if (prefs.recentEmoji.isNotEmpty()) -1 else 0; mode = Mode.EMOJI
     }
 
     private fun afterChar() {
@@ -730,7 +786,7 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
         if (chips.isNotEmpty()) { chips.firstOrNull { it.rect.contains(x, y) }?.action?.invoke(); return }
         when (tools.firstOrNull { it.rect.contains(x, y) }?.id) {
             "lang" -> listener.onLanguageToggle()
-            "emoji" -> { emojiScroll = 0f; emojiGroup = if (prefs.recentEmoji.isNotEmpty()) -1 else 0; mode = Mode.EMOJI }
+            "emoji" -> openEmoji()
             "settings" -> listener.onSettings()
             "hide" -> listener.onHide()
         }
@@ -747,7 +803,7 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
     // Settings changed in the app while the keyboard is open (the theme gallery): show them at once
     private val store = context.getSharedPreferences("keyboard", Context.MODE_PRIVATE)
     private val onPrefs = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-        if (key in setOf("theme", "key_borders", "photo", "photo_dim", "photo_stamp", "key_hints", "number_row", "height")) post { refreshTheme() }
+        if (key in setOf("theme", "key_borders", "photo", "photo_dim", "photo_stamp", "key_hints", "number_row", "height", "press_effect", "emoji_key")) post { refreshTheme() }
     }
 
     override fun onAttachedToWindow() {
@@ -760,6 +816,30 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
         store.unregisterOnSharedPreferenceChangeListener(onPrefs)
         handler.removeCallbacksAndMessages(null)
     }
+
+    private fun drawRipples(c: Canvas, slot: RectF, radius: Float) {
+        val now = android.os.SystemClock.uptimeMillis()
+        var alive = false
+        for (rp in ripples) {
+            if (rp.slot !== slot) continue
+            val t = ((now - rp.start).toFloat() / rippleMs).coerceIn(0f, 1f)
+            if (t >= 1f) continue
+            alive = true
+            val ease = 1f - (1f - t) * (1f - t) * (1f - t)
+            val reach = kotlin.math.hypot(max(rp.x - slot.left, slot.right - rp.x), max(rp.y - slot.top, slot.bottom - rp.y))
+            c.save()
+            clipPath.reset(); clipPath.addRoundRect(slot, radius, radius, android.graphics.Path.Direction.CW)
+            c.clipPath(clipPath)
+            keyPaint.color = Palette.alpha(palette.accent, 0.42f * (1f - t * 0.85f))
+            c.drawCircle(rp.x, rp.y, reach * (0.15f + 0.85f * ease), keyPaint)
+            c.restore()
+        }
+        if (alive) postInvalidateOnAnimation()
+    }
+    private val clipPath = android.graphics.Path()
+
+    /** The colour `a` with the transparency of `like` (keys over a photo stay see-through) */
+    private fun withAlphaOf(a: Int, like: Int) = (a and 0x00ffffff) or (like and 0xff000000.toInt())
 
     private fun blend(a: Int, b: Int, t: Float): Int {
         fun ch(x: Int, s: Int) = (x shr s) and 0xff
