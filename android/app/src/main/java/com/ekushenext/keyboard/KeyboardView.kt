@@ -2,7 +2,11 @@ package com.ekushenext.keyboard
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Rect
 import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Typeface
@@ -90,9 +94,34 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
         buildKeys()
     }
 
+    // ── a photo behind the keys
+    private var photo: Bitmap? = null
+    private var photoStamp = -1L
+    private val photoPaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
+    private var borders = true
+
     fun refreshTheme() {
-        palette = Palette.of(context)
+        borders = prefs.keyBorders
+        var p = Palette.of(context)
+        if (prefs.photo) {
+            if (photo == null || photoStamp != prefs.photoStamp) {
+                photo = runCatching { BitmapFactory.decodeFile(Prefs.photoFile(context).path) }.getOrNull()
+                photoStamp = prefs.photoStamp
+            }
+            if (photo != null) p = p.overPhoto()
+        } else photo = null
+        palette = p
         buildKeys(); requestLayout(); invalidate()
+    }
+
+    private fun drawPhoto(c: Canvas, b: Bitmap) {
+        // fill the keyboard, cropping the photo's edges (centre crop)
+        val scale = max(width.toFloat() / b.width, height.toFloat() / b.height)
+        val sw = (width / scale).toInt(); val sh = (height / scale).toInt()
+        val sx = (b.width - sw) / 2; val sy = (b.height - sh) / 2
+        c.drawBitmap(b, Rect(sx, sy, sx + sw, sy + sh), RectF(0f, 0f, width.toFloat(), height.toFloat()), photoPaint)
+        val dim = (prefs.photoDim.coerceIn(0, 80) * 255 / 100)
+        c.drawColor(if (palette.dark) Color.argb(dim, 0, 0, 0) else Color.argb(dim, 255, 255, 255))
     }
 
     private fun buildKeys() {
@@ -171,7 +200,8 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
 
     override fun onDraw(c: Canvas) {
         val p = palette
-        c.drawColor(p.background)
+        val b = photo
+        if (b != null) drawPhoto(c, b) else c.drawColor(p.background)
         drawStrip(c)
         if (mode == Mode.EMOJI) { drawEmoji(c); return }
         logKeys()
@@ -201,10 +231,17 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
             isFunction(k) -> p.functionKey
             else -> p.key
         }
-        keyPaint.color = p.keyShadow
-        c.drawRoundRect(r.left, r.top + 1.2f * dp, r.right, r.bottom + 1.2f * dp, radius, radius, keyPaint)
-        keyPaint.color = if (pressed) blend(base, p.text, 0.16f) else base
-        c.drawRoundRect(r, radius, radius, keyPaint)
+        // Flat look: only Space, Enter and a held key keep a shape
+        val shaped = borders || pressed || enter || shiftOn || k.type == KeyType.SPACE
+        if (shaped) {
+            if (borders) {
+                keyPaint.color = p.keyShadow
+                c.drawRoundRect(r.left, r.top + 1.2f * dp, r.right, r.bottom + 1.2f * dp, radius, radius, keyPaint)
+            }
+            val fill = if (!borders && !pressed && k.type == KeyType.SPACE) p.functionKey else base
+            keyPaint.color = if (pressed) blend(fill, p.text, 0.16f) else fill
+            c.drawRoundRect(r, radius, radius, keyPaint)
+        }
 
         val fg = when { enter -> p.onAccent; shift == Shift.LOCKED && k.type == KeyType.SHIFT -> p.onAccent; else -> p.text }
         when (k.type) {
@@ -707,8 +744,20 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
         emojiCells.firstOrNull { it.first.contains(x, y) }?.let { listener.onEmojiCommitted(it.second); rememberEmoji(it.second) }
     }
 
+    // Settings changed in the app while the keyboard is open (the theme gallery): show them at once
+    private val store = context.getSharedPreferences("keyboard", Context.MODE_PRIVATE)
+    private val onPrefs = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (key in setOf("theme", "key_borders", "photo", "photo_dim", "photo_stamp", "key_hints", "number_row", "height")) post { refreshTheme() }
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        store.registerOnSharedPreferenceChangeListener(onPrefs)
+    }
+
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
+        store.unregisterOnSharedPreferenceChangeListener(onPrefs)
         handler.removeCallbacksAndMessages(null)
     }
 
