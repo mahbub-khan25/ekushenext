@@ -63,6 +63,10 @@ class Prefs(context: Context) {
     var emojiKey: Boolean
         get() = p.getBoolean("emoji_key", true)
         set(v) = p.edit().putBoolean("emoji_key", v).apply()
+    /** English is typed in Gboard: the EN key hands over, Gboard's 🌐 key comes back */
+    var gboardEnglish: Boolean
+        get() = p.getBoolean("gboard_english", true)
+        set(v) = p.edit().putBoolean("gboard_english", v).apply()
     var seenTour: Boolean
         get() = p.getBoolean("seen_tour", false)
         set(v) = p.edit().putBoolean("seen_tour", v).apply()

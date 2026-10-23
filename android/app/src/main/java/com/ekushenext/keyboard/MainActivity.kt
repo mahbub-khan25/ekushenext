@@ -237,6 +237,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun keyboard() {
         val card = card()
+        englishSetting(card)
+        divider(card)
         card.addView(text("থিম", 15.5f, bnBold, textColor))
         card.addView(text("Theme: tap one to use it", 12.5f, Typeface.DEFAULT, subColor))
         spaceIn(card, 10f)
@@ -266,6 +268,26 @@ class MainActivity : AppCompatActivity() {
         divider(card)
         card.addView(switch("শব্দ", "Sound on key press", prefs.sound) { prefs.sound = it })
         root.addView(card)
+    }
+
+    private fun englishSetting(card: LinearLayout) {
+        val on = Gboard.enabledId(this) != null
+        val installed = Gboard.installed(this)
+        val sub = when {
+            on -> "EN চাপলে Gboard খোলে, তার 🌐 বোতামে বাংলায় ফেরা যায়। Tap EN to type English in Gboard: autocorrect, glide typing, voice and all. Its 🌐 key brings you back."
+            installed -> "Gboard is on this phone but turned off as a keyboard. Turn it on to type English in it."
+            else -> "Gboard isn't on this phone, so English is typed here in Ekushe Next."
+        }
+        card.addView(switch("ইংরেজির জন্য Gboard", sub, prefs.gboardEnglish && installed) { prefs.gboardEnglish = it }.apply {
+            if (!installed) { isEnabled = false; alpha = 0.55f }
+        })
+        if (installed && !on && prefs.gboardEnglish) {
+            spaceIn(card, 6f)
+            card.addView(MaterialButton(this, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
+                text = "Gboard চালু করুন"; typeface = bn; isAllCaps = false
+                setOnClickListener { startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)) }
+            })
+        }
     }
 
     private fun themeGallery(): View {
