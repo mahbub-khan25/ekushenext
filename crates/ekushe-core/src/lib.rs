@@ -664,8 +664,16 @@ mod tests {
     #[test]
     fn report_url_carries_the_build_details_only() {
         let url = report_url("Windows 11 (build 26100)", &Config::default());
-        assert!(url.starts_with("https://ekushenext.com/report/?v=0.1.0"), "{url}");
-        assert!(url.contains("&os=Windows%2011%20%28build%2026100%29&layout=AvroPhonetic&mode=Smart&from=app"), "{url}");
+        assert!(
+            url.starts_with("https://ekushenext.com/report/?v=0.1.0"),
+            "{url}"
+        );
+        assert!(
+            url.contains(
+                "&os=Windows%2011%20%28build%2026100%29&layout=AvroPhonetic&mode=Smart&from=app"
+            ),
+            "{url}"
+        );
         assert!(release().starts_with('v'));
     }
 
