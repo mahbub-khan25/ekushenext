@@ -3,8 +3,8 @@
 ### What's new in this beta
 - **Ekushe Next for Android.** The same engine and dictionary, now as a phone keyboard: **Ekushe-Next-Android.apk** (Android 7 or later).
   - Bangla letter hints on every key, press-and-hold for letters like ট, ৎ, ণ and ষ, suggestions and next-word predictions, ⌫ right after a word to get your letters back, and slide on Space to move the cursor.
-  - **English in Gboard:** tap **EN** and Gboard opens, with its autocorrect, glide typing and voice typing; its 🌐 key brings you back to Bangla. This can be turned off in the app's settings, and English is then typed in Ekushe Next itself.
-  - An emoji key next to Space, and themes: একুশে, কৃষ্ণচূড়া, পদ্মা, শাপলা, কাশফুল, রাত, your wallpaper's colours, or your own photo behind the keys. Key presses can be classic, 3D, glow, ripple or bounce.
+  - **English on the same keyboard:** tap **বাং/EN** for English with word completion, spelling fixes when you press Space (teh → the, dont → don't, i → I; ⌫ right after puts back what you typed), and basic next-word suggestions. It uses a 50,000-word list and the phone's own spell checker, and learns the words you use. Prefer Gboard for English (glide typing, voice)? Turn on **ইংরেজির জন্য Gboard** in the app.
+  - An emoji key next to Space, and themes: একুশে, **একুশে ডিফল্ট** and **একুশে মসৃণ** (familiar keyboard looks, light and dark), কৃষ্ণচূড়া, পদ্মা, শাপলা, কাশফুল, রাত, your wallpaper's colours, or your own photo behind the keys. Key presses can be classic, 3D, glow, ripple or bounce.
   - No internet permission at all: nothing you type can leave the phone. Password, email and web address boxes get plain English, and nothing is learned in them.
 
 Also in this beta (from beta.11): **Report a problem** from the app. Choose **🐞 সমস্যা জানান (Report a problem)** in the tray menu on Windows, **Report a Problem…** in the input menu on a Mac, **Report a problem** in the IBus menu on Linux, Studio's settings, or the Help section of the Android app. No account is needed.
@@ -65,6 +65,6 @@ Licence: code MPL-2.0, dictionary data CC BY-SA 4.0. See `THIRD_PARTY_NOTICES.md
 ### Android
 1. On your phone, download **Ekushe-Next-Android.apk** and open it. If the phone asks, allow installing apps from this source. If Google Play Protect says it doesn't recognise the app, tap **More details → Install anyway**.
 2. Open the **Ekushe Next** app and finish its two steps: turn the keyboard on, then choose it.
-3. Type in any app. Tap **EN** for English in Gboard; Gboard's 🌐 key brings you back.
+3. Type in any app. Tap **বাং/EN** to switch between Bangla and English.
 
 If you installed a test build of the Android app before, uninstall it first: test builds were signed with a different key, so the phone won't install this one over them. Updates from now on install straight over this version.
