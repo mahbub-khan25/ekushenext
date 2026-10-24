@@ -12,7 +12,7 @@ Also in this beta (from beta.11): **Report a problem** from the app. Choose **�
 ### Download
 - **Ekushe-Setup.exe** (or **Ekushe-Setup.zip**, if your browser blocks the .exe) installs it for your user account, with no admin rights needed. It starts with Windows, adds a Start Menu shortcut, and can be removed from Settings → Apps.
 - **Ekushe-Portable.exe** is the same program, run without installing. It doesn't start with Windows on its own.
-- **Ekushe-Extras-x64.zip** is for testers only. It contains the experimental Windows input method (`ekushe_tsf.dll`) and the command-line tool.
+- **Ekushe-Developer-Tools-x64.zip** is for testers and developers only. It contains the experimental Windows input method (`ekushe_tsf.dll`) and the command-line tool (`ekushe-cli.exe`). Not needed for everyday typing.
 
 Windows builds are code-signed by **A S M Mahbub Afzal Khan**. The certificate is new and still building reputation, so SmartScreen may show a warning. If it does, click **More info → Run anyway**; the publisher shown should be A S M Mahbub Afzal Khan.
 
