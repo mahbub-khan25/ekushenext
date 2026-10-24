@@ -224,6 +224,8 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
 
     private fun keyText(k: Key): String = when {
         k.letter && shift != Shift.OFF -> k.label.uppercase()
+        // Symbols key: Bangla digits alone in Bangla ("?" next to them sat oddly high), ?123 in English
+        k.type == KeyType.SYMBOLS && k.label == "?১২৩" -> if (bangla) "১২৩" else "?123"
         mode == Mode.SYMBOLS && k.label.length == 1 && k.label[0].isDigit() -> Layouts.digitLabel(k.label[0], bangla)
         mode == Mode.LETTERS && k.label.length == 1 && k.label[0].isDigit() -> Layouts.digitLabel(k.label[0], bangla)
         else -> k.label
@@ -310,7 +312,14 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
                 textPaint.typeface = bnFaceRegular
                 textPaint.textSize = 14 * dp
                 textPaint.color = p.subtext
-                val label = when { mode == Mode.NUMBERS || mode == Mode.PHONE -> "␣"; bangla -> "বাংলা · একুশে নেক্সট"; else -> "English · Ekushe Next" }
+                // The language, plus the keyboard's name when the space bar is wide enough for both
+                val label = when {
+                    mode == Mode.NUMBERS || mode == Mode.PHONE -> "␣"
+                    else -> {
+                        val full = if (bangla) "বাংলা · একুশে নেক্সট" else "English · Ekushe Next"
+                        if (textPaint.measureText(full) <= r.width() - 20 * dp) full else if (bangla) "বাংলা" else "English"
+                    }
+                }
                 c.drawText(label, r.centerX(), r.centerY() + 5 * dp, textPaint)
             }
             KeyType.LANG -> {

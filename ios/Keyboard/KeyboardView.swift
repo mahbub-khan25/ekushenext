@@ -148,6 +148,8 @@ final class KeyboardView: UIView {
 
     private func keyText(_ k: Key) -> String {
         if k.letter && shift != .off { return k.label.uppercased() }
+        // Symbols key: Bangla digits alone in Bangla ("?" next to them sat oddly high), ?123 in English
+        if k.type == .symbols && k.label == "?১২৩" { return bangla ? "১২৩" : "?123" }
         if (mode == .symbols || mode == .letters), k.label.count == 1, let c = k.label.first, c.isASCII, c.isNumber { return Layouts.digitLabel(c, bangla: bangla) }
         return k.label
     }
@@ -184,7 +186,13 @@ final class KeyboardView: UIView {
         let c = CGPoint(x: r.midX, y: r.midY)
         switch k.type {
         case .space:
-            let label = mode == .numbers ? "␣" : bangla ? "বাংলা · একুশে নেক্সট" : "English · Ekushe Next"
+            // The language, plus the keyboard's name when the space bar is wide enough for both
+            var label = "␣"
+            if mode != .numbers {
+                let full = bangla ? "বাংলা · একুশে নেক্সট" : "English · Ekushe Next"
+                let fits = (full as NSString).size(withAttributes: [.font: font(13)]).width <= r.width - 20
+                label = fits ? full : (bangla ? "বাংলা" : "English")
+            }
             draw(label, centre: c, font: font(13), color: p.subtext)
         case .lang:
             draw(bangla ? "বাং" : "EN", centre: CGPoint(x: c.x, y: c.y - 6), font: font(14, .semibold), color: bangla ? p.hint : p.subtext)
