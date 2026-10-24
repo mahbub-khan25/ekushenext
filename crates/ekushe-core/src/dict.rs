@@ -433,6 +433,10 @@ pub struct RankParams {
     pub final_vowel: f32,
     pub context_w: f32,
     pub completion: f32,
+    /// Largest log10 lift the context may add (scaled by `context_w`)
+    pub ctx_max: f32,
+    /// Typing cost of one Roman letter standing for another close one (s for ছ, v for ভ, z for জ …)
+    pub sc_pair: f32,
 }
 
 impl Default for RankParams {
@@ -445,6 +449,8 @@ impl Default for RankParams {
             final_vowel: 0.8,
             context_w: 0.5,
             completion: 0.9,
+            ctx_max: 3.0,
+            sc_pair: 0.4,
         }
     }
 }
@@ -499,6 +505,7 @@ fn wdist(
     a: &[u8],
     b: &[u8],
     final_vowel: f32,
+    pair_cost: f32,
     prefix: bool,
     row: &mut Vec<f32>,
     cur: &mut Vec<f32>,
@@ -521,7 +528,7 @@ fn wdist(
                     0.35
                 }
             } else if cheap_pair(ca, cb) {
-                0.4
+                pair_cost
             } else {
                 1.0
             };
@@ -689,7 +696,15 @@ impl Dictionary {
                         bonus += p.case;
                     }
                 }
-                let d = wdist(tb, rl.as_bytes(), p.final_vowel, prefix, row, cur);
+                let d = wdist(
+                    tb,
+                    rl.as_bytes(),
+                    p.final_vowel,
+                    p.sc_pair,
+                    prefix,
+                    row,
+                    cur,
+                );
                 best = best.min(c + d - bonus);
             }
             Some(best)
@@ -719,7 +734,7 @@ impl Dictionary {
                             - PAIR_CORPUS_LOG10_M
                             - prev_lp
                             - self.info(w).log_ppm;
-                        p.context_w * lift.clamp(0.0, 3.0)
+                        p.context_w * lift.clamp(0.0, p.ctx_max)
                     })
                     .unwrap_or(0.0)
             };

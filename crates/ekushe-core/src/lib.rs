@@ -551,7 +551,9 @@ impl Ekushe {
         // A deliberate mark (`,,` `^` `rri` `rr` `t``` `:` `Z` `+` `` ` ``) puts the word it asks for
         // first; and words in the list with a mark the user did not type get a tip on how to type them.
         let literal = self.phonetic.transliterate_word(stem);
-        marks::honor_marks(stem, &literal, &mut cands);
+        if !self.suggestions.has_autocorrect(stem) {
+            marks::honor_marks(stem, &literal, &mut cands);
+        }
         let first_for = |v: &str| self.suggest_roman(v).0.into_iter().next().map(|c| c.text);
         let tips = marks::mark_tips(stem, &cands, &self.phonetic, &first_for);
         if !tips.is_empty() {

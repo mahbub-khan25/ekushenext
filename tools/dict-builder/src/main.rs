@@ -33,7 +33,7 @@ fn main() {
         }
         Some("pack") => {
             let get = |k: &str| args.iter().position(|a| a == k).and_then(|i| args.get(i + 1)).cloned();
-            pack::pack(&get("--lexicon").expect("--lexicon"), get("--english").as_deref(), get("--pairs").as_deref(),
+            pack::pack(&get("--lexicon").expect("--lexicon"), get("--english").as_deref(), get("--pairs").as_deref(), get("--phrases").as_deref(),
                        get("--vulgar").as_deref(), &get("--out").expect("--out"));
         }
         Some("roman") => {
