@@ -1,0 +1,5 @@
+# Made by build-rust.sh and xcodegen
+rust/
+Resources/
+EkusheNext.xcodeproj/
+build/

@@ -8,6 +8,7 @@ members = [
     "crates/ekushe-tray",
     "crates/ekushe-studio",
     "crates/ekushe-android",
+    "crates/ekushe-mobile",
 ]
 
 [workspace.package]
