@@ -1,5 +1,5 @@
 # The Xcode project, generated with XcodeGen:  cd ios && xcodegen
-# (run ./build-rust.sh first: it builds the engine and puts the dictionary in Resources/)
+# (run ./build-rust.sh first: it builds the engine and puts the dictionary in Data/)
 name: EkusheNext
 options:
   bundleIdPrefix: com.ekushenext
@@ -44,8 +44,7 @@ targets:
       - path: Keyboard
         excludes: ["Info.plist"]
       - Shared
-      - path: Resources
-        type: folder
+      - path: Data
         buildPhase: resources
     info:
       path: Keyboard/Info.plist
@@ -72,8 +71,7 @@ targets:
       - Shared
       - Keyboard/KeyboardView.swift
       - Keyboard/Typist.swift
-      - path: Resources
-        type: folder
+      - path: Data
         buildPhase: resources
     settings:
       base:
