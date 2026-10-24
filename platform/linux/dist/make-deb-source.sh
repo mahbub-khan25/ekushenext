@@ -1,7 +1,7 @@
 #!/bin/bash
 # Make the Ubuntu source package for one release, for the Launchpad PPA:
 #   platform/linux/dist/make-deb-source.sh v0.1.0-beta.13 noble
-#     → build/dist/deb/ekushe_0.1.0~beta13-1~noble1_source.changes (+ .dsc, .debian.tar.xz, .orig.tar.xz)
+#     → build/dist/deb/ekushe_0.1.0~beta.13-1~noble1_source.changes (+ .dsc, .debian.tar.xz, .orig.tar.xz)
 # Run make-source.sh first. Needs dpkg-dev and debhelper. The result is unsigned; sign it with
 # debsign before uploading with dput (the release workflow does both).
 # UPLOAD=2 makes a second upload of the same version (1~noble2) if Launchpad needs a rebuild.

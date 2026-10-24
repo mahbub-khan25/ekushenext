@@ -1,6 +1,6 @@
 #!/bin/bash
 # Make the Linux source tarball that the Fedora (COPR) and Ubuntu (PPA) packages build from:
-#   platform/linux/dist/make-source.sh v0.1.0-beta.13   → build/dist/ekushe-0.1.0~beta13.tar.xz
+#   platform/linux/dist/make-source.sh v0.1.0-beta.13   → build/dist/ekushe-0.1.0~beta.13.tar.xz
 # It holds only what the Linux build needs (engine, Studio, dictionary, icons, fonts), plus every
 # Rust library in vendor/, because Launchpad and COPR build without internet. Libraries that only
 # Windows, macOS, phones or tests use keep their Cargo.toml but no code, so the tarball stays small.

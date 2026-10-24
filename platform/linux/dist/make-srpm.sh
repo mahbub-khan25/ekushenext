@@ -1,6 +1,6 @@
 #!/bin/bash
 # Make the Fedora source package (.src.rpm) for COPR from the source tarball:
-#   platform/linux/dist/make-srpm.sh v0.1.0-beta.13   → build/dist/ekushe-0.1.0~beta13-1.src.rpm
+#   platform/linux/dist/make-srpm.sh v0.1.0-beta.13   → build/dist/ekushe-0.1.0~beta.13-1.src.rpm
 # Run make-source.sh first. Needs rpmbuild (dnf install rpm-build).
 set -euo pipefail
 cd "$(dirname "$0")/../../.."
