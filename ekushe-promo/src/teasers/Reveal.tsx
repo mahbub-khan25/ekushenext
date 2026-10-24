@@ -30,7 +30,7 @@ const Big: React.FC<{ children: React.ReactNode; size: number; style?: React.CSS
 };
 
 /* ───────────────────────── 0–7 s: remembrance ───────────────────────── */
-const Prologue: React.FC = () => {
+export const Prologue: React.FC = () => {
   const f = useCurrentFrame();
   const { u, V } = useLayout();
   const l1 = W(f, 40, 215, 26), l2 = W(f, 230, 410, 26);
@@ -56,7 +56,7 @@ const Prologue: React.FC = () => {
 };
 
 /* ───────────────────────── 7–11 s: the name ───────────────────────── */
-const Logo: React.FC = () => {
+export const Logo: React.FC = () => {
   const f = useCurrentFrame();
   const { u, V } = useLayout();
   const pop = spring({ frame: f - 30, fps: 60, config: { damping: 11, mass: 0.9 } });
@@ -189,7 +189,7 @@ const chip = (u: number, on = false): React.CSSProperties => ({ fontFamily: FONT
 const roman = (u: number, size: number): React.CSSProperties => ({ fontFamily: FONT_LATIN, fontWeight: 500, fontSize: size * u, color: 'rgba(234,243,238,0.75)', letterSpacing: '0.01em' });
 
 /** Roman words that turn into Bangla one by one */
-const Phonetic: React.FC = () => {
+export const Phonetic: React.FC = () => {
   const f = useCurrentFrame();
   const { u, V } = useLayout();
   const words: [string, string][] = [['amar', 'আমার'], ['sonar', 'সোনার'], ['bangla', 'বাংলা']];
@@ -210,7 +210,7 @@ const Phonetic: React.FC = () => {
 };
 
 /** Three spellings, one right word */
-const Converge: React.FC = () => {
+export const Converge: React.FC = () => {
   const f = useCurrentFrame();
   const { u, V } = useLayout();
   const ways = ['kkhoma', 'kShoma', 'khoma'];
@@ -229,7 +229,7 @@ const Converge: React.FC = () => {
   );
 };
 
-const Dictionary: React.FC = () => {
+export const Dictionary: React.FC = () => {
   const f = useCurrentFrame();
   const { u, V } = useLayout();
   const n = Math.round(418743 * ease(f, 8, 80));
@@ -250,7 +250,7 @@ const Dictionary: React.FC = () => {
   );
 };
 
-const NextWord: React.FC = () => {
+export const NextWord: React.FC = () => {
   const f = useCurrentFrame();
   const { u, V } = useLayout();
   const nexts = ['সকাল', 'জন্মদিন', 'নববর্ষ'];
@@ -268,7 +268,7 @@ const NextWord: React.FC = () => {
   );
 };
 
-const Speed: React.FC = () => {
+export const Speed: React.FC = () => {
   const f = useCurrentFrame();
   const { u } = useLayout();
   const v = (0.98 * ease(f, 6, 70)).toFixed(2);
@@ -281,7 +281,7 @@ const Speed: React.FC = () => {
   );
 };
 
-const Bijoy: React.FC = () => {
+export const Bijoy: React.FC = () => {
   const f = useCurrentFrame();
   const { u, V } = useLayout();
   const m = ease(f, 64, 92);
@@ -304,7 +304,7 @@ const Bijoy: React.FC = () => {
   );
 };
 
-const Studio: React.FC = () => {
+export const Studio: React.FC = () => {
   const f = useCurrentFrame();
   const { u, V, width } = useLayout();
   const pages = ['playground', 'xray', 'signs', 'spell'];
@@ -331,7 +331,7 @@ const Lock: React.FC<{ size: number; shut: number }> = ({ size, shut }) => (
     <circle cx={50} cy={78} r={8} fill="#03170F" /><rect x={46} y={80} width={8} height={16} rx={4} fill="#03170F" />
   </svg>
 );
-const Private: React.FC = () => {
+export const Private: React.FC = () => {
   const f = useCurrentFrame();
   const { u, V } = useLayout();
   const items = ['ইন্টারনেট লাগে না', 'অ্যাকাউন্ট লাগে না', 'কোনো ট্র্যাকিং নেই'];

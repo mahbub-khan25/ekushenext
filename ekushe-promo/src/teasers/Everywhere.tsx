@@ -149,7 +149,8 @@ const THEMES: [string, string, string][] = [
 ];
 const THEME_EVERY = 24;
 
-const Phone: React.FC = () => {
+/** `soon` turns the heading into the full promo's "coming later" one. */
+export const Phone: React.FC<{ soon?: boolean }> = ({ soon }) => {
   const f = useCurrentFrame(); // 0 at E.phone
   const { u, V, width, height } = useLayout();
   const rise = spring({ frame: f - 6, fps: 60, config: { damping: 16, stiffness: 70 } });
@@ -208,9 +209,9 @@ const Phone: React.FC = () => {
       {/* the words */}
       <div style={{ position: 'absolute', left: V ? 0 : 150 * u, right: V ? 0 : undefined, top: V ? 110 * u : 0, bottom: V ? undefined : 0, width: V ? undefined : 900 * u, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: V ? 'center' : 'flex-start', textAlign: V ? 'center' : 'left' }}>
         <div style={{ opacity: head, transform: `translateY(${(1 - head) * 40 * u}px)` }}>
-          <div style={{ fontFamily: FONT_LATIN, fontWeight: 700, letterSpacing: '0.38em', fontSize: 30 * u, color: '#FF8A84' }}>NEW · ANDROID</div>
-          <Big size={V ? 120 : 130} style={{ textAlign: V ? 'center' : 'left', marginTop: 10 * u }}>এবার ফোনেও</Big>
-          <Sub size={40} style={{ textAlign: V ? 'center' : 'left', marginTop: 4 * u }}>Now on your phone</Sub>
+          <div style={{ fontFamily: FONT_LATIN, fontWeight: 700, letterSpacing: '0.38em', fontSize: 30 * u, color: soon ? C.mustard : '#FF8A84' }}>{soon ? 'ANDROID · COMING LATER' : 'NEW · ANDROID'}</div>
+          <Big size={V ? 120 : 130} style={{ textAlign: V ? 'center' : 'left', marginTop: 10 * u }}>{soon ? 'অ্যান্ড্রয়েড ফোনে' : 'এবার ফোনেও'}</Big>
+          <Sub size={40} style={{ textAlign: V ? 'center' : 'left', marginTop: 4 * u }}>{soon ? 'On Android phones · শীঘ্রই আসছে' : 'Now on your phone'}</Sub>
         </div>
         {!V && active && ci > 0 && (
           <div key={ci} style={{ marginTop: 70 * u, opacity: ct, transform: `translateX(${(1 - ct) * -60 * u}px)` }}>
