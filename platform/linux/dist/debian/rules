@@ -1,0 +1,34 @@
+#!/usr/bin/make -f
+# Builds from the bundled vendor/ folder: Launchpad builds have no internet.
+export DH_VERBOSE = 1
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+export CARGO_HOME = $(CURDIR)/debian/cargo-home
+# Ubuntu 22.04-26.04 get a newer Rust as a versioned package (rustc-1.91); 26.10+ has it as default
+RUSTBIN := $(firstword $(wildcard /usr/lib/rust-1.9*/bin))
+ifneq ($(RUSTBIN),)
+export PATH := $(RUSTBIN):$(PATH)
+endif
+VERSION := $(shell dpkg-parsechangelog -SVersion | sed 's/-[^-]*$$//')
+MAKEARGS = -f platform/linux/Makefile VERSION=$(VERSION) CARGOFLAGS="--offline --frozen" \
+           PREFIX=/usr LIBEXECDIR=/usr/libexec DATADIR=/usr/share BINDIR=/usr/bin
+
+%:
+	dh $@
+
+override_dh_auto_configure:
+
+override_dh_auto_build:
+	cargo --version
+	$(MAKE) $(MAKEARGS) CFLAGS="$(shell dpkg-buildflags --get CFLAGS)" LDFLAGS="$(shell dpkg-buildflags --get LDFLAGS)"
+
+override_dh_auto_install:
+	$(MAKE) $(MAKEARGS) install DESTDIR=$(CURDIR)/debian/ekushe
+
+override_dh_auto_test:
+	target/release/ibus-engine-ekushe --version
+
+override_dh_auto_clean:
+	rm -rf target debian/cargo-home
+
+# Rust's debug info confuses dwz on older Ubuntu
+override_dh_dwz:

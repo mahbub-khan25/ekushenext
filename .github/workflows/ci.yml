@@ -161,6 +161,69 @@ jobs:
           export PYTHONUNBUFFERED=1
           dbus-run-session -- bash -c 'ibus-daemon --xim=false --panel=disable --emoji-extension=disable --cache=none --config=disable --verbose > /tmp/ibus.log 2>&1 & for i in $(seq 1 50); do F=$(ls ~/.config/ibus/bus/* 2>/dev/null | head -1); [ -n "$F" ] && break; sleep 0.2; done; export $(grep "^IBUS_ADDRESS=" "$F"); python3 platform/linux/ibus/test_engine.py; rc=$?; echo "--- processes"; ls -la /proc/*/exe 2>/dev/null | grep -i ibus; echo "--- ibus-daemon log"; cat /tmp/ibus.log; exit $rc'
 
+  linux-source:
+    name: Linux source package (for COPR and the PPA)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+      - name: Source tarball (checks it builds with only the bundled libraries)
+        run: platform/linux/dist/make-source.sh "$(cat .github/release/VERSION)"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: linux-source
+          path: |
+            build/dist/*.tar.xz
+            build/dist/bundled-crates.txt
+
+  copr-check:
+    name: Fedora package builds from source and types
+    needs: linux-source
+    runs-on: ubuntu-latest
+    container: quay.io/fedora/fedora:latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: linux-source
+          path: build/dist
+      - name: Build the .rpm the way COPR does
+        run: |
+          dnf install -y -q rpm-build python3 dnf-plugins-core
+          platform/linux/dist/make-srpm.sh "$(cat .github/release/VERSION)"
+          dnf builddep -y -q build/dist/ekushe-*.src.rpm
+          rpmbuild --rebuild build/dist/ekushe-*.src.rpm --define "_rpmdir $PWD/build/dist/rpms"
+      - name: Install and type
+        run: |
+          dnf install -y -q build/dist/rpms/*/ekushe-*.rpm python3-gobject dbus-daemon dbus-tools
+          platform/linux/dist/test-installed.sh
+
+  ppa-check:
+    name: Ubuntu package builds from source and types
+    needs: linux-source
+    runs-on: ubuntu-latest
+    container: ubuntu:24.04
+    env:
+      DEBIAN_FRONTEND: noninteractive
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: linux-source
+          path: build/dist
+      - name: Build the .deb the way Launchpad does (Ubuntu 24.04)
+        run: |
+          apt-get update -q && apt-get install -y -q --no-install-recommends dpkg-dev debhelper python3
+          platform/linux/dist/make-deb-source.sh "$(cat .github/release/VERSION)" noble
+          cd build/dist/deb && dpkg-source -x ekushe_*.dsc src && apt-get build-dep -y -q ./src
+          cd src && dpkg-buildpackage -b -us -uc
+      - name: Install and type
+        run: |
+          apt-get install -y -q ./build/dist/deb/ekushe_*_amd64.deb python3-gi gir1.2-ibus-1.0 dbus
+          platform/linux/dist/test-installed.sh
+
   dict-builder:
     name: Dictionary builder
     runs-on: ubuntu-latest
