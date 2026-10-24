@@ -1,0 +1,49 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: Ekushe Next
+Upstream-Contact: Ekushe Next <khan.ytube24@gmail.com>
+Source: https://github.com/mahbub-khan25/ekushenext
+
+Files: *
+Copyright: 2026 Ekushe Next contributors
+License: MPL-2.0
+
+Files: data/dictionary/*
+Copyright: 2026 Ekushe Next contributors
+License: CC-BY-SA-4.0
+Comment: Derived from Bangla Wikipedia (CC BY-SA 3.0), FineWeb-2 (ODC-By 1.0), Sangraha
+ (CC BY 4.0) and wordfreq (CC BY-SA 4.0). See data/dictionary/LICENSE.md.
+
+Files: assets/fonts/Kalpurush.ttf assets/fonts/SolaimanLipi.ttf
+Copyright: Tanbin Islam Siyam (Kalpurush), Ekushey (SolaimanLipi)
+License: OFL-1.0
+
+Files: assets/fonts/HindSiliguri-* assets/fonts/NotoSansBengali-*
+Copyright: 2015 Indian Type Foundry; 2025 The Noto Project Authors
+License: OFL-1.1
+
+Files: assets/fonts/SiyamRupali.ttf
+Copyright: Md. Tanbin Islam Siyam, M. M. Rifat-Un-Nabi
+License: GPL-2.0+ with font exception
+
+Files: vendor/*
+Copyright: The authors of each Rust library (see each folder's Cargo.toml)
+License: MIT or Apache-2.0, and other permissive licences (Unicode-3.0, Zlib)
+Comment: Rust libraries bundled for an offline build. Folders containing only Cargo.toml
+ and an empty src/lib.rs are libraries used only on other systems.
+
+License: MPL-2.0
+ This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
+ On Debian systems, the full text is in /usr/share/common-licenses/MPL-2.0.
+
+License: CC-BY-SA-4.0
+ The full text is in /usr/share/doc/ekushe/ and data/dictionary/CC-BY-SA-4.0.txt.
+
+License: OFL-1.0
+ SIL Open Font License 1.0. Full text: assets/fonts/LICENSES/OFL-1.0.txt.
+
+License: OFL-1.1
+ SIL Open Font License 1.1. Full text: assets/fonts/LICENSES/.
+
+License: GPL-2.0+ with font exception
+ GNU General Public License, version 2 or later, with the font exception.
+ On Debian systems, the full text is in /usr/share/common-licenses/GPL-2.

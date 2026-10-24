@@ -257,3 +257,13 @@ jobs:
           body_path: .github/release/notes.md
           prerelease: ${{ contains(needs.version.outputs.tag, '-') }}
           files: dist/*
+
+  # Fedora COPR and Ubuntu PPA: built from source there, so dnf/apt users get updates
+  linux-repos:
+    needs: [version, publish]
+    permissions:
+      contents: write   # attaches the Linux source tarball to the release
+    uses: ./.github/workflows/linux-repos.yml
+    with:
+      tag: ${{ needs.version.outputs.tag }}
+    secrets: inherit

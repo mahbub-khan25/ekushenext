@@ -1,0 +1,129 @@
+name: Linux repositories (COPR and PPA)
+
+# Builds Ekushe from source on Fedora's COPR and Ubuntu's Launchpad PPA, so people can install it
+# with dnf or apt and get updates with their system. Runs after each release (release.yml calls
+# it), or by hand for an already published release: Actions → this workflow → Run workflow.
+# Setup (accounts, secrets, variables) is in docs/LINUX_REPOSITORIES.md. Each half is skipped
+# until its secret and variable are set.
+on:
+  workflow_call:
+    inputs:
+      tag: { type: string, required: true }
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to upload (e.g. v0.1.0-beta.13)
+        required: true
+
+permissions:
+  contents: read
+
+env:
+  TAG: ${{ inputs.tag }}
+
+jobs:
+  source:
+    name: Source tarball
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write   # attaches the source tarball to the GitHub release
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.tag }}
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+      - name: Make the source tarball (with every Rust library bundled)
+        run: platform/linux/dist/make-source.sh "$TAG"
+      - name: Attach it to the GitHub release (other distributions can build from it too)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$TAG" build/dist/ekushe-*.tar.xz --clobber --repo "$GITHUB_REPOSITORY"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: linux-source
+          path: |
+            build/dist/*.tar.xz
+            build/dist/bundled-crates.txt
+
+  copr:
+    name: Fedora COPR
+    needs: source
+    if: vars.COPR_PROJECT != ''
+    runs-on: ubuntu-latest
+    container: quay.io/fedora/fedora:latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.tag }}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: linux-source
+          path: build/dist
+      - name: Tools
+        run: dnf install -y -q rpm-build python3 copr-cli
+      - name: Fedora source package (.src.rpm)
+        run: platform/linux/dist/make-srpm.sh "$TAG"
+      - name: COPR sign-in
+        env:
+          COPR_CONFIG: ${{ secrets.COPR_CONFIG }}
+        run: |
+          test -n "$COPR_CONFIG" || { echo "::error::The COPR_CONFIG secret is missing (docs/LINUX_REPOSITORIES.md)"; exit 1; }
+          mkdir -p ~/.config && printf '%s\n' "$COPR_CONFIG" > ~/.config/copr && chmod 600 ~/.config/copr
+          copr-cli whoami
+      - name: Create the COPR project if it doesn't exist yet
+        env:
+          PROJECT: ${{ vars.COPR_PROJECT }}
+        run: |
+          if ! copr-cli get "$PROJECT" >/dev/null 2>&1; then
+            # Every Fedora release COPR builds for now, on Intel/AMD and ARM (not rawhide)
+            CHROOTS=$(copr-cli list-chroots | awk '{print $1}' | grep -E '^fedora-[0-9]+-(x86_64|aarch64)$' | sed 's/^/--chroot /' | tr '\n' ' ')
+            copr-cli create "${PROJECT#*/}" $CHROOTS \
+              --description "Ekushe Next: Bangla phonetic keyboard for IBus. https://ekushenext.com" \
+              --instructions "sudo dnf copr enable $PROJECT && sudo dnf install ekushe" \
+              --enable-net off
+          fi
+      - name: Build on COPR (waits for the result)
+        env:
+          PROJECT: ${{ vars.COPR_PROJECT }}
+        run: copr-cli build "$PROJECT" build/dist/ekushe-*.src.rpm
+
+  ppa:
+    name: Ubuntu PPA
+    needs: source
+    if: vars.PPA != ''
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.tag }}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: linux-source
+          path: build/dist
+      - name: Tools
+        run: sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends dpkg-dev debhelper devscripts dput
+      - name: Signing key
+        env:
+          PPA_GPG_KEY: ${{ secrets.PPA_GPG_KEY }}
+        run: |
+          test -n "$PPA_GPG_KEY" || { echo "::error::The PPA_GPG_KEY secret is missing (docs/LINUX_REPOSITORIES.md)"; exit 1; }
+          printf '%s\n' "$PPA_GPG_KEY" | gpg --batch --import
+          echo "KEYID=$(gpg --list-secret-keys --with-colons | awk -F: '/^fpr/ {print $10; exit}')" >> "$GITHUB_ENV"
+      - name: Source packages, signed, uploaded for each Ubuntu release
+        env:
+          PPA: ${{ vars.PPA }}
+          SERIES: ${{ vars.PPA_SERIES || 'jammy noble resolute stonking' }}
+          PASSPHRASE: ${{ secrets.PPA_GPG_PASSPHRASE }}
+        run: |
+          printf '%s' "$PASSPHRASE" > "$RUNNER_TEMP/pass"
+          GPG="gpg --batch --pinentry-mode loopback --passphrase-file $RUNNER_TEMP/pass"
+          for s in $SERIES; do
+            platform/linux/dist/make-deb-source.sh "$TAG" "$s"
+            debsign -p"$GPG" -k"$KEYID" build/dist/deb/ekushe_*~"${s}"1_source.changes
+            dput "ppa:$PPA" build/dist/deb/ekushe_*~"${s}"1_source.changes
+          done
+          rm -f "$RUNNER_TEMP/pass"
+          echo "Uploaded. Launchpad builds each release in about 15-30 minutes: https://launchpad.net/~${PPA%%/*}/+archive/ubuntu/${PPA#*/}/+packages"

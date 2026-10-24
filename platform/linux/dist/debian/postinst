@@ -1,0 +1,7 @@
+#!/bin/sh
+set -e
+if [ "$1" = configure ] && command -v ibus >/dev/null 2>&1; then
+  ibus write-cache --system >/dev/null 2>&1 || true
+fi
+#DEBHELPER#
+exit 0
