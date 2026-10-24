@@ -1,13 +1,19 @@
 **Beta.** Ekushe Next is a Bangla phonetic keyboard for **Windows 10/11 (64-bit)**, **macOS 11 or later** (Apple silicon and Intel), **Linux** (64-bit, IBus) and **Android 7 or later**. It comes with its own dictionary, which puts the Bangla Academy standard spelling first.
 
 ### What's new in this beta
-- **Ekushe Next for Android.** The same engine and dictionary, now as a phone keyboard: **Ekushe-Next-Android.apk** (Android 7 or later).
+- **Android, English typing made safe.** Email and web addresses are typed exactly as you type them (an @ or a digit from the symbols page no longer swallows the word before it: makhan.aumi@gmail.com stays makhan.aumi@gmail.com). Only Space corrects a word, and never one that is part of an address, a name in the middle of a sentence, or Banglish written in English mode (ami, tomake, bhalobashi stay as they are). Clear typos are still fixed: teh → the, dont → don't, i → I.
+- **Android number pad:** a full-width, four-column pad with big digits in number and phone boxes.
+- **Android keys use the phone's own Bangla font**, so letters and digits (১২৩) look clean and familiar.
+- **New shortcuts on every platform:** `;innalillah` → ইন্না লিল্লাহি ওয়া ইন্না ইলাইহি রাজিউন, `;barik` → আল্লাহুম্মা বারিক লাহু, `;brb` → এখুনি আসছি.
+- The testers' zip is now called **Ekushe-Developer-Tools-x64.zip** (it was Ekushe-Extras-x64.zip).
+
+Also in this beta (from beta.12): **Ekushe Next for Android**, the same engine and dictionary as a phone keyboard (**Ekushe-Next-Android.apk**, Android 7 or later).
   - Bangla letter hints on every key, press-and-hold for letters like ট, ৎ, ণ and ষ, suggestions and next-word predictions, ⌫ right after a word to get your letters back, and slide on Space to move the cursor.
-  - **English on the same keyboard:** tap **বাং/EN** for English with word completion, spelling fixes when you press Space (teh → the, dont → don't, i → I; ⌫ right after puts back what you typed), and basic next-word suggestions. It uses a 50,000-word list and the phone's own spell checker, and learns the words you use. Prefer Gboard for English (glide typing, voice)? Turn on **ইংরেজির জন্য Gboard** in the app.
+  - **English on the same keyboard:** tap **বাং/EN** for English with word completion, spelling fixes when you press Space, and basic next-word suggestions. It uses a 50,000-word list and the phone's own spell checker, and learns the words you use. Prefer Gboard for English (glide typing, voice)? Turn on **ইংরেজির জন্য Gboard** in the app.
   - An emoji key next to Space, and themes: একুশে, **একুশে ডিফল্ট** and **একুশে মসৃণ** (familiar keyboard looks, light and dark), কৃষ্ণচূড়া, পদ্মা, শাপলা, কাশফুল, রাত, your wallpaper's colours, or your own photo behind the keys. Key presses can be classic, 3D, glow, ripple or bounce.
   - No internet permission at all: nothing you type can leave the phone. Password, email and web address boxes get plain English, and nothing is learned in them.
 
-Also in this beta (from beta.11): **Report a problem** from the app. Choose **🐞 সমস্যা জানান (Report a problem)** in the tray menu on Windows, **Report a Problem…** in the input menu on a Mac, **Report a problem** in the IBus menu on Linux, Studio's settings, or the Help section of the Android app. No account is needed.
+And from beta.11: **Report a problem** from the app. Choose **🐞 সমস্যা জানান (Report a problem)** in the tray menu on Windows, **Report a Problem…** in the input menu on a Mac, **Report a problem** in the IBus menu on Linux, Studio's settings, or the Help section of the Android app. No account is needed.
 
 ### Download
 - **Ekushe-Setup.exe** (or **Ekushe-Setup.zip**, if your browser blocks the .exe) installs it for your user account, with no admin rights needed. It starts with Windows, adds a Start Menu shortcut, and can be removed from Settings → Apps.
