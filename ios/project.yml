@@ -41,15 +41,28 @@ targets:
     type: app-extension
     platform: iOS
     sources:
-      - Keyboard
+      - path: Keyboard
+        excludes: ["Info.plist"]
       - Shared
       - path: Resources
         type: folder
         buildPhase: resources
+    info:
+      path: Keyboard/Info.plist
+      properties:
+        CFBundleDisplayName: Ekushe Next
+        CFBundleDevelopmentRegion: bn
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.keyboard-service
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).KeyboardViewController
+          NSExtensionAttributes:
+            IsASCIICapable: false
+            PrefersRightToLeft: false
+            PrimaryLanguage: bn-BD
+            RequestsOpenAccess: false
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ekushenext.app.keyboard
-        INFOPLIST_FILE: Keyboard/Info.plist
         APPLICATION_EXTENSION_API_ONLY: YES
   EkusheTests:
     type: bundle.unit-test
