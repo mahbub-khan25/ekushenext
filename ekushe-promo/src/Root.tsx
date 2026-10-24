@@ -10,6 +10,7 @@ import { Teaser5, TEASER5_FRAMES } from './teasers/Teaser5';
 import { Anthem, ANTHEM_FRAMES } from './teasers/Anthem';
 import { Reveal, REVEAL_FRAMES } from './teasers/Reveal';
 import { FinalTeaser, FINAL_TEASER_FRAMES } from './teasers/FinalTeaser';
+import { Everywhere, EVERYWHERE_FRAMES } from './teasers/Everywhere';
 
 /** 60 s, 60 fps, 2K: 2560×1440 (16:9, YouTube) and 1440×2560 (9:16, Reels / Shorts / TikTok). */
 export const Root: React.FC = () => (
@@ -36,5 +37,8 @@ export const Root: React.FC = () => (
     {/* The last teaser: teasers 3, 4 and 5 combined, one ending */}
     <Composition id="FinalTeaser-16x9" component={FinalTeaser} durationInFrames={FINAL_TEASER_FRAMES} fps={60} width={2560} height={1440} />
     <Composition id="FinalTeaser-9x16" component={FinalTeaser} durationInFrames={FINAL_TEASER_FRAMES} fps={60} width={1440} height={2560} />
+    {/* One keyboard, everywhere: Windows, macOS, Linux and Android, one engine */}
+    <Composition id="Everywhere-16x9" component={Everywhere} durationInFrames={EVERYWHERE_FRAMES} fps={60} width={2560} height={1440} />
+    <Composition id="Everywhere-9x16" component={Everywhere} durationInFrames={EVERYWHERE_FRAMES} fps={60} width={1440} height={2560} />
   </>
 );
