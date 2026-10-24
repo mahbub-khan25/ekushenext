@@ -379,6 +379,8 @@ class EkusheIME : InputMethodService(), KeyboardListener {
         if (!prefs.enAutocorrect || typed == enKeep) return null
         // part of an email, a web address or a code (gmail.com, a@b, #tag): never touched
         if (gluedToText(typed.length)) return null
+        // i → I and dont → don't come first (they read as Banglish too: দন্ত)
+        if (English.isContraction(typed)) English.canonical(typed)?.let { return it }
         // Banglish written in English mode (ami, tomake, bhalobashi) stays as it is
         if (Engine.isBanglish(typed)) return null
         English.canonical(typed)?.let { return it }
