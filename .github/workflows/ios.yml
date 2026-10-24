@@ -1,0 +1,48 @@
+# iOS keyboard: build the engine for iPhone/iPad, the app and its keyboard, run the tests on a
+# simulator (typing, English help, and a picture of every theme), and build for a real device.
+name: iOS
+
+on:
+  push:
+    branches: [main]
+    paths: ['ios/**', 'crates/ekushe-core/**', 'crates/ekushe-mobile/**', 'data/dictionary/**', 'data/english/**', '.github/workflows/ios.yml']
+  pull_request:
+    paths: ['ios/**', 'crates/ekushe-core/**', 'crates/ekushe-mobile/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ios:
+    name: Build and test on a simulator
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+      - name: Engine for iOS
+        run: ios/build-rust.sh
+      - name: Xcode project
+        run: |
+          brew install xcodegen
+          cd ios && xcodegen
+      - name: Tests on a simulator
+        working-directory: ios
+        run: |
+          SIM=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next(x['udid'] for k in sorted(d, reverse=True) if 'iOS' in k for x in d[k] if x['name'].startswith('iPhone')))")
+          echo "simulator $SIM"
+          xcodebuild test -project EkusheNext.xcodeproj -scheme EkusheNext -destination "id=$SIM" \
+            CODE_SIGNING_ALLOWED=NO -resultBundlePath "$RUNNER_TEMP/tests.xcresult" | tail -80
+      - name: Build for iPhone and iPad (unsigned)
+        working-directory: ios
+        run: |
+          xcodebuild build -project EkusheNext.xcodeproj -scheme EkusheNext -configuration Release \
+            -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO | tail -30
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: ios-keyboard-pictures
+          path: shots

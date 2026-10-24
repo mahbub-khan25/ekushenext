@@ -1,0 +1,19 @@
+[package]
+name = "ekushe-mobile"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "C bridge from the iOS keyboard (ios/) to ekushe-core"
+
+[lib]
+crate-type = ["staticlib", "rlib"]
+
+[dependencies]
+ekushe-core = { path = "../ekushe-core" }
+serde_json.workspace = true
+once_cell.workspace = true
+parking_lot.workspace = true
+memmap2 = "0.9"
+
+[dev-dependencies]
+miniz_oxide = "0.8"
