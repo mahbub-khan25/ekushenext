@@ -14,6 +14,12 @@ on:
       tag:
         description: Release tag to upload (e.g. v0.1.0-beta.13)
         required: true
+      series:
+        description: Ubuntu releases to upload (blank = all; e.g. "noble resolute" to retry some)
+        required: false
+      only:
+        description: Run only one half (blank = both; "copr" or "ppa")
+        required: false
 
 permissions:
   contents: read
@@ -54,7 +60,7 @@ jobs:
   copr:
     name: Fedora COPR
     needs: source
-    if: vars.COPR_PROJECT != ''
+    if: vars.COPR_PROJECT != '' && inputs.only != 'ppa'
     runs-on: ubuntu-latest
     container: quay.io/fedora/fedora:latest
     timeout-minutes: 90
@@ -103,7 +109,7 @@ jobs:
   ppa:
     name: Ubuntu PPA
     needs: source
-    if: vars.PPA != ''
+    if: vars.PPA != '' && inputs.only != 'copr'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -129,7 +135,7 @@ jobs:
       - name: Source packages, signed, uploaded for each Ubuntu release
         env:
           PPA: ${{ vars.PPA }}
-          SERIES: ${{ vars.PPA_SERIES || 'jammy noble resolute stonking' }}
+          SERIES: ${{ inputs.series || vars.PPA_SERIES || 'jammy noble resolute stonking' }}
           PASSPHRASE: ${{ secrets.PPA_GPG_PASSPHRASE }}
         run: |
           printf '%s' "$PASSPHRASE" > "$RUNNER_TEMP/pass"
@@ -137,7 +143,13 @@ jobs:
           for s in $SERIES; do
             platform/linux/dist/make-deb-source.sh "$TAG" "$s"
             debsign -p"$GPG" -k"$KEYID" build/dist/deb/ekushe_*~"${s}"1_source.changes
-            dput "ppa:$PPA" build/dist/deb/ekushe_*~"${s}"1_source.changes
+            # Launchpad's upload server sometimes answers "550 internal server error": try again
+            for try in 1 2 3 4; do
+              dput "ppa:$PPA" build/dist/deb/ekushe_*~"${s}"1_source.changes && break
+              [ "$try" = 4 ] && exit 1
+              rm -f build/dist/deb/ekushe_*~"${s}"1_source.ppa.upload
+              echo "Upload failed, trying again in $((try * 30)) s"; sleep $((try * 30))
+            done
           done
           rm -f "$RUNNER_TEMP/pass"
           echo "Uploaded. Launchpad builds each release in about 15-30 minutes: https://launchpad.net/~${PPA%%/*}/+archive/ubuntu/${PPA#*/}/+packages"
