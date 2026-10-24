@@ -96,7 +96,7 @@ for i in range(9):
 melody(M['features'] + 2.4)
 melody(M['features'] + 12.0)
 # the shortcut feature: a sparkle as each phrase appears
-for off in (8 + 6 + 33 + 4, 62 + 6 + 12 + 4):
+for off in (8 + 6 + 14 * 3 + 4, 62 + 6 + 4 * 3 + 4):  # ;alhamdulillah, ;brb
     sparkle(M['features'] + 4 * FEAT + off / FPS, gain=0.06)
 place(riser(1.0, 0.18), M['devices'] - 1.0)
 
