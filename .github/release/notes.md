@@ -54,7 +54,7 @@ On Linux the suggestions appear in IBus's own candidate window. Backspace-undo a
 - The frosted-glass blur behind the suggestion popup needs Windows "Transparency effects" turned on. At 100% opacity in Studio, the popup is solid.
 - Some apps, such as Chrome and Word, don't report where the text cursor is. In those apps the popup appears near the mouse instead.
 - On Windows, a password box is recognised a moment after you click into it. Typing straight away usually works; if you see Bangla in a password box, switch to English (double-tap Shift) and type it again.
-- The Windows input method in the Extras zip is an early preview. Don't run it at the same time as the main app.
+- The Windows input method in the Developer Tools zip is an early preview. Don't run it at the same time as the main app.
 
 If something goes wrong while installing, the steps are recorded in `%TEMP%\ekushe-install.log`. Please paste its last lines into your report at https://ekushenext.com/report/.
 
