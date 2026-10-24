@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Score for the full promo (src/teasers/FullPromo.tsx), 112 s. Original music throughout.
 
-  0–7 s       remembrance: heartbeat, a low A minor pad, the lonely flute theme
-  7–11 s      the name: riser, warm hit, open chord
+  0–10 s      a message to Ma: soft heartbeat, key ticks, a bell as it turns into Bangla, her reply
+  10–14 s     the name: riser, warm hit, open chord
   11–33.5 s   nine features: the hopeful 100 bpm groove (F C G Am), a swish on each
   33.5–36.5   "one keyboard, on every device": a lift, a bell for each platform
   36.5–60.5   Windows and Linux: the groove grows; a bright chime as Bangla switches on, key
@@ -17,13 +17,13 @@ python3 music/full_promo.py
 import os
 import sys
 
-os.environ['TEASER_DUR'] = '112.2'
+os.environ['TEASER_DUR'] = '115.2'
 sys.path.insert(0, os.path.dirname(__file__))
 from tlib import *  # noqa: E402,F403
 
 # must match src/teasers/FullPromo.tsx
-M = {k: v / FPS for k, v in dict(logo=420, features=660, devices=2010, win=2190, linux=2790, mac=3630,
-                                  android=4170, ios=4860, engine=5460, avail=5820, end=6300).items()}
+M = {k: v / FPS for k, v in dict(logo=600, features=840, devices=2190, win=2370, linux=2970, mac=3810,
+                                  android=4350, ios=5040, engine=5640, avail=6000, end=6480).items()}
 FEAT = 150 / FPS
 beat = 60 / 100
 prog = [53, 48, 55, 57]  # F C G Am
@@ -64,17 +64,29 @@ def melody(at, gain=0.08, up=0):
         place(flute(m + up, d, gain), at + t0)
 
 
-# ── 0–7: remembrance
-place(pad([45, 52, 57, 60], 7.4, bright=700, gain=0.20), 0.0)
-place(pad([33], 7.4, bright=200, gain=0.16), 0.0)
-for k in range(8):
+# ── 0–10: a message to Ma (OPEN in FullPromo.tsx: morph 200, send 250, dots 285, reply 340, line 430)
+place(pad([45, 52, 57, 60], 10.4, bright=700, gain=0.19), 0.0)
+place(pad([33], 10.4, bright=200, gain=0.15), 0.0)
+for k in range(4):
     at = 0.3 + k * 0.85
-    place(heartbeat(0.42), at)
-    place(heartbeat(0.26), at + 0.24)
-for at, m, d in [(1.0, 69, 0.9), (1.9, 72, 0.6), (2.5, 71, 0.6), (3.1, 69, 1.4), (4.6, 67, 0.6), (5.2, 69, 0.6), (5.8, 64, 1.4)]:
+    place(heartbeat(0.36), at)
+    place(heartbeat(0.22), at + 0.24)
+for i, m in enumerate([57, 64, 60, 64, 55, 62]):
+    place(pluck_c(m, 1.4, 0.25), 0.6 + i * 0.8, gain=0.18, pan=-0.3 + 0.1 * i)
+for k in range(25):  # the Roman letters typed, one every 4 frames
+    place(click(0.05), (70 + k * 4) / FPS, pan=0.15)
+place(bell(81, 1.8, 0.11), 200 / FPS)  # it turns into Bangla
+sparkle(204 / FPS, gain=0.07)
+place(whoosh(0.3, 0.12), 248 / FPS)  # sent
+place(bell(76, 1.2, 0.08), 252 / FPS)
+place(bell(79, 1.6, 0.09), 340 / FPS)  # her reply
+for at, m, d in [(3.7, 69, 0.9), (4.6, 72, 0.6), (5.2, 71, 0.6), (5.8, 69, 1.4)]:
+    place(flute(m, d, 0.1), at)
+# "talk to your mother in your mother tongue"
+place(pad([45, 52, 57, 60, 64, 69], 3.0, bright=1800, gain=0.2), 430 / FPS)
+place(bell(84, 2.0, 0.1), 432 / FPS)
+for at, m, d in [(7.4, 76, 0.7), (8.1, 74, 0.5), (8.6, 72, 0.6), (9.2, 69, 1.0)]:
     place(flute(m, d, 0.11), at)
-for i, m in enumerate([57, 64, 60, 64, 55, 62, 59, 62]):
-    place(pluck_c(m, 1.4, 0.25), 0.6 + i * 0.8, gain=0.2, pan=-0.3 + 0.08 * i)
 place(riser(1.3, 0.24), M['logo'] + 30 / FPS - 1.3)
 
 # ── 7: the name

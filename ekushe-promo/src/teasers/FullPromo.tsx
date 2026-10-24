@@ -4,29 +4,29 @@ import { Fonts } from '../v2/Fonts';
 import { Backdrop, clamp, ease, Petals, ShaheedMinar } from '../v2/parts';
 import { C, FONT_BN, FONT_LATIN, useLayout } from '../v2/theme';
 import { AddressPill, Burst, Streaks, Sub, Sweep, TypeOn, graphemes } from './common';
-import { Bijoy, Converge, Dictionary, Logo, NextWord, Phonetic, Private, Prologue, Speed, Studio } from './Reveal';
+import { Bijoy, Converge, Dictionary, Logo, NextWord, Phonetic, Private, Speed, Studio } from './Reveal';
 import { Phone } from './Everywhere';
 
-/** The full promo: the remembrance, the name, nine features, then every device (Windows and Linux
+/** The full promo: a message to Ma, the name, nine features, then every device (Windows and Linux
  * from 30 October, with the Ubuntu PPA and Fedora COPR; macOS, Android, iPhone and iPad later),
- * one engine, when and where, and the website. 112 s at 60 fps, 2K, 16:9 and 9:16.
+ * one engine, when and where, and the website. 115 s at 60 fps, 2K, 16:9 and 9:16.
  * music/full_promo.py is composed to the same marks. */
 export const P = {
   prologue: 0,
-  logo: 420,
-  features: 660,
-  devices: 2010,
-  win: 2190,
-  linux: 2790,
-  mac: 3630,
-  android: 4170,
-  ios: 4860,
-  engine: 5460,
-  avail: 5820,
-  end: 6300,
+  logo: 600,
+  features: 840,
+  devices: 2190,
+  win: 2370,
+  linux: 2970,
+  mac: 3810,
+  android: 4350,
+  ios: 5040,
+  engine: 5640,
+  avail: 6000,
+  end: 6480,
 } as const;
 export const FEAT_LEN = 150;
-export const FULL_PROMO_FRAMES = 6720;
+export const FULL_PROMO_FRAMES = 6900;
 const MONO = "'DejaVu Sans Mono', 'Menlo', 'Consolas', monospace";
 
 const Big: React.FC<{ children: React.ReactNode; size: number; style?: React.CSSProperties }> = ({ children, size, style }) => {
@@ -46,6 +46,80 @@ export const OsIcon: React.FC<{ kind: Os; size: number }> = ({ kind, size }) => 
   </svg>
 );
 const OS_NAME: Record<Os, string> = { win: 'Windows', mac: 'macOS', linux: 'Linux', android: 'Android', ios: 'iPhone · iPad' };
+
+/* ───────────────────────── 0–10 s: a message to Ma ───────────────────────── */
+const OPEN_ROMAN = 'ma, tomake khub miss kori';
+const OPEN_BN = 'মা, তোমাকে খুব মিস করি';
+export const OPEN = { kicker: 20, card: 50, type: 70, every: 4, morph: 200, send: 250, dots: 285, reply: 340, line: 430, out: 580 } as const;
+const Opening: React.FC = () => {
+  const f = useCurrentFrame();
+  const { u, V } = useLayout();
+  const card = spring({ frame: f - OPEN.card, fps: 60, config: { damping: 18, stiffness: 70 } });
+  const cardOut = ease(f, OPEN.line - 30, OPEN.line);
+  const kick = Math.min(ease(f, OPEN.kicker, OPEN.kicker + 30), 1 - ease(f, OPEN.line - 30, OPEN.line));
+  const n = Math.max(0, Math.min(OPEN_ROMAN.length, Math.floor((f - OPEN.type) / OPEN.every)));
+  const morph = ease(f, OPEN.morph, OPEN.morph + 28);
+  const sent = f >= OPEN.send;
+  const fly = spring({ frame: f - OPEN.send, fps: 60, config: { damping: 15, stiffness: 120 } });
+  const dots = f >= OPEN.dots && f < OPEN.reply;
+  const reply = spring({ frame: f - OPEN.reply, fps: 60, config: { damping: 14, stiffness: 110 } });
+  const line = spring({ frame: f - OPEN.line, fps: 60, config: { damping: 16, stiffness: 70 } });
+  const out = ease(f, OPEN.out, 600);
+  const W = (V ? 1180 : 1180) * u;
+  const fs = (V ? 58 : 54) * u;
+  const bubble = (me: boolean, children: React.ReactNode, style: React.CSSProperties = {}) => (
+    <div style={{ alignSelf: me ? 'flex-end' : 'flex-start', maxWidth: '82%', padding: `${18 * u}px ${30 * u}px`, borderRadius: 38 * u, borderBottomRightRadius: me ? 10 * u : 38 * u, borderBottomLeftRadius: me ? 38 * u : 10 * u, background: me ? 'linear-gradient(160deg, #13A06A, #0B6B4A)' : 'rgba(255,255,255,0.1)', color: C.white, fontFamily: FONT_BN, fontWeight: 500, fontSize: fs, lineHeight: 1.35, boxShadow: me ? `0 ${12 * u}px ${40 * u}px rgba(11,107,74,0.45)` : 'none', ...style }}>{children}</div>
+  );
+  const typed = OPEN_ROMAN.slice(0, n);
+  return (
+    <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', opacity: 1 - out, transform: `scale(${1 + out * 0.1})`, filter: `blur(${out * 12 * u}px)` }}>
+      <AbsoluteFill style={{ background: 'radial-gradient(ellipse at 50% 45%, rgba(0,0,0,0) 0%, rgba(1,8,5,0.8) 78%)' }} />
+      {/* the night */}
+      <div style={{ position: 'absolute', top: (V ? 330 : 120) * u, left: 0, right: 0, textAlign: 'center', opacity: kick }}>
+        <div style={{ fontFamily: FONT_BN, fontWeight: 600, fontSize: (V ? 60 : 54) * u, color: C.mustard, letterSpacing: '0.04em' }}>দূর থেকে, এক রাতে</div>
+        <Sub size={32} style={{ marginTop: 6 * u }}>From far away, one night</Sub>
+      </div>
+      {/* the chat */}
+      <div style={{ width: W, borderRadius: 54 * u, padding: `${30 * u}px ${36 * u}px ${34 * u}px`, background: 'linear-gradient(170deg, rgba(20,36,30,0.92), rgba(8,20,15,0.92))', border: `${2 * u}px solid rgba(255,255,255,0.12)`, boxShadow: `0 ${60 * u}px ${140 * u}px -${40 * u}px rgba(0,0,0,0.9), 0 0 ${120 * u}px rgba(47,209,142,${0.12 + 0.2 * morph * (1 - ease(f, OPEN.morph + 40, OPEN.morph + 140))})`, opacity: Math.min(card, 1 - cardOut), transform: `translateY(${(1 - card) * 160 * u - cardOut * 80 * u}px) scale(${0.94 + card * 0.06 - cardOut * 0.04})`, marginTop: (V ? 40 : 90) * u }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 22 * u, paddingBottom: 24 * u, borderBottom: `${2 * u}px solid rgba(255,255,255,0.08)` }}>
+          <div style={{ width: 84 * u, height: 84 * u, borderRadius: 99, display: 'grid', placeItems: 'center', background: 'linear-gradient(135deg, #E23B3B, #F26B4F)', color: '#fff', fontFamily: FONT_BN, fontWeight: 700, fontSize: 42 * u }}>আ</div>
+          <div>
+            <div style={{ fontFamily: FONT_BN, fontWeight: 700, fontSize: 44 * u, color: C.white }}>আম্মু</div>
+            <div style={{ fontFamily: FONT_BN, fontSize: 28 * u, color: dots ? C.greenBright : 'rgba(234,243,238,0.55)' }}>{dots ? 'লিখছেন…' : 'অনলাইন'}</div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 * u, minHeight: (V ? 360 : 330) * u, justifyContent: 'flex-end', padding: `${26 * u}px 0` }}>
+          {bubble(false, 'খেয়েছিস ঠিকমতো?', { opacity: ease(f, OPEN.card + 20, OPEN.card + 36), fontSize: fs * 0.92 })}
+          {sent && bubble(true, OPEN_BN, { opacity: fly, transform: `translateY(${(1 - fly) * 120 * u}px) scale(${0.85 + fly * 0.15})`, transformOrigin: 'right bottom' })}
+          {dots && bubble(false, <span style={{ letterSpacing: '0.2em' }}>{[0, 1, 2].map((i) => <span key={i} style={{ opacity: 0.35 + 0.65 * Math.max(0, Math.sin((f - OPEN.dots) / 6 - i * 0.9)) }}>●</span>)}</span>, { fontSize: fs * 0.6, padding: `${14 * u}px ${28 * u}px` })}
+          {f >= OPEN.reply && bubble(false, 'আমিও রে বাবা। কবে আসবি?', { opacity: reply, transform: `translateY(${(1 - reply) * 40 * u}px)`, fontSize: fs })}
+        </div>
+        {/* the message being written */}
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 18 * u }}>
+          <div style={{ flex: 1, position: 'relative', minHeight: fs * 1.6, padding: `${16 * u}px ${30 * u}px`, borderRadius: 999, background: 'rgba(255,255,255,0.07)', border: `${2 * u}px solid rgba(255,255,255,${0.12 + morph * 0.3})`, overflow: 'hidden' }}>
+            {!sent && (
+              <>
+                <div style={{ position: 'absolute', left: 30 * u, top: '50%', transform: 'translateY(-50%)', fontFamily: FONT_LATIN, fontWeight: 500, fontSize: fs * 0.9, color: 'rgba(234,243,238,0.85)', opacity: 1 - morph, filter: `blur(${morph * 10 * u}px)`, whiteSpace: 'nowrap' }}>
+                  {typed || <span style={{ color: 'rgba(234,243,238,0.35)' }}>Message</span>}
+                  {f >= OPEN.type && morph === 0 && <span style={{ display: 'inline-block', width: 4 * u, height: fs, background: C.greenBright, marginLeft: 4 * u, verticalAlign: '-0.15em', opacity: Math.floor(f / 18) % 2 ? 0.2 : 1 }} />}
+                </div>
+                <div style={{ position: 'absolute', left: 30 * u, top: '50%', transform: `translateY(-50%) scale(${0.9 + morph * 0.1})`, transformOrigin: 'left center', fontFamily: FONT_BN, fontWeight: 600, fontSize: fs, color: C.white, opacity: morph, whiteSpace: 'nowrap', textShadow: `0 0 ${40 * u * morph}px rgba(47,209,142,0.8)` }}>{OPEN_BN}</div>
+                <Sweep at={OPEN.morph} dur={34} strength={0.35} />
+              </>
+            )}
+          </div>
+          <div style={{ width: fs * 1.6, height: fs * 1.6, borderRadius: 99, display: 'grid', placeItems: 'center', background: f > OPEN.morph + 20 ? C.greenBright : 'rgba(255,255,255,0.1)', color: '#03170F', fontSize: fs * 0.7, fontWeight: 800, transform: `scale(${1 + interpolate(f, [OPEN.send - 8, OPEN.send, OPEN.send + 10], [0, 0.18, 0], clamp)})` }}>➤</div>
+        </div>
+      </div>
+      <Burst at={OPEN.morph + 6} x={0.5} y={V ? 0.6 : 0.78} count={26} seed="mo" spread={0.28} colors={[C.greenBright, '#ffffff', C.mustard]} />
+      {/* the line */}
+      <div style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', opacity: line, transform: `translateY(${(1 - line) * 50 * u}px)`, padding: `0 ${70 * u}px`, pointerEvents: 'none' }}>
+        <Big size={V ? 118 : 116}>মায়ের সঙ্গে কথা হোক,<br /><span style={{ color: C.greenBright, textShadow: `0 0 ${70 * u}px rgba(47,209,142,0.5)` }}>মায়ের ভাষায়।</span></Big>
+        <Sub size={40} style={{ marginTop: 26 * u }}>Talk to your mother in your mother tongue.</Sub>
+      </div>
+    </AbsoluteFill>
+  );
+};
 
 /* ───────────────────────── features (nine, 2.5 s each) ───────────────────────── */
 const chip = (u: number, on = false): React.CSSProperties => ({ fontFamily: FONT_BN, fontWeight: 600, color: on ? '#03170F' : C.white, background: on ? C.greenBright : 'rgba(255,255,255,0.08)', border: `${2 * u}px solid ${on ? C.greenBright : 'rgba(255,255,255,0.2)'}`, borderRadius: 24 * u, padding: `${10 * u}px ${30 * u}px`, boxShadow: on ? `0 0 ${50 * u}px rgba(47,209,142,0.5)` : 'none' });
@@ -757,19 +831,19 @@ const MAC_POINTS: [string, string, number][] = [
 export const FullPromo: React.FC = () => {
   const f = useCurrentFrame();
   const { u } = useLayout();
-  const sun = interpolate(f, [0, 380, 420, 660, 2010, 2190, P.android, P.ios, P.engine, P.avail, P.end, P.end + 60], [0.15, 0.5, 1, 0.7, 0.6, 0.45, 0.6, 0.5, 1.0, 0.7, 0.8, 1.1], clamp);
+  const sun = interpolate(f, [0, 560, 600, 840, 2010, 2190, P.android, P.ios, P.engine, P.avail, P.end, P.end + 60], [0.15, 0.5, 1, 0.7, 0.6, 0.45, 0.6, 0.5, 1.0, 0.7, 0.8, 1.1], clamp);
   const fade = interpolate(f, [0, 30, FULL_PROMO_FRAMES - 40, FULL_PROMO_FRAMES], [0, 1, 1, 0], clamp);
-  const petals = interpolate(f, [0, 300, P.devices, P.devices + 60, P.engine, P.engine + 40, P.end, P.end + 60], [0.4, 0.7, 0.4, 0.2, 0.2, 0.5, 0.5, 0.9], clamp);
+  const petals = interpolate(f, [0, 480, P.devices, P.devices + 60, P.engine, P.engine + 40, P.end, P.end + 60], [0.4, 0.7, 0.4, 0.2, 0.2, 0.5, 0.5, 0.9], clamp);
   return (
     <AbsoluteFill style={{ background: C.night }}>
       <Fonts />
       <Audio src={staticFile('music/full_promo.wav')} />
       <AbsoluteFill style={{ opacity: fade }}>
-        <Backdrop sun={sun} field={interpolate(f, [0, 420], [0.3, 1], clamp)} warmth={f > P.avail ? 1 : 0.35} />
+        <Backdrop sun={sun} field={interpolate(f, [0, 600], [0.3, 1], clamp)} warmth={f > P.avail ? 1 : 0.35} />
         <Petals count={22} opacity={petals} />
         <Streaks from={P.devices - 20} to={P.devices + 30} count={30} color="rgba(255,255,255,0.85)" seed="fp1" />
         <Streaks from={P.engine - 20} to={P.engine + 26} count={30} seed="fp2" />
-        <Sequence from={P.prologue} durationInFrames={P.logo - P.prologue}><Prologue /></Sequence>
+        <Sequence from={P.prologue} durationInFrames={P.logo - P.prologue}><Opening /></Sequence>
         <Sequence from={P.logo} durationInFrames={P.features - P.logo}><Logo /></Sequence>
         {FEATURES.map((s, i) => (
           <Sequence key={i} from={P.features + i * FEAT_LEN} durationInFrames={FEAT_LEN}>
