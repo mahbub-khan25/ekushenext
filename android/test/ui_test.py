@@ -220,7 +220,43 @@ got = field_text()[0] or ''
 expect("dont → don't, i → I", got.endswith("don't I "), True)
 typed('thank ')
 shot('10c-english-thank')
+
+def sym(ch):
+    """Type a mark from the symbols page and come back to the letters."""
+    tap(*km['SYMBOLS'], 0.6)
+    sk, _ = keys('SYMBOLS')
+    tap(*sk[ch], 0.3)
+    tap(*sk['LETTERS'], 0.6)
+
+# An email address in a chat box: nothing changes or disappears (makhan.aumi@ used to become makhan.@)
+typed('makhan.aumi')
+sym('@')
+typed('gmail.com ')
+got = field_text()[0] or ''
+expect('email address typed as it is', got.endswith('makhan.aumi@gmail.com '), True)
+shot('10d-english-email')
+# Banglish in English mode is left alone
+typed('ami tomake bhalobashi ')
+got = field_text()[0] or ''
+expect('Banglish in English mode is not corrected', got.endswith('ami tomake bhalobashi '), True)
+# a name in the middle of a sentence keeps its spelling
+typed('hello ')
+tap(*km['SHIFT'], 0.2)
+typed('rahim ')
+got = field_text()[0] or ''
+expect('a name keeps its spelling', got.endswith('hello Rahim '), True)
+# a web address
+typed('www.ekushenext.com ')
+got = field_text()[0] or ''
+expect('web address typed as it is', got.endswith('www.ekushenext.com '), True)
 tap(*km['LANG'], 0.8)
+
+# A new Bangla shortcut
+tap(*km['SPACE'], 0.3)
+sym(';')
+typed('brb ')
+got = field_text()[0] or ''
+expect(';brb → এখুনি আসছি', 'এখুনি আসছি' in got, True)
 
 # The emoji key next to Space
 tap(*km['EMOJI'], 1)

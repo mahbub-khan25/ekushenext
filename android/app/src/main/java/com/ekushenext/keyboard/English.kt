@@ -149,7 +149,7 @@ object English {
             }
         }
         return cand.mapNotNull { k -> rankOf[k]?.let { r -> words[r] } }
-            .filter { it !in quiet && (rankOf[plain(it)] ?: Int.MAX_VALUE) < 30_000 }
+            .filter { it !in quiet && (rankOf[plain(it)] ?: Int.MAX_VALUE) < 20_000 }
             .sortedByDescending { score(it) }
             .map { spell(typed, it) }.distinct().take(max)
     }
