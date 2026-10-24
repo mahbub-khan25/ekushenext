@@ -192,6 +192,15 @@ class MainActivity : AppCompatActivity() {
             setPadding(dp(14f), dp(12f), dp(14f), dp(12f))
         }
         card.addView(edit)
+        if (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0) {
+            // the automated test's number box (test builds only)
+            spaceIn(card, 8f)
+            card.addView(EditText(this).apply {
+                tag = "number"; hint = "123"; inputType = InputType.TYPE_CLASS_NUMBER; textSize = 16f
+                background = rounded(lineColor, dp(12f).toFloat(), stroke = true)
+                setPadding(dp(14f), dp(10f), dp(14f), dp(10f))
+            })
+        }
         spaceIn(card, 10f)
         card.addView(text("টিপ: অক্ষরে চেপে ধরলে বড় হাতের অক্ষর ও চিহ্ন পাবেন (t → ট, ৎ)। শব্দের পরেই ⌫ চাপলে রোমান অক্ষর ফিরে আসে। ◂ Space ▸ টেনে কার্সর সরান।", 12.5f, bn, subColor))
         root.addView(card)

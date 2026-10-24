@@ -263,6 +263,35 @@ tap(*km['EMOJI'], 1)
 shot('11-emoji-key')
 tap(int(int(re.search(r'(\d+)x', sh('wm size')).group(1)) / 9 / 2), int(strip + 4 * 54 * (int(re.findall(r'(\d+)', sh('wm density'))[-1]) / 160)), 0.8)  # ABC
 
+# The number pad, in a number box
+def number_box():
+    for _ in range(4):
+        sh('uiautomator dump /sdcard/ui.xml >/dev/null')
+        xml = adb('exec-out', 'cat', '/sdcard/ui.xml')
+        try:
+            root = ET.fromstring(xml[xml.index('<'):])
+        except (ValueError, ET.ParseError):
+            time.sleep(1); continue
+        for n in root.iter('node'):
+            if n.get('class') == 'android.widget.EditText' and n.get('package') == PKG and ('123' in (n.get('hint') or '') or n.get('text') == '123'):
+                return n.get('bounds')
+        time.sleep(1)
+    return None
+nb = number_box()
+if nb:
+    nx1, ny1, nx2, ny2 = map(int, re.findall(r'\d+', nb))
+    tap((nx1 + nx2) // 2, (ny1 + ny2) // 2, 2)
+    nk, _ = keys('NUMBERS')
+    for ch in '2026':
+        tap(*nk[ch], 0.2)
+    time.sleep(0.5)
+    shot('12b-number-pad')
+    widths = [nk[c][0] for c in '123']
+    expect('number pad spans the keyboard', nk['1'][0] < 250 and nk['3'][0] > 600, True)
+    tap(x2 - 40, y2 - 25, 1.5)
+else:
+    failures.append('number box')
+
 # Dark theme
 sh('input keyevent KEYCODE_BACK')
 time.sleep(0.8)

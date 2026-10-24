@@ -116,11 +116,14 @@ object Layouts {
         bottomRow(KeyType.LETTERS, "ABC"),
     )
 
-    /** Number and phone fields */
-    fun numbers(phone: Boolean): List<List<Key>> = listOf(
-        listOf("1", "2", "3", if (phone) "+" else "-").map { Key(KeyType.CHAR, it, it) },
-        listOf("4", "5", "6", if (phone) "*" else ",").map { Key(KeyType.CHAR, it, it) },
-        listOf("7", "8", "9", if (phone) "#" else ".").map { Key(KeyType.CHAR, it, it) },
-        listOf(Key(KeyType.LETTERS, "ABC"), Key(KeyType.CHAR, "0", "0"), Key(KeyType.SPACE, " ", " "), Key(KeyType.DELETE, "⌫"), Key(KeyType.ENTER, "↵", "\n")),
-    )
+    /** Number and phone fields: a full-width pad, four columns, like the phone's own */
+    fun numbers(phone: Boolean): List<List<Key>> {
+        val d = { t: String -> Key(KeyType.CHAR, t, t) }
+        return listOf(
+            listOf(d("1"), d("2"), d("3"), d(if (phone) "+" else "-")),
+            listOf(d("4"), d("5"), d("6"), d(if (phone) "*" else ",")),
+            listOf(d("7"), d("8"), d("9"), Key(KeyType.DELETE, "⌫")),
+            listOf(Key(KeyType.LETTERS, "ABC"), d("0"), d(if (phone) "#" else "."), Key(KeyType.ENTER, "↵", "\n")),
+        )
+    }
 }
