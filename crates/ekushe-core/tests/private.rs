@@ -1,11 +1,12 @@
 //! Nothing typed in a private field, and nothing that looks like a password, is learned.
 use ekushe_core::{config::Config, looks_secret, Ekushe};
 
+/// Types a word and picks the SECOND suggestion: a real choice, the only kind Ekushe learns.
 fn type_and_pick(ek: &mut Ekushe, roman: &str) {
     for c in roman.chars() {
         ek.push_char(c, false);
     }
-    ek.select_candidate(0, Some(' '));
+    ek.select_candidate(1, Some(' '));
 }
 
 #[test]
@@ -48,6 +49,10 @@ fn a_private_field_learns_nothing_and_keeps_no_context() {
     type_and_pick(&mut ek, "sonar");
     assert_eq!(ek.suggestions_engine().learned_version(), 0);
     assert!(!ek.has_undo());
+    assert!(
+        ek.recent_words().is_empty(),
+        "a private field keeps no recent words"
+    );
     ek.set_private_field(false);
     type_and_pick(&mut ek, "amar");
     assert_eq!(ek.suggestions_engine().learned_version(), 1);
