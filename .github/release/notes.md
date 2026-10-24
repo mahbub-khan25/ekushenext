@@ -1,11 +1,11 @@
 **Beta.** Ekushe Next is a Bangla phonetic keyboard for **Windows 10/11 (64-bit)**, **macOS 11 or later** (Apple silicon and Intel), **Linux** (64-bit, IBus) and **Android 7 or later**. It comes with its own dictionary, which puts the Bangla Academy standard spelling first.
 
 ### What's new in this beta
-- **Android, English typing made safe.** Email and web addresses are typed exactly as you type them (an @ or a digit from the symbols page no longer swallows the word before it: makhan.aumi@gmail.com stays makhan.aumi@gmail.com). Only Space corrects a word, and never one that is part of an address, a name in the middle of a sentence, or Banglish written in English mode (ami, tomake, bhalobashi stay as they are). Clear typos are still fixed: teh → the, dont → don't, i → I.
-- **Android number pad:** a full-width, four-column pad with big digits in number and phone boxes.
-- **Android keys use the phone's own Bangla font**, so letters and digits (১২৩) look clean and familiar.
-- **New shortcuts on every platform:** `;innalillah` → ইন্না লিল্লাহি ওয়া ইন্না ইলাইহি রাজিউন, `;barik` → আল্লাহুম্মা বারিক লাহু, `;brb` → এখুনি আসছি.
-- The testers' zip is now called **Ekushe-Developer-Tools-x64.zip** (it was Ekushe-Extras-x64.zip).
+- **Linux: install with apt or dnf and get updates automatically.** Ubuntu 22.04, 24.04, 26.04 and 26.10: `sudo add-apt-repository ppa:cicadama/ekushe`, then `sudo apt install ekushe`. Fedora 43, 44 and 45: `sudo dnf copr enable cicadama/ekushe`, then `sudo dnf install ekushe`. From then on Ekushe updates with the rest of your system. The .deb, .rpm and AppImage below still work as before.
+- **Android space bar:** the label now fits on every phone (**EN · Ekushe Next** / **বাং · একুশে নেক্সট**, or just EN / বাং on narrow screens).
+- **Android numbers key:** **১২৩** in Bangla and **?123** in English, like Gboard.
+
+Also in this beta (from beta.13): **safe English typing on Android.** Email and web addresses are typed exactly as you type them (makhan.aumi@gmail.com stays makhan.aumi@gmail.com). Only Space corrects a word, and never an address, a name in the middle of a sentence, or Banglish in English mode (ami, tomake stay as they are); clear typos are still fixed (teh → the, dont → don't, i → I). Also a full-width number pad, the phone's own Bangla font on the keys, the new shortcuts `;innalillah`, `;barik` and `;brb`, and the testers' zip renamed **Ekushe-Developer-Tools-x64.zip**.
 
 Also in this beta (from beta.12): **Ekushe Next for Android**, the same engine and dictionary as a phone keyboard (**Ekushe-Next-Android.apk**, Android 7 or later).
   - Bangla letter hints on every key, press-and-hold for letters like ট, ৎ, ণ and ষ, suggestions and next-word predictions, ⌫ right after a word to get your letters back, and slide on Space to move the cursor.
@@ -35,6 +35,8 @@ Ekushe is an **IBus** keyboard. IBus is the standard on Ubuntu, Fedora, Debian a
 
 | You use | Download | Install |
 |---|---|---|
+| Ubuntu 22.04–26.10 (also Mint, Pop!_OS) | nothing, from the PPA | `sudo add-apt-repository ppa:cicadama/ekushe` then `sudo apt install ekushe` |
+| Fedora 43–45 | nothing, from COPR | `sudo dnf copr enable cicadama/ekushe` then `sudo dnf install ekushe` |
 | Ubuntu, Debian, Mint, Pop!_OS | `ekushe_…_amd64.deb` | `sudo apt install ./ekushe_*_amd64.deb` |
 | Fedora, RHEL, openSUSE | `ekushe-….x86_64.rpm` | `sudo dnf install ./ekushe-*.x86_64.rpm` |
 | Any distribution, no package | `Ekushe-…-x86_64.AppImage` | `chmod +x Ekushe-*.AppImage`, then run it with `--install-keyboard` |
