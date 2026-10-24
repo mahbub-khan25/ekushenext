@@ -204,8 +204,8 @@ class EkusheIME : InputMethodService(), KeyboardListener {
                     en.append(ch); enUndo = null
                     showEnglish()
                 } else {
-                    // a mark or digit ends the word (correcting a clear typo before . , ! ? and the like)
-                    if (en.isNotEmpty()) placeEnglish(correct = ch in ".,!?;:)\"")
+                    // a mark or digit ends the word, as typed (makhan.aumi@gmail stays exactly that)
+                    if (en.isNotEmpty()) placeEnglish(correct = false)
                     ic.commitText(ch.toString(), 1)
                     enUndo = null
                     view?.showSuggestions(emptyList(), emptyList(), emptyList())
@@ -322,7 +322,7 @@ class EkusheIME : InputMethodService(), KeyboardListener {
     override fun onEnter() {
         val ic = currentInputConnection ?: return
         if (last.composing) apply(Engine.commit())
-        if (en.isNotEmpty()) { placeEnglish(correct = true); view?.showSuggestions(emptyList(), emptyList(), emptyList()) }
+        if (en.isNotEmpty()) { placeEnglish(correct = false); view?.showSuggestions(emptyList(), emptyList(), emptyList()) }
         enUndo = null
         val info = currentInputEditorInfo
         val action = (info?.imeOptions ?: 0) and EditorInfo.IME_MASK_ACTION
@@ -372,14 +372,20 @@ class EkusheIME : InputMethodService(), KeyboardListener {
     // ───────────────────────── English help ─────────────────────────
 
     /** Suggestions and corrections in English: on, unless the field wants plain text */
-    private fun englishHelp() = !plainField && view?.mode == Mode.LETTERS
+    private fun englishHelp() = !plainField
 
     /** What Space should place instead of what was typed, if it's a clear typo (or "dont", "i") */
     private fun englishFix(typed: String): String? {
         if (!prefs.enAutocorrect || typed == enKeep) return null
+        // part of an email, a web address or a code (gmail.com, a@b, #tag): never touched
+        if (gluedToText(typed.length)) return null
+        // Banglish written in English mode (ami, tomake, bhalobashi) stays as it is
+        if (Engine.isBanglish(typed)) return null
         English.canonical(typed)?.let { return it }
         if (typed.length < 3 || English.known(typed)) return null
         if (typed.drop(1).any { it.isUpperCase() }) return null // names, acronyms
+        // a capital letter in the middle of a sentence is most likely a name (Rahim, Sylhet)
+        if (typed.first().isUpperCase() && !sentenceStart(typed.length)) return null
         // the phone's guesses and the word list's, the most common word wins (teh → the, not tech)
         val guesses = (spell?.answer(typed)?.takeIf { it.typo }?.suggestions?.take(3).orEmpty().map { English.spell(typed, it) } +
             English.corrections(typed, 3)).distinct()
@@ -399,6 +405,21 @@ class EkusheIME : InputMethodService(), KeyboardListener {
         enShown = list.filter { it.isNotEmpty() }.distinct().take(6)
         view?.showSuggestions(enShown.map { Candidate(it, "") }, emptyList(), emptyList())
         if (ask && typed.length >= 3 && !English.known(typed)) spell?.ask(typed)
+    }
+
+    /** The word being typed follows a mark with no space (a.b, x@y, #z): an address or a code */
+    private fun gluedToText(len: Int): Boolean {
+        val before = currentInputConnection?.getTextBeforeCursor(len + 1, 0)?.toString() ?: return false
+        if (before.length <= len) return false
+        val c = before[0]
+        return !c.isWhitespace() && c != '(' && c != '"' && c != '“'
+    }
+
+    /** The word being typed starts a sentence (or the text) */
+    private fun sentenceStart(len: Int): Boolean {
+        val before = currentInputConnection?.getTextBeforeCursor(len + 40, 0)?.toString() ?: return true
+        val head = before.dropLast(len).trimEnd()
+        return head.isEmpty() || head.last() in ".!?\n।"
     }
 
     /** Place the English word being typed (corrected if asked and it's a clear typo) */

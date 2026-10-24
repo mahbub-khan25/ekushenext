@@ -146,6 +146,20 @@ pub extern "system" fn Java_com_ekushenext_keyboard_Engine_nativeKey(
     }
 }
 
+/// A Bangla word written in English letters? (English typing leaves those alone.)
+#[no_mangle]
+pub extern "system" fn Java_com_ekushenext_keyboard_Engine_nativeIsBanglish(
+    mut env: JNIEnv,
+    _c: JClass,
+    word: JString,
+) -> jboolean {
+    let w: String = match env.get_string(&word) {
+        Ok(s) => s.into(),
+        Err(_) => return 0,
+    };
+    guard(false, || STATE.lock().ekushe.is_banglish(&w)) as jboolean
+}
+
 #[no_mangle]
 pub extern "system" fn Java_com_ekushenext_keyboard_Engine_nativeBackspace(
     mut env: JNIEnv,

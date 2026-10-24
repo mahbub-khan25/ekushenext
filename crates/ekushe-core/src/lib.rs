@@ -501,6 +501,32 @@ impl Ekushe {
         (out != text).then_some((out, kind))
     }
 
+    /// Is this Roman word a Bangla word written in English letters ("ami", "tomake", "bhalobashi")?
+    /// True when a reasonably common dictionary word is spelt exactly this way. The phone keyboard's
+    /// English mode uses it to leave Banglish alone instead of "correcting" it into English.
+    pub fn is_banglish(&self, roman: &str) -> bool {
+        let w = roman.trim().to_ascii_lowercase();
+        if w.len() < 2 || !w.bytes().all(|c| c.is_ascii_alphabetic()) {
+            return false;
+        }
+        // the dictionary this engine uses (the phone hands it over itself; desktops find it on disk)
+        let Some(dict) = self
+            .suggestions
+            .dictionary()
+            .or_else(crate::dict::Dictionary::global)
+        else {
+            return false;
+        };
+        let ids = dict.bucket(&crate::roman::skeleton(&w));
+        ids.iter().take(80).any(|&id| {
+            dict.info(id).log_ppm > -0.5
+                && dict
+                    .romanizations(id)
+                    .iter()
+                    .any(|(cost, r)| *cost <= 1.5 && r.eq_ignore_ascii_case(&w))
+        })
+    }
+
     /// One Banglish word as Space would place it (the first suggestion that isn't an emoji).
     pub fn banglish_word(&self, word: &str) -> String {
         self.suggest_roman(word)
@@ -660,6 +686,57 @@ fn split_trailing_punctuation(roman: &str) -> (&str, &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn banglish_is_told_apart_from_english_typos() {
+        // needs the dictionary (EKUSHE_DICT, or data/dictionary from the workspace)
+        if crate::dict::Dictionary::global().is_none() {
+            return;
+        }
+        let ek = Ekushe::new(Config::default());
+        for w in [
+            "ami",
+            "tomake",
+            "bhalobashi",
+            "kemon",
+            "acho",
+            "valo",
+            "kothay",
+            "jabo",
+            "korcho",
+        ] {
+            assert!(ek.is_banglish(w), "{w} is Banglish");
+        }
+        for w in [
+            "teh",
+            "recieve",
+            "thier",
+            "becuase",
+            "definately",
+            "goverment",
+            "tommorow",
+            "freind",
+            "makhan",
+        ] {
+            assert!(!ek.is_banglish(w), "{w} is not Banglish");
+        }
+    }
+
+    #[test]
+    fn new_snippets_expand() {
+        let mut ek = Ekushe::new(Config::default());
+        if ek.language() != InputLanguage::Bangla {
+            ek.toggle_language();
+        }
+        for (trig, want) in [
+            (";innalillah", "ইন্না লিল্লাহি ওয়া ইন্না ইলাইহি রাজিউন"),
+            (";barik", "আল্লাহুম্মা বারিক লাহু"),
+            (";brb", "এখুনি আসছি"),
+        ] {
+            let (c, _) = ek.suggest_roman(trig);
+            assert_eq!(c.first().map(|c| c.text.as_str()), Some(want), "{trig}");
+        }
+    }
 
     #[test]
     fn report_url_carries_the_build_details_only() {

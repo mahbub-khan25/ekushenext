@@ -1166,6 +1166,9 @@ static BUILTIN_EMOJIS: &[(&str, &[&str])] = &[
 /// Built-in text expansion snippets (`;trigger` and `/trigger`).
 static BUILTIN_SNIPPETS: &[(&str, &str)] = &[
     (";salam", "আসসালামু আলাইকুম"),
+    (";innalillah", "ইন্না লিল্লাহি ওয়া ইন্না ইলাইহি রাজিউন"),
+    (";barik", "আল্লাহুম্মা বারিক লাহু"),
+    (";brb", "এখুনি আসছি"),
     ("/sal", "আসসালামু আলাইকুম"),
     (";wsalam", "ওয়ালাইকুমুস সালাম"),
     ("/wsal", "ওয়ালাইকুমুস সালাম"),

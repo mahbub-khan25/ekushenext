@@ -84,6 +84,8 @@ object Engine {
     fun reset() = nativeReset()
     fun setPrivate(on: Boolean) = nativeSetPrivate(on)
     fun hasUndo() = nativeHasUndo()
+    /** A Bangla word in English letters ("ami", "tomake")? English typing leaves those as they are. */
+    fun isBanglish(word: String): Boolean = words > 0 && runCatching { nativeIsBanglish(word) }.getOrDefault(false)
     fun config(): JSONObject = runCatching { JSONObject(nativeGetConfig()) }.getOrDefault(JSONObject())
     fun setConfig(change: JSONObject) = nativeSetConfig(change.toString())
     fun save() = worker.execute { nativeSave() }
@@ -99,6 +101,7 @@ object Engine {
     private external fun nativeReset()
     private external fun nativeSetPrivate(on: Boolean)
     private external fun nativeHasUndo(): Boolean
+    private external fun nativeIsBanglish(word: String): Boolean
     private external fun nativeGetConfig(): String
     private external fun nativeSetConfig(json: String): Boolean
     private external fun nativeSave()
