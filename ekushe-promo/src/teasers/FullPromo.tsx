@@ -54,7 +54,7 @@ const chip = (u: number, on = false): React.CSSProperties => ({ fontFamily: FONT
 const Shortcuts: React.FC = () => {
   const f = useCurrentFrame();
   const { u, V } = useLayout();
-  const rows: [string, string, number][] = [[';innalillah', 'ইন্না লিল্লাহি ওয়া ইন্না ইলাইহি রাজিউন', 8], [';brb', 'এখুনি আসছি', 62]];
+  const rows: [string, string, number][] = [[';alhamdulillah', 'আলহামদুলিল্লাহ', 8], [';brb', 'এখুনি আসছি', 62]];
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: (V ? 70 : 54) * u, alignItems: 'center' }}>
       {rows.map(([k, phrase, at]) => {
