@@ -11,6 +11,7 @@ import { Anthem, ANTHEM_FRAMES } from './teasers/Anthem';
 import { Reveal, REVEAL_FRAMES } from './teasers/Reveal';
 import { FinalTeaser, FINAL_TEASER_FRAMES } from './teasers/FinalTeaser';
 import { Everywhere, EVERYWHERE_FRAMES } from './teasers/Everywhere';
+import { FullPromo, FULL_PROMO_FRAMES } from './teasers/FullPromo';
 
 /** 60 s, 60 fps, 2K: 2560×1440 (16:9, YouTube) and 1440×2560 (9:16, Reels / Shorts / TikTok). */
 export const Root: React.FC = () => (
@@ -40,5 +41,8 @@ export const Root: React.FC = () => (
     {/* One keyboard, everywhere: Windows, macOS, Linux and Android, one engine */}
     <Composition id="Everywhere-16x9" component={Everywhere} durationInFrames={EVERYWHERE_FRAMES} fps={60} width={2560} height={1440} />
     <Composition id="Everywhere-9x16" component={Everywhere} durationInFrames={EVERYWHERE_FRAMES} fps={60} width={1440} height={2560} />
+    {/* The full promo: every feature and every device; Windows and Linux on 30 October, the rest later */}
+    <Composition id="FullPromo-16x9" component={FullPromo} durationInFrames={FULL_PROMO_FRAMES} fps={60} width={2560} height={1440} />
+    <Composition id="FullPromo-9x16" component={FullPromo} durationInFrames={FULL_PROMO_FRAMES} fps={60} width={1440} height={2560} />
   </>
 );
