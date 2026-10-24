@@ -102,6 +102,9 @@ object English {
         "couldnt", "wouldnt", "shouldnt", "havent", "hasnt", "hadnt", "thats", "whats", "theres", "youre", "theyre", "youve",
         "weve", "theyve", "youll", "theyll", "shes", "hes", "whos", "heres", "wheres", "hows", "ain't", "aint", "lets")
 
+    /** "i", or a contraction typed without its apostrophe (dont, im, cant) */
+    fun isContraction(typed: String): Boolean = typed.lowercase().let { it == "i" || it in contraction }
+
     /** The list's spelling of a typed word, if it is known in another form ("dont" → "don't", "i" → "I") */
     fun canonical(typed: String): String? {
         if (!ready.get()) return null
