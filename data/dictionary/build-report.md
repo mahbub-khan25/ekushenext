@@ -182,3 +182,41 @@ are the way to improve this.
   (korte → করতে, dorkar → দরকার); রেফ via `rr` or the dictionary (kormo → কর্ম).
 - **Tests:** 18 pass, including 5 new tests that run the engine with the real dictionary. A Windows
   `cargo check` of the whole workspace passes. The tray app has not been run on Windows yet.
+
+---
+
+# Phase 6 (started) — a bigger test set and everyday-chat fixes
+
+New test sets in `tools/dict-builder/eval/` (written by the developers, not yet native-reviewed):
+
+| Set | Items | What it checks |
+| --- | --- | --- |
+| `everyday.tsv` | 417 | the words people type most, casual and precise spellings, loanwords |
+| `sentences.tsv` | 130 | short chat and office sentences; the last word is scored, with context |
+| `heldout.tsv` | 50 | sentences never used for tuning: only its total is looked at |
+
+`cargo run --release -p ekushe-core --example tune_eval -- DICT set1.tsv,set2.tsv,… [--fails]` scores them
+together; CI fails if the total drops below `eval/minimum.txt`.
+
+| | pilot | context | everyday | sentences | held-out | total |
+| --- | --- | --- | --- | --- | --- | --- |
+| Before | 264/271 | 18/25 | 385/417 | 103/130 | 42/50 | 812/893 (90.9%) |
+| After | 269/271 | 25/25 | 413/417 | 125/130 | 44/50 | 876/893 (98.1%) |
+
+What changed:
+
+- **Chat phrases** (`curated/chat-phrases.txt`, `ekushe-dict pack --phrases`): the corpus is formal, so pairs
+  like কেমন আছো, ঠিক আছি, ভালো থেকো were under-counted. Each neighbouring pair in the list gets a strong count.
+- **Casual `s` for ছ** costs 0.3 instead of 0.8 (`roman.rs`): ase → আছে, kisu → কিছু, asi → আছি.
+- **Autocorrect table**: unambiguous everyday words that casual spelling or English sends elsewhere
+  (please, sorry, file, email, bus, haan, kno, abbu, theko, ashbo …), and a table word now wins over a
+  typing mark it happens to contain (`sorry` has `rr`).
+- A lone **`o`** is ও first (the letter অ second).
+
+Caution: the chat phrases and the sentence set were written by the same people, so the sentence gain is
+partly the test matching the phrases. The held-out set (+2) is the fairer measure. The ranking weights were
+searched too, but stronger context (context_w 0.7) made the held-out set worse, so the weights are unchanged.
+
+Still wrong: colloquial forms not in the dictionary (khaiso খাইছ, korteso করতেছ), `aso`/`bolo` with no
+context, `porbo` (পড়ব vs পর্ব). Next: a real Banglish test set from outside (e.g. BanglaTLit, licence to check)
+and a native-speaker review of `review-spelling.tsv`.

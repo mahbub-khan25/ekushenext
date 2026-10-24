@@ -186,6 +186,12 @@ impl SuggestionEngine {
         &mut self.spell
     }
 
+    /// Whether `roman` (as typed, or lower-cased) is a whole word in the autocorrect table
+    /// (`sorry` → সরি): such a word wins over a typing mark it happens to contain (`rr`).
+    pub fn has_autocorrect(&self, roman: &str) -> bool {
+        self.autocorrect.contains_key(roman) || self.autocorrect.contains_key(&roman.to_lowercase())
+    }
+
     pub fn set_autocorrect(&mut self, roman: impl Into<String>, bangla: impl Into<String>) {
         self.autocorrect.insert(roman.into(), bangla.into());
     }
@@ -706,7 +712,11 @@ impl SuggestionEngine {
             kind: CandidateKind::Phonetic,
             annotation: None,
         };
-        // The first keystroke shows the plain letter (s → স) instead of jumping to a word.
+        // The first keystroke shows the plain letter (s → স) instead of jumping to a word. A lone `o` is
+        // the word ও ("and", "he"/"she"), far more often than the letter অ, so that one leads with ও.
+        if roman_input == "o" {
+            push(candidates, phonetic("ও"));
+        }
         if roman_input.chars().count() == 1 {
             push(candidates, phonetic(literal_bangla));
         }
@@ -1091,6 +1101,40 @@ static BUILTIN_LEXICON: &[(&str, &str, u32)] = &[
 
 /// Built-in autocorrect & English-word phonetic mappings (OpenBangla / Avro parity).
 static BUILTIN_AUTOCORRECT: &[(&str, &str)] = &[
+    // everyday words that casual spelling or English sends elsewhere (checked against the eval sets)
+    ("abbu", "আব্বু"),
+    ("haan", "হ্যাঁ"),
+    ("hae", "হ্যাঁ"),
+    ("hya", "হ্যাঁ"),
+    ("kno", "কেন"),
+    ("kew", "কেউ"),
+    ("jee", "জি"),
+    ("nah", "না"),
+    ("plz", "প্লিজ"),
+    ("pls", "প্লিজ"),
+    ("please", "প্লিজ"),
+    ("sorry", "সরি"),
+    ("thanks", "থ্যাংকস"),
+    ("file", "ফাইল"),
+    ("email", "ইমেইল"),
+    ("bus", "বাস"),
+    ("rickshaw", "রিকশা"),
+    ("riksha", "রিকশা"),
+    ("oboshshoi", "অবশ্যই"),
+    ("obosshoi", "অবশ্যই"),
+    ("abaro", "আবারও"),
+    ("mittha", "মিথ্যা"),
+    ("panch", "পাঁচ"),
+    ("eksho", "একশ"),
+    ("kothai", "কোথায়"),
+    ("shuno", "শোনো"),
+    ("hoini", "হয়নি"),
+    ("ashbo", "আসব"),
+    ("theko", "থেকো"),
+    ("asho", "আসো"),
+    ("nao", "নাও"),
+    ("aam", "আম"),
+    ("mubarak", "মোবারক"),
     ("bangladesh", "বাংলাদেশ"),
     ("bngla", "বাংলা"),
     ("kmn", "কেমন"),

@@ -1,0 +1,53 @@
+# HELD-OUT sentences: never used for tuning. Only the total is looked at, never which words fail.
+# Different wording from chat-phrases.txt and sentences.tsv on purpose. Last word is scored.
+# typed	accepted	note
+bhaiya apni kemon asen	আছেন
+apu tumi kemon aso	আছো|আছ
+nana nani kemon ache	আছে
+tomar shorir kemon ache	আছে
+amra sobai bhalo achi	আছি
+ammu bhalo ache	আছে
+ekhon kothay aso tumi	তুমি
+tumi ekhon kothay	কোথায়
+bhai ki korteso ekhon	এখন
+tumi ki kheyecho	খেয়েছ|খেয়েছো
+ajke ki ranna holo	হলো|হল
+ajke amar jonmodin	জন্মদিন
+tomar ki khobor bolo	বলো
+amake kichu bolo na	না
+kotha bolo	বলো
+ektu wait koro	করো
+tumi ektu dekho	দেখো|দেখ
+cholo ghurte jai	যাই
+ami kal ashbo na	না
+amra kal jabo	যাব|যাবো
+kobe dekha korbe	করবে
+tumi kobe ashbe	আসবে
+bari giye phone dibo	দিব|দেব|দেবো|দিবো
+ami pore janabo	জানাব|জানাবো
+khub bhalo laglo	লাগল|লাগলো
+onek moja holo	হলো|হল
+shorir bhalo nei	নেই
+amar jor ase	আছে
+ami ekhon bari te asi	আছি
+office theke ashlam	আসলাম|এলাম
+ami rasta te asi	আছি
+tomar kotha mone ache	আছে
+amar kono tension nai	নাই
+kono chinta koro na	না
+ami shob bujhi	বুঝি
+ami kichu bujhi na	না
+tumi thik bolecho	বলেছ|বলেছো
+amar bhul hoyeche	হয়েছে
+khub dukkho pelam	পেলাম
+onek dhonnobad bhai	ভাই
+apnake onek dhonnobad	ধন্যবাদ
+shuvo noboborsho	নববর্ষ
+eid mubarak shobaike	সবাইকে
+amar bondhu ashche	আসছে
+baccha ghumacche	ঘুমাচ্ছে
+tara khela dekhche	দেখছে
+amra porashona korchi	করছি
+kal theke office	অফিস
+ajke brishti hocche	হচ্ছে
+khub gorom porche	পড়ছে

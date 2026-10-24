@@ -5,7 +5,10 @@ use ekushe_core::dict::{DictBuilder, WordClass, WordRecord, FLAG_CONFIDENT, FLAG
 use std::collections::HashMap;
 use std::path::Path;
 
-pub fn pack(lexicon: &str, english: Option<&str>, pairs: Option<&str>, vulgar: Option<&str>, out: &str) {
+/// The count each chat-phrase word pair gets (the corpus pairs are capped at 65,535 in the file)
+const CHAT_PAIR_COUNT: u32 = 60_000;
+
+pub fn pack(lexicon: &str, english: Option<&str>, pairs: Option<&str>, phrases: Option<&str>, vulgar: Option<&str>, out: &str) {
     let mut extra: HashMap<String, Vec<String>> = HashMap::new();
     if let Some(p) = english {
         for line in std::fs::read_to_string(p).expect("english").lines() {
@@ -80,6 +83,32 @@ pub fn pack(lexicon: &str, english: Option<&str>, pairs: Option<&str>, vulgar: O
                 }
             }
         }
+    }
+    // Everyday chat phrases (curated/chat-phrases.txt): each pair of neighbouring words gets a strong
+    // count, so conversation is ranked well even though the source texts are mostly formal
+    if let Some(p) = phrases {
+        let mut chat: std::collections::HashMap<(String, String), u32> = std::collections::HashMap::new();
+        for line in std::fs::read_to_string(p).expect("phrases").lines() {
+            if line.starts_with('#') || line.trim().is_empty() {
+                continue;
+            }
+            let words: Vec<String> = line
+                .split_whitespace()
+                .map(|w| w.trim_matches(|c: char| "।,?!.;:\"'".contains(c)).to_string())
+                .filter(|w| !w.is_empty())
+                .collect();
+            for w in words.windows(2) {
+                chat.insert((w[0].clone(), w[1].clone()), CHAT_PAIR_COUNT);
+            }
+        }
+        let n = chat.len();
+        for (a, b_, c) in b.pairs.iter_mut() {
+            if let Some(cc) = chat.remove(&(a.clone(), b_.clone())) {
+                *c = (*c).max(cc);
+            }
+        }
+        b.pairs.extend(chat.into_iter().map(|((a, b_), c)| (a, b_, c)));
+        eprintln!("chat phrases: {n} word pairs");
     }
     let (bytes, keys) = b.write(Path::new(out)).expect("write");
     eprintln!("wrote {out}: {} words, {keys} keys, {} pairs, {:.1} MB", b.words.len(), b.pairs.len(), bytes as f64 / 1e6);

@@ -25,6 +25,15 @@ jobs:
         run: cargo build --release --workspace
       - name: Pilot accuracy
         run: cargo run --release -p ekushe-core --example engine_eval -- data/dictionary/ekushe.dict.z tools/dict-builder/eval/pilot.tsv
+      - name: Accuracy on every test set (fails if it drops below the last release)
+        shell: bash
+        run: |
+          E=tools/dict-builder/eval
+          out=$(cargo run --release -q -p ekushe-core --example tune_eval -- data/dictionary/ekushe.dict.z $E/pilot.tsv,$E/context.tsv,$E/everyday.tsv,$E/sentences.tsv,$E/heldout.tsv)
+          echo "$out"
+          got=$(echo "$out" | sed -n 's/^TOTAL \([0-9]*\)\/.*/\1/p')
+          min=$(grep -v '^#' $E/minimum.txt)
+          [ "$got" -ge "$min" ] || { echo "::error::Accuracy fell to $got (minimum $min, tools/dict-builder/eval/minimum.txt)"; exit 1; }
       - name: Tray self-test (Studio HTTP endpoints)
         shell: pwsh
         run: |

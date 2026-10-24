@@ -43,6 +43,7 @@ awk -F'\t' 'NR>1 && $3=="core" && $4!="typo"{print $1}' "$OUT/lexicon.tsv" > "$W
 python3 "$HERE/scripts/extract_text.py" "$WORK"/raw/wiki-*.parquet "$WORK"/raw/sg-*.parquet "$WORK/raw/fw-000.parquet" \
   | "$BIN" pairs --vocab "$WORK/core-vocab.txt" --out "$WORK/pairs.tsv"
 "$BIN" pack --lexicon "$OUT/lexicon.tsv" --english "$OUT/roman/english-matches.tsv" --pairs "$WORK/pairs.tsv" \
+  --phrases "$HERE/curated/chat-phrases.txt" \
   --vulgar "$HERE/curated/vulgar-prefixes.tsv" --out "$OUT/ekushe.dict"
 # engine checks (run from the repository root)
 ( cd "$HERE/../.." && cargo test -p ekushe-core && \
