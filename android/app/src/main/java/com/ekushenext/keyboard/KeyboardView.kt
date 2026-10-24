@@ -85,9 +85,12 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
 
     private val keyPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER }
+    private val glyph = Rect()
     private val hintPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.RIGHT }
-    private val bnFace: Typeface = runCatching { Typeface.createFromAsset(context.assets, "fonts/HindSiliguri-SemiBold.ttf") }.getOrDefault(Typeface.DEFAULT_BOLD)
-    private val bnFaceRegular: Typeface = runCatching { Typeface.createFromAsset(context.assets, "fonts/HindSiliguri-Regular.ttf") }.getOrDefault(Typeface.DEFAULT)
+    // The phone's own Bangla font (Noto Sans Bengali on Android), as the rest of the phone uses:
+    // clearer on small keys than a display font, digits (১২৩) included
+    private val bnFace: Typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+    private val bnFaceRegular: Typeface = Typeface.create("sans-serif", Typeface.NORMAL)
 
     init {
         isHapticFeedbackEnabled = true
@@ -158,7 +161,9 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
         val areaH = height - stripH - bottomPad
         val rh = areaH / max(1, rows.size)
         val unitsMax = rows.maxOfOrNull { r -> r.sumOf { it.width.toDouble() } }?.toFloat() ?: 10f
-        val unit = (width - gap) / max(10f, unitsMax)
+        // the number pad spreads its four columns across; letters keep ten-key widths
+        val pad = mode == Mode.NUMBERS || mode == Mode.PHONE
+        val unit = (width - gap) / (if (pad) unitsMax else max(10f, unitsMax))
         rows.forEachIndexed { r, row ->
             val units = row.sumOf { it.width.toDouble() }.toFloat()
             var x = (width - units * unit) / 2f
@@ -325,12 +330,19 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
                 textPaint.textSize = when {
                     k.type == KeyType.DELETE || k.type == KeyType.SHIFT || k.type == KeyType.ENTER || k.type == KeyType.EMOJI -> 21 * dp
                     isFunction(k) -> 14.5f * dp
+                    (mode == Mode.NUMBERS || mode == Mode.PHONE) && k.type == KeyType.CHAR -> 27 * dp
                     t.length > 2 -> 14 * dp
                     bnLabel -> 21 * dp
                     else -> 22 * dp
                 }
-                val dy = (textPaint.descent() + textPaint.ascent()) / 2
-                c.drawText(t, r.centerX(), r.centerY() - dy + if (bnLabel) 2 * dp else 0f, textPaint)
+                if (bnLabel) {
+                    // Bangla letters sit by their own shape, not the font's line height
+                    textPaint.getTextBounds(t, 0, t.length, glyph)
+                    c.drawText(t, r.centerX(), r.centerY() - glyph.exactCenterY(), textPaint)
+                } else {
+                    val dy = (textPaint.descent() + textPaint.ascent()) / 2
+                    c.drawText(t, r.centerX(), r.centerY() - dy, textPaint)
+                }
                 // The Bangla letter this key types, small in the corner
                 if (k.letter && bangla && mode == Mode.LETTERS && prefs.keyHints) {
                     val h = if (shift != Shift.OFF) k.hintShift else k.hint
