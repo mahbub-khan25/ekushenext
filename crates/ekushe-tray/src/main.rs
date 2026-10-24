@@ -89,6 +89,7 @@ const CMD_STUDIO_CONVERT: usize = 1005;
 const CMD_STUDIO_SETTINGS: usize = 1006;
 const CMD_STUDIO_PLAYGROUND: usize = 1007;
 const CMD_STUDIO_XRAY: usize = 1008;
+const CMD_STUDIO_FIX: usize = 1009;
 const CMD_HOTKEY_DBL_SHIFT: usize = 1010;
 const CMD_HOTKEY_CTRL_SPACE: usize = 1011;
 const CMD_HOTKEY_F12: usize = 1012;
@@ -908,6 +909,27 @@ fn learned_words_path() -> PathBuf {
     Config::default_dir().join("learned.tsv")
 }
 
+/// `%APPDATA%\Ekushe\wrong-words.tsv`: words the user reported as wrong, with the word they meant
+/// (`roman \t wrong \t right \t previous word`). Kept on this computer only; the user can copy it
+/// into a problem report from Studio.
+fn wrong_words_path() -> PathBuf {
+    Config::default_dir().join("wrong-words.tsv")
+}
+
+/// Most corrections kept in the file (oldest are dropped).
+const WRONG_WORDS_KEPT: usize = 500;
+
+fn append_wrong_word(line: &str) -> std::io::Result<()> {
+    let path = wrong_words_path();
+    let old = std::fs::read_to_string(&path).unwrap_or_default();
+    let mut lines: Vec<&str> = old.lines().filter(|l| !l.trim().is_empty()).collect();
+    lines.push(line);
+    let skip = lines.len().saturating_sub(WRONG_WORDS_KEPT);
+    let mut out = lines[skip..].join("\n");
+    out.push('\n');
+    ekushe_core::suggest::write_atomic(&path, &out)
+}
+
 /// Write learned words to disk if anything new was learned. The file is written outside the shared
 /// lock (the keyboard hook needs it) and atomically (temporary file + rename).
 fn save_learned_words_if_changed() {
@@ -1511,6 +1533,12 @@ unsafe fn show_tray_context_menu(hwnd: HWND) {
     AppendMenuW(
         menu,
         MF_STRING,
+        CMD_STUDIO_FIX,
+        wide_null("✏️ ভুল শব্দ ঠিক করুন (A word was wrong)").as_ptr(),
+    );
+    AppendMenuW(
+        menu,
+        MF_STRING,
         CMD_STUDIO_SETTINGS,
         wide_null("⚙️ সেটিংস, ফন্ট ও স্বচ্ছতা (Settings, Fonts & Opacity)").as_ptr(),
     );
@@ -1673,6 +1701,10 @@ unsafe fn handle_tray_command(hwnd: HWND, cmd: usize) {
         CMD_STUDIO_SETTINGS => {
             let port = STATE.lock().studio_port;
             open_studio_window_tab(port, Some("settings"));
+        }
+        CMD_STUDIO_FIX => {
+            let port = STATE.lock().studio_port;
+            open_studio_window_tab(port, Some("fix"));
         }
         CMD_HOTKEY_DBL_SHIFT | CMD_HOTKEY_CTRL_SPACE | CMD_HOTKEY_F12 | CMD_HOTKEY_CTRL_ALT_B => {
             let hk = match cmd {
@@ -2125,6 +2157,68 @@ fn handle_http_client(mut stream: TcpStream, req: &str) -> std::io::Result<()> {
             _ => bijoy_to_unicode(text),
         };
         let json = serde_json::json!({ "result": result }).to_string();
+        return write_http_response(
+            &mut stream,
+            "200 OK",
+            "application/json; charset=utf-8",
+            json.as_bytes(),
+        );
+    }
+
+    if method == "GET" && clean_path == "/api/recent" {
+        // The last words Ekushe placed (newest first), kept in memory only, so a wrong one can be fixed.
+        let recent = STATE.lock().ekushe.recent_words();
+        let reported = std::fs::read_to_string(wrong_words_path()).unwrap_or_default();
+        let json = serde_json::json!({ "recent": recent, "reported": reported }).to_string();
+        return write_http_response(
+            &mut stream,
+            "200 OK",
+            "application/json; charset=utf-8",
+            json.as_bytes(),
+        );
+    }
+
+    if method == "POST" && clean_path == "/api/recent/clear" {
+        STATE.lock().ekushe.clear_recent_words();
+        return write_http_response(&mut stream, "200 OK", "application/json", b"{}");
+    }
+
+    if method == "POST" && clean_path == "/api/wrong" {
+        let parsed: serde_json::Value = serde_json::from_str(body).unwrap_or_default();
+        let field = |k: &str| {
+            parsed
+                .get(k)
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .trim()
+                .to_string()
+        };
+        let (roman, wrong, mut right) = (field("roman"), field("wrong"), field("right"));
+        let fixed = {
+            let mut st = STATE.lock();
+            // The right word may be typed in roman letters too: take Ekushe's first suggestion for it.
+            if !right
+                .chars()
+                .any(|c| ('\u{0980}'..='\u{09FF}').contains(&c))
+                && !right.is_empty()
+            {
+                if let Some(c) = st.ekushe.suggest_roman(&right).0.first() {
+                    right = c.text.clone();
+                }
+            }
+            st.ekushe.correct_recent_word(&roman, &wrong, &right)
+        };
+        let Some(fixed) = fixed else {
+            return write_http_response(
+                &mut stream,
+                "404 Not Found",
+                "application/json",
+                br#"{"error":"not a recent word"}"#,
+            );
+        };
+        save_learned_words_if_changed();
+        let saved = append_wrong_word(&fixed.tsv_line()).is_ok();
+        let json = serde_json::json!({ "fixed": fixed, "saved": saved }).to_string();
         return write_http_response(
             &mut stream,
             "200 OK",

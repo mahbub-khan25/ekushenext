@@ -382,6 +382,7 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
     <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h9M4 12h6M4 17h5"/><path d="m14 16 3 3 5-6"/></symbol>
     <symbol id="i-swap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4 3 8l4 4"/><path d="M3 8h13a4 4 0 0 1 4 4"/><path d="m17 20 4-4-4-4"/><path d="M21 16H8a4 4 0 0 1-4-4"/></symbol>
     <symbol id="i-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></symbol>
+    <symbol id="i-fix" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v4h4"/><path d="m9 12 2 2 4-4"/></symbol>
     <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
     <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"/></symbol>
     <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2.5"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></symbol>
@@ -402,6 +403,7 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
     <button class="nav-btn" data-tab="signs"><svg><use href="#i-book"/></svg><span class="lbl"><span class="bn">যুক্তবর্ণ</span><span class="en">Conjunct guide</span></span></button>
     <button class="nav-btn" data-tab="spell"><svg><use href="#i-check"/></svg><span class="lbl"><span class="bn">বানান</span><span class="en">Spell check</span></span></button>
     <button class="nav-btn" data-tab="converter"><svg><use href="#i-swap"/></svg><span class="lbl"><span class="bn">রূপান্তর</span><span class="en">Bijoy ⇄ Unicode</span></span></button>
+    <button class="nav-btn" data-tab="fix" id="navFix" style="display:none"><svg><use href="#i-fix"/></svg><span class="lbl"><span class="bn">ভুল শব্দ</span><span class="en">A word was wrong</span></span></button>
     <button class="nav-btn" data-tab="settings"><svg><use href="#i-gear"/></svg><span class="lbl"><span class="bn">সেটিংস</span><span class="en">Settings</span></span></button>
     <div class="rail-foot">বাংলা ⇄ English বদলাতে<br><b id="hotkeyBadge">Double-Tap Shift</b></div>
   </nav>
@@ -560,6 +562,22 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
         <textarea id="convOutput" rows="7" placeholder="ফলাফল" readonly></textarea>
       </div>
       <div class="row" style="margin-top:10px;justify-content:flex-end"><button class="btn primary" onclick="copyText(document.getElementById('convOutput').value)"><svg><use href="#i-copy"/></svg>ফলাফল কপি করুন</button></div>
+    </section>
+
+    <!-- A word was wrong -->
+    <section class="panel" id="tab-fix" data-title="ভুল শব্দ ঠিক করুন" data-sub="একুশে কোনো শব্দ ভুল বসালে এখানে ঠিকটা বেছে দিন। একুশে সঙ্গে সঙ্গে শিখে নেবে, পরের বার ঠিক শব্দটাই আসবে।">
+      <div class="row" style="justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+        <div class="hint">সাম্প্রতিক শব্দগুলো (নতুনটা আগে)। এগুলো শুধু এই কম্পিউটারের মেমোরিতে থাকে, একুশে বন্ধ করলে মুছে যায়। পাসওয়ার্ডের মতো লেখা বা গোপন ঘরের লেখা এখানে আসে না।</div>
+        <div class="row" style="gap:8px"><button class="btn" onclick="loadRecent()">রিফ্রেশ</button><button class="btn" onclick="clearRecent()">তালিকা মুছুন</button></div>
+      </div>
+      <div class="stack" id="recentList"></div>
+      <div class="etched" id="reportedBox" style="margin-top:18px;display:none">
+        <div class="row" style="justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div><div class="section-title">আপনার ঠিক করা শব্দ</div><div class="hint">এই কম্পিউটারেই রাখা আছে, কোথাও পাঠানো হয়নি। চাইলে কপি করে সমস্যা জানানোর ফর্মে দিন, তাহলে সবার জন্য একুশে আরও ভালো হবে।</div></div>
+          <div class="row" style="gap:8px"><button class="btn primary" onclick="copyReported()"><svg><use href="#i-copy"/></svg>কপি করুন</button><a class="btn" id="reportLink2" style="text-decoration:none;color:inherit" href="https://ekushenext.com/report/" target="_blank" rel="noopener">সমস্যা জানান</a></div>
+        </div>
+        <div class="stack" id="reportedList" style="margin-top:12px"></div>
+      </div>
     </section>
 
     <!-- Settings -->
@@ -820,6 +838,7 @@ function showTab(id) {
   if (id === 'converter') runConvert();
   if (id === 'xray') runWordXray();
   if (id === 'playground') document.getElementById('romanInput').focus({ preventScroll: true });
+  if (id === 'fix') loadRecent();
 }
 document.querySelectorAll('.nav-btn').forEach(b => b.addEventListener('click', () => {
   showTab(b.dataset.tab);
@@ -852,7 +871,7 @@ async function refreshState() {
   }
   if (st.font_family) applyCssFont(st.font_family);
   if (st.popup_opacity) applyOpacityVisuals(st.popup_opacity);
-  if (st.report_url && /^https:\/\/ekushenext\.com\//.test(st.report_url)) document.getElementById('reportLink').href = st.report_url;
+  if (st.report_url && /^https:\/\/ekushenext\.com\//.test(st.report_url)) { document.getElementById('reportLink').href = st.report_url; document.getElementById('reportLink2').href = st.report_url; }
 }
 
 async function toggleMode() {
@@ -1201,6 +1220,77 @@ async function runConvert(mode, chipEl) {
   }, mode ? 0 : 150);
 }
 
+// ── A word was wrong ──
+let reportedText = '';
+async function loadRecent() {
+  let data;
+  try {
+    const res = await fetch('/api/recent');
+    if (!res.ok) return false;
+    data = await res.json();
+  } catch (e) { return false; }
+  const box = document.getElementById('recentList');
+  box.innerHTML = '';
+  if (!data.recent.length) {
+    box.innerHTML = '<div class="hint">এখনো কোনো শব্দ নেই। যেকোনো অ্যাপে বাংলায় লিখুন, তারপর এখানে ফিরে আসুন।</div>';
+  }
+  data.recent.forEach(r => {
+    const div = document.createElement('div');
+    div.className = 'issue';
+    div.innerHTML = `<div><div class="wrong" style="color:var(--ink);text-decoration:none">${esc(r.word)}</div><div class="kind">লিখেছিলেন: ${esc(r.roman)}</div></div><div class="chip-bar grow"></div>`;
+    const bar = div.querySelector('.chip-bar');
+    r.others.forEach(o => {
+      const b = document.createElement('button');
+      b.className = 'chip fix';
+      b.textContent = o;
+      b.onclick = () => fixWord(r, o);
+      bar.appendChild(b);
+    });
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.placeholder = 'অন্য শব্দ (বাংলা বা রোমানে)';
+    inp.setAttribute('aria-label', 'ঠিক শব্দটি লিখুন');
+    inp.style.cssText = 'min-width:12em;flex:1';
+    inp.onkeydown = (e) => { if (e.key === 'Enter' && inp.value.trim()) fixWord(r, inp.value.trim()); };
+    const ok = document.createElement('button');
+    ok.className = 'btn';
+    ok.textContent = 'ঠিক করুন';
+    ok.onclick = () => { if (inp.value.trim()) fixWord(r, inp.value.trim()); };
+    bar.appendChild(inp);
+    bar.appendChild(ok);
+    box.appendChild(div);
+  });
+  reportedText = data.reported || '';
+  const lines = reportedText.split('\n').filter(l => l.trim());
+  document.getElementById('reportedBox').style.display = lines.length ? '' : 'none';
+  const rl = document.getElementById('reportedList');
+  rl.innerHTML = '';
+  lines.slice(-20).reverse().forEach(l => {
+    const [roman, wrong, right] = l.split('\t');
+    const d = document.createElement('div');
+    d.className = 'hint';
+    d.innerHTML = `${esc(roman || '')}: <s>${esc(wrong || '')}</s> → <b>${esc(right || '')}</b>`;
+    rl.appendChild(d);
+  });
+  return true;
+}
+async function fixWord(r, right) {
+  const res = await fetch('/api/wrong', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ roman: r.roman, wrong: r.word, right }) });
+  if (!res.ok) { toast('শব্দটি আর তালিকায় নেই'); await loadRecent(); return; }
+  const out = await res.json();
+  toast(`শিখে নিয়েছে: ${out.fixed.roman} → ${out.fixed.right}`);
+  await loadRecent();
+}
+async function clearRecent() {
+  await fetch('/api/recent/clear', { method: 'POST' });
+  await loadRecent();
+}
+function copyReported() {
+  copyText('Ekushe Next: words that were wrong (typed / placed / meant / word before)\n' + reportedText);
+}
+// Only the Windows app keeps recent words; elsewhere the tab stays hidden.
+loadRecent().then(ok => { if (ok) document.getElementById('navFix').style.display = ''; });
+
 // ── Settings ──
 async function saveSettings(extra) {
   const opEl = document.getElementById('cfgOpacity');
@@ -1231,6 +1321,7 @@ async function addCustomSnippet() {
 
 const initialTab = new URLSearchParams(window.location.search).get('tab');
 showTab(initialTab && document.getElementById('tab-' + initialTab) ? initialTab : 'playground');
+if (initialTab === 'fix') document.getElementById('navFix').style.display = '';
 updateCount();
 refreshState();
 loadSigns('');

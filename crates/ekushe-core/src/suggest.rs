@@ -226,6 +226,34 @@ impl SuggestionEngine {
         self.spell.add_user_word(chosen_bangla.to_string());
     }
 
+    /// A word was committed as the engine's own first suggestion: nothing to learn about the choice
+    /// (learning it would freeze one answer and ignore context next time), but the spell checker
+    /// should accept the word (names, new words).
+    pub fn note_committed_word(&mut self, bangla: &str) {
+        if !bangla.is_empty() && !self.spell.is_correct(bangla) {
+            self.spell.add_user_word(bangla.to_string());
+        }
+    }
+
+    /// The user said `wrong` was the wrong word for `roman` and `right` is what they meant: `right`
+    /// comes first for `roman` from now on and `wrong` is no longer a learned choice for it.
+    pub fn correct_user_choice(&mut self, roman_input: &str, wrong: &str, right: &str) {
+        if roman_input.is_empty() || right.is_empty() {
+            return;
+        }
+        let entry = self
+            .user_choices
+            .entry(roman_input.to_lowercase())
+            .or_default();
+        entry.remove(wrong);
+        let top = entry.values().copied().max().unwrap_or(0);
+        let c = entry.entry(right.to_string()).or_insert(0);
+        *c = (*c).max(top) + 3;
+        self.learned_version += 1;
+        self.dictionary.entry(right.to_string()).or_insert(5_000);
+        self.spell.add_user_word(right.to_string());
+    }
+
     /// Version counter of the learned choices; changes whenever something new is learned.
     pub fn learned_version(&self) -> u64 {
         self.learned_version

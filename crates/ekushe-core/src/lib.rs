@@ -113,6 +113,48 @@ pub struct Ekushe {
     /// The host says the focused field is private (a password, PIN or "incognito" field): nothing
     /// typed there is learned or kept as context
     private_field: bool,
+    /// The last few Bangla words committed, newest last, so the user can say one was wrong
+    /// ([`recent_words`](Self::recent_words)). Memory only: never saved, never from a private field.
+    recent: std::collections::VecDeque<RecentWord>,
+}
+
+/// How many committed words [`Ekushe::recent_words`] remembers
+pub const RECENT_WORDS: usize = 12;
+
+/// A word Ekushe placed, kept briefly so the user can report it as wrong.
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+pub struct RecentWord {
+    /// What was typed (without trailing punctuation)
+    pub roman: String,
+    /// What Ekushe placed
+    pub word: String,
+    /// The other suggestions that were offered, best first
+    pub others: Vec<String>,
+    /// The word before it, if it was used as context
+    pub prev: Option<String>,
+}
+
+/// A word the user reported as wrong, with the word they meant.
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+pub struct WrongWord {
+    pub roman: String,
+    pub wrong: String,
+    pub right: String,
+    pub prev: Option<String>,
+}
+
+impl WrongWord {
+    /// One line of the corrections file: `roman \t wrong \t right \t previous word`
+    pub fn tsv_line(&self) -> String {
+        let clean = |s: &str| s.replace(['\t', '\n', '\r'], " ");
+        format!(
+            "{}\t{}\t{}\t{}",
+            clean(&self.roman),
+            clean(&self.wrong),
+            clean(&self.right),
+            clean(self.prev.as_deref().unwrap_or(""))
+        )
+    }
 }
 
 impl Default for Ekushe {
@@ -147,6 +189,7 @@ impl Ekushe {
             current_app: None,
             app_languages: HashMap::new(),
             private_field: false,
+            recent: std::collections::VecDeque::new(),
         }
     }
 
@@ -362,9 +405,43 @@ impl Ekushe {
             let tail_bn = self.phonetic.transliterate_word(tail);
             let chosen_stem = chosen.strip_suffix(tail_bn.as_str()).unwrap_or(&chosen);
             // Never learn from a private field, or anything that looks like a password or code
-            // (letters mixed with digits, or symbols such as @ # $ %)
+            // (letters mixed with digits, or symbols such as @ # $ %). Only a real choice is learned
+            // (a word other than Ekushe's first suggestion); taking the first one teaches the spell
+            // checker the word but leaves the ranking free to follow context next time.
             if !self.private_field && !looks_secret(stem) {
-                self.suggestions.record_user_choice(stem, chosen_stem);
+                if index > 0 {
+                    self.suggestions.record_user_choice(stem, chosen_stem);
+                } else {
+                    self.suggestions.note_committed_word(chosen_stem);
+                }
+                if chosen_stem
+                    .chars()
+                    .any(|c| ('\u{0980}'..='\u{09FF}').contains(&c))
+                {
+                    let others: Vec<String> = cands
+                        .iter()
+                        .filter(|c| {
+                            c.kind != CandidateKind::Emoji && c.kind != CandidateKind::English
+                        })
+                        .map(|c| {
+                            c.text
+                                .strip_suffix(tail_bn.as_str())
+                                .unwrap_or(&c.text)
+                                .to_string()
+                        })
+                        .filter(|t| t != chosen_stem && !t.is_empty())
+                        .take(5)
+                        .collect();
+                    if self.recent.len() == RECENT_WORDS {
+                        self.recent.pop_front();
+                    }
+                    self.recent.push_back(RecentWord {
+                        roman: stem.to_string(),
+                        word: chosen_stem.to_string(),
+                        others,
+                        prev: self.prev_word.clone(),
+                    });
+                }
             }
             if trailing == Some(' ') && !self.private_field {
                 self.last_commit_undo = Some((roman, chosen.clone()));
@@ -429,6 +506,44 @@ impl Ekushe {
 
         let idx = self.selected_idx;
         self.select_candidate(idx, trailing)
+    }
+
+    /// The words Ekushe placed most recently, newest first (memory only; see [`RECENT_WORDS`]).
+    pub fn recent_words(&self) -> Vec<RecentWord> {
+        self.recent.iter().rev().cloned().collect()
+    }
+
+    /// Forget the recent words (for example when the user locks the computer or asks to).
+    pub fn clear_recent_words(&mut self) {
+        self.recent.clear();
+    }
+
+    /// The user says the recent word `wrong` (typed as `roman`) should have been `right`: Ekushe
+    /// learns it at once (`right` comes first for `roman` from now on). Returns the correction for the
+    /// host to keep in the corrections file; `None` if no such recent word exists.
+    pub fn correct_recent_word(
+        &mut self,
+        roman: &str,
+        wrong: &str,
+        right: &str,
+    ) -> Option<WrongWord> {
+        let right = right.trim();
+        if right.is_empty() || right == wrong {
+            return None;
+        }
+        let pos = self
+            .recent
+            .iter()
+            .rposition(|r| r.roman == roman && r.word == wrong)?;
+        let r = self.recent.remove(pos)?;
+        self.suggestions
+            .correct_user_choice(&r.roman, &r.word, right);
+        Some(WrongWord {
+            roman: r.roman,
+            wrong: r.word,
+            right: right.to_string(),
+            prev: r.prev,
+        })
     }
 
     /// True while Backspace would undo the last conversion (a word was just committed with a space).
@@ -722,6 +837,76 @@ mod tests {
         ] {
             assert!(!ek.is_banglish(w), "{w} is not Banglish");
         }
+    }
+
+    fn type_word(ek: &mut Ekushe, w: &str) -> String {
+        for c in w.chars() {
+            ek.push_char(c, false);
+        }
+        ek.push_char(' ', false).committed.unwrap_or_default()
+    }
+
+    #[test]
+    fn a_wrong_word_can_be_corrected_and_is_learned() {
+        let mut ek = Ekushe::new(Config::default());
+        if ek.language() != InputLanguage::Bangla {
+            ek.toggle_language();
+        }
+        let placed = type_word(&mut ek, "kemon").trim_end().to_string();
+        type_word(&mut ek, "ase");
+        let recent = ek.recent_words();
+        assert_eq!(recent.len(), 2);
+        assert_eq!(recent[0].roman, "ase");
+        assert_eq!(recent[1].word, placed);
+        assert_eq!(recent[0].prev.as_deref(), Some(placed.as_str()));
+        // the user says the word for `ase` should have been আসে
+        let wrong = recent[0].word.clone();
+        let target = if wrong == "আসে" {
+            "আছে"
+        } else {
+            "আসে"
+        };
+        let fix = ek
+            .correct_recent_word("ase", &wrong, target)
+            .expect("a recent word");
+        assert_eq!(fix.right, target);
+        assert!(fix.tsv_line().starts_with("ase\t"));
+        assert_eq!(
+            ek.recent_words().len(),
+            1,
+            "the corrected word leaves the recent list"
+        );
+        let (c, _) = ek.suggest_roman("ase");
+        assert_eq!(
+            c.first().map(|c| c.text.as_str()),
+            Some(target),
+            "learned at once"
+        );
+        // nothing to correct for a word that was not placed
+        assert!(ek.correct_recent_word("xyz", "ক", "খ").is_none());
+    }
+
+    #[test]
+    fn taking_the_first_suggestion_is_not_learned_and_private_fields_are_not_remembered() {
+        let mut ek = Ekushe::new(Config::default());
+        if ek.language() != InputLanguage::Bangla {
+            ek.toggle_language();
+        }
+        type_word(&mut ek, "ami");
+        assert!(
+            ek.suggestions_engine().user_dict_tsv().trim().is_empty(),
+            "nothing learned from a plain Space"
+        );
+        ek.set_private_field(true);
+        type_word(&mut ek, "tumi");
+        assert_eq!(ek.recent_words().len(), 1, "a private field keeps nothing");
+        ek.set_private_field(false);
+        for _ in 0..(RECENT_WORDS + 3) {
+            type_word(&mut ek, "ami");
+        }
+        assert_eq!(ek.recent_words().len(), RECENT_WORDS);
+        ek.clear_recent_words();
+        assert!(ek.recent_words().is_empty());
     }
 
     #[test]
