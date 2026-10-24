@@ -316,8 +316,8 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
                 val label = when {
                     mode == Mode.NUMBERS || mode == Mode.PHONE -> "␣"
                     else -> {
-                        val full = if (bangla) "বাংলা · একুশে নেক্সট" else "English · Ekushe Next"
-                        if (textPaint.measureText(full) <= r.width() - 20 * dp) full else if (bangla) "বাংলা" else "English"
+                        val full = if (bangla) "বাং · একুশে নেক্সট" else "EN · Ekushe Next"
+                        if (textPaint.measureText(full) <= r.width() - 20 * dp) full else if (bangla) "বাং" else "EN"
                     }
                 }
                 c.drawText(label, r.centerX(), r.centerY() + 5 * dp, textPaint)

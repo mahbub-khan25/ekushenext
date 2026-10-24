@@ -189,9 +189,9 @@ final class KeyboardView: UIView {
             // The language, plus the keyboard's name when the space bar is wide enough for both
             var label = "␣"
             if mode != .numbers {
-                let full = bangla ? "বাংলা · একুশে নেক্সট" : "English · Ekushe Next"
+                let full = bangla ? "বাং · একুশে নেক্সট" : "EN · Ekushe Next"
                 let fits = (full as NSString).size(withAttributes: [.font: font(13)]).width <= r.width - 20
-                label = fits ? full : (bangla ? "বাংলা" : "English")
+                label = fits ? full : (bangla ? "বাং" : "EN")
             }
             draw(label, centre: c, font: font(13), color: p.subtext)
         case .lang:
