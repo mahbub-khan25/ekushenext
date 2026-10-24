@@ -1,5 +1,5 @@
 # Fedora package for COPR, built by .github/workflows/release.yml from the tarball made by
-# platform/linux/dist/make-source.sh. @VERSION@ is filled in at build time (e.g. 0.1.0~beta13).
+# platform/linux/dist/make-source.sh. @VERSION@ is filled in at build time (e.g. 0.1.0~beta.13).
 # The Rust libraries are bundled in vendor/ (listed below as bundled(crate(...))), so the build
 # needs no network.
 
