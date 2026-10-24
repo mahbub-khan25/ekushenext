@@ -63,7 +63,7 @@ enum Engine {
     static func start(bundle: Bundle = .main, done: (() -> Void)? = nil) {
         if started { done?(); return }
         started = true
-        let dict = bundle.path(forResource: "ekushe", ofType: "dict") ?? ""
+        let dict = bundle.path(forResource: "ekushe-dictionary", ofType: "bin") ?? ""
         let dir = folder.path
         queue.async {
             words = ekm_init(dict, dir)
@@ -75,7 +75,7 @@ enum Engine {
     static func startAndWait(bundle: Bundle) {
         if started { queue.sync {}; return }
         started = true
-        let dict = bundle.path(forResource: "ekushe", ofType: "dict") ?? ""
+        let dict = bundle.path(forResource: "ekushe-dictionary", ofType: "bin") ?? ""
         words = ekm_init(dict, folder.path)
     }
 
