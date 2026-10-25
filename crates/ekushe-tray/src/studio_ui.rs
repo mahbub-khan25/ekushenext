@@ -422,7 +422,7 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
 
     <!-- Linux: the package is installed but Ekushe isn't one of the user's keyboards yet -->
     <div class="etched" id="addKeyboardBox" hidden style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
-      <div><div class="section-title">একুশে এখনো আপনার কিবোর্ডের তালিকায় নেই</div><div class="hint" id="addKeyboardMsg">যোগ করলে অন্য সব অ্যাপে বাংলা লিখতে পারবেন। কিবোর্ড বদলাতে Super+Space চাপুন বা ওপরের বারের ভাষা-নির্দেশক থেকে বেছে নিন।</div></div>
+      <div><div class="section-title">একুশে এখনো আপনার কিবোর্ডের তালিকায় নেই</div><div class="hint" id="addKeyboardMsg">যোগ করলে একুশেই আপনার কিবোর্ড হবে, সব অ্যাপে। বাংলা ⇄ English বদলাতে দুবার Shift চাপুন; ওপরের বারে এ বা EN দেখাবে।</div></div>
       <button class="btn primary" id="addKeyboardBtn" onclick="addKeyboard()">কিবোর্ড যোগ করুন</button>
     </div>
 
@@ -1321,7 +1321,7 @@ async function addKeyboard() {
   const res = await fetch('/api/add-keyboard', { method: 'POST' });
   const out = res.ok ? await res.json() : { ok: false };
   if (out.ok) {
-    toast('একুশে কিবোর্ড যোগ হয়েছে। Super+Space চেপে বেছে নিন।');
+    toast('একুশে যোগ হয়েছে ও চালু আছে। দুবার Shift চেপে বাংলা ⇄ English।');
     document.getElementById('addKeyboardBox').hidden = true;
   } else {
     document.getElementById('addKeyboardMsg').textContent = 'নিজে থেকে যোগ করা গেল না। Settings → Keyboard → Input Sources → + → Bangla (Bangladesh) → Ekushe Bangla বেছে নিন।';

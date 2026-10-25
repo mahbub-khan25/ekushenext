@@ -73,8 +73,9 @@ pub mod gnome_keyboard {
         current().map(|v| v.contains("'ekushe'"))
     }
 
-    /// The keyboard list with Ekushe added after the user's own (an English layout first if there
-    /// was none, so Super+Space always has English to go back to).
+    /// The keyboard list with Ekushe first (so it's the one in use, and double-tap Shift switches
+    /// between Bangla and English), then the user's own keyboards; an English layout if there was
+    /// none, so Super+Space always has a plain keyboard to go to.
     pub fn with_ekushe(list: &str) -> String {
         if list.contains("'ekushe'") {
             return list.to_string();
@@ -85,9 +86,9 @@ pub mod gnome_keyboard {
             .trim_end_matches(']')
             .trim();
         if inner.is_empty() {
-            format!("[('xkb', 'us'), {EKUSHE}]")
+            format!("[{EKUSHE}, ('xkb', 'us')]")
         } else {
-            format!("[{inner}, {EKUSHE}]")
+            format!("[{EKUSHE}, {inner}]")
         }
     }
 
@@ -99,6 +100,10 @@ pub mod gnome_keyboard {
         if list.contains("'ekushe'") {
             return true;
         }
+        // Make Ekushe the most recently used keyboard too, so GNOME switches to it straight away
+        let _ = std::process::Command::new("gsettings")
+            .args(["set", KEY[0], "mru-sources", &format!("[{EKUSHE}]")])
+            .status();
         let ok = std::process::Command::new("gsettings")
             .arg("set")
             .args(KEY)
@@ -112,16 +117,16 @@ pub mod gnome_keyboard {
     #[cfg(test)]
     mod tests {
         #[test]
-        fn ekushe_is_added_after_the_users_keyboards() {
+        fn ekushe_is_added_first() {
             use super::with_ekushe;
             assert_eq!(
                 with_ekushe("[('xkb', 'us')]"),
-                "[('xkb', 'us'), ('ibus', 'ekushe')]"
+                "[('ibus', 'ekushe'), ('xkb', 'us')]"
             );
-            assert_eq!(with_ekushe("[]"), "[('xkb', 'us'), ('ibus', 'ekushe')]");
+            assert_eq!(with_ekushe("[]"), "[('ibus', 'ekushe'), ('xkb', 'us')]");
             assert_eq!(
                 with_ekushe("[('xkb', 'de'), ('ibus', 'mozc-jp')]"),
-                "[('xkb', 'de'), ('ibus', 'mozc-jp'), ('ibus', 'ekushe')]"
+                "[('ibus', 'ekushe'), ('xkb', 'de'), ('ibus', 'mozc-jp')]"
             );
             let done = "[('ibus', 'ekushe'), ('xkb', 'us')]";
             assert_eq!(with_ekushe(done), done);
