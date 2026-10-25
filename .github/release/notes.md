@@ -1,6 +1,9 @@
 **Beta.** Ekushe Next is a Bangla phonetic keyboard for **Windows 10/11 (64-bit)**, **macOS 11 or later** (Apple silicon and Intel), **Linux** (64-bit, IBus) and **Android 7 or later**. It comes with its own dictionary, which puts the Bangla Academy standard spelling first.
 
 ### What's new in this beta
+- **Linux: Ekushe Studio has its own window.** No more browser tab: Studio opens in a proper window with the Ekushe icon, on GNOME, KDE Plasma, COSMIC, Xfce, Cinnamon and other desktops. Opening it again brings the same window forward; links to websites open in your browser; **ব্যাকআপ নিন** asks where to save the file. It uses WebKitGTK, which Ubuntu and Fedora install with Ekushe (if it's missing, Studio opens in the browser as before).
+
+Also in this beta (from beta.18):
 - **Linux: you see every switch.** When you double-tap Shift (or switch from the top bar), a small **এ · বাংলা** or **EN · English** note appears next to the cursor for a moment, like the badge on Windows. GNOME hides its top-bar label when you have only one keyboard and can be slow to update it; the note always shows.
 
 Also in this beta (from beta.17):
@@ -61,7 +64,7 @@ Ekushe is an **IBus** keyboard. IBus is the standard on Ubuntu, Fedora, Debian a
 After installing:
 1. Run `ibus restart`, or log out and back in.
 2. Open **Ekushe Studio** from your applications menu and click **কিবোর্ড যোগ করুন** (or run `ekushe-studio --add-keyboard`). By hand: **Settings → Keyboard → Input Sources → + → Bangla (Bangladesh) → Ekushe Bangla**.
-3. Switch keyboards with **Super+Space**. **Ekushe Studio** appears in your applications menu.
+3. Switch keyboards with **Super+Space**. **Ekushe Studio** appears in your applications menu and opens in its own window.
 
 Run the AppImage on its own (double-click it) to open Studio without installing anything. IBus only loads keyboards installed for the whole computer, so `--install-keyboard` asks for your password once, and `--uninstall-keyboard` removes the keyboard again.
 
