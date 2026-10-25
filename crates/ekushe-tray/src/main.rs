@@ -8,6 +8,7 @@ mod selection;
 mod setup_wizard;
 mod studio_http;
 mod studio_ui;
+mod update_check;
 
 use std::env;
 use std::io::{Read, Write};
@@ -102,6 +103,8 @@ const CMD_LAYOUT_PROBHAT: usize = 1031;
 const CMD_LAYOUT_JATIYA: usize = 1032;
 const CMD_LAYOUT_BORNONA: usize = 1033;
 const CMD_LAYOUT_MUNIR: usize = 1034;
+const CMD_CHECK_UPDATE: usize = 1096;
+const CMD_UPDATE_DOWNLOAD: usize = 1097;
 const CMD_REPORT: usize = 1098;
 const CMD_EXIT: usize = 1099;
 
@@ -406,6 +409,9 @@ fn main() {
 
         // Add icon to Windows System Tray
         add_or_update_tray_icon(tray_hwnd, true);
+        update_check::start_background(tray_hwnd as isize, || {
+            STATE.lock().ekushe.config().check_for_updates
+        });
 
         // Install global low-level keyboard hook
         KEYBOARD_HOOK = SetWindowsHookExW(WH_KEYBOARD_LL, Some(keyboard_hook_proc), hinstance, 0);
@@ -583,6 +589,21 @@ fn run_self_test(port: u16) {
     );
     assert!(r_set.contains("\"ok\":true"));
     println!("✓ POST /api/settings verified");
+
+    // 8. "A word was wrong", backup and restore
+    assert!(http_get("/api/recent").contains("\"recent\""));
+    let r_wrong = http_post(
+        "/api/wrong",
+        r#"{"roman":"nothere","wrong":"x","right":"y"}"#,
+    );
+    assert!(r_wrong.contains("not a recent word"));
+    let backup = http_get("/api/backup");
+    assert!(backup.contains("\"ekushe_backup\": 1") && backup.contains("config.toml"));
+    let body = &backup[backup.find("\r\n\r\n").map(|i| i + 4).unwrap_or(0)..];
+    assert!(http_post("/api/restore", body).contains("\"ok\":true"));
+    assert!(http_post("/api/restore", "{}").contains("\"ok\":false"));
+    assert!(http_get("/api/state").contains(update_check::current_version()));
+    println!("✓ recent words, backup and restore verified");
 
     println!("ALL EKUSHE STUDIO & SYSTEM TRAY ENDPOINTS PASSED 100%!");
 }
@@ -1467,6 +1488,12 @@ unsafe extern "system" fn tray_wnd_proc(
                 WM_RBUTTONUP | WM_CONTEXTMENU => {
                     show_tray_context_menu(hwnd);
                 }
+                // The "new version" notice was clicked
+                windows_sys::Win32::UI::Shell::NIN_BALLOONUSERCLICK
+                    if update_check::AVAILABLE.lock().is_some() =>
+                {
+                    open_in_browser(update_check::DOWNLOAD_PAGE);
+                }
                 _ => {}
             }
             0
@@ -1630,6 +1657,27 @@ unsafe fn show_tray_context_menu(hwnd: HWND) {
     }
 
     AppendMenuW(menu, MF_SEPARATOR, 0, ptr::null());
+    if let Some(tag) = update_check::AVAILABLE.lock().clone() {
+        AppendMenuW(
+            menu,
+            MF_STRING,
+            CMD_UPDATE_DOWNLOAD,
+            wide_null(&format!(
+                "⬇️ নতুন সংস্করণ {tag} এসেছে — ডাউনলোড করুন (Update available)"
+            ))
+            .as_ptr(),
+        );
+    }
+    AppendMenuW(
+        menu,
+        MF_STRING,
+        CMD_CHECK_UPDATE,
+        wide_null(&format!(
+            "🔄 হালনাগাদ দেখুন (Check for updates) — {}",
+            update_check::current_version()
+        ))
+        .as_ptr(),
+    );
     AppendMenuW(
         menu,
         MF_STRING,
@@ -1755,6 +1803,8 @@ unsafe fn handle_tray_command(hwnd: HWND, cmd: usize) {
             drop(st);
             show_mode_badge(&format!("কীবোর্ড লেআউট: {lay_name}"));
         }
+        CMD_CHECK_UPDATE => update_check::check_now_and_tell(),
+        CMD_UPDATE_DOWNLOAD => open_in_browser(update_check::DOWNLOAD_PAGE),
         CMD_REPORT => {
             let url = ekushe_core::report_url(&windows_name(), STATE.lock().ekushe.config());
             open_in_browser(&url);
@@ -2065,6 +2115,8 @@ fn handle_http_client(mut stream: TcpStream, req: &str) -> std::io::Result<()> {
             "popup_opacity": st.popup_opacity_pct,
             "compact_popup": cfg.compact_popup,
             "auto_english_in_terminals": cfg.auto_english_in_terminals,
+            "check_for_updates": cfg.check_for_updates,
+            "app_version": update_check::current_version(),
             "snippets": snippet_pairs,
             "report_url": ekushe_core::report_url(&windows_name(), cfg),
         })
@@ -2227,6 +2279,54 @@ fn handle_http_client(mut stream: TcpStream, req: &str) -> std::io::Result<()> {
         );
     }
 
+    if method == "GET" && clean_path == "/api/backup" {
+        // Settings, snippets, learned and reported words in one file the user can keep or move
+        save_learned_words_if_changed();
+        let today = ekushe_core::dates::now()
+            .map(|t| format!("{:04}-{:02}-{:02}", t.year, t.month, t.day))
+            .unwrap_or_default();
+        let backup = ekushe_core::backup::create(&Config::default_dir(), &today);
+        return write_http_response(
+            &mut stream,
+            "200 OK",
+            "application/json; charset=utf-8",
+            backup.as_bytes(),
+        );
+    }
+
+    if method == "POST" && clean_path == "/api/restore" {
+        save_learned_words_if_changed();
+        let json = match ekushe_core::backup::restore(&Config::default_dir(), body) {
+            Ok(done) => {
+                let tray_hwnd = {
+                    let mut st = STATE.lock();
+                    if let Ok(cfg) = Config::load_from(&Config::default_config_path()) {
+                        st.ekushe.set_config(cfg);
+                    }
+                    let _ = st
+                        .ekushe
+                        .suggestions_engine_mut()
+                        .load_user_dict(&learned_words_path());
+                    st.saved_learned_version = st.ekushe.suggestions_engine().learned_version();
+                    st.tray_hwnd
+                };
+                unsafe {
+                    if tray_hwnd != 0 {
+                        add_or_update_tray_icon(tray_hwnd as HWND, false);
+                    }
+                }
+                serde_json::json!({ "ok": true, "restored": done })
+            }
+            Err(e) => serde_json::json!({ "ok": false, "error": e }),
+        };
+        return write_http_response(
+            &mut stream,
+            "200 OK",
+            "application/json; charset=utf-8",
+            json.to_string().as_bytes(),
+        );
+    }
+
     if method == "POST" && clean_path == "/api/settings" {
         let parsed: serde_json::Value = serde_json::from_str(body).unwrap_or_default();
         let hk_str = parsed
@@ -2253,6 +2353,7 @@ fn handle_http_client(mut stream: TcpStream, req: &str) -> std::io::Result<()> {
         let term_opt = parsed
             .get("auto_english_in_terminals")
             .and_then(|v| v.as_bool());
+        let update_opt = parsed.get("check_for_updates").and_then(|v| v.as_bool());
         // `snippet_key` / `snippet_value` are accepted too (older Studio pages sent those names)
         let field = |a: &str, b: &str| {
             parsed
@@ -2296,6 +2397,9 @@ fn handle_http_client(mut stream: TcpStream, req: &str) -> std::io::Result<()> {
             }
             if let Some(tm) = term_opt {
                 cfg.auto_english_in_terminals = tm;
+            }
+            if let Some(u) = update_opt {
+                cfg.check_for_updates = u;
             }
             if !snip_trig.is_empty() && !snip_exp.is_empty() {
                 cfg.custom_snippets
@@ -2416,7 +2520,7 @@ fn open_url_in_app_window(url: &str) {
 }
 
 /// A web page in the default browser.
-fn open_in_browser(url: &str) {
+pub(crate) fn open_in_browser(url: &str) {
     unsafe {
         windows_sys::Win32::UI::Shell::ShellExecuteW(
             ptr::null_mut(),

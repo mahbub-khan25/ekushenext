@@ -98,7 +98,8 @@ cargo run --release -p ekushe-core --example engine_eval -- data/dictionary/ekus
 
 ## Privacy
 
-Ekushe Next does not send anything over the network. Typing, learned words and settings stay on your
+Ekushe Next does not send anything over the network (the only exception: on Windows, when you choose
+"Check for updates" or turn on update notices, it asks GitHub for the newest version number). Typing, learned words and settings stay on your
 computer (`%APPDATA%\Ekushe` on Windows, `~/Library/Application Support/Ekushe` on macOS, `~/.config/Ekushe`
 on Linux). Ekushe Studio runs on `127.0.0.1` only and refuses requests from other websites. There is no
 telemetry, no update check and no account.

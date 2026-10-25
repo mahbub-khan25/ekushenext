@@ -127,6 +127,9 @@ unsafe fn cstr<'a>(p: *const c_char) -> Option<&'a str> {
 pub(crate) struct Shared {
     pub ekushe: Ekushe,
     pub saved_learned_version: u64,
+    /// When `learned.tsv` was last read or written by this process (another process, such as Studio
+    /// restoring a backup, may change it; it is then read again)
+    pub learned_mtime: Option<std::time::SystemTime>,
     /// The last key's result, for C callers that read it field by field (`ek_out_*`)
     pub last: SessionOutput,
 }
@@ -153,6 +156,7 @@ pub(crate) static SHARED: Lazy<Mutex<Shared>> = Lazy::new(|| {
     Mutex::new(Shared {
         ekushe,
         saved_learned_version,
+        learned_mtime: learned_mtime(),
         last: SessionOutput::default(),
     })
 });
@@ -161,13 +165,49 @@ pub(crate) fn learned_words_path() -> std::path::PathBuf {
     Config::default_dir().join("learned.tsv")
 }
 
+fn learned_mtime() -> Option<std::time::SystemTime> {
+    std::fs::metadata(learned_words_path())
+        .and_then(|m| m.modified())
+        .ok()
+}
+
 pub(crate) fn save_learned(sh: &mut Shared) {
     let v = sh.ekushe.suggestions_engine().learned_version();
     if v != sh.saved_learned_version {
-        sh.saved_learned_version = v;
+        // Words another process added since this one last looked are kept, not overwritten
+        merge_learned_if_changed(sh);
+        sh.saved_learned_version = sh.ekushe.suggestions_engine().learned_version();
         let tsv = sh.ekushe.suggestions_engine().user_dict_tsv();
         let _ = ekushe_core::suggest::write_atomic(&learned_words_path(), &tsv);
+        sh.learned_mtime = learned_mtime();
     }
+}
+
+/// Read `learned.tsv` again if another process changed it, adding its words to this engine's.
+fn merge_learned_if_changed(sh: &mut Shared) {
+    let now = learned_mtime();
+    if now.is_some() && now != sh.learned_mtime {
+        let _ = sh
+            .ekushe
+            .suggestions_engine_mut()
+            .load_user_dict(&learned_words_path());
+        sh.learned_mtime = now;
+    }
+}
+
+/// Re-read settings and learned words from disk (after a backup was restored).
+pub fn reload_from_disk() {
+    with_shared((), |sh| {
+        if let Ok(cfg) = Config::load_from(&Config::default_config_path()) {
+            sh.ekushe.set_config(cfg);
+        }
+        let unsaved = sh.ekushe.suggestions_engine().learned_version() != sh.saved_learned_version;
+        sh.learned_mtime = None;
+        merge_learned_if_changed(sh);
+        if !unsaved {
+            sh.saved_learned_version = sh.ekushe.suggestions_engine().learned_version();
+        }
+    });
 }
 
 fn with_shared<T>(fallback: T, f: impl FnOnce(&mut Shared) -> T) -> T {
@@ -356,11 +396,7 @@ pub unsafe extern "C" fn ek_app_focus(app_id: *const c_char) -> u8 {
 /// Re-read settings from disk (e.g. after another program changed them).
 #[no_mangle]
 pub extern "C" fn ek_reload_config() {
-    with_shared((), |sh| {
-        if let Ok(cfg) = Config::load_from(&Config::default_config_path()) {
-            sh.ekushe.set_config(cfg);
-        }
-    });
+    reload_from_disk();
 }
 
 /// Write learned words to disk if anything new was learned (Rust callers).

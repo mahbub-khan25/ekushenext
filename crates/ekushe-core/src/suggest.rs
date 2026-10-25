@@ -63,6 +63,8 @@ pub struct SuggestionEngine {
     emojis: HashMap<String, Vec<&'static str>>,
     /// User / builtin snippets (e.g. `/sal` -> `আসসালামু আলাইকুম`)
     snippets: HashMap<String, String>,
+    /// A fixed clock for the date shortcuts (tests); `None` reads the computer's local time
+    fixed_time: Option<crate::dates::LocalTime>,
     /// Next-word bigrams: previous Bangla word -> top following words
     bigrams: HashMap<String, Vec<String>>,
     /// User-learned mappings: roman token -> (bangla_word, selection_count)
@@ -155,6 +157,7 @@ impl SuggestionEngine {
             autocorrect,
             emojis,
             snippets,
+            fixed_time: None,
             bigrams,
             user_choices: HashMap::new(),
             spell,
@@ -198,6 +201,11 @@ impl SuggestionEngine {
 
     pub fn set_snippet(&mut self, trigger: impl Into<String>, expansion: impl Into<String>) {
         self.snippets.insert(trigger.into(), expansion.into());
+    }
+
+    /// Use this date and time for the date shortcuts instead of the computer's clock (for tests).
+    pub fn set_fixed_time(&mut self, t: Option<crate::dates::LocalTime>) {
+        self.fixed_time = t;
     }
 
     pub fn snippets(&self) -> &HashMap<String, String> {
@@ -349,6 +357,40 @@ impl SuggestionEngine {
                 list.push(cand);
             }
         };
+
+        // 0. Date and time shortcuts (`;aj`, `;bar`, `;bongabdo`, `;somoy`), unless the user made a
+        // snippet with the same name. A prefix such as `;bo` offers them too.
+        if roman_input.starts_with(';')
+            && roman_input.len() >= 3
+            && !self.snippets.contains_key(roman_input)
+        {
+            let wanted: Vec<&str> = crate::dates::DATE_SHORTCUTS
+                .iter()
+                .map(|(t, _)| *t)
+                .filter(|t| t.starts_with(roman_input))
+                .collect();
+            if !wanted.is_empty() {
+                if let Some(now) = self.fixed_time.or_else(crate::dates::now) {
+                    // An exact shortcut lists all its forms; a prefix only the first form of each
+                    let exact = wanted.contains(&roman_input);
+                    for t in wanted.iter().filter(|t| !exact || **t == roman_input) {
+                        let forms = crate::dates::expand(t, &now).unwrap_or_default();
+                        let n = if exact { forms.len() } else { 1 };
+                        for f in forms.into_iter().take(n) {
+                            push_unique(
+                                &mut candidates,
+                                &mut seen,
+                                Candidate {
+                                    text: f,
+                                    kind: CandidateKind::Snippet,
+                                    annotation: Some("Date".to_string()),
+                                },
+                            );
+                        }
+                    }
+                }
+            }
+        }
 
         // 1. Snippet trigger (exact or prefix on `;` / `/`, e.g., `;salam`, `/sal`, `;tk`, `;bd`)
         if let Some(expanded) = self.snippets.get(roman_input) {

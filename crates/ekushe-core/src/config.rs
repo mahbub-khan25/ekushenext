@@ -99,6 +99,9 @@ pub struct Config {
     pub custom_snippets: HashMap<String, String>,
     /// Backspace right after a word is committed brings back the Roman text that was typed
     pub backspace_undo: bool,
+    /// Once a day, ask GitHub whether a newer Ekushe Next has been released (Windows; Linux updates
+    /// come through the package manager). Off unless the user turns it on: Ekushe stays offline.
+    pub check_for_updates: bool,
 }
 
 impl Default for Config {
@@ -129,6 +132,7 @@ impl Default for Config {
             phonetic_overrides: HashMap::new(),
             custom_snippets: HashMap::new(),
             backspace_undo: true,
+            check_for_updates: false,
         }
     }
 }

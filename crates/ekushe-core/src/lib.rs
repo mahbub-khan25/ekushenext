@@ -9,11 +9,41 @@
 //! - [`convert`]: Bijoy (ANSI / SutonnyMJ) <-> Unicode converter and Banglish selection converter
 //! - [`config`]: Hotkeys (Double-Tap Shift default, Ctrl+Space, F12, Ctrl+Alt+B), modes, and per-app profiles
 
+pub mod backup;
 pub mod config;
 
 /// This build's release, e.g. `v0.1.0-beta.10` (from .github/release/VERSION).
 pub fn release() -> &'static str {
     include_str!("../../../.github/release/VERSION").trim()
+}
+
+/// A version as `(major, minor, patch, pre-release number)`; a final release sorts after its betas.
+fn version_key(v: &str) -> Option<(u64, u64, u64, u64)> {
+    let v = v.trim().trim_start_matches(['v', 'V']);
+    let (main, pre) = match v.split_once('-') {
+        Some((m, p)) => (m, Some(p)),
+        None => (v, None),
+    };
+    let mut n = main.split('.').map(|x| x.parse::<u64>().ok());
+    let (a, b, c) = (
+        n.next()??,
+        n.next().unwrap_or(Some(0))?,
+        n.next().unwrap_or(Some(0))?,
+    );
+    let pre = match pre {
+        None => u64::MAX,
+        Some(p) => p
+            .rsplit(|ch: char| !ch.is_ascii_digit())
+            .next()
+            .and_then(|d| d.parse().ok())
+            .unwrap_or(0),
+    };
+    Some((a, b, c, pre))
+}
+
+/// True when release tag `latest` (e.g. `v0.1.0-beta.16`) is newer than version `current`.
+pub fn is_newer_version(latest: &str, current: &str) -> bool {
+    matches!((version_key(latest), version_key(current)), (Some(l), Some(c)) if l > c)
 }
 
 /// The web form for reporting a problem, with this build's details filled in (nothing typed is
@@ -39,6 +69,7 @@ pub fn report_url(os: &str, config: &config::Config) -> String {
 }
 pub mod conjuncts;
 pub mod convert;
+pub mod dates;
 pub mod dict;
 pub mod layout;
 pub mod marks;
@@ -837,6 +868,40 @@ mod tests {
         ] {
             assert!(!ek.is_banglish(w), "{w} is not Banglish");
         }
+    }
+
+    #[test]
+    fn date_shortcuts_type_today_in_bangla() {
+        let mut ek = Ekushe::new(Config::default());
+        ek.suggestions_engine_mut()
+            .set_fixed_time(Some(crate::dates::LocalTime {
+                year: 2026,
+                month: 10,
+                day: 24,
+                weekday: 6,
+                hour: 19,
+                minute: 50,
+            }));
+        assert_eq!(type_word(&mut ek, ";aj"), "২৪ অক্টোবর ২০২৬ ");
+        assert_eq!(type_word(&mut ek, ";bongabdo"), "৮ কার্তিক ১৪৩৩ বঙ্গাব্দ ");
+        assert_eq!(type_word(&mut ek, ";bar"), "শনিবার ");
+        assert_eq!(type_word(&mut ek, ";somoy"), "সন্ধ্যা ৭:৫০ ");
+        // Other snippets still work, and a user's own `;aj` wins
+        assert_eq!(type_word(&mut ek, ";barik"), "আল্লাহুম্মা বারিক লাহু ");
+        ek.suggestions_engine_mut().set_snippet(";aj", "আজকে");
+        assert_eq!(type_word(&mut ek, ";aj"), "আজকে ");
+    }
+
+    #[test]
+    fn newer_versions_are_recognised() {
+        assert!(is_newer_version("v0.1.0-beta.16", "0.1.0-beta.15"));
+        assert!(is_newer_version("v0.1.0-beta.10", "0.1.0-beta.9"));
+        assert!(is_newer_version("v0.1.0", "0.1.0-beta.15"));
+        assert!(is_newer_version("v1.0.0", "0.9.9"));
+        assert!(!is_newer_version("v0.1.0-beta.15", "0.1.0-beta.15"));
+        assert!(!is_newer_version("v0.1.0-beta.14", "0.1.0-beta.15"));
+        assert!(!is_newer_version("v0.1.0-beta.20", "0.1.0"));
+        assert!(!is_newer_version("nightly", "0.1.0"));
     }
 
     fn type_word(ek: &mut Ekushe, w: &str) -> String {
