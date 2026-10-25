@@ -2,8 +2,8 @@
 1 24 "ekushe.manifest"
 
 1 VERSIONINFO
-FILEVERSION     0,1,0,20
-PRODUCTVERSION  0,1,0,20
+FILEVERSION     0,1,0,21
+PRODUCTVERSION  0,1,0,21
 FILEFLAGSMASK   0x3fL
 FILEFLAGS       0x2L  /* VS_FF_PRERELEASE */
 FILEOS          0x40004L
@@ -16,12 +16,12 @@ BEGIN
     BEGIN
       VALUE "CompanyName",      "Ekushe Next Contributors"
       VALUE "FileDescription",  "Ekushe Next Bangla keyboard"
-      VALUE "FileVersion",      "0.1.0-beta.20"
+      VALUE "FileVersion",      "0.1.0-beta.21"
       VALUE "InternalName",     "ekushe"
       VALUE "LegalCopyright",   "Ekushe Next Contributors, MPL-2.0"
       VALUE "OriginalFilename", "ekushe.exe"
       VALUE "ProductName",      "Ekushe Next"
-      VALUE "ProductVersion",   "0.1.0-beta.20"
+      VALUE "ProductVersion",   "0.1.0-beta.21"
       VALUE "Comments",         "Open source: https://github.com/mahbub-khan25/ekushenext"
     END
   END
