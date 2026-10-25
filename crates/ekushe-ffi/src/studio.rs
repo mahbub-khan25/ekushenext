@@ -47,6 +47,88 @@ static FONTS: &[(&str, &[u8])] = &[
     ),
 ];
 
+/// Linux (GNOME, Ubuntu, Fedora): is Ekushe in the user's keyboards (Settings → Keyboard → Input
+/// Sources)? Installing the package makes it available but doesn't add it; Studio offers to.
+#[cfg(target_os = "linux")]
+pub mod gnome_keyboard {
+    const KEY: [&str; 2] = ["org.gnome.desktop.input-sources", "sources"];
+    const EKUSHE: &str = "('ibus', 'ekushe')";
+
+    fn current() -> Option<String> {
+        let out = std::process::Command::new("gsettings")
+            .arg("get")
+            .args(KEY)
+            .output()
+            .ok()?;
+        if !out.status.success() {
+            return None;
+        }
+        let v = String::from_utf8_lossy(&out.stdout).trim().to_string();
+        let v = v.strip_prefix("@a(ss) ").unwrap_or(&v).to_string();
+        (v.starts_with('[') && v.ends_with(']')).then_some(v)
+    }
+
+    /// `Some(true)` added, `Some(false)` not added, `None` not a GNOME desktop (nothing to offer).
+    pub fn is_added() -> Option<bool> {
+        current().map(|v| v.contains("'ekushe'"))
+    }
+
+    /// The keyboard list with Ekushe added after the user's own (an English layout first if there
+    /// was none, so Super+Space always has English to go back to).
+    pub fn with_ekushe(list: &str) -> String {
+        if list.contains("'ekushe'") {
+            return list.to_string();
+        }
+        let inner = list
+            .trim()
+            .trim_start_matches('[')
+            .trim_end_matches(']')
+            .trim();
+        if inner.is_empty() {
+            format!("[('xkb', 'us'), {EKUSHE}]")
+        } else {
+            format!("[{inner}, {EKUSHE}]")
+        }
+    }
+
+    /// Add Ekushe to the user's keyboards. Returns whether it is there now.
+    pub fn add() -> bool {
+        let Some(list) = current() else {
+            return false;
+        };
+        if list.contains("'ekushe'") {
+            return true;
+        }
+        let ok = std::process::Command::new("gsettings")
+            .arg("set")
+            .args(KEY)
+            .arg(with_ekushe(&list))
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false);
+        ok && is_added() == Some(true)
+    }
+
+    #[cfg(test)]
+    mod tests {
+        #[test]
+        fn ekushe_is_added_after_the_users_keyboards() {
+            use super::with_ekushe;
+            assert_eq!(
+                with_ekushe("[('xkb', 'us')]"),
+                "[('xkb', 'us'), ('ibus', 'ekushe')]"
+            );
+            assert_eq!(with_ekushe("[]"), "[('xkb', 'us'), ('ibus', 'ekushe')]");
+            assert_eq!(
+                with_ekushe("[('xkb', 'de'), ('ibus', 'mozc-jp')]"),
+                "[('xkb', 'de'), ('ibus', 'mozc-jp'), ('ibus', 'ekushe')]"
+            );
+            let done = "[('ibus', 'ekushe'), ('xkb', 'us')]";
+            assert_eq!(with_ekushe(done), done);
+        }
+    }
+}
+
 static PORT: AtomicU16 = AtomicU16::new(0);
 /// When the last request arrived (seconds since the Unix epoch), for apps that quit when idle
 static LAST_REQUEST: AtomicU64 = AtomicU64::new(0);
@@ -283,7 +365,17 @@ fn handle(mut s: TcpStream, req: &str, port: u16) -> std::io::Result<()> {
                     "report_url": ekushe_core::report_url(if cfg!(target_os = "macos") { "macOS" } else { "Linux" }, cfg),
                 })
             };
+            let mut v = v;
+            #[cfg(target_os = "linux")]
+            if let Some(added) = gnome_keyboard::is_added() {
+                v["keyboard_added"] = serde_json::json!(added);
+            }
             respond(&mut s, "200 OK", ct, &json(v))
+        }
+        #[cfg(target_os = "linux")]
+        ("POST", "/api/add-keyboard") => {
+            let ok = gnome_keyboard::add();
+            respond(&mut s, "200 OK", ct, &json(serde_json::json!({ "ok": ok })))
         }
         ("POST", "/api/toggle") => {
             let l = SHARED.lock().ekushe.toggle_language();

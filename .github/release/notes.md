@@ -1,6 +1,10 @@
 **Beta.** Ekushe Next is a Bangla phonetic keyboard for **Windows 10/11 (64-bit)**, **macOS 11 or later** (Apple silicon and Intel), **Linux** (64-bit, IBus) and **Android 7 or later**. It comes with its own dictionary, which puts the Bangla Academy standard spelling first.
 
 ### What's new in this beta
+- **Linux: one click to add the keyboard.** Installing Ekushe makes it available, but GNOME (Ubuntu, Fedora) doesn't add it to your keyboards by itself. Open **Ekushe Studio** from the applications menu and click **কিবোর্ড যোগ করুন**, or run `ekushe-studio --add-keyboard`. To do it by hand: Settings → Keyboard → Input Sources → + → **Bangla (Bangladesh)** → **Ekushe Bangla**.
+- **Linux: the top bar shows অ or EN.** Double-tap Shift switches between Bangla and English while Ekushe stays selected, and the top bar now shows which one you're in. You can also switch from the top bar's menu.
+
+Also in this beta (from beta.15):
 - **Much better everyday Bangla.** Chat and casual spellings now land on the right word far more often (`kemon ase` → কেমন আছে, `ami valo achi`, `khaiso`, `thik ache`, `sorry`, `plz`). On our test set of 893 everyday words and sentences, Ekushe now gets 98% right, up from 91%.
 - **"A word was wrong" (Windows).** Right-click the tray icon → **✏️ ভুল শব্দ ঠিক করুন**. Your last few words are listed; pick or type the right one and Ekushe learns it at once. The list is kept in memory only (nothing from password boxes), and you can copy your corrections into a report to help improve Ekushe for everyone.
 - **Smarter learning.** Ekushe now learns when you pick a different word, not every time you press Space, so it keeps choosing by context (the word before) instead of freezing one choice.
@@ -48,7 +52,7 @@ Ekushe is an **IBus** keyboard. IBus is the standard on Ubuntu, Fedora, Debian a
 
 After installing:
 1. Run `ibus restart`, or log out and back in.
-2. Go to **Settings → Keyboard → Input Sources → + → Bengali → Ekushe Bangla**.
+2. Open **Ekushe Studio** from your applications menu and click **কিবোর্ড যোগ করুন** (or run `ekushe-studio --add-keyboard`). By hand: **Settings → Keyboard → Input Sources → + → Bangla (Bangladesh) → Ekushe Bangla**.
 3. Switch keyboards with **Super+Space**. **Ekushe Studio** appears in your applications menu.
 
 Run the AppImage on its own (double-click it) to open Studio without installing anything. IBus only loads keyboards installed for the whole computer, so `--install-keyboard` asks for your password once, and `--uninstall-keyboard` removes the keyboard again.
