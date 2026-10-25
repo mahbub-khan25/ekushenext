@@ -23,6 +23,7 @@ typedef struct {
     IBusEngine parent;
     IBusLookupTable *table;
     IBusPropList *props;
+    IBusProperty *mode_prop; /* "InputMode": GNOME shows its symbol in the top bar (অ / EN) */
     guint selected;
     guint count;
     gchar *last_committed; /* last word committed with a space (what Backspace-undo expects) */
@@ -212,6 +213,17 @@ static gboolean flip_last(EkusheEngine *ek)
     return ok;
 }
 
+/* Show Bangla or English in the top bar (GNOME reads the "InputMode" property's symbol; it must
+ * be at most two characters) and in the engine's menu. */
+static void show_language(EkusheEngine *ek)
+{
+    gboolean bn = ek_language() != 0;
+    ibus_property_set_symbol(ek->mode_prop, ibus_text_new_from_string(bn ? "অ" : "EN"));
+    ibus_property_set_label(ek->mode_prop, ibus_text_new_from_string(
+        bn ? "বাংলা লিখছেন — English: double-tap Shift" : "English — বাংলা: double-tap Shift"));
+    ibus_engine_update_property((IBusEngine *)ek, ek->mode_prop);
+}
+
 static gboolean ekushe_process_key_event(IBusEngine *e, guint keyval, guint keycode, guint modifiers)
 {
     EkusheEngine *ek = (EkusheEngine *)e;
@@ -228,6 +240,8 @@ static gboolean ekushe_process_key_event(IBusEngine *e, guint keyval, guint keyc
             guint8 r = ek_shift_tap((guint64)(g_get_monotonic_time() / 1000));
             if (r == 0)
                 finish(ek); /* switched to English: close the open word */
+            if (r != 255)
+                show_language(ek);
         }
         return FALSE;
     }
@@ -359,6 +373,7 @@ static void ekushe_focus_in(IBusEngine *e)
     ek->focused = TRUE;
     ek_set_private(ek->private_field);
     ibus_engine_register_properties(e, ek->props);
+    show_language(ek);
     IBUS_ENGINE_CLASS(ekushe_engine_parent_class)->focus_in(e);
 }
 
@@ -400,9 +415,10 @@ static void ekushe_property_activate(IBusEngine *e, const gchar *name, guint sta
             g_free(url);
         }
     }
-    else if (g_strcmp0(name, "language") == 0) {
+    else if (g_strcmp0(name, "InputMode") == 0) {
         finish((EkusheEngine *)e);
         ek_toggle_language();
+        show_language((EkusheEngine *)e);
     }
 }
 
@@ -421,9 +437,12 @@ static void ekushe_engine_init(EkusheEngine *ek)
     ibus_prop_list_append(ek->props, ibus_property_new("settings", PROP_TYPE_NORMAL,
         ibus_text_new_from_string("Settings"), "preferences-system",
         ibus_text_new_from_string("Typing mode, layout, snippets"), TRUE, TRUE, PROP_STATE_UNCHECKED, NULL));
-    ibus_prop_list_append(ek->props, ibus_property_new("language", PROP_TYPE_NORMAL,
-        ibus_text_new_from_string("Bangla ⇄ English (double-tap Shift)"), NULL,
-        NULL, TRUE, TRUE, PROP_STATE_UNCHECKED, NULL));
+    ek->mode_prop = ibus_property_new("InputMode", PROP_TYPE_NORMAL,
+        ibus_text_new_from_string("বাংলা লিখছেন — English: double-tap Shift"), NULL,
+        ibus_text_new_from_string("Switch between Bangla and English"), TRUE, TRUE, PROP_STATE_UNCHECKED, NULL);
+    ibus_property_set_symbol(ek->mode_prop, ibus_text_new_from_string("অ"));
+    g_object_ref_sink(ek->mode_prop);
+    ibus_prop_list_append(ek->props, ek->mode_prop);
     ibus_prop_list_append(ek->props, ibus_property_new("report", PROP_TYPE_NORMAL,
         ibus_text_new_from_string("Report a problem"), "dialog-warning",
         ibus_text_new_from_string("Tell us what went wrong (opens ekushenext.com)"), TRUE, TRUE, PROP_STATE_UNCHECKED, NULL));
@@ -434,6 +453,7 @@ static void ekushe_engine_finalize(GObject *obj)
     EkusheEngine *ek = (EkusheEngine *)obj;
     g_clear_object(&ek->table);
     g_clear_object(&ek->props);
+    g_clear_object(&ek->mode_prop);
     g_free(ek->last_committed);
     G_OBJECT_CLASS(ekushe_engine_parent_class)->finalize(obj);
 }

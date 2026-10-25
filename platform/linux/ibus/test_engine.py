@@ -110,5 +110,30 @@ for ch in "amar":
 assert preedits[-1] == "আমার", f"pre-edit: {preedits[-3:]}"
 key(IBus.KEY_Escape)
 print("ordinary field again: Bangla")
+
+# Double-tap Shift switches to English and back, and the top bar (the "InputMode" symbol) follows
+# Property updates go to the panel (GNOME Shell on a desktop): stand in for it
+symbols = []
+panel = IBus.PanelService.new(bus.get_connection())
+bus.request_name("org.freedesktop.IBus.Panel", 0)
+panel.connect("update-property", lambda _p, p: p.get_key() == "InputMode" and symbols.append(p.get_symbol().get_text()))
+pump(0.5)
+ic.focus_out(); ic.focus_in(); pump(0.3)
+
+
+def shift_tap():
+    ic.process_key_event(IBus.KEY_Shift_L, 50, 0)
+    ic.process_key_event(IBus.KEY_Shift_L, 50, IBus.ModifierType.SHIFT_MASK | IBus.ModifierType.RELEASE_MASK)
+    pump(0.05)
+
+
+shift_tap(); shift_tap(); pump(0.3)
+assert not key(ord("a")), "after double-tap Shift, letters must go through as English"
+assert symbols and symbols[-1] == "EN", f"top bar symbol after switching to English: {symbols}"
+shift_tap(); shift_tap(); pump(0.3)
+assert key(ord("a")), "a second double-tap Shift must bring Bangla back"
+key(IBus.KEY_Escape)
+assert symbols[-1] == "অ", f"top bar symbol after switching back: {symbols}"
+print("double-tap Shift: English and back; top bar shows", symbols[-2:])
 print("OK")
 sys.exit(0)
