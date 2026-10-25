@@ -32,10 +32,10 @@ fn main() {
                 "Not a GNOME desktop: add Ekushe Bangla in your desktop's keyboard settings."
             ),
             Some(true) => {
-                println!("Ekushe Bangla is already one of your keyboards. Switch with Super+Space.")
+                println!("Ekushe Bangla is already one of your keyboards. Select it in the top bar (or Super+Space), then double-tap Shift for Bangla and English.")
             }
             Some(false) if ekushe_ffi::studio::gnome_keyboard::add() => {
-                println!("Added Ekushe Bangla to your keyboards. Switch with Super+Space.")
+                println!("Added Ekushe Bangla as your first keyboard. Double-tap Shift switches Bangla and English.")
             }
             Some(false) => {
                 eprintln!(
