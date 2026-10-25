@@ -217,6 +217,8 @@ fn with_shared<T>(fallback: T, f: impl FnOnce(&mut Shared) -> T) -> T {
 /// Load settings, the dictionary and learned words now (otherwise on first use).
 #[no_mangle]
 pub extern "C" fn ek_init() {
+    #[cfg(all(target_os = "linux", feature = "studio"))]
+    studio::keyboard::remove_old_cosmic_env();
     with_shared((), |_| ());
 }
 

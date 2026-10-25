@@ -12,7 +12,8 @@
 //! - **COSMIC** (experimental): COSMIC's own apps can't use any input method yet, and its
 //!   on-screen keyboard takes the compositor's input-method slot. GTK and Qt apps (Firefox,
 //!   LibreOffice, ...) can still talk to IBus directly, so Studio adds Ekushe to IBus, starts IBus
-//!   with the session, and sets the GTK/Qt input-method variables where the system doesn't.
+//!   with the session (an autostart entry shown only on COSMIC). Nothing it changes reaches the
+//!   user's GNOME or KDE sessions.
 
 use std::process::Command;
 
@@ -322,22 +323,11 @@ fn add_cosmic() -> Added {
     if std::fs::write(&autostart, COSMIC_AUTOSTART).is_err() {
         return fail(d);
     }
-    // Pop!_OS already sets these; elsewhere set them for the user's sessions
-    let mut relogin = false;
-    if IM_VARS
+    // Apps reach IBus on COSMIC only when the system sets the GTK/Qt input-method variables (Pop!_OS
+    // does). Ekushe doesn't set them itself: they would apply to the user's GNOME and KDE sessions too.
+    let vars_missing = IM_VARS
         .iter()
-        .any(|(k, v)| std::env::var(k).as_deref() != Ok(*v))
-    {
-        if let Some(dir) = config_dir().map(|c| c.join("environment.d")) {
-            let _ = std::fs::create_dir_all(&dir);
-            let body: String = std::iter::once(
-                "# Added by Ekushe Studio: apps talk to IBus directly (COSMIC)\n".to_string(),
-            )
-            .chain(IM_VARS.iter().map(|(k, v)| format!("{k}={v}\n")))
-            .collect();
-            relogin = std::fs::write(dir.join("90-ekushe-ibus.conf"), body).is_ok();
-        }
-    }
+        .any(|(k, v)| std::env::var(k).as_deref() != Ok(*v));
     // Start IBus now if it isn't running, and select Ekushe
     if out(Command::new("pgrep").args(["-u", &whoami(), "-x", "ibus-daemon"])).is_none() {
         let _ = Command::new("ibus-daemon")
@@ -347,14 +337,28 @@ fn add_cosmic() -> Added {
     }
     let _ = Command::new("ibus").args(["engine", "ekushe"]).output();
     let limits = "এটা পরীক্ষামূলক: Firefox, LibreOffice ও অন্য GTK/Qt অ্যাপে কাজ করবে; COSMIC-এর নিজের অ্যাপে (Text Editor, Terminal, Files) এখনো না, কারণ COSMIC সেগুলোতে এখনো কোনো ইনপুট মেথড চালায় না।";
+    let message = if vars_missing {
+        format!("একুশে যোগ হয়েছে, তবে এই সিস্টেমে অ্যাপগুলো এখনো IBus ব্যবহার করতে বলা নেই (Pop!_OS নিজেই এটা করে দেয়; অন্য সিস্টেমে ডিস্ট্রিবিউশনের ইনপুট-মেথড সেটিংসে IBus বেছে নিন)। তারপর লগ আউট করে আবার ঢুকুন। {limits}")
+    } else {
+        format!(
+            "একুশে যোগ হয়েছে। একবার লগ আউট করে আবার ঢুকুন; তারপর দুবার Shift চেপে বাংলা ⇄ English। {limits}"
+        )
+    };
     Added {
         ok: true,
-        relogin,
-        message: if relogin {
-            format!("একুশে যোগ হয়েছে। চালু করতে একবার লগ আউট করে আবার ঢুকুন; তারপর দুবার Shift চেপে বাংলা ⇄ English। {limits}")
-        } else {
-            format!("একুশে যোগ হয়েছে। দুবার Shift চেপে বাংলা ⇄ English; কাজ না করলে একবার লগ আউট করে আবার ঢুকুন। {limits}")
-        },
+        relogin: true,
+        message,
+    }
+}
+
+/// beta.22 wrote GTK_IM_MODULE / QT_IM_MODULE / XMODIFIERS to `environment.d` for COSMIC; those
+/// would also apply to GNOME and KDE sessions. Remove that file (only Ekushe's own).
+pub fn remove_old_cosmic_env() {
+    let Some(file) = config_dir().map(|c| c.join("environment.d/90-ekushe-ibus.conf")) else {
+        return;
+    };
+    if std::fs::read_to_string(&file).is_ok_and(|t| t.starts_with("# Added by Ekushe Studio")) {
+        let _ = std::fs::remove_file(file);
     }
 }
 

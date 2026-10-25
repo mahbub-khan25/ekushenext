@@ -52,6 +52,8 @@ fn open_in_browser(url: &str) {
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    #[cfg(target_os = "linux")]
+    ekushe_ffi::studio::keyboard::remove_old_cosmic_env();
     if args.iter().any(|a| a == "--version") {
         println!("ekushe-studio {}", env!("CARGO_PKG_VERSION"));
         return;
