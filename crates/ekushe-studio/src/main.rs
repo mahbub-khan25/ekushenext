@@ -24,6 +24,28 @@ fn main() {
         println!("ekushe-studio {}", env!("CARGO_PKG_VERSION"));
         return;
     }
+    #[cfg(target_os = "linux")]
+    if args.iter().any(|a| a == "--add-keyboard") {
+        // Settings → Keyboard → Input Sources, done for the user (GNOME: Ubuntu, Fedora, Debian)
+        match ekushe_ffi::studio::gnome_keyboard::is_added() {
+            None => println!(
+                "Not a GNOME desktop: add Ekushe Bangla in your desktop's keyboard settings."
+            ),
+            Some(true) => {
+                println!("Ekushe Bangla is already one of your keyboards. Switch with Super+Space.")
+            }
+            Some(false) if ekushe_ffi::studio::gnome_keyboard::add() => {
+                println!("Added Ekushe Bangla to your keyboards. Switch with Super+Space.")
+            }
+            Some(false) => {
+                eprintln!(
+                    "Could not add it. Add Ekushe Bangla in Settings → Keyboard → Input Sources."
+                );
+                std::process::exit(1);
+            }
+        }
+        return;
+    }
     let tab = args.iter().any(|a| a == "--settings").then_some("settings");
     // A fresh one-time address (only the first page opened with it gets Studio's key)
     let Some(url) = ekushe_ffi::studio::launch_url(tab) else {

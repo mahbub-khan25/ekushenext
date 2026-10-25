@@ -194,6 +194,7 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
   @media (prefers-reduced-motion: reduce) { .panel.active { animation: none; } }
 
   /* ── Building blocks ── */
+  [hidden] { display: none !important; }
   .etched { background: var(--etch); border-radius: 20px; box-shadow: inset 0 0 0 1px var(--line); padding: 16px 18px; }
   .section-title { font-family: 'Hind Siliguri', var(--font-ui); font-weight: 600; font-size: 1.05rem; margin-bottom: 2px; }
   .hint { color: var(--ink-soft); font-size: 0.86rem; }
@@ -417,6 +418,12 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
         </button>
         <button class="icon-btn" id="themeBtn" onclick="cycleTheme()" title="Theme" aria-label="Change theme"><svg><use href="#i-sun"/></svg></button>
       </div>
+    </div>
+
+    <!-- Linux: the package is installed but Ekushe isn't one of the user's keyboards yet -->
+    <div class="etched" id="addKeyboardBox" hidden style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+      <div><div class="section-title">একুশে এখনো আপনার কিবোর্ডের তালিকায় নেই</div><div class="hint" id="addKeyboardMsg">যোগ করলে অন্য সব অ্যাপে বাংলা লিখতে পারবেন। কিবোর্ড বদলাতে Super+Space চাপুন বা ওপরের বারের ভাষা-নির্দেশক থেকে বেছে নিন।</div></div>
+      <button class="btn primary" id="addKeyboardBtn" onclick="addKeyboard()">কিবোর্ড যোগ করুন</button>
     </div>
 
     <!-- Writing pad -->
@@ -860,6 +867,7 @@ document.querySelectorAll('.nav-btn').forEach(b => b.addEventListener('click', (
 async function refreshState() {
   const res = await fetch('/api/state');
   const st = await res.json();
+  document.getElementById('addKeyboardBox').hidden = st.keyboard_added !== false;
   const pill = document.getElementById('modePill');
   pill.className = 'lang-switch ' + (st.language === 'Bangla' ? 'bangla' : 'english');
   document.getElementById('hotkeyBadge').textContent = st.hotkey_display;
@@ -1307,6 +1315,18 @@ function copyReported() {
 }
 // Only the Windows app keeps recent words; elsewhere the tab stays hidden.
 loadRecent().then(ok => { if (ok) document.getElementById('navFix').style.display = ''; });
+
+// ── Linux: add Ekushe to the keyboards ──
+async function addKeyboard() {
+  const res = await fetch('/api/add-keyboard', { method: 'POST' });
+  const out = res.ok ? await res.json() : { ok: false };
+  if (out.ok) {
+    toast('একুশে কিবোর্ড যোগ হয়েছে। Super+Space চেপে বেছে নিন।');
+    document.getElementById('addKeyboardBox').hidden = true;
+  } else {
+    document.getElementById('addKeyboardMsg').textContent = 'নিজে থেকে যোগ করা গেল না। Settings → Keyboard → Input Sources → + → Bangla (Bangladesh) → Ekushe Bangla বেছে নিন।';
+  }
+}
 
 // ── Backup and restore ──
 async function downloadBackup() {
