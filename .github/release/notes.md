@@ -1,6 +1,9 @@
 **Beta.** Ekushe Next is a Bangla phonetic keyboard for **Windows 10/11 (64-bit)**, **macOS 11 or later** (Apple silicon and Intel), **Linux** (64-bit, IBus) and **Android 7 or later**. It comes with its own dictionary, which puts the Bangla Academy standard spelling first.
 
 ### What's new in this beta
+- **Linux: COSMIC setup no longer touches your GNOME or KDE sessions.** beta.22 set three input-method settings that also applied to GNOME and KDE; Ekushe now leaves them alone and removes them if beta.22 added them. On COSMIC, apps reach Ekushe where the system already sets this up (Pop!_OS does).
+
+Also in this beta (from beta.22):
 - **Linux: Ekushe on COSMIC (experimental).** Studio's **কিবোর্ড যোগ করুন** button now sets Ekushe up on COSMIC too; log out and back in once. It types in Firefox, LibreOffice and other GTK and Qt apps. COSMIC's own apps (Text Editor, Terminal, Files) don't support any input method yet, so Ekushe can't type there until COSMIC adds it.
 
 Also in this beta (from beta.21):
