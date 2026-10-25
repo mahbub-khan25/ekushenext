@@ -1,8 +1,13 @@
 **Beta.** Ekushe Next is a Bangla phonetic keyboard for **Windows 10/11 (64-bit)**, **macOS 11 or later** (Apple silicon and Intel), **Linux** (64-bit, IBus) and **Android 7 or later**. It comes with its own dictionary, which puts the Bangla Academy standard spelling first.
 
 ### What's new in this beta
+- **Linux: Ekushe becomes your keyboard straight away.** Studio's **কিবোর্ড যোগ করুন** button (or `ekushe-studio --add-keyboard`) now puts Ekushe first and switches to it, so double-tap Shift works right away.
+- **Linux: clearer switching.** The top bar shows **এ** for Bangla and **EN** for English, and the popup when you double-tap Shift names the language you're now typing (it used to name the other one).
+- Tip for Linux: keep a second keyboard such as English (US) in Settings → Keyboard → Input Sources, with Ekushe first. GNOME hides the top-bar label when there is only one keyboard.
+
+Also in this beta (from beta.16):
 - **Linux: one click to add the keyboard.** Installing Ekushe makes it available, but GNOME (Ubuntu, Fedora) doesn't add it to your keyboards by itself. Open **Ekushe Studio** from the applications menu and click **কিবোর্ড যোগ করুন**, or run `ekushe-studio --add-keyboard`. To do it by hand: Settings → Keyboard → Input Sources → + → **Bangla (Bangladesh)** → **Ekushe Bangla**.
-- **Linux: the top bar shows অ or EN.** Double-tap Shift switches between Bangla and English while Ekushe stays selected, and the top bar now shows which one you're in. You can also switch from the top bar's menu.
+- **Linux: the top bar shows এ or EN.** Double-tap Shift switches between Bangla and English while Ekushe stays selected, and the top bar now shows which one you're in (এ for Bangla, EN for English). You can also switch from the top bar's menu.
 
 Also in this beta (from beta.15):
 - **Much better everyday Bangla.** Chat and casual spellings now land on the right word far more often (`kemon ase` → কেমন আছে, `ami valo achi`, `khaiso`, `thik ache`, `sorry`, `plz`). On our test set of 893 everyday words and sentences, Ekushe now gets 98% right, up from 91%.
