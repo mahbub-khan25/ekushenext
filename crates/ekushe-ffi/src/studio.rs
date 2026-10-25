@@ -237,6 +237,26 @@ fn handle(mut s: TcpStream, req: &str, port: u16) -> std::io::Result<()> {
                 None => respond(&mut s, "404 Not Found", "text/plain", b"no such font"),
             }
         }
+        ("GET", "/api/backup") => {
+            crate::save_learned_now();
+            let today = ekushe_core::dates::now()
+                .map(|t| format!("{:04}-{:02}-{:02}", t.year, t.month, t.day))
+                .unwrap_or_default();
+            let backup = ekushe_core::backup::create(&Config::default_dir(), &today);
+            respond(&mut s, "200 OK", ct, backup.as_bytes())
+        }
+        ("POST", "/api/restore") => {
+            crate::save_learned_now();
+            let out = match ekushe_core::backup::restore(&Config::default_dir(), body) {
+                Ok(done) => {
+                    // This process and the keyboard (which re-reads the files when it is next used)
+                    crate::reload_from_disk();
+                    serde_json::json!({ "ok": true, "restored": done })
+                }
+                Err(e) => serde_json::json!({ "ok": false, "error": e }),
+            };
+            respond(&mut s, "200 OK", ct, &json(out))
+        }
         ("GET", "/api/state") => {
             let v = {
                 let sh = SHARED.lock();

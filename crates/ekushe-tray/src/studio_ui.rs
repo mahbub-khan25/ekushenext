@@ -651,11 +651,15 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
             <span><b>টার্মিনালে ইংরেজি</b><small>টার্মিনাল (Windows Terminal, CMD, PowerShell, ম্যাকের Terminal) ইংরেজিতে শুরু হয়; দুবার Shift চাপলে সেখানেও বাংলা</small></span>
             <span class="switch"><input type="checkbox" id="cfgTerminal" checked onchange="saveSettings()"><i></i></span>
           </label>
+          <label class="toggle" id="cfgUpdatesRow" style="display:none">
+            <span><b>নতুন সংস্করণের খবর</b><small>চালু করলে দিনে একবার দেখে নেয় নতুন সংস্করণ এসেছে কি না (শুধু GitHub-কে সংস্করণের নম্বর জিজ্ঞেস করে, আপনার কিছু পাঠায় না)। <span id="appVersion"></span></small></span>
+            <span class="switch"><input type="checkbox" id="cfgUpdates" onchange="saveSettings()"><i></i></span>
+          </label>
         </div>
 
         <div class="etched">
           <div class="section-title">স্নিপেট</div>
-          <div class="hint">শর্টকাট লিখে Space চাপলে পুরো লেখাটা বসে যায়। ক্লিক করলে প্যাডে বসবে।</div>
+          <div class="hint">শর্টকাট লিখে Space চাপলে পুরো লেখাটা বসে যায়। ক্লিক করলে প্যাডে বসবে। তারিখ আর সময়ও লেখা যায়: <b>;aj</b> আজকের তারিখ, <b>;bar</b> বার, <b>;bongabdo</b> বাংলা তারিখ, <b>;somoy</b> এখনকার সময়।</div>
           <div class="setting">
             <input type="text" id="newSnipKey" placeholder="শর্টকাট, যেমন ;addr">
             <input type="text" id="newSnipVal" placeholder="পুরো লেখা, যেমন ধানমন্ডি, ঢাকা-১২০৯" style="font-family:var(--font-bn)">
@@ -665,6 +669,14 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
         </div>
       </div>
       <div id="settingsSavedMsg" role="status" class="hint" style="margin-top:12px"></div>
+      <div class="etched" id="backupBox" style="margin-top:18px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+        <div><div class="section-title">ব্যাকআপ ও ফিরিয়ে আনা</div><div class="hint">সেটিংস, আপনার শর্টকাট আর একুশের শেখা শব্দ এক ফাইলে রাখুন। নতুন কম্পিউটারে (উইন্ডোজ বা লিনাক্স) ফাইলটি দিলেই সব ফিরে আসবে, আগের কিছু মুছবে না।</div><div id="backupMsg" role="status" class="hint" style="margin-top:6px"></div></div>
+        <div class="row" style="gap:8px">
+          <button class="btn primary" onclick="downloadBackup()">ব্যাকআপ নিন</button>
+          <button class="btn" onclick="document.getElementById('restoreFile').click()">ফিরিয়ে আনুন</button>
+          <input type="file" id="restoreFile" accept=".json,application/json" style="display:none" onchange="restoreBackup(this)">
+        </div>
+      </div>
       <div class="etched" style="margin-top:18px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
         <div><div class="section-title">কোনো সমস্যা হচ্ছে?</div><div class="hint">কী হয়েছে লিখে পাঠান, কোনো অ্যাকাউন্ট লাগবে না। আপনার লেখা কিছু পাঠানো হয় না।</div></div>
         <a class="btn primary" id="reportLink" href="https://ekushenext.com/report/" target="_blank" rel="noopener">সমস্যা জানান</a>
@@ -858,6 +870,11 @@ async function refreshState() {
   if (cmpEl && typeof st.compact_popup === 'boolean') cmpEl.checked = st.compact_popup;
   const trmEl = document.getElementById('cfgTerminal');
   if (trmEl && typeof st.auto_english_in_terminals === 'boolean') trmEl.checked = st.auto_english_in_terminals;
+  if (typeof st.check_for_updates === 'boolean' && st.app_version) {
+    document.getElementById('cfgUpdatesRow').style.display = '';
+    document.getElementById('cfgUpdates').checked = st.check_for_updates;
+    document.getElementById('appVersion').textContent = 'এখন আছে: ' + st.app_version;
+  }
   if (Array.isArray(st.snippets)) {
     const sBox = document.getElementById('snippetsList');
     sBox.innerHTML = '';
@@ -1291,6 +1308,39 @@ function copyReported() {
 // Only the Windows app keeps recent words; elsewhere the tab stays hidden.
 loadRecent().then(ok => { if (ok) document.getElementById('navFix').style.display = ''; });
 
+// ── Backup and restore ──
+async function downloadBackup() {
+  const msg = document.getElementById('backupMsg');
+  const res = await fetch('/api/backup');
+  if (!res.ok) { msg.textContent = 'ব্যাকআপ নেওয়া যায়নি — একুশে চালু আছে কি না দেখুন'; return; }
+  const text = await res.text();
+  let day = '';
+  try { day = JSON.parse(text).created || ''; } catch (e) {}
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+  a.download = 'ekushe-next-backup' + (day ? '-' + day : '') + '.json';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  msg.textContent = 'ব্যাকআপ ফাইল ডাউনলোড হয়েছে। নিরাপদ জায়গায় রেখে দিন।';
+}
+async function restoreBackup(input) {
+  const msg = document.getElementById('backupMsg');
+  const file = input.files && input.files[0];
+  input.value = '';
+  if (!file) return;
+  if (file.size > 900 * 1024) { msg.textContent = 'ফাইলটি অনেক বড়, এটি একুশের ব্যাকআপ নয়।'; return; }
+  const text = await file.text();
+  const res = await fetch('/api/restore', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: text });
+  const out = res.ok ? await res.json() : { ok: false };
+  if (!out.ok) { msg.textContent = 'ফিরিয়ে আনা যায়নি: এটি একুশে নেক্সটের ব্যাকআপ ফাইল নয়, বা ফাইলটি নষ্ট।'; return; }
+  const r = out.restored;
+  const bn = (n) => String(n).replace(/[0-9]/g, d => '০১২৩৪৫৬৭৮৯'[d]);
+  msg.textContent = `ফিরে এসেছে: ${r.settings ? 'সেটিংস, ' : ''}${bn(r.snippets)}টি শর্টকাট, ${bn(r.learned_words)}টি শেখা শব্দ।`;
+  toast('ব্যাকআপ থেকে ফিরিয়ে আনা হয়েছে');
+  await refreshState();
+}
+
 // ── Settings ──
 async function saveSettings(extra) {
   const opEl = document.getElementById('cfgOpacity');
@@ -1302,6 +1352,7 @@ async function saveSettings(extra) {
     popup_opacity: opEl ? parseInt(opEl.value, 10) : 92,
     compact_popup: !!document.getElementById('cfgCompact').checked,
     auto_english_in_terminals: !!document.getElementById('cfgTerminal').checked,
+    check_for_updates: !!document.getElementById('cfgUpdates').checked,
   }, extra || {});
   const res = await fetch('/api/settings', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
   document.getElementById('settingsSavedMsg').textContent = res.ok ? 'সংরক্ষিত হয়েছে' : 'সংরক্ষণ করা যায়নি — একুশে চালু আছে কি না দেখুন';

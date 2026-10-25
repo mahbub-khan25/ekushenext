@@ -168,6 +168,7 @@ name = "ekushe-core"
 version = "0.1.0"
 dependencies = [
  "dirs",
+ "libc",
  "miniz_oxide",
  "once_cell",
  "parking_lot",
@@ -176,6 +177,7 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.21",
  "toml",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
