@@ -1,9 +1,14 @@
 **Beta.** Ekushe Next is a Bangla phonetic keyboard for **Windows 10/11 (64-bit)**, **macOS 11 or later** (Apple silicon and Intel), **Linux** (64-bit, IBus) and **Android 7 or later**. It comes with its own dictionary, which puts the Bangla Academy standard spelling first.
 
 ### What's new in this beta
-- **Linux: install with apt or dnf and get updates automatically.** Ubuntu 22.04, 24.04, 26.04 and 26.10: `sudo add-apt-repository ppa:cicadama/ekushe`, then `sudo apt install ekushe`. Fedora 43, 44 and 45: `sudo dnf copr enable cicadama/ekushe`, then `sudo dnf install ekushe`. From then on Ekushe updates with the rest of your system. The .deb, .rpm and AppImage below still work as before.
-- **Android space bar:** the label now fits on every phone (**EN · Ekushe Next** / **বাং · একুশে নেক্সট**, or just EN / বাং on narrow screens).
-- **Android numbers key:** **১২৩** in Bangla and **?123** in English, like Gboard.
+- **Much better everyday Bangla.** Chat and casual spellings now land on the right word far more often (`kemon ase` → কেমন আছে, `ami valo achi`, `khaiso`, `thik ache`, `sorry`, `plz`). On our test set of 893 everyday words and sentences, Ekushe now gets 98% right, up from 91%.
+- **"A word was wrong" (Windows).** Right-click the tray icon → **✏️ ভুল শব্দ ঠিক করুন**. Your last few words are listed; pick or type the right one and Ekushe learns it at once. The list is kept in memory only (nothing from password boxes), and you can copy your corrections into a report to help improve Ekushe for everyone.
+- **Smarter learning.** Ekushe now learns when you pick a different word, not every time you press Space, so it keeps choosing by context (the word before) instead of freezing one choice.
+- **Date and time shortcuts:** `;aj` → ২৪ অক্টোবর ২০২৬, `;bar` → শনিবার, `;bongabdo` → ৮ কার্তিক ১৪৩৩ বঙ্গাব্দ (Bangladesh's revised calendar), `;somoy` → সন্ধ্যা ৭:৫০. The popup offers other forms too, like ২৪/১০/২০২৬.
+- **Backup and restore** in Studio → Settings (Windows and Linux): one file with your settings, snippets and learned words. Restoring on another computer adds to what's there and never deletes anything.
+- **Check for updates (Windows):** the tray menu shows your version and a **🔄 হালনাগাদ দেখুন** item. Ekushe still never goes online by itself; a once-a-day check can be turned on in Studio → Settings.
+
+Also in this beta (from beta.14): **Linux from the Ubuntu PPA and Fedora COPR** (`sudo add-apt-repository ppa:cicadama/ekushe` / `sudo dnf copr enable cicadama/ekushe`), so Ekushe updates with the rest of your system; an Android space bar label that fits every phone; and a **১২৩ / ?123** numbers key.
 
 Also in this beta (from beta.13): **safe English typing on Android.** Email and web addresses are typed exactly as you type them (makhan.aumi@gmail.com stays makhan.aumi@gmail.com). Only Space corrects a word, and never an address, a name in the middle of a sentence, or Banglish in English mode (ami, tomake stay as they are); clear typos are still fixed (teh → the, dont → don't, i → I). Also a full-width number pad, the phone's own Bangla font on the keys, the new shortcuts `;innalillah`, `;barik` and `;brb`, and the testers' zip renamed **Ekushe-Developer-Tools-x64.zip**.
 
