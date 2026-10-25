@@ -31,6 +31,7 @@ typedef struct {
     gboolean secret; /* password or PIN field: keys go straight to the application */
     gboolean private_field; /* nothing learned here (password, PIN or a field marked private) */
     gboolean focused;
+    guint note_timer; /* hides the "বাংলা / EN" note shown next to the cursor after switching */
 } EkusheEngine;
 
 /* IBUS_INPUT_HINT_PRIVATE (IBus 1.5.24+): the field asks not to be remembered */
@@ -224,6 +225,26 @@ static void show_language(EkusheEngine *ek)
     ibus_engine_update_property((IBusEngine *)ek, ek->mode_prop);
 }
 
+static gboolean hide_note(gpointer data)
+{
+    EkusheEngine *ek = (EkusheEngine *)data;
+    ek->note_timer = 0;
+    ibus_engine_hide_auxiliary_text((IBusEngine *)ek);
+    return G_SOURCE_REMOVE;
+}
+
+/* After switching, show the language in use next to the cursor for a moment, like the badge on
+ * Windows: the top bar can be hidden (only one keyboard) or slow to update. */
+static void show_switch_note(EkusheEngine *ek)
+{
+    gboolean bn = ek_language() != 0;
+    ibus_engine_update_auxiliary_text((IBusEngine *)ek,
+        ibus_text_new_from_string(bn ? "এ · বাংলা" : "EN · English"), TRUE);
+    if (ek->note_timer)
+        g_source_remove(ek->note_timer);
+    ek->note_timer = g_timeout_add_full(G_PRIORITY_DEFAULT, 1200, hide_note, g_object_ref(ek), g_object_unref);
+}
+
 static gboolean ekushe_process_key_event(IBusEngine *e, guint keyval, guint keycode, guint modifiers)
 {
     EkusheEngine *ek = (EkusheEngine *)e;
@@ -240,8 +261,10 @@ static gboolean ekushe_process_key_event(IBusEngine *e, guint keyval, guint keyc
             guint8 r = ek_shift_tap((guint64)(g_get_monotonic_time() / 1000));
             if (r == 0)
                 finish(ek); /* switched to English: close the open word */
-            if (r != 255)
+            if (r != 255) {
                 show_language(ek);
+                show_switch_note(ek);
+            }
         }
         return FALSE;
     }
@@ -419,6 +442,7 @@ static void ekushe_property_activate(IBusEngine *e, const gchar *name, guint sta
         finish((EkusheEngine *)e);
         ek_toggle_language();
         show_language((EkusheEngine *)e);
+        show_switch_note((EkusheEngine *)e);
     }
 }
 
