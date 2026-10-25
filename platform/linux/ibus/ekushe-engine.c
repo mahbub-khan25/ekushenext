@@ -23,7 +23,7 @@ typedef struct {
     IBusEngine parent;
     IBusLookupTable *table;
     IBusPropList *props;
-    IBusProperty *mode_prop; /* "InputMode": GNOME shows its symbol in the top bar (অ / EN) */
+    IBusProperty *mode_prop; /* "InputMode": GNOME shows its symbol in the top bar (এ / EN) */
     guint selected;
     guint count;
     gchar *last_committed; /* last word committed with a space (what Backspace-undo expects) */
@@ -218,7 +218,7 @@ static gboolean flip_last(EkusheEngine *ek)
 static void show_language(EkusheEngine *ek)
 {
     gboolean bn = ek_language() != 0;
-    ibus_property_set_symbol(ek->mode_prop, ibus_text_new_from_string(bn ? "অ" : "EN"));
+    ibus_property_set_symbol(ek->mode_prop, ibus_text_new_from_string(bn ? "এ" : "EN"));
     ibus_property_set_label(ek->mode_prop, ibus_text_new_from_string(
         bn ? "বাংলা লিখছেন — English: double-tap Shift" : "English — বাংলা: double-tap Shift"));
     ibus_engine_update_property((IBusEngine *)ek, ek->mode_prop);
@@ -440,7 +440,7 @@ static void ekushe_engine_init(EkusheEngine *ek)
     ek->mode_prop = ibus_property_new("InputMode", PROP_TYPE_NORMAL,
         ibus_text_new_from_string("বাংলা লিখছেন — English: double-tap Shift"), NULL,
         ibus_text_new_from_string("Switch between Bangla and English"), TRUE, TRUE, PROP_STATE_UNCHECKED, NULL);
-    ibus_property_set_symbol(ek->mode_prop, ibus_text_new_from_string("অ"));
+    ibus_property_set_symbol(ek->mode_prop, ibus_text_new_from_string("এ"));
     g_object_ref_sink(ek->mode_prop);
     ibus_prop_list_append(ek->props, ek->mode_prop);
     ibus_prop_list_append(ek->props, ibus_property_new("report", PROP_TYPE_NORMAL,

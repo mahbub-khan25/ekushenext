@@ -133,7 +133,7 @@ assert symbols and symbols[-1] == "EN", f"top bar symbol after switching to Engl
 shift_tap(); shift_tap(); pump(0.3)
 assert key(ord("a")), "a second double-tap Shift must bring Bangla back"
 key(IBus.KEY_Escape)
-assert symbols[-1] == "অ", f"top bar symbol after switching back: {symbols}"
+assert symbols[-1] == "এ", f"top bar symbol after switching back: {symbols}"
 print("double-tap Shift: English and back; top bar shows", symbols[-2:])
 print("OK")
 sys.exit(0)
