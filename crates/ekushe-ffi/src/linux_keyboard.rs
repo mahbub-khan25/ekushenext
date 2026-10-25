@@ -9,8 +9,10 @@
 //!   setting). Takes effect after logging out and in, when IBus wasn't the input method yet.
 //! - **Xfce, Cinnamon, MATE, LXQt, LXDE** and other desktops that run IBus: IBus's keyboard list,
 //!   and IBus as the input method where it wasn't.
-//! - **COSMIC**: not yet. IBus doesn't work reliably on COSMIC's current release, so Studio shows
-//!   the steps instead of changing anything.
+//! - **COSMIC** (experimental): COSMIC's own apps can't use any input method yet, and its
+//!   on-screen keyboard takes the compositor's input-method slot. GTK and Qt apps (Firefox,
+//!   LibreOffice, ...) can still talk to IBus directly, so Studio adds Ekushe to IBus, starts IBus
+//!   with the session, and sets the GTK/Qt input-method variables where the system doesn't.
 
 use std::process::Command;
 
@@ -155,7 +157,7 @@ fn steps(d: Desktop) -> String {
     match d {
         Desktop::Gnome => "Settings → Keyboard → Input Sources → + → Bangla (Bangladesh) → Ekushe Bangla → Add।".into(),
         Desktop::Kde => "System Settings → Keyboard → Virtual Keyboard → IBus Wayland বেছে নিন, লগ আউট করে আবার ঢুকুন; তারপর টার্মিনালে ibus-setup → Input Method → Add → Bangla → Ekushe Bangla।".into(),
-        Desktop::Cosmic => "COSMIC-এর বর্তমান সংস্করণে IBus ঠিকমতো চলে না, তাই একুশে এখনো COSMIC-এ ব্যবহার করা যাচ্ছে না। COSMIC-এ IBus-এর সমস্যা মিটলে একুশে এখানেও কাজ করবে; ততদিন GNOME বা KDE সেশনে লগ ইন করে একুশে ব্যবহার করুন।".into(),
+        Desktop::Cosmic => "COSMIC-এ (পরীক্ষামূলক): টার্মিনালে ibus-daemon --daemonize --xim চালান, তারপর ibus-setup → Input Method → Add → Bangla → Ekushe Bangla। Firefox, LibreOffice ও অন্য GTK/Qt অ্যাপে কাজ করবে; COSMIC-এর নিজের অ্যাপে (Text Editor, Terminal, Files) এখনো কোনো ইনপুট মেথড চলে না।".into(),
         Desktop::Other => "টার্মিনালে ibus-setup চালান → Input Method → Add → Bangla → Ekushe Bangla। IBus চালু না থাকলে ডেস্কটপের ইনপুট-মেথড সেটিংসে (Ubuntu: im-config) IBus বেছে নিয়ে লগ আউট করে আবার ঢুকুন।".into(),
     }
 }
@@ -166,14 +168,20 @@ pub fn status() -> Option<Status> {
     let d = desktop();
     let added = match d {
         Desktop::Gnome => gsettings_list(GNOME_KEY[0], GNOME_KEY[1])?.contains("'ekushe'"),
-        Desktop::Cosmic => false,
+        Desktop::Cosmic => {
+            cosmic_autostart().is_some_and(|p| p.exists())
+                && gsettings_list(IBUS_SCHEMA, "preload-engines")
+                    .is_some_and(|l| l.contains("'ekushe'"))
+        }
         Desktop::Kde | Desktop::Other => gsettings_list(IBUS_SCHEMA, "preload-engines")
             .map(|l| l.contains("'ekushe'"))
             .unwrap_or(false),
     };
     let can_add = match d {
         Desktop::Gnome => true,
-        Desktop::Cosmic => false,
+        Desktop::Cosmic => {
+            have("ibus-daemon") && gsettings_list(IBUS_SCHEMA, "preload-engines").is_some()
+        }
         Desktop::Kde | Desktop::Other => gsettings_list(IBUS_SCHEMA, "preload-engines").is_some(),
     };
     Some(Status {
@@ -263,11 +271,98 @@ fn whoami() -> String {
     std::env::var("USER").unwrap_or_else(|_| out(&mut Command::new("whoami")).unwrap_or_default())
 }
 
+fn config_dir() -> Option<std::path::PathBuf> {
+    std::env::var_os("XDG_CONFIG_HOME")
+        .map(std::path::PathBuf::from)
+        .or_else(|| std::env::var_os("HOME").map(|h| std::path::PathBuf::from(h).join(".config")))
+}
+
+/// COSMIC: the autostart entry that starts IBus with the session.
+fn cosmic_autostart() -> Option<std::path::PathBuf> {
+    config_dir().map(|c| c.join("autostart/ekushe-ibus.desktop"))
+}
+
+const COSMIC_AUTOSTART: &str = "[Desktop Entry]
+Type=Application
+Name=IBus for Ekushe
+Comment=Starts IBus so Ekushe can type Bangla in this COSMIC session (added by Ekushe Studio)
+Exec=ibus-daemon --daemonize --xim
+OnlyShowIn=COSMIC;
+NoDisplay=true
+";
+
+/// The GTK/Qt variables that make apps talk to IBus directly (COSMIC has no other route yet).
+const IM_VARS: [(&str, &str); 3] = [
+    ("GTK_IM_MODULE", "ibus"),
+    ("QT_IM_MODULE", "ibus"),
+    ("XMODIFIERS", "@im=ibus"),
+];
+
+/// COSMIC (experimental): Ekushe in IBus's list, IBus started with the session, and the GTK/Qt
+/// input-method variables where the system doesn't set them. Ekushe then types in GTK and Qt apps
+/// (Firefox, LibreOffice, ...), not yet in COSMIC's own apps.
+fn add_cosmic() -> Added {
+    let d = Desktop::Cosmic;
+    let Some(list) = gsettings_list(IBUS_SCHEMA, "preload-engines") else {
+        return fail(d);
+    };
+    let new = ibus_with_ekushe(&list);
+    if !ok(Command::new("gsettings").args(["set", IBUS_SCHEMA, "preload-engines", &new])) {
+        return fail(d);
+    }
+    let _ = Command::new("gsettings")
+        .args(["set", IBUS_SCHEMA, "engines-order", &new])
+        .output();
+    let Some(autostart) = cosmic_autostart() else {
+        return fail(d);
+    };
+    if let Some(dir) = autostart.parent() {
+        let _ = std::fs::create_dir_all(dir);
+    }
+    if std::fs::write(&autostart, COSMIC_AUTOSTART).is_err() {
+        return fail(d);
+    }
+    // Pop!_OS already sets these; elsewhere set them for the user's sessions
+    let mut relogin = false;
+    if IM_VARS
+        .iter()
+        .any(|(k, v)| std::env::var(k).as_deref() != Ok(*v))
+    {
+        if let Some(dir) = config_dir().map(|c| c.join("environment.d")) {
+            let _ = std::fs::create_dir_all(&dir);
+            let body: String = std::iter::once(
+                "# Added by Ekushe Studio: apps talk to IBus directly (COSMIC)\n".to_string(),
+            )
+            .chain(IM_VARS.iter().map(|(k, v)| format!("{k}={v}\n")))
+            .collect();
+            relogin = std::fs::write(dir.join("90-ekushe-ibus.conf"), body).is_ok();
+        }
+    }
+    // Start IBus now if it isn't running, and select Ekushe
+    if out(Command::new("pgrep").args(["-u", &whoami(), "-x", "ibus-daemon"])).is_none() {
+        let _ = Command::new("ibus-daemon")
+            .args(["--daemonize", "--xim"])
+            .status();
+        std::thread::sleep(std::time::Duration::from_secs(2));
+    }
+    let _ = Command::new("ibus").args(["engine", "ekushe"]).output();
+    let limits = "এটা পরীক্ষামূলক: Firefox, LibreOffice ও অন্য GTK/Qt অ্যাপে কাজ করবে; COSMIC-এর নিজের অ্যাপে (Text Editor, Terminal, Files) এখনো না, কারণ COSMIC সেগুলোতে এখনো কোনো ইনপুট মেথড চালায় না।";
+    Added {
+        ok: true,
+        relogin,
+        message: if relogin {
+            format!("একুশে যোগ হয়েছে। চালু করতে একবার লগ আউট করে আবার ঢুকুন; তারপর দুবার Shift চেপে বাংলা ⇄ English। {limits}")
+        } else {
+            format!("একুশে যোগ হয়েছে। দুবার Shift চেপে বাংলা ⇄ English; কাজ না করলে একবার লগ আউট করে আবার ঢুকুন। {limits}")
+        },
+    }
+}
+
 /// Add Ekushe as the first keyboard on this desktop.
 pub fn add() -> Added {
     let d = desktop();
     match d {
-        Desktop::Cosmic => fail(d),
+        Desktop::Cosmic => add_cosmic(),
         Desktop::Gnome => {
             let Some(list) = gsettings_list(GNOME_KEY[0], GNOME_KEY[1]) else {
                 return fail(d);
