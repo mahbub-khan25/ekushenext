@@ -58,22 +58,23 @@ fn main() {
     }
     #[cfg(target_os = "linux")]
     if args.iter().any(|a| a == "--add-keyboard") {
-        // Settings → Keyboard → Input Sources, done for the user (GNOME: Ubuntu, Fedora, Debian)
-        match ekushe_ffi::studio::gnome_keyboard::is_added() {
-            None => println!(
-                "Not a GNOME desktop: add Ekushe Bangla in your desktop's keyboard settings."
+        // Add Ekushe to this desktop's keyboards (GNOME, KDE Plasma, Xfce, Cinnamon, MATE, ...)
+        use ekushe_ffi::studio::keyboard;
+        match keyboard::status() {
+            None => {
+                println!("No desktop session found: add Ekushe Bangla in your keyboard settings.")
+            }
+            Some(st) if st.added => println!(
+                "Ekushe Bangla is already one of your keyboards ({}).",
+                st.desktop
             ),
-            Some(true) => {
-                println!("Ekushe Bangla is already one of your keyboards. Select it in the top bar (or Super+Space), then double-tap Shift for Bangla and English.")
-            }
-            Some(false) if ekushe_ffi::studio::gnome_keyboard::add() => {
-                println!("Added Ekushe Bangla as your first keyboard. Double-tap Shift switches Bangla and English.")
-            }
-            Some(false) => {
-                eprintln!(
-                    "Could not add it. Add Ekushe Bangla in Settings → Keyboard → Input Sources."
-                );
-                std::process::exit(1);
+            Some(st) if !st.can_add => println!("{}", st.steps),
+            Some(_) => {
+                let r = keyboard::add();
+                println!("{}", r.message);
+                if !r.ok {
+                    std::process::exit(1);
+                }
             }
         }
         return;

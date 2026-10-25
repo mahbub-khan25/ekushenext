@@ -878,7 +878,12 @@ document.querySelectorAll('.nav-btn').forEach(b => b.addEventListener('click', (
 async function refreshState() {
   const res = await fetch('/api/state');
   const st = await res.json();
-  document.getElementById('addKeyboardBox').hidden = st.keyboard_added !== false;
+  const kb = st.keyboard;
+  document.getElementById('addKeyboardBox').hidden = !kb || kb.added;
+  if (kb && !kb.added) {
+    document.getElementById('addKeyboardBtn').hidden = !kb.can_add;
+    if (!kb.can_add) document.getElementById('addKeyboardMsg').textContent = kb.steps;
+  }
   const pill = document.getElementById('modePill');
   pill.className = 'lang-switch ' + (st.language === 'Bangla' ? 'bangla' : 'english');
   document.getElementById('hotkeyBadge').textContent = st.hotkey_display;
@@ -1330,12 +1335,14 @@ loadRecent().then(ok => { if (ok) document.getElementById('navFix').style.displa
 // ── Linux: add Ekushe to the keyboards ──
 async function addKeyboard() {
   const res = await fetch('/api/add-keyboard', { method: 'POST' });
-  const out = res.ok ? await res.json() : { ok: false };
-  if (out.ok) {
-    toast('একুশে যোগ হয়েছে ও চালু আছে। দুবার Shift চেপে বাংলা ⇄ English।');
+  const out = res.ok ? await res.json() : { ok: false, message: 'নিজে থেকে যোগ করা গেল না।' };
+  if (out.ok && !out.relogin) {
+    toast(out.message);
     document.getElementById('addKeyboardBox').hidden = true;
   } else {
-    document.getElementById('addKeyboardMsg').textContent = 'নিজে থেকে যোগ করা গেল না। Settings → Keyboard → Input Sources → + → Bangla (Bangladesh) → Ekushe Bangla বেছে নিন।';
+    // A re-login is needed, or it didn't work: keep the box with what to do next
+    document.getElementById('addKeyboardMsg').textContent = out.message;
+    document.getElementById('addKeyboardBtn').hidden = out.ok;
   }
 }
 

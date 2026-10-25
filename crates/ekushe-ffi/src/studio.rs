@@ -47,106 +47,10 @@ static FONTS: &[(&str, &[u8])] = &[
     ),
 ];
 
-/// Linux (GNOME, Ubuntu, Fedora): is Ekushe in the user's keyboards (Settings → Keyboard → Input
-/// Sources)? Installing the package makes it available but doesn't add it; Studio offers to.
+/// Linux: add Ekushe to the user's keyboards, on whichever desktop this is (see the module).
 #[cfg(target_os = "linux")]
-pub mod gnome_keyboard {
-    const KEY: [&str; 2] = ["org.gnome.desktop.input-sources", "sources"];
-    const EKUSHE: &str = "('ibus', 'ekushe')";
-
-    fn current() -> Option<String> {
-        let out = std::process::Command::new("gsettings")
-            .arg("get")
-            .args(KEY)
-            .output()
-            .ok()?;
-        if !out.status.success() {
-            return None;
-        }
-        let v = String::from_utf8_lossy(&out.stdout).trim().to_string();
-        let v = v.strip_prefix("@a(ss) ").unwrap_or(&v).to_string();
-        (v.starts_with('[') && v.ends_with(']')).then_some(v)
-    }
-
-    /// GNOME (also Ubuntu's and Pop!_OS's GNOME): the only desktop whose keyboard list lives here.
-    /// KDE, COSMIC and the others may have the same setting installed without using it.
-    fn on_gnome() -> bool {
-        std::env::var("XDG_CURRENT_DESKTOP")
-            .map(|d| d.split(':').any(|p| p.eq_ignore_ascii_case("GNOME")))
-            .unwrap_or(false)
-    }
-
-    /// `Some(true)` added, `Some(false)` not added, `None` not a GNOME desktop (nothing to offer).
-    pub fn is_added() -> Option<bool> {
-        if !on_gnome() {
-            return None;
-        }
-        current().map(|v| v.contains("'ekushe'"))
-    }
-
-    /// The keyboard list with Ekushe first (so it's the one in use, and double-tap Shift switches
-    /// between Bangla and English), then the user's own keyboards; an English layout if there was
-    /// none, so Super+Space always has a plain keyboard to go to.
-    pub fn with_ekushe(list: &str) -> String {
-        if list.contains("'ekushe'") {
-            return list.to_string();
-        }
-        let inner = list
-            .trim()
-            .trim_start_matches('[')
-            .trim_end_matches(']')
-            .trim();
-        if inner.is_empty() {
-            format!("[{EKUSHE}, ('xkb', 'us')]")
-        } else {
-            format!("[{EKUSHE}, {inner}]")
-        }
-    }
-
-    /// Add Ekushe to the user's keyboards. Returns whether it is there now.
-    pub fn add() -> bool {
-        if !on_gnome() {
-            return false;
-        }
-        let Some(list) = current() else {
-            return false;
-        };
-        if list.contains("'ekushe'") {
-            return true;
-        }
-        // Make Ekushe the most recently used keyboard too, so GNOME switches to it straight away
-        let _ = std::process::Command::new("gsettings")
-            .args(["set", KEY[0], "mru-sources", &format!("[{EKUSHE}]")])
-            .status();
-        let ok = std::process::Command::new("gsettings")
-            .arg("set")
-            .args(KEY)
-            .arg(with_ekushe(&list))
-            .status()
-            .map(|s| s.success())
-            .unwrap_or(false);
-        ok && is_added() == Some(true)
-    }
-
-    #[cfg(test)]
-    mod tests {
-        #[test]
-        fn ekushe_is_added_first() {
-            use super::with_ekushe;
-            assert_eq!(
-                with_ekushe("[('xkb', 'us')]"),
-                "[('ibus', 'ekushe'), ('xkb', 'us')]"
-            );
-            assert_eq!(with_ekushe("[]"), "[('ibus', 'ekushe'), ('xkb', 'us')]");
-            assert_eq!(
-                with_ekushe("[('xkb', 'de'), ('ibus', 'mozc-jp')]"),
-                "[('ibus', 'ekushe'), ('xkb', 'de'), ('ibus', 'mozc-jp')]"
-            );
-            let done = "[('ibus', 'ekushe'), ('xkb', 'us')]";
-            assert_eq!(with_ekushe(done), done);
-        }
-    }
-}
+#[path = "linux_keyboard.rs"]
+pub mod keyboard;
 
 static PORT: AtomicU16 = AtomicU16::new(0);
 /// When the last request arrived (seconds since the Unix epoch), for apps that quit when idle
@@ -387,8 +291,8 @@ fn handle(mut s: TcpStream, req: &str, port: u16) -> std::io::Result<()> {
             #[cfg(target_os = "linux")]
             let v = {
                 let mut v = v;
-                if let Some(added) = gnome_keyboard::is_added() {
-                    v["keyboard_added"] = serde_json::json!(added);
+                if let Some(k) = keyboard::status() {
+                    v["keyboard"] = k.to_json();
                 }
                 v
             };
@@ -396,8 +300,8 @@ fn handle(mut s: TcpStream, req: &str, port: u16) -> std::io::Result<()> {
         }
         #[cfg(target_os = "linux")]
         ("POST", "/api/add-keyboard") => {
-            let ok = gnome_keyboard::add();
-            respond(&mut s, "200 OK", ct, &json(serde_json::json!({ "ok": ok })))
+            let added = keyboard::add();
+            respond(&mut s, "200 OK", ct, &json(added.to_json()))
         }
         ("POST", "/api/toggle") => {
             let l = SHARED.lock().ekushe.toggle_language();
