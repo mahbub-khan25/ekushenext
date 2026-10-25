@@ -21,3 +21,4 @@ data/dictionary/words-*.tsv
 ekushe-promo/node_modules/
 ekushe-promo/out/
 tools/dict-builder/work/
+__pycache__/
