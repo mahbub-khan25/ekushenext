@@ -24,6 +24,8 @@ print("ibus:", run("ibus", "version"))
 print("session:", os.environ.get("XDG_SESSION_TYPE"), os.environ.get("XDG_CURRENT_DESKTOP"))
 print("keyboards:", run("gsettings", "get", "org.gnome.desktop.input-sources", "sources"))
 print("active engine:", run("ibus", "engine"))
+print("input-method variables:", {k: os.environ.get(k) for k in ("GTK_IM_MODULE", "QT_IM_MODULE", "XMODIFIERS")})
+print("ibus-daemon running:", bool(run("pgrep", "-u", str(os.getuid()), "-x", "ibus-daemon")))
 for pid in run("pgrep", "-f", "ibus-engine-ekushe").split():
     try:
         exe = os.readlink(f"/proc/{pid}/exe")
