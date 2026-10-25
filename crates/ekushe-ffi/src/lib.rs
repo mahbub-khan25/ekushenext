@@ -220,6 +220,17 @@ pub extern "C" fn ek_init() {
     with_shared((), |_| ());
 }
 
+/// The keyboard is starting (at login): use the language the user chose to start in (English by
+/// default). Studio, which shares this engine code, keeps Bangla for its writing pad.
+#[no_mangle]
+pub extern "C" fn ek_use_start_language() {
+    with_shared((), |sh| {
+        if sh.ekushe.language() != sh.ekushe.config().start_language {
+            sh.ekushe.toggle_language();
+        }
+    });
+}
+
 /// Type a character. Returns `SessionOutput` JSON.
 #[no_mangle]
 pub extern "C" fn ek_key(codepoint: u32) -> *mut c_char {

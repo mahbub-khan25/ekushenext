@@ -284,6 +284,7 @@ fn handle(mut s: TcpStream, req: &str, port: u16) -> std::io::Result<()> {
                     "popup_opacity": OPACITY.load(Ordering::Relaxed),
                     "compact_popup": cfg.compact_popup,
                     "auto_english_in_terminals": cfg.auto_english_in_terminals,
+                    "start_bangla": cfg.start_language == InputLanguage::Bangla,
                     "snippets": snippets,
                     "report_url": ekushe_core::report_url(if cfg!(target_os = "macos") { "macOS" } else { "Linux" }, cfg),
                 })
@@ -399,6 +400,13 @@ fn handle(mut s: TcpStream, req: &str, port: u16) -> std::io::Result<()> {
                 }
                 if let Some(t) = p["auto_english_in_terminals"].as_bool() {
                     cfg.auto_english_in_terminals = t;
+                }
+                if let Some(b) = p["start_bangla"].as_bool() {
+                    cfg.start_language = if b {
+                        InputLanguage::Bangla
+                    } else {
+                        InputLanguage::English
+                    };
                 }
                 let trig = p["snippet_trigger"].as_str().unwrap_or("").trim();
                 let exp = p["snippet_expansion"].as_str().unwrap_or("").trim();

@@ -154,7 +154,12 @@ static STATE: Lazy<Mutex<AppSharedState>> = Lazy::new(|| {
     }
     // Ensure Bangla digits are enabled in Ekushe Bangla mode so English mode = 0-9 and Ekushe mode = ০-৯
     cfg.bangla_digits = true;
+    let start = cfg.start_language;
     let mut ek = Ekushe::new(cfg);
+    // English when Windows starts unless the user chose Bangla; double-tap Shift switches
+    if ek.language() != start {
+        ek.toggle_language();
+    }
     // Words the user picked in earlier sessions
     let _ = ek
         .suggestions_engine_mut()
@@ -2116,6 +2121,7 @@ fn handle_http_client(mut stream: TcpStream, req: &str) -> std::io::Result<()> {
             "compact_popup": cfg.compact_popup,
             "auto_english_in_terminals": cfg.auto_english_in_terminals,
             "check_for_updates": cfg.check_for_updates,
+            "start_bangla": cfg.start_language == InputLanguage::Bangla,
             "app_version": update_check::current_version(),
             "snippets": snippet_pairs,
             "report_url": ekushe_core::report_url(&windows_name(), cfg),
@@ -2354,6 +2360,7 @@ fn handle_http_client(mut stream: TcpStream, req: &str) -> std::io::Result<()> {
             .get("auto_english_in_terminals")
             .and_then(|v| v.as_bool());
         let update_opt = parsed.get("check_for_updates").and_then(|v| v.as_bool());
+        let start_bn_opt = parsed.get("start_bangla").and_then(|v| v.as_bool());
         // `snippet_key` / `snippet_value` are accepted too (older Studio pages sent those names)
         let field = |a: &str, b: &str| {
             parsed
@@ -2400,6 +2407,13 @@ fn handle_http_client(mut stream: TcpStream, req: &str) -> std::io::Result<()> {
             }
             if let Some(u) = update_opt {
                 cfg.check_for_updates = u;
+            }
+            if let Some(b) = start_bn_opt {
+                cfg.start_language = if b {
+                    InputLanguage::Bangla
+                } else {
+                    InputLanguage::English
+                };
             }
             if !snip_trig.is_empty() && !snip_exp.is_empty() {
                 cfg.custom_snippets

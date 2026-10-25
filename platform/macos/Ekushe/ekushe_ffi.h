@@ -17,6 +17,7 @@ uint8_t ek_shift_tap(uint64_t now_ms);
 char *ek_flip_last(void);
 uint8_t ek_app_focus(const char *app_id);
 void ek_reload_config(void);
+void ek_use_start_language(void);
 void ek_save_learned(void);
 uint16_t ek_studio_start(void);
 char *ek_studio_url(const char *tab);

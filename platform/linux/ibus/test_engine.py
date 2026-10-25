@@ -63,9 +63,22 @@ def key(keyval, mods=0):
 
 
 # ibus-daemon starts the engine process on demand: wait until it answers (a probe key, then Escape)
+def double_shift():
+    for _ in range(2):
+        ic.process_key_event(IBus.KEY_Shift_L, 50, 0)
+        ic.process_key_event(IBus.KEY_Shift_L, 50, IBus.ModifierType.SHIFT_MASK | IBus.ModifierType.RELEASE_MASK)
+        pump(0.05)
+
+
+# The engine starts in English (the default at login): double-tap Shift for Bangla once it answers
 deadline = time.time() + 20
 while True:
     pump(0.5)
+    if key(ord("x")):
+        key(IBus.KEY_Escape)
+        break
+    double_shift()
+    pump(0.3)
     if key(ord("x")):
         key(IBus.KEY_Escape)
         break

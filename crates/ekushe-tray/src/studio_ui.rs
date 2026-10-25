@@ -658,6 +658,10 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
             <span><b>টার্মিনালে ইংরেজি</b><small>টার্মিনাল (Windows Terminal, CMD, PowerShell, ম্যাকের Terminal) ইংরেজিতে শুরু হয়; দুবার Shift চাপলে সেখানেও বাংলা</small></span>
             <span class="switch"><input type="checkbox" id="cfgTerminal" checked onchange="saveSettings()"><i></i></span>
           </label>
+          <label class="toggle">
+            <span><b>শুরুতে বাংলা</b><small>বন্ধ থাকলে কম্পিউটার চালু (লগ ইন) হলে ইংরেজিতে শুরু হয়; দুবার Shift চাপলে বাংলা। চালু করলে শুরু থেকেই বাংলা।</small></span>
+            <span class="switch"><input type="checkbox" id="cfgStartBn" onchange="saveSettings()"><i></i></span>
+          </label>
           <label class="toggle" id="cfgUpdatesRow" style="display:none">
             <span><b>নতুন সংস্করণের খবর</b><small>চালু করলে দিনে একবার দেখে নেয় নতুন সংস্করণ এসেছে কি না (শুধু GitHub-কে সংস্করণের নম্বর জিজ্ঞেস করে, আপনার কিছু পাঠায় না)। <span id="appVersion"></span></small></span>
             <span class="switch"><input type="checkbox" id="cfgUpdates" onchange="saveSettings()"><i></i></span>
@@ -894,6 +898,7 @@ async function refreshState() {
   if (cmpEl && typeof st.compact_popup === 'boolean') cmpEl.checked = st.compact_popup;
   const trmEl = document.getElementById('cfgTerminal');
   if (trmEl && typeof st.auto_english_in_terminals === 'boolean') trmEl.checked = st.auto_english_in_terminals;
+  if (typeof st.start_bangla === 'boolean') document.getElementById('cfgStartBn').checked = st.start_bangla;
   if (typeof st.check_for_updates === 'boolean' && st.app_version) {
     document.getElementById('cfgUpdatesRow').style.display = '';
     document.getElementById('cfgUpdates').checked = st.check_for_updates;
@@ -1391,6 +1396,7 @@ async function saveSettings(extra) {
     compact_popup: !!document.getElementById('cfgCompact').checked,
     auto_english_in_terminals: !!document.getElementById('cfgTerminal').checked,
     check_for_updates: !!document.getElementById('cfgUpdates').checked,
+    start_bangla: !!document.getElementById('cfgStartBn').checked,
   }, extra || {});
   const res = await fetch('/api/settings', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
   document.getElementById('settingsSavedMsg').textContent = res.ok ? 'সংরক্ষিত হয়েছে' : 'সংরক্ষণ করা যায়নি — একুশে চালু আছে কি না দেখুন';
