@@ -370,11 +370,14 @@ fn handle(mut s: TcpStream, req: &str, port: u16) -> std::io::Result<()> {
                     "report_url": ekushe_core::report_url(if cfg!(target_os = "macos") { "macOS" } else { "Linux" }, cfg),
                 })
             };
-            let mut v = v;
             #[cfg(target_os = "linux")]
-            if let Some(added) = gnome_keyboard::is_added() {
-                v["keyboard_added"] = serde_json::json!(added);
-            }
+            let v = {
+                let mut v = v;
+                if let Some(added) = gnome_keyboard::is_added() {
+                    v["keyboard_added"] = serde_json::json!(added);
+                }
+                v
+            };
             respond(&mut s, "200 OK", ct, &json(v))
         }
         #[cfg(target_os = "linux")]
