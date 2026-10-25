@@ -1,6 +1,9 @@
 **Beta.** Ekushe Next is a Bangla phonetic keyboard for **Windows 10/11 (64-bit)**, **macOS 11 or later** (Apple silicon and Intel), **Linux** (64-bit, IBus) and **Android 7 or later**. It comes with its own dictionary, which puts the Bangla Academy standard spelling first.
 
 ### What's new in this beta
+- **Linux: you see every switch.** When you double-tap Shift (or switch from the top bar), a small **এ · বাংলা** or **EN · English** note appears next to the cursor for a moment, like the badge on Windows. GNOME hides its top-bar label when you have only one keyboard and can be slow to update it; the note always shows.
+
+Also in this beta (from beta.17):
 - **Linux: Ekushe becomes your keyboard straight away.** Studio's **কিবোর্ড যোগ করুন** button (or `ekushe-studio --add-keyboard`) now puts Ekushe first and switches to it, so double-tap Shift works right away.
 - **Linux: clearer switching.** The top bar shows **এ** for Bangla and **EN** for English, and the popup when you double-tap Shift names the language you're now typing (it used to name the other one).
 - Tip for Linux: keep a second keyboard such as English (US) in Settings → Keyboard → Input Sources, with Ekushe first. GNOME hides the top-bar label when there is only one keyboard.
