@@ -2,7 +2,7 @@ Source: ekushe
 Section: utils
 Priority: optional
 Maintainer: Ekushe Next <khan.ytube24@gmail.com>
-Build-Depends: debhelper-compat (= 13), @RUST@, gcc, make, pkgconf | pkg-config, libibus-1.0-dev
+Build-Depends: debhelper-compat (= 13), @RUST@, gcc, make, pkgconf | pkg-config, libibus-1.0-dev, libgtk-3-dev, libwebkit2gtk-4.1-dev
 Standards-Version: 4.6.2
 Homepage: https://ekushenext.com
 Vcs-Browser: https://github.com/mahbub-khan25/ekushenext
@@ -12,6 +12,7 @@ Rules-Requires-Root: no
 Package: ekushe
 Architecture: amd64 arm64
 Depends: ${shlibs:Depends}, ${misc:Depends}, ibus, xdg-utils
+Recommends: libwebkit2gtk-4.1-0
 Provides: ibus-ekushe
 Description: Bangla phonetic keyboard for IBus, with its own dictionary
  Ekushe Next is a Bangla keyboard. Type Bangla the way it sounds in English
@@ -21,5 +22,5 @@ Description: Bangla phonetic keyboard for IBus, with its own dictionary
  computer; nothing you type is sent anywhere.
  .
  Also includes Ekushe Studio: a writing pad, conjunct guide, spell checker and
- a Bijoy to Unicode converter, opened in your web browser from your own
- computer.
+ a Bijoy to Unicode converter, in its own window on any desktop (GNOME,
+ KDE Plasma, COSMIC, Xfce and others).

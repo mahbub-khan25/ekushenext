@@ -812,7 +812,18 @@ function toast(msg) {
   toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
 }
 function copyText(text) {
-  if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => toast('কপি হয়েছে'), () => toast('কপি করা যায়নি'));
+  // Some app windows (Studio's own window on Linux) refuse the clipboard API: copy the old way then
+  const fallback = () => {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) {}
+    ta.remove();
+    toast(ok ? 'কপি হয়েছে' : 'কপি করা যায়নি');
+  };
+  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(() => toast('কপি হয়েছে'), fallback);
+  else fallback();
 }
 
 // 70–100 % → glass from airy to nearly solid

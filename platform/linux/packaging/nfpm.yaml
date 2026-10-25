@@ -10,13 +10,16 @@ maintainer: Ekushe Next Contributors <khan.ytube24@gmail.com>
 description: |
   Bangla phonetic keyboard (IBus input method) with Ekushe's own dictionary.
   Bangla Academy standard spellings first, smart suggestions, conjunct hints, Backspace undo,
-  plus Ekushe Studio: writing pad, conjunct guide, spell checker and Bijoy <-> Unicode converter.
+  plus Ekushe Studio (in its own window): writing pad, conjunct guide, spell checker and Bijoy <-> Unicode converter.
 vendor: Ekushe Next
 homepage: https://github.com/mahbub-khan25/ekushenext
 license: MPL-2.0
 contents:
   - src: build/linux/stage/usr/libexec/ekushe/ibus-engine-ekushe
     dst: /usr/libexec/ekushe/ibus-engine-ekushe
+    file_info: { mode: 0755 }
+  - src: build/linux/stage/usr/libexec/ekushe/ekushe-studio-window
+    dst: /usr/libexec/ekushe/ekushe-studio-window
     file_info: { mode: 0755 }
   - src: build/linux/stage/usr/bin/ekushe-studio
     dst: /usr/bin/ekushe-studio
@@ -43,7 +46,12 @@ overrides:
       - libibus-1.0-5
       - libglib2.0-0 | libglib2.0-0t64
       - xdg-utils
+    # Studio's own window; without it Studio opens in the browser
+    recommends:
+      - libwebkit2gtk-4.1-0
   rpm:
     depends:
       - ibus
       - xdg-utils
+    recommends:
+      - webkit2gtk4.1

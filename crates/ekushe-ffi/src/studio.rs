@@ -68,8 +68,19 @@ pub mod gnome_keyboard {
         (v.starts_with('[') && v.ends_with(']')).then_some(v)
     }
 
+    /// GNOME (also Ubuntu's and Pop!_OS's GNOME): the only desktop whose keyboard list lives here.
+    /// KDE, COSMIC and the others may have the same setting installed without using it.
+    fn on_gnome() -> bool {
+        std::env::var("XDG_CURRENT_DESKTOP")
+            .map(|d| d.split(':').any(|p| p.eq_ignore_ascii_case("GNOME")))
+            .unwrap_or(false)
+    }
+
     /// `Some(true)` added, `Some(false)` not added, `None` not a GNOME desktop (nothing to offer).
     pub fn is_added() -> Option<bool> {
+        if !on_gnome() {
+            return None;
+        }
         current().map(|v| v.contains("'ekushe'"))
     }
 
@@ -94,6 +105,9 @@ pub mod gnome_keyboard {
 
     /// Add Ekushe to the user's keyboards. Returns whether it is there now.
     pub fn add() -> bool {
+        if !on_gnome() {
+            return false;
+        }
         let Some(list) = current() else {
             return false;
         };

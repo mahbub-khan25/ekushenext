@@ -129,7 +129,7 @@ jobs:
           toolchain: stable
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
       - name: Build tools
-        run: sudo apt-get update -q && sudo apt-get install -y -q libibus-1.0-dev ibus python3-gi gir1.2-ibus-1.0 dbus libfuse2
+        run: sudo apt-get update -q && sudo apt-get install -y -q libibus-1.0-dev libwebkit2gtk-4.1-dev ibus python3-gi gir1.2-ibus-1.0 dbus libfuse2
       - name: Engine and Studio tests
         run: cargo test -p ekushe-core -p ekushe-ffi -p ekushe-studio --features "ekushe-ffi/studio ekushe-ffi/embedded-dict"
       - name: Build packages and type into a real IBus
