@@ -19,7 +19,7 @@ copy Cargo.toml Cargo.lock LICENSE README.md THIRD_PARTY_NOTICES.md .github/rele
      crates/ekushe-tray/src/studio_http.rs crates/ekushe-tray/src/studio_ui.rs \
      assets/icons/logo_256.png assets/fonts \
      data/dictionary/ekushe.dict.z data/dictionary/LICENSE.md data/dictionary/CC-BY-SA-4.0.txt \
-     platform/linux/Makefile platform/linux/ekushe_ffi.h platform/linux/ibus platform/linux/packaging/ekushe-studio.desktop
+     platform/linux/Makefile platform/linux/ekushe_ffi.h platform/linux/ibus platform/linux/studio platform/linux/packaging/ekushe-studio.desktop
 rm -rf "$WORK"/crates/*/target
 
 # A workspace of just the three Linux crates. Cargo drops the other members' libraries from

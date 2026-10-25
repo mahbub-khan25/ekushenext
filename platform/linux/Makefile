@@ -18,8 +18,9 @@ LDFLAGS    ?=
 
 TARGET  = target/release
 ENGINE  = $(TARGET)/ibus-engine-ekushe
+WINDOW  = $(TARGET)/ekushe-studio-window
 
-all: $(ENGINE)
+all: $(ENGINE) $(WINDOW)
 
 $(TARGET)/libekushe_ffi.a $(TARGET)/ekushe-studio:
 	$(CARGO) build --release $(CARGOFLAGS) -p ekushe-ffi -p ekushe-studio \
@@ -30,8 +31,14 @@ $(ENGINE): platform/linux/ibus/ekushe-engine.c $(TARGET)/libekushe_ffi.a
 	  $$(pkg-config --cflags ibus-1.0) $(TARGET)/libekushe_ffi.a $$(pkg-config --libs ibus-1.0) \
 	  -lpthread -ldl -lm $(LDFLAGS) -o $@
 
+# Studio's own window (GTK 3 + WebKitGTK 4.1): any desktop, not only GNOME
+$(WINDOW): platform/linux/studio/ekushe-studio-window.c
+	$(CC) $(CFLAGS) -Wall -DEKUSHE_VERSION="\"$(VERSION)\"" $< \
+	  $$(pkg-config --cflags --libs webkit2gtk-4.1 gtk+-3.0) $(LDFLAGS) -o $@
+
 install: all
 	install -Dm755 $(ENGINE) $(DESTDIR)$(LIBEXECDIR)/ekushe/ibus-engine-ekushe
+	install -Dm755 $(WINDOW) $(DESTDIR)$(LIBEXECDIR)/ekushe/ekushe-studio-window
 	install -Dm755 $(TARGET)/ekushe-studio $(DESTDIR)$(BINDIR)/ekushe-studio
 	install -d $(DESTDIR)$(DATADIR)/ibus/component
 	sed -e "s|@LIBEXECDIR@|$(LIBEXECDIR)/ekushe|" -e "s|@DATADIR@|$(DATADIR)|" -e "s|@BINDIR@|$(BINDIR)|" \

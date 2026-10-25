@@ -1,6 +1,6 @@
 #!/bin/bash
 # Build Ekushe for Linux (x86_64): the IBus keyboard engine and Ekushe Studio, packaged as .deb,
-# .rpm and .AppImage. Needs Rust, gcc, pkg-config, libibus-1.0-dev, plus nfpm and appimagetool
+# .rpm and .AppImage. Needs Rust, gcc, pkg-config, libibus-1.0-dev, libwebkit2gtk-4.1-dev, plus nfpm and appimagetool
 # (downloaded if missing).
 #   platform/linux/build.sh [version]          build packages into build/linux
 #   platform/linux/build.sh [version] --test   also type into a real ibus-daemon to check the engine
@@ -18,12 +18,16 @@ echo "› IBus engine"
 gcc -O2 -Wall -Wextra -DEKUSHE_VERSION="\"$VERSION\"" platform/linux/ibus/ekushe-engine.c \
   $(pkg-config --cflags ibus-1.0) target/release/libekushe_ffi.a $(pkg-config --libs ibus-1.0) \
   -lpthread -ldl -lm -o "$OUT/ibus-engine-ekushe"
+echo "› Studio window (GTK + WebKitGTK)"
+gcc -O2 -Wall -Wextra -DEKUSHE_VERSION="\"$VERSION\"" platform/linux/studio/ekushe-studio-window.c \
+  $(pkg-config --cflags --libs webkit2gtk-4.1 gtk+-3.0) -o "$OUT/ekushe-studio-window"
 strip "$OUT/ibus-engine-ekushe" target/release/ekushe-studio -o /dev/null 2>/dev/null || true
 
 echo "› Files"
 install -Dm755 "$OUT/ibus-engine-ekushe" "$STAGE/usr/libexec/ekushe/ibus-engine-ekushe"
 install -Dm755 target/release/ekushe-studio "$STAGE/usr/bin/ekushe-studio"
-strip "$STAGE/usr/libexec/ekushe/ibus-engine-ekushe" "$STAGE/usr/bin/ekushe-studio"
+install -Dm755 "$OUT/ekushe-studio-window" "$STAGE/usr/libexec/ekushe/ekushe-studio-window"
+strip "$STAGE/usr/libexec/ekushe/ibus-engine-ekushe" "$STAGE/usr/libexec/ekushe/ekushe-studio-window" "$STAGE/usr/bin/ekushe-studio"
 mkdir -p "$STAGE/usr/share/ibus/component"
 sed -e "s|@LIBEXECDIR@|/usr/libexec/ekushe|" -e "s|@DATADIR@|/usr/share|" -e "s|@BINDIR@|/usr/bin|" -e "s|@VERSION@|$VERSION|" \
   platform/linux/ibus/ekushe.xml.in > "$STAGE/usr/share/ibus/component/ekushe.xml"

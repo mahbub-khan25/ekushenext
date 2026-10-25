@@ -21,10 +21,15 @@ BuildRequires:  rust >= 1.85
 BuildRequires:  gcc
 BuildRequires:  make
 BuildRequires:  pkgconfig(ibus-1.0)
+BuildRequires:  pkgconfig(gtk+-3.0)
+BuildRequires:  pkgconfig(webkit2gtk-4.1)
 BuildRequires:  desktop-file-utils
 
 Requires:       ibus
 Requires:       xdg-utils
+# Studio's own window (GTK + WebKitGTK); without WebKitGTK Studio opens in the browser instead
+Recommends:     webkit2gtk4.1
+%global __requires_exclude_from ^%{_libexecdir}/ekushe/ekushe-studio-window$
 Provides:       ibus-ekushe = %{version}-%{release}
 @BUNDLED@
 
@@ -36,7 +41,8 @@ Backspace undo are built in. Everything runs on your computer; nothing you type
 is sent anywhere.
 
 Also includes Ekushe Studio: a writing pad, conjunct guide, spell checker and a
-Bijoy to Unicode converter, opened in your web browser from your own computer.
+Bijoy to Unicode converter, in its own window on any desktop (GNOME, KDE Plasma,
+COSMIC, Xfce and others).
 
 %prep
 %autosetup -n ekushe-%{version}

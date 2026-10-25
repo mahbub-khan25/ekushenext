@@ -13,6 +13,7 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 #include <ibus.h>
+#include <sys/wait.h>
 #include <string.h>
 
 #include "../ekushe_ffi.h"
@@ -411,13 +412,43 @@ static void ekushe_candidate_clicked(IBusEngine *e, guint index, guint button, g
     }
 }
 
+static void open_in_browser(const gchar *url)
+{
+    gchar *argv[] = {"xdg-open", (gchar *)url, NULL};
+    g_spawn_async(NULL, argv, NULL, G_SPAWN_SEARCH_PATH | G_SPAWN_STDOUT_TO_DEV_NULL | G_SPAWN_STDERR_TO_DEV_NULL, NULL, NULL, NULL, NULL);
+}
+
+/* Studio's own window could not start (no WebKitGTK, no display): use the browser instead. */
+static void studio_window_done(GPid pid, gint status, gpointer url)
+{
+    g_spawn_close_pid(pid);
+    if (WIFEXITED(status) && (WEXITSTATUS(status) == 3 || WEXITSTATUS(status) == 127))
+        open_in_browser(url);
+}
+
 static void open_studio(const char *tab)
 {
     gchar *url = take(ek_studio_url(tab));
     if (!url)
         return;
-    gchar *argv[] = {"xdg-open", url, NULL};
-    g_spawn_async(NULL, argv, NULL, G_SPAWN_SEARCH_PATH | G_SPAWN_STDOUT_TO_DEV_NULL | G_SPAWN_STDERR_TO_DEV_NULL, NULL, NULL, NULL, NULL);
+    /* Studio's own window (GTK + WebKitGTK; any desktop); the browser if that isn't installed */
+    /* Installed next to this engine (/usr/libexec/ekushe, or /usr/local/... from the AppImage) */
+    gchar *self = g_file_read_link("/proc/self/exe", NULL);
+    gchar *dir = self ? g_path_get_dirname(self) : g_strdup("/usr/libexec/ekushe");
+    gchar *window = g_build_filename(dir, "ekushe-studio-window", NULL);
+    g_free(self);
+    g_free(dir);
+    gchar *argv[] = {window, url, (gchar *)(tab ? tab : ""), NULL};
+    GPid pid;
+    if (g_file_test(window, G_FILE_TEST_IS_EXECUTABLE) &&
+        g_spawn_async(NULL, argv, NULL, G_SPAWN_DO_NOT_REAP_CHILD | G_SPAWN_STDOUT_TO_DEV_NULL | G_SPAWN_STDERR_TO_DEV_NULL,
+                      NULL, NULL, &pid, NULL)) {
+        g_child_watch_add_full(G_PRIORITY_DEFAULT, pid, studio_window_done, url, g_free);
+        url = NULL;
+    } else {
+        open_in_browser(url);
+    }
+    g_free(window);
     g_free(url);
 }
 
@@ -433,8 +464,7 @@ static void ekushe_property_activate(IBusEngine *e, const gchar *name, guint sta
         gchar *url = take(ek_report_url(os ? os : "Linux"));
         g_free(os);
         if (url) {
-            gchar *argv[] = {"xdg-open", url, NULL};
-            g_spawn_async(NULL, argv, NULL, G_SPAWN_SEARCH_PATH | G_SPAWN_STDOUT_TO_DEV_NULL | G_SPAWN_STDERR_TO_DEV_NULL, NULL, NULL, NULL, NULL);
+            open_in_browser(url);
             g_free(url);
         }
     }
