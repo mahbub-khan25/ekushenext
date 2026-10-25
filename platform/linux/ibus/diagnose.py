@@ -79,6 +79,10 @@ try:
         if key(ord("x")):
             key(IBus.KEY_Escape)
             break
+        shift(); shift(); pump(0.3)  # it may be in English (the default at login)
+        if key(ord("x")):
+            key(IBus.KEY_Escape)
+            break
     bn1 = key(ord("a")); key(IBus.KEY_Escape)
     shift(); shift(); pump(0.3)
     en = not key(ord("a")); key(IBus.KEY_Escape)

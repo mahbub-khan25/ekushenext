@@ -99,6 +99,9 @@ pub struct Config {
     pub custom_snippets: HashMap<String, String>,
     /// Backspace right after a word is committed brings back the Roman text that was typed
     pub backspace_undo: bool,
+    /// The language Ekushe starts in when the keyboard starts (when you log in): English by
+    /// default, so the computer starts like any other; double-tap Shift for Bangla
+    pub start_language: InputLanguage,
     /// Once a day, ask GitHub whether a newer Ekushe Next has been released (Windows; Linux updates
     /// come through the package manager). Off unless the user turns it on: Ekushe stays offline.
     pub check_for_updates: bool,
@@ -133,6 +136,7 @@ impl Default for Config {
             custom_snippets: HashMap::new(),
             backspace_undo: true,
             check_for_updates: false,
+            start_language: InputLanguage::English,
         }
     }
 }

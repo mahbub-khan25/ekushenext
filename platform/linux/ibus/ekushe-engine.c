@@ -544,6 +544,7 @@ int main(int argc, char **argv)
     }
     ibus_init();
     ek_init();
+    ek_use_start_language(); /* English at login unless the user chose Bangla */
     IBusBus *bus = ibus_bus_new();
     if (!ibus_bus_is_connected(bus)) {
         g_printerr("ibus-engine-ekushe: IBus is not running\n");

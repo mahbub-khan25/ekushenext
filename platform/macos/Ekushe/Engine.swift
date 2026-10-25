@@ -26,7 +26,10 @@ enum Engine {
         return out
     }
 
-    static func start() { ek_init() }
+    static func start() {
+        ek_init()
+        ek_use_start_language() // English at login unless the user chose Bangla
+    }
     static func key(_ scalar: UInt32) -> EngineOutput { decode(ek_key(scalar)) }
     static func backspace() -> EngineOutput { decode(ek_backspace()) }
     static func select(_ index: Int, trailing: Character?) -> EngineOutput {
