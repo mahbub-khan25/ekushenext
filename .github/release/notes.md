@@ -1,6 +1,9 @@
 **Beta.** Ekushe Next is a Bangla phonetic keyboard for **Windows 10/11 (64-bit)**, **macOS 11 or later** (Apple silicon and Intel), **Linux** (64-bit, IBus) and **Android 7 or later**. It comes with its own dictionary, which puts the Bangla Academy standard spelling first.
 
 ### What's new in this beta
+- **Linux: one-click setup on more desktops.** Studio's **কিবোর্ড যোগ করুন** button (and `ekushe-studio --add-keyboard`) now works on **KDE Plasma, Xfce, Cinnamon, MATE and LXQt** as well as GNOME. On KDE and the others it also makes IBus the input method; log out and back in once when Studio asks. On **COSMIC**, IBus doesn't work on the current release yet, so Studio explains that instead of changing anything.
+
+Also in this beta (from beta.19):
 - **Linux: Ekushe Studio has its own window.** No more browser tab: Studio opens in a proper window with the Ekushe icon, on GNOME, KDE Plasma, COSMIC, Xfce, Cinnamon and other desktops. Opening it again brings the same window forward; links to websites open in your browser; **ব্যাকআপ নিন** asks where to save the file. It uses WebKitGTK, which Ubuntu and Fedora install with Ekushe (if it's missing, Studio opens in the browser as before).
 
 Also in this beta (from beta.18):
