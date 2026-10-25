@@ -219,8 +219,8 @@ static void show_language(EkusheEngine *ek)
 {
     gboolean bn = ek_language() != 0;
     ibus_property_set_symbol(ek->mode_prop, ibus_text_new_from_string(bn ? "এ" : "EN"));
-    ibus_property_set_label(ek->mode_prop, ibus_text_new_from_string(
-        bn ? "বাংলা লিখছেন — English: double-tap Shift" : "English — বাংলা: double-tap Shift"));
+    /* Name only the language in use: a popup or menu shows this label */
+    ibus_property_set_label(ek->mode_prop, ibus_text_new_from_string(bn ? "বাংলা" : "English"));
     ibus_engine_update_property((IBusEngine *)ek, ek->mode_prop);
 }
 
@@ -438,8 +438,8 @@ static void ekushe_engine_init(EkusheEngine *ek)
         ibus_text_new_from_string("Settings"), "preferences-system",
         ibus_text_new_from_string("Typing mode, layout, snippets"), TRUE, TRUE, PROP_STATE_UNCHECKED, NULL));
     ek->mode_prop = ibus_property_new("InputMode", PROP_TYPE_NORMAL,
-        ibus_text_new_from_string("বাংলা লিখছেন — English: double-tap Shift"), NULL,
-        ibus_text_new_from_string("Switch between Bangla and English"), TRUE, TRUE, PROP_STATE_UNCHECKED, NULL);
+        ibus_text_new_from_string("বাংলা"), NULL,
+        ibus_text_new_from_string("Double-tap Shift to switch between Bangla and English"), TRUE, TRUE, PROP_STATE_UNCHECKED, NULL);
     ibus_property_set_symbol(ek->mode_prop, ibus_text_new_from_string("এ"));
     g_object_ref_sink(ek->mode_prop);
     ibus_prop_list_append(ek->props, ek->mode_prop);
