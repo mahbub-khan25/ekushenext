@@ -1,0 +1,10 @@
+{
+  "_note": "What is typed in LaunchReveal.tsx, word by word: [roman, what Ekushe commits]. Every pair was checked with crates/ekushe-core/examples/sent_check.rs. music/launch_reveal.py reads this too, so the key clicks land on the letters.",
+  "every": 3,
+  "gap": 14,
+  "R": { "dark": 0, "sun": 480, "date": 960, "name": 1320, "win": 1620, "mac": 2220, "linux": 2820, "phones": 3360, "party": 3960, "end": 4560, "total": 5040 },
+  "win": { "start": 110, "tokens": [["shobaike", "সবাইকে"], ["shagotom!", "স্বাগতম!"], ["aj", "আজ"], ["theke", "থেকে"], ["bangla", "বাংলা"], ["lekha", "লেখা"], ["hok", "হোক"], ["aro", "আরও"], ["shohoj,", "সহজ,"], ["aro", "আরও"], ["shundor.", "সুন্দর।"]] },
+  "mac": { "start": 130, "tokens": [["priyo", "প্রিয়"], ["bangla", "বাংলা"], ["bhashi", "ভাষী"], ["bondhura,", "বন্ধুরা,"], ["shubhechha", "শুভেচ্ছা"], ["roilo.", "রইল।"]] },
+  "linux": { "start": 130, "tokens": [["computer", "কম্পিউটার"], ["jetai", "যেটাই"], ["hok,", "হোক,"], ["bangla", "বাংলা"], ["likhun", "লিখুন"], ["moner", "মনের"], ["moto.", "মতো।"]] },
+  "phone": { "android": 110, "ios": 190, "tokens": [["ashchi", "আসছি"], ["tomar", "তোমার"], ["phoneo,", "ফোনেও,"], ["ektu", "একটু"], ["opekkha", "অপেক্ষা"], ["koro", "করো"]] }
+}
