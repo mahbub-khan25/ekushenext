@@ -183,8 +183,8 @@ const Dark: React.FC = () => {
   return (
     <AbsoluteFill>
       <div style={{ position: 'absolute', top: 620 * u, left: 0, right: 0, textAlign: 'center', opacity: a, transform: `translateY(${(1 - a) * 30 * u}px)`, filter: `blur(${(1 - a) * 8 * u}px)` }}>
-        <div style={{ fontFamily: FONT_BN, fontWeight: 600, fontSize: 92 * u, color: 'rgba(234,243,238,0.88)' }}>অনেক অপেক্ষার পর…</div>
-        <Sub size={36} style={{ marginTop: 16 * u }}>After a long wait…</Sub>
+        <div style={{ fontFamily: FONT_BN, fontWeight: 600, fontSize: 92 * u, color: 'rgba(234,243,238,0.88)' }}>অপেক্ষার প্রহর শেষে...।</div>
+        <Sub size={36} style={{ marginTop: 16 * u }}>At the end of a long wait…</Sub>
       </div>
       <div style={{ position: 'absolute', top: 560 * u, left: 0, right: 0, textAlign: 'center', opacity: b, transform: `translateY(${(1 - b) * 30 * u}px) scale(${0.96 + b * 0.04})` }}>
         <div style={{ fontFamily: FONT_BN, fontWeight: 700, fontSize: 140 * u, color: C.white, textShadow: `0 0 ${70 * u}px rgba(224,48,63,0.7)` }}>নতুন ভোর</div>
