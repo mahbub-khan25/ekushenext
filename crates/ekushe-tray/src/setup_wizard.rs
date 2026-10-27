@@ -32,7 +32,7 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
     GetCursorPos, GetMessageW, GetSystemMetrics, LoadCursorW, LoadIconW, LoadImageW, MessageBoxW,
     PostMessageW, PostQuitMessage, RegisterClassW, SetCursor, SetLayeredWindowAttributes,
     SetProcessDPIAware, ShowWindow, TranslateMessage, DI_NORMAL, HICON, HWND_BROADCAST, IDC_ARROW,
-    IDC_HAND, IMAGE_ICON, LR_LOADFROMFILE, LWA_ALPHA, MB_OK, MSG, SM_CXSCREEN, SM_CYSCREEN,
+    IDC_HAND, IMAGE_ICON, LR_DEFAULTCOLOR, LWA_ALPHA, MB_OK, MSG, SM_CXSCREEN, SM_CYSCREEN,
     SW_SHOW, WM_CLOSE, WM_DESTROY, WM_FONTCHANGE, WM_LBUTTONDOWN, WM_MOUSEMOVE, WM_PAINT,
     WM_SETCURSOR, WNDCLASSW, WS_CAPTION, WS_EX_LAYERED, WS_OVERLAPPED, WS_SYSMENU, WS_VISIBLE,
 };
@@ -117,6 +117,46 @@ pub fn install_root_dir() -> PathBuf {
         .join("Ekushe")
 }
 
+/// The bundled Bangladeshi fonts: registry name, file name, bytes.
+const BUNDLED_FONTS: &[(&str, &str, &[u8])] = &[
+    ("Kalpurush (TrueType)", "Kalpurush.ttf", FONT_KALPURUSH),
+    (
+        "SolaimanLipi (TrueType)",
+        "SolaimanLipi.ttf",
+        FONT_SOLAIMANLIPI,
+    ),
+    (
+        "Siyam Rupali (TrueType)",
+        "SiyamRupali.ttf",
+        FONT_SIYAMRUPALI,
+    ),
+    (
+        "Hind Siliguri (TrueType)",
+        "HindSiliguri-Regular.ttf",
+        FONT_HINDSILIGURI_REG,
+    ),
+    (
+        "Hind Siliguri Bold (TrueType)",
+        "HindSiliguri-Bold.ttf",
+        FONT_HINDSILIGURI_BOLD,
+    ),
+];
+
+/// `%LOCALAPPDATA%\Microsoft\Windows\Fonts`: where Windows keeps fonts installed for one user.
+fn user_fonts_dir() -> PathBuf {
+    dirs::data_local_dir()
+        .unwrap_or_else(install_root_dir)
+        .join("Microsoft")
+        .join("Windows")
+        .join("Fonts")
+}
+
+/// Which font files Ekushe itself put into the user's font folder (one name per line), so that
+/// uninstalling removes those and never a font the user had installed before.
+fn installed_fonts_marker() -> PathBuf {
+    install_root_dir().join("fonts-installed.txt")
+}
+
 /// Silently ensures that whenever `ekushe.exe` runs on any PC, its icons, Bangladeshi fonts,
 /// and default configuration (`Kalpurush` font + `Double-Tap Shift`) are extracted and active.
 pub fn ensure_self_configured() {
@@ -134,43 +174,27 @@ pub fn ensure_self_configured() {
     write_if_missing(&icons_dir.join("tray_english.ico"), ICON_TRAY_ENGLISH_ICO);
 
     // Extract & register bundled Bangladeshi fonts
-    let font_files: &[(&str, &str, &[u8])] = &[
-        ("Kalpurush (TrueType)", "Kalpurush.ttf", FONT_KALPURUSH),
-        (
-            "SolaimanLipi (TrueType)",
-            "SolaimanLipi.ttf",
-            FONT_SOLAIMANLIPI,
-        ),
-        (
-            "Siyam Rupali (TrueType)",
-            "SiyamRupali.ttf",
-            FONT_SIYAMRUPALI,
-        ),
-        (
-            "Hind Siliguri (TrueType)",
-            "HindSiliguri-Regular.ttf",
-            FONT_HINDSILIGURI_REG,
-        ),
-        (
-            "Hind Siliguri Bold (TrueType)",
-            "HindSiliguri-Bold.ttf",
-            FONT_HINDSILIGURI_BOLD,
-        ),
-    ];
-
-    let user_win_fonts = dirs::data_local_dir()
-        .unwrap_or_else(|| root.clone())
-        .join("Microsoft")
-        .join("Windows")
-        .join("Fonts");
+    let user_win_fonts = user_fonts_dir();
     let _ = fs::create_dir_all(&user_win_fonts);
+    let marker = installed_fonts_marker();
+    let mut ours: Vec<String> = fs::read_to_string(&marker)
+        .unwrap_or_default()
+        .lines()
+        .map(|l| l.trim().to_string())
+        .filter(|l| !l.is_empty())
+        .collect();
 
-    for (reg_name, filename, bytes) in font_files {
+    for (reg_name, filename, bytes) in BUNDLED_FONTS {
         let app_font_path = fonts_dir.join(filename);
         write_if_missing(&app_font_path, bytes);
 
         let win_font_path = user_win_fonts.join(filename);
-        write_if_missing(&win_font_path, bytes);
+        if !win_font_path.exists() {
+            // Not there before: this font is ours to remove at uninstall
+            if fs::write(&win_font_path, bytes).is_ok() && !ours.iter().any(|f| f == filename) {
+                ours.push((*filename).to_string());
+            }
+        }
 
         unsafe {
             let wpath = wide_null(&win_font_path.to_string_lossy());
@@ -182,12 +206,52 @@ pub fn ensure_self_configured() {
             );
         }
     }
+    let _ = fs::write(&marker, ours.join("\n"));
 
     // Ensure default config.toml exists with Kalpurush Bangladeshi font
     let cfg_path = Config::default_config_path();
     if !cfg_path.exists() {
         let cfg = Config::default();
         let _ = cfg.save_to(&cfg_path);
+    }
+}
+
+/// Removes the fonts Ekushe installed for this user (file and registry entry). Fonts that were
+/// already in the user's font folder before Ekushe are left alone. Installs from before the marker
+/// file existed are treated as having installed all five.
+fn remove_user_fonts() {
+    use windows_sys::Win32::Graphics::Gdi::RemoveFontResourceW;
+    let user_win_fonts = user_fonts_dir();
+    let marker = installed_fonts_marker();
+    let ours: Vec<String> = match fs::read_to_string(&marker) {
+        Ok(s) => s
+            .lines()
+            .map(|l| l.trim().to_string())
+            .filter(|l| !l.is_empty())
+            .collect(),
+        Err(_) => BUNDLED_FONTS
+            .iter()
+            .map(|(_, f, _)| (*f).to_string())
+            .collect(),
+    };
+    for (reg_name, filename, _) in BUNDLED_FONTS {
+        if !ours.iter().any(|f| f == filename) {
+            continue;
+        }
+        let win_font_path = user_win_fonts.join(filename);
+        unsafe {
+            let _ = delete_hkcu_reg_value(
+                r"Software\Microsoft\Windows NT\CurrentVersion\Fonts",
+                reg_name,
+            );
+            let wpath = wide_null(&win_font_path.to_string_lossy());
+            let _ = RemoveFontResourceW(wpath.as_ptr());
+        }
+        let _ = fs::remove_file(&win_font_path);
+    }
+    let _ = fs::remove_file(&marker);
+    unsafe {
+        let _ = PostMessageW(HWND_BROADCAST, WM_FONTCHANGE, 0, 0);
     }
 }
 
@@ -307,7 +371,11 @@ pub fn perform_full_install(
             "Ekushe Next Bangla Keyboard & Spell Checker (একুশে নেক্সট বাংলা কীবোর্ড)",
         )
         .map_err(|code| format!("could not register in Installed Apps (registry error {code})"))?;
-        let _ = set_hkcu_reg_sz(uninstall_key, "DisplayVersion", "0.1.0");
+        let _ = set_hkcu_reg_sz(
+            uninstall_key,
+            "DisplayVersion",
+            crate::update_check::current_version().trim_start_matches('v'),
+        );
         let _ = set_hkcu_reg_sz(uninstall_key, "Publisher", "Ekushe Next Contributors");
         let _ = set_hkcu_reg_sz(uninstall_key, "DisplayIcon", &ico_path.to_string_lossy());
         let _ = set_hkcu_reg_sz(uninstall_key, "InstallLocation", &root.to_string_lossy());
@@ -349,6 +417,8 @@ pub fn perform_uninstall() -> Result<(), String> {
             r"Software\Microsoft\Windows\CurrentVersion\Uninstall\EkusheBanglaKeyboard",
         );
     }
+
+    remove_user_fonts();
 
     if let Some(desktop) = dirs::desktop_dir() {
         let _ = fs::remove_file(desktop.join("Ekushe Next Bangla Keyboard.lnk"));
@@ -496,20 +566,17 @@ fn remove_install_folder(root: &Path) -> Result<(), String> {
 /// Runs the native Windows GUI Setup Wizard (`Ekushe-Setup.exe`) in Light Mode.
 pub unsafe fn run_gui_installer_window() {
     let _ = SetProcessDPIAware();
-    ensure_self_configured();
+    // Nothing is written to the PC until the user clicks Install: the wizard's icon comes from the
+    // program's own resources, not from an extracted file.
 
     let hinstance = GetModuleHandleW(ptr::null());
-    let ico_file = install_root_dir()
-        .join("assets")
-        .join("icons")
-        .join("ekushe.ico");
     APP_ICON_HANDLE = LoadImageW(
-        ptr::null_mut(),
-        wide_null(&ico_file.to_string_lossy()).as_ptr(),
+        hinstance,
+        ptr::without_provenance::<u16>(1),
         IMAGE_ICON,
         64,
         64,
-        LR_LOADFROMFILE,
+        LR_DEFAULTCOLOR,
     ) as HICON;
     if APP_ICON_HANDLE.is_null() {
         APP_ICON_HANDLE = LoadIconW(hinstance, ptr::without_provenance::<u16>(1));
