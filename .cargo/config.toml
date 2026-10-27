@@ -1,0 +1,11 @@
+# Android: 16 KB page-size alignment of libekushe_android.so. Required by Google Play for apps
+# targeting Android 15 (targetSdk 35); on a 16 KB-page phone a 4 KB-aligned library fails to load and
+# the keyboard would crash at start. android/build-rust.sh checks the result.
+[target.aarch64-linux-android]
+rustflags = ["-C", "link-arg=-Wl,-z,max-page-size=16384"]
+
+[target.armv7-linux-androideabi]
+rustflags = ["-C", "link-arg=-Wl,-z,max-page-size=16384"]
+
+[target.x86_64-linux-android]
+rustflags = ["-C", "link-arg=-Wl,-z,max-page-size=16384"]
