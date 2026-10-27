@@ -66,6 +66,12 @@ ibus write-cache --system >/dev/null 2>&1 || :
 %postun
 ibus write-cache --system >/dev/null 2>&1 || :
 
+%preun
+# Keyboard lists are per user: tell the person how to take Ekushe out of theirs
+if [ "$1" = 0 ]; then
+  echo "Ekushe Next: if Ekushe is in your keyboards, run 'ekushe-studio --remove-keyboard' now (before the package is gone), or remove it later from your desktop's keyboard settings." >&2 || :
+fi
+
 %files
 %license LICENSE THIRD_PARTY_NOTICES.md data/dictionary/LICENSE.md data/dictionary/CC-BY-SA-4.0.txt
 %doc README.md

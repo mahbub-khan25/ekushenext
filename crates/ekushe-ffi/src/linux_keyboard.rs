@@ -132,6 +132,47 @@ pub fn ibus_with_ekushe(list: &str) -> String {
     }
 }
 
+/// A gsettings list with every Ekushe entry removed (`[('ibus', 'ekushe'), ('xkb', 'us')]` →
+/// `[('xkb', 'us')]`; `['ekushe', 'xkb:us::eng']` → `['xkb:us::eng']`). Works for GNOME's
+/// `(ss)` tuples and IBus's plain strings alike.
+pub fn without_ekushe(list: &str) -> String {
+    let inner = list_inner(list);
+    if inner.is_empty() {
+        return "[]".to_string();
+    }
+    // Split at the commas between entries: GNOME entries are parenthesised tuples, IBus entries are
+    // quoted strings; neither contains a comma outside its own parentheses/quotes
+    let mut items: Vec<String> = Vec::new();
+    let (mut depth, mut quoted, mut cur) = (0usize, false, String::new());
+    for c in inner.chars() {
+        match c {
+            '\'' => quoted = !quoted,
+            '(' if !quoted => depth += 1,
+            ')' if !quoted => depth = depth.saturating_sub(1),
+            ',' if !quoted && depth == 0 => {
+                items.push(cur.trim().to_string());
+                cur.clear();
+                continue;
+            }
+            _ => {}
+        }
+        cur.push(c);
+    }
+    if !cur.trim().is_empty() {
+        items.push(cur.trim().to_string());
+    }
+    let kept: Vec<String> = items
+        .into_iter()
+        .filter(|i| !i.contains("'ekushe'"))
+        .collect();
+    format!("[{}]", kept.join(", "))
+}
+
+/// GNOME's most-recently-used list with Ekushe first and the user's history kept.
+pub fn gnome_mru_with_ekushe(mru: &str) -> String {
+    gnome_with_ekushe(&without_ekushe(mru)).replace(", ('xkb', 'us')]", "]")
+}
+
 /// What Studio shows: is Ekushe added, can Studio add it here, and the steps to do it by hand.
 #[derive(Debug, Clone)]
 pub struct Status {
@@ -237,6 +278,7 @@ fn make_ibus_the_input_method(d: Desktop) -> bool {
         }
         if let Some(tool) = tool {
             if std::path::Path::new(IBUS_WAYLAND_PANEL).exists() {
+                setup_note("kwinrc_input_method", &current);
                 let set = ok(Command::new(tool).args([
                     "--file",
                     "kwinrc",
@@ -260,6 +302,9 @@ fn make_ibus_the_input_method(d: Desktop) -> bool {
         return false; // IBus is already running for this user
     }
     if have("im-config") {
+        // Remember what ~/.xinputrc said before (or that there was none), to put it back on remove
+        let prev = xinputrc_run_im();
+        setup_note("xinputrc", prev.as_deref().unwrap_or("absent"));
         return ok(Command::new("im-config").args(["-n", "ibus"]));
     }
     if have("imsettings-switch") {
@@ -373,12 +418,15 @@ pub fn add() -> Added {
             };
             if !list.contains("'ekushe'") {
                 // Make Ekushe the most recently used keyboard too, so GNOME switches to it at once
+                // (the user's own history stays behind it)
+                let mru =
+                    gsettings_list(GNOME_KEY[0], "mru-sources").unwrap_or_else(|| "[]".into());
                 let _ = Command::new("gsettings")
                     .args([
                         "set",
                         GNOME_KEY[0],
                         "mru-sources",
-                        &format!("[{EKUSHE_GNOME}]"),
+                        &gnome_mru_with_ekushe(&mru),
                     ])
                     .output();
                 if !ok(Command::new("gsettings").args([
@@ -425,6 +473,185 @@ pub fn add() -> Added {
     }
 }
 
+/// `~/.config/Ekushe/keyboard-setup.txt`: what "add keyboard" changed outside the keyboard lists
+/// (one `key=value` per line), so "remove keyboard" can put exactly that back.
+fn setup_notes_path() -> std::path::PathBuf {
+    ekushe_core::config::Config::default_dir().join("keyboard-setup.txt")
+}
+
+fn setup_notes() -> Vec<(String, String)> {
+    std::fs::read_to_string(setup_notes_path())
+        .unwrap_or_default()
+        .lines()
+        .filter_map(|l| {
+            l.split_once('=')
+                .map(|(k, v)| (k.trim().into(), v.trim().into()))
+        })
+        .collect()
+}
+
+/// Record `key=value` (the first value wins: the state before Ekushe changed anything).
+fn setup_note(key: &str, value: &str) {
+    let mut notes = setup_notes();
+    if notes.iter().any(|(k, _)| k == key) {
+        return;
+    }
+    notes.push((key.into(), value.into()));
+    let path = setup_notes_path();
+    if let Some(dir) = path.parent() {
+        let _ = std::fs::create_dir_all(dir);
+    }
+    let text: String = notes.iter().map(|(k, v)| format!("{k}={v}\n")).collect();
+    let _ = std::fs::write(path, text);
+}
+
+/// The input method `~/.xinputrc` selects (`run_im ibus` → `ibus`), or `None` when there is no file.
+fn xinputrc_run_im() -> Option<String> {
+    let home = std::env::var_os("HOME")?;
+    let text = std::fs::read_to_string(std::path::Path::new(&home).join(".xinputrc")).ok()?;
+    Some(
+        text.lines()
+            .map(str::trim)
+            .find_map(|l| l.strip_prefix("run_im ").map(|v| v.trim().to_string()))
+            .unwrap_or_default(),
+    )
+}
+
+/// Take Ekushe out of this desktop's keyboards again, and put back the input-method setting
+/// "add keyboard" changed (only what it changed: a setting the user made is left alone).
+/// Safe to run before uninstalling the package, and after.
+pub fn remove() -> Added {
+    let d = desktop();
+    let mut ok_all = true;
+    let mut relogin = false;
+    match d {
+        Desktop::Gnome => {
+            if let Some(list) = gsettings_list(GNOME_KEY[0], GNOME_KEY[1]) {
+                if list.contains("'ekushe'") {
+                    ok_all &= ok(Command::new("gsettings").args([
+                        "set",
+                        GNOME_KEY[0],
+                        GNOME_KEY[1],
+                        &without_ekushe(&list),
+                    ]));
+                }
+            }
+            if let Some(mru) = gsettings_list(GNOME_KEY[0], "mru-sources") {
+                if mru.contains("'ekushe'") {
+                    let _ = Command::new("gsettings")
+                        .args(["set", GNOME_KEY[0], "mru-sources", &without_ekushe(&mru)])
+                        .output();
+                }
+            }
+        }
+        Desktop::Kde | Desktop::Other | Desktop::Cosmic => {
+            for key in ["preload-engines", "engines-order"] {
+                if let Some(list) = gsettings_list(IBUS_SCHEMA, key) {
+                    if list.contains("'ekushe'") {
+                        ok_all &= ok(Command::new("gsettings").args([
+                            "set",
+                            IBUS_SCHEMA,
+                            key,
+                            &without_ekushe(&list),
+                        ]));
+                    }
+                }
+            }
+            // IBus may still have Ekushe selected: switch to the first remaining engine
+            if let Some(list) = gsettings_list(IBUS_SCHEMA, "preload-engines") {
+                let first = list_inner(&list)
+                    .split(',')
+                    .next()
+                    .map(|e| e.trim().trim_matches('\'').to_string())
+                    .unwrap_or_default();
+                if !first.is_empty() {
+                    let _ = Command::new("ibus").args(["engine", &first]).output();
+                }
+            }
+        }
+    }
+    // What "add" changed beyond the keyboard lists
+    for (key, value) in setup_notes() {
+        match key.as_str() {
+            "xinputrc" if have("im-config") => {
+                // Only if it still says ibus (the user hasn't chosen something else since)
+                if xinputrc_run_im().as_deref() == Some("ibus") {
+                    if value == "absent" {
+                        if let Some(home) = std::env::var_os("HOME") {
+                            let _ =
+                                std::fs::remove_file(std::path::Path::new(&home).join(".xinputrc"));
+                        }
+                    } else if !value.is_empty() {
+                        let _ = Command::new("im-config").args(["-n", &value]).output();
+                    }
+                    relogin = true;
+                }
+            }
+            "kwinrc_input_method" => {
+                let tool = ["kwriteconfig6", "kwriteconfig5"]
+                    .into_iter()
+                    .find(|t| have(t));
+                let current = ["kreadconfig6", "kreadconfig5"]
+                    .into_iter()
+                    .find(|t| have(t))
+                    .and_then(|t| {
+                        out(Command::new(t).args([
+                            "--file",
+                            "kwinrc",
+                            "--group",
+                            "Wayland",
+                            "--key",
+                            "InputMethod",
+                        ]))
+                    })
+                    .unwrap_or_default();
+                if let Some(tool) = tool {
+                    if current.contains("IBus") {
+                        let mut args = vec![
+                            "--file",
+                            "kwinrc",
+                            "--group",
+                            "Wayland",
+                            "--key",
+                            "InputMethod",
+                        ];
+                        if value.is_empty() {
+                            args.push("--delete");
+                        } else {
+                            args.push(&value);
+                        }
+                        let _ = Command::new(tool).args(&args).output();
+                        let _ = Command::new("qdbus")
+                            .args(["org.kde.KWin", "/KWin", "reconfigure"])
+                            .output();
+                        relogin = true;
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    let _ = std::fs::remove_file(setup_notes_path());
+    // COSMIC: the autostart entry and beta.22's environment file, if they are Ekushe's own
+    if let Some(autostart) = cosmic_autostart() {
+        if std::fs::read_to_string(&autostart).is_ok_and(|t| t.contains("Ekushe")) {
+            let _ = std::fs::remove_file(autostart);
+        }
+    }
+    remove_old_cosmic_env();
+    Added {
+        ok: ok_all,
+        relogin,
+        message: if !ok_all {
+            format!("কিবোর্ডের তালিকা থেকে একুশে বাদ দেওয়া গেল না। {}", steps(d))
+        } else if relogin {
+            "একুশে আপনার কিবোর্ডের তালিকা থেকে বাদ গেছে; ইনপুট-মেথড সেটিং আগের মতো করা হয়েছে। একবার লগ আউট করে আবার ঢুকুন।".into()
+        } else {
+            "একুশে আপনার কিবোর্ডের তালিকা থেকে বাদ গেছে।".into()
+        },
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -466,5 +693,45 @@ mod tests {
             "['ekushe', 'xkb:de::ger']"
         );
         assert_eq!(ibus_with_ekushe("['ekushe']"), "['ekushe']");
+    }
+
+    #[test]
+    fn ekushe_is_removed_and_the_rest_kept() {
+        assert_eq!(
+            without_ekushe("[('ibus', 'ekushe'), ('xkb', 'us')]"),
+            "[('xkb', 'us')]"
+        );
+        assert_eq!(
+            without_ekushe("[('xkb', 'de'), ('ibus', 'ekushe'), ('ibus', 'mozc-jp')]"),
+            "[('xkb', 'de'), ('ibus', 'mozc-jp')]"
+        );
+        assert_eq!(without_ekushe("[('ibus', 'ekushe')]"), "[]");
+        assert_eq!(without_ekushe("[]"), "[]");
+        assert_eq!(without_ekushe("[('xkb', 'us')]"), "[('xkb', 'us')]");
+        assert_eq!(
+            without_ekushe("['ekushe', 'xkb:us::eng']"),
+            "['xkb:us::eng']"
+        );
+        assert_eq!(
+            without_ekushe("['xkb:us::eng', 'ekushe']"),
+            "['xkb:us::eng']"
+        );
+        assert_eq!(without_ekushe("['ekushe']"), "[]");
+        // adding after removing gives the original back
+        let l = "[('ibus', 'ekushe'), ('xkb', 'us')]";
+        assert_eq!(gnome_with_ekushe(&without_ekushe(l)), l);
+    }
+
+    #[test]
+    fn mru_keeps_the_users_history() {
+        assert_eq!(
+            gnome_mru_with_ekushe("[('xkb', 'us'), ('xkb', 'de')]"),
+            "[('ibus', 'ekushe'), ('xkb', 'us'), ('xkb', 'de')]"
+        );
+        assert_eq!(gnome_mru_with_ekushe("[]"), "[('ibus', 'ekushe')]");
+        assert_eq!(
+            gnome_mru_with_ekushe("[('xkb', 'de'), ('ibus', 'ekushe')]"),
+            "[('ibus', 'ekushe'), ('xkb', 'de')]"
+        );
     }
 }
