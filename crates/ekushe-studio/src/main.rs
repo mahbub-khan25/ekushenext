@@ -81,6 +81,17 @@ fn main() {
         }
         return;
     }
+    #[cfg(target_os = "linux")]
+    if args.iter().any(|a| a == "--remove-keyboard") {
+        // Take Ekushe out of this desktop's keyboards again (run before uninstalling the package, or
+        // after: it only touches the user's own settings)
+        let r = ekushe_ffi::studio::keyboard::remove();
+        println!("{}", r.message);
+        if !r.ok {
+            std::process::exit(1);
+        }
+        return;
+    }
     let tab = args.iter().any(|a| a == "--settings").then_some("settings");
     // A fresh one-time address (only the first page opened with it gets Studio's key)
     let Some(url) = ekushe_ffi::studio::launch_url(tab) else {

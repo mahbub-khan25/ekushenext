@@ -304,6 +304,11 @@ fn handle(mut s: TcpStream, req: &str, port: u16) -> std::io::Result<()> {
             let added = keyboard::add();
             respond(&mut s, "200 OK", ct, &json(added.to_json()))
         }
+        #[cfg(target_os = "linux")]
+        ("POST", "/api/remove-keyboard") => {
+            let removed = keyboard::remove();
+            respond(&mut s, "200 OK", ct, &json(removed.to_json()))
+        }
         ("POST", "/api/toggle") => {
             let l = SHARED.lock().ekushe.toggle_language();
             respond(

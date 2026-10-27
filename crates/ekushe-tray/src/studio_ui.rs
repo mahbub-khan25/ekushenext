@@ -425,6 +425,10 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
       <div><div class="section-title">একুশে এখনো আপনার কিবোর্ডের তালিকায় নেই</div><div class="hint" id="addKeyboardMsg">যোগ করলে একুশেই আপনার কিবোর্ড হবে, সব অ্যাপে। বাংলা ⇄ English বদলাতে দুবার Shift চাপুন; ওপরের বারে এ বা EN দেখাবে।</div></div>
       <button class="btn primary" id="addKeyboardBtn" onclick="addKeyboard()">কিবোর্ড যোগ করুন</button>
     </div>
+    <div class="etched" id="removeKeyboardBox" hidden style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+      <div><div class="section-title">একুশে আপনার কিবোর্ডের তালিকায় আছে</div><div class="hint" id="removeKeyboardMsg">একুশে সরিয়ে ফেলার আগে এখান থেকে বাদ দিন: কিবোর্ডের তালিকা ও ইনপুট-মেথড সেটিং আগের মতো হয়ে যাবে। টার্মিনালেও হয়: ekushe-studio --remove-keyboard</div></div>
+      <button class="btn" id="removeKeyboardBtn" onclick="removeKeyboard()">কিবোর্ড বাদ দিন</button>
+    </div>
 
     <!-- Writing pad -->
     <section class="panel active" id="tab-playground" data-title="লেখার প্যাড" data-sub="রোমান হরফে লিখুন, একুশে বাংলা করে দেবে। Space চাপলে প্রথম শব্দটি বসবে।">
@@ -884,6 +888,7 @@ async function refreshState() {
   const st = await res.json();
   const kb = st.keyboard;
   document.getElementById('addKeyboardBox').hidden = !kb || kb.added;
+  document.getElementById('removeKeyboardBox').hidden = !kb || !kb.added;
   if (kb && !kb.added) {
     document.getElementById('addKeyboardBtn').hidden = !kb.can_add;
     if (!kb.can_add) document.getElementById('addKeyboardMsg').textContent = kb.steps;
@@ -1348,6 +1353,19 @@ async function addKeyboard() {
     // A re-login is needed, or it didn't work: keep the box with what to do next
     document.getElementById('addKeyboardMsg').textContent = out.message;
     document.getElementById('addKeyboardBtn').hidden = out.ok;
+  }
+}
+
+async function removeKeyboard() {
+  const res = await fetch('/api/remove-keyboard', { method: 'POST' });
+  const out = res.ok ? await res.json() : { ok: false, message: 'বাদ দেওয়া গেল না।' };
+  if (out.ok && !out.relogin) {
+    toast(out.message);
+    document.getElementById('removeKeyboardBox').hidden = true;
+    document.getElementById('addKeyboardBox').hidden = false;
+  } else {
+    document.getElementById('removeKeyboardMsg').textContent = out.message;
+    document.getElementById('removeKeyboardBtn').hidden = out.ok;
   }
 }
 
