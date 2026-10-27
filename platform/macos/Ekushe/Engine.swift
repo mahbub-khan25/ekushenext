@@ -32,6 +32,12 @@ enum Engine {
     }
     static func key(_ scalar: UInt32) -> EngineOutput { decode(ek_key(scalar)) }
     static func backspace() -> EngineOutput { decode(ek_backspace()) }
+    /// Backspace right after a word: the word reopened as the word being typed, with its
+    /// suggestions (`delete_before` is the word and its space). nil when there is nothing to reopen.
+    static func reopenLastWord() -> EngineOutput? {
+        guard let p = ek_reopen_last_word() else { return nil }
+        return decode(p)
+    }
     static func select(_ index: Int, trailing: Character?) -> EngineOutput {
         let t = trailing?.unicodeScalars.first?.value ?? 0
         return decode(ek_select(UInt32(max(0, index)), t))

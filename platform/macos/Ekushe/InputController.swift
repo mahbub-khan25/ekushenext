@@ -134,10 +134,10 @@ final class EkusheInputController: IMKInputController {
         if out.candidates.count > 1 { showCandidates() } else { hideCandidates() }
     }
 
-    private func showMarked(_ text: String, _ client: IMKTextInput) {
+    private func showMarked(_ text: String, _ client: IMKTextInput, replacing: NSRange? = nil) {
         let attrs = mark(forStyle: kTSMHiliteSelectedConvertedText, at: NSRange(location: 0, length: (text as NSString).length))
         let s = NSAttributedString(string: text, attributes: attrs as? [NSAttributedString.Key: Any] ?? [:])
-        client.setMarkedText(s, selectionRange: NSRange(location: (text as NSString).length, length: 0), replacementRange: notFound)
+        client.setMarkedText(s, selectionRange: NSRange(location: (text as NSString).length, length: 0), replacementRange: replacing ?? notFound)
     }
 
     private func commit(_ index: Int, trailing: Character?, _ client: IMKTextInput) {
@@ -166,8 +166,10 @@ final class EkusheInputController: IMKInputController {
         }
     }
 
-    /// Backspace right after a committed word: give back the Roman letters, but only if the text
-    /// before the caret is still that word (otherwise it is an ordinary Backspace).
+    /// Backspace right after a committed word: reopen it as the word being typed, with its
+    /// suggestions (another Bangla word, or the English as typed), so a wrong word can be fixed
+    /// without typing it again. Only if the text before the caret is still that word (otherwise it is
+    /// an ordinary Backspace).
     private func undo(_ client: IMKTextInput) -> Bool {
         let expect = lastCommitted
         let n = (expect as NSString).length
@@ -181,10 +183,13 @@ final class EkusheInputController: IMKInputController {
             Engine.reset()
             return false
         }
-        let out = Engine.backspace()
-        guard let roman = out.committed else { return false }
-        client.insertText(roman, replacementRange: range)
+        guard let out = Engine.reopenLastWord() else { return false }
         lastCommitted = ""
+        output = out
+        selected = min(out.selected_index, max(0, out.candidates.count - 1))
+        // The word and its space become the marked (still being typed) word
+        showMarked(out.preedit, client, replacing: range)
+        if out.candidates.count > 1 { showCandidates() } else { hideCandidates() }
         return true
     }
 

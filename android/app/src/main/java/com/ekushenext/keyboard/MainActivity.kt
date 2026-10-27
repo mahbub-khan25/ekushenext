@@ -202,7 +202,7 @@ class MainActivity : AppCompatActivity() {
             })
         }
         spaceIn(card, 10f)
-        card.addView(text("টিপ: অক্ষরে চেপে ধরলে বড় হাতের অক্ষর ও চিহ্ন পাবেন (t → ট, ৎ)। শব্দের পরেই ⌫ চাপলে রোমান অক্ষর ফিরে আসে। ◂ Space ▸ টেনে কার্সর সরান।", 12.5f, bn, subColor))
+        card.addView(text("টিপ: অক্ষরে চেপে ধরলে বড় হাতের অক্ষর ও চিহ্ন পাবেন (t → ট, ৎ)। শব্দের পরেই ⌫ চাপলে শব্দটি আবার খোলে, অন্য শব্দ বেছে নিন। ◂ Space ▸ টেনে কার্সর সরান।", 12.5f, bn, subColor))
         root.addView(card)
     }
 
@@ -241,7 +241,7 @@ class MainActivity : AppCompatActivity() {
         divider(card)
         card.addView(switch("ইমোজি পরামর্শ", "Offer emoji for some words (bangladesh → 🇧🇩)", cfg.optBoolean("emoji", true)) { Engine.setConfig(JSONObject().put("emoji", it)) })
         divider(card)
-        card.addView(switch("⌫ চাপলে রোমান অক্ষর ফেরে", "Backspace right after a word brings your letters back", cfg.optBoolean("backspace_undo", true)) { Engine.setConfig(JSONObject().put("backspace_undo", it)) })
+        card.addView(switch("⌫ চাপলে শব্দটি আবার খোলে", "Backspace right after a word reopens it with its suggestions", cfg.optBoolean("backspace_undo", true)) { Engine.setConfig(JSONObject().put("backspace_undo", it)) })
         divider(card)
         card.addView(switch("দুবার Space-এ দাঁড়ি (।)", "Double space types a dari", prefs.doubleSpaceDari) { prefs.doubleSpaceDari = it })
         root.addView(card)

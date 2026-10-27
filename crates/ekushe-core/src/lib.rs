@@ -137,6 +137,9 @@ pub struct Ekushe {
     intervening_key_since_shift: bool,
     /// Last committed Bangla word, used as context for ranking the next one
     prev_word: Option<String>,
+    /// The context before the last commit, so Backspace-undo can put it back: a reopened word is
+    /// ranked exactly as when it was first typed, not as if it followed itself
+    prev_word_before_commit: Option<String>,
     /// Executable of the focused application (lower-case), for per-app language memory
     current_app: Option<String>,
     /// Language last used in each application this session
@@ -217,6 +220,7 @@ impl Ekushe {
             last_shift_tap_ms: None,
             intervening_key_since_shift: false,
             prev_word: None,
+            prev_word_before_commit: None,
             current_app: None,
             app_languages: HashMap::new(),
             private_field: false,
@@ -398,6 +402,13 @@ impl Ekushe {
         // Undo conversion: Backspace right after a word was committed with a space replaces that word
         // and its space with the original Roman text (স্বাধীন␠ → swadhin)
         if let Some((roman, committed_bangla)) = self.last_commit_undo.take() {
+            // The word is taken back: the context is what it was before it, and it leaves the
+            // "recent words" list (it may well be replaced by another one)
+            self.prev_word = self.prev_word_before_commit.take();
+            let (stem, _) = split_trailing_punctuation(&roman);
+            if self.recent.back().is_some_and(|r| r.roman == stem) {
+                self.recent.pop_back();
+            }
             return SessionOutput {
                 language: self.language,
                 delete_before: committed_bangla.encode_utf16().count() + 1,
@@ -486,6 +497,7 @@ impl Ekushe {
         };
 
         // Context for the next word: only across a plain space between Bangla words
+        self.prev_word_before_commit = self.prev_word.clone();
         let is_bangla = chosen
             .chars()
             .any(|c| ('\u{0980}'..='\u{09FF}').contains(&c));
@@ -582,6 +594,38 @@ impl Ekushe {
         self.last_commit_undo.is_some()
     }
 
+    /// Backspace right after a word was committed with a space: take the word and its space back
+    /// and reopen its Roman letters as the word being typed, with the same suggestions as when it
+    /// was typed. Another Bangla word, or the English as typed (it is among the suggestions), can be
+    /// picked, and Backspace again deletes a letter, so nothing has to be typed again.
+    ///
+    /// The host first deletes `delete_before` UTF-16 units before the cursor (the word and its
+    /// space), then shows the output like any other word being typed. `None` when there is nothing
+    /// to undo (or a word is being typed already).
+    pub fn reopen_last_word(&mut self) -> Option<SessionOutput> {
+        if self.is_composing() || self.last_commit_undo.is_none() {
+            return None;
+        }
+        let undo = self.backspace();
+        let roman = undo.committed?;
+        if undo.delete_before == 0 || roman.is_empty() {
+            return None;
+        }
+        self.roman_buf = roman;
+        self.selected_idx = 0;
+        let mut out = self.build_phonetic_output(None);
+        out.delete_before = undo.delete_before;
+        Some(out)
+    }
+
+    /// Forget the Backspace-undo without touching anything else (the next word's context stays).
+    /// For hosts whose keys reach the application without passing through the engine (Enter,
+    /// arrows, Delete, a click): after those, the word is no longer right before the cursor.
+    pub fn forget_undo(&mut self) {
+        self.last_commit_undo = None;
+        self.prev_word_before_commit = None;
+    }
+
     /// True while a word is being typed (Roman or fixed-layout buffer not empty).
     pub fn is_composing(&self) -> bool {
         !self.roman_buf.is_empty() || !self.fixed_buf.is_empty()
@@ -607,6 +651,7 @@ impl Ekushe {
     pub fn reset_composition(&mut self) {
         self.prev_word = None;
         self.last_commit_undo = None;
+        self.prev_word_before_commit = None;
         self.roman_buf.clear();
         self.fixed_buf.clear();
         self.pending_prebase_kar = None;
@@ -1112,6 +1157,51 @@ mod tests {
         ek.select_candidate(0, None);
         assert!(ek.flip_last_committed_word().is_none());
         assert_eq!(ek.backspace().delete_before, 0);
+    }
+
+    #[test]
+    fn test_backspace_reopens_the_last_word() {
+        let mut ek = Ekushe::new(Config {
+            typing_mode: TypingMode::PhoneticFirst,
+            ..Config::default()
+        });
+        for c in "swadhin".chars() {
+            ek.push_char(c, false);
+        }
+        let committed = ek.push_char(' ', false).committed.unwrap();
+        let out = ek.reopen_last_word().expect("a word to reopen");
+        // The word and its space go, and the word is being typed again, with its suggestions
+        assert_eq!(out.delete_before, committed.encode_utf16().count());
+        assert_eq!(out.committed, None);
+        assert_eq!(out.roman_buffer, "swadhin");
+        assert_eq!(format!("{} ", out.preedit), committed);
+        assert!(ek.is_composing());
+        assert!(!ek.has_undo());
+        assert!(ek.reopen_last_word().is_none());
+        // Backspace again deletes a letter, as when typing
+        assert_eq!(ek.backspace().roman_buffer, "swadhi");
+
+        // Nothing to reopen after Enter, after forget_undo, or while a word is being typed
+        let mut ek = Ekushe::new(Config {
+            typing_mode: TypingMode::PhoneticFirst,
+            ..Config::default()
+        });
+        for c in "ami".chars() {
+            ek.push_char(c, false);
+        }
+        ek.select_candidate(0, None);
+        assert!(ek.reopen_last_word().is_none());
+        for c in "ami ".chars() {
+            ek.push_char(c, false);
+        }
+        ek.forget_undo();
+        assert!(!ek.has_undo());
+        assert!(ek.reopen_last_word().is_none());
+        for c in "tumi ab".chars() {
+            ek.push_char(c, false);
+        }
+        assert!(ek.is_composing());
+        assert!(ek.reopen_last_word().is_none());
     }
 
     #[test]

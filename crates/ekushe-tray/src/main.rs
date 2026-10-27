@@ -1152,6 +1152,9 @@ unsafe extern "system" fn keyboard_hook_proc(code: i32, wparam: WPARAM, lparam: 
             drop(st);
             request_overlay_refresh();
             st = STATE.lock();
+        } else if stale || st.comp_focus != focus as isize {
+            // The last word is no longer right before the caret: Backspace must not take it back
+            st.ekushe.forget_undo();
         }
         // Per-app language: switching to another application restores the language last used there
         // (or its configured default, e.g. terminals → English)
@@ -1171,6 +1174,22 @@ unsafe extern "system" fn keyboard_hook_proc(code: i32, wparam: WPARAM, lparam: 
             }
         }
         st.comp_focus = focus as isize;
+        // Enter, arrows, Delete, Tab, Home/End, shortcuts and English-mode letters reach the
+        // application without passing through the engine: after them, the last word is no longer
+        // right before the caret, so Backspace must not take it back. (Letters and Space in Bangla
+        // go to the engine, which handles this itself; modifier keys alone change nothing, and
+        // Ctrl+Backspace still flips the last word.)
+        let modifier_only = matches!(vk, 0x10 | 0x11 | 0x12 | 0x14 | 0x5B | 0x5C | 0xA0..=0xA5);
+        if vk != VK_BACK && !modifier_only && st.injected_utf16_len == 0 && st.ekushe.has_undo() {
+            let to_engine = st.ekushe.language() == InputLanguage::Bangla
+                && !ctrl_down
+                && !alt_down
+                && !win_down
+                && vk_to_char(vk, kb.scanCode, shift_down, false).is_some_and(|c| !c.is_control());
+            if !to_engine {
+                st.ekushe.forget_undo();
+            }
+        }
 
         let switch_triggered = match &st.ekushe.config().switch_hotkey {
             SwitchHotkey::CtrlSpace => ctrl_down && !alt_down && vk == VK_SPACE,
@@ -1291,15 +1310,19 @@ unsafe extern "system" fn keyboard_hook_proc(code: i32, wparam: WPARAM, lparam: 
         // Handle Backspace while composing
         if vk == VK_BACK {
             let prev_len = st.injected_utf16_len;
-            // Right after a word was committed with a space: bring back the Roman text that was typed
+            // Right after a word was committed with a space: reopen it as the word being typed, with
+            // its suggestions (another Bangla word, or the English as typed), so a wrong word can be
+            // fixed without typing it again. Backspace again deletes a letter.
             if prev_len == 0 && st.ekushe.config().backspace_undo {
-                let out = st.ekushe.backspace();
-                if out.delete_before > 0 {
-                    if let Some(roman) = out.committed {
-                        drop(st);
-                        replace_active_text(out.delete_before, &roman);
-                        return 1;
-                    }
+                if let Some(out) = st.ekushe.reopen_last_word() {
+                    let preedit = out.preedit.clone();
+                    let delete = out.delete_before;
+                    st.injected_utf16_len = preedit.encode_utf16().count();
+                    st.last_output = out;
+                    drop(st);
+                    replace_active_text(delete, &preedit);
+                    request_overlay_refresh();
+                    return 1;
                 }
             }
             if prev_len > 0 {

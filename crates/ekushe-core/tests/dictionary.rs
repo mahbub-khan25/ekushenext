@@ -139,3 +139,41 @@ fn bijoy_round_trip_every_dictionary_word() {
         &bad[..bad.len().min(10)]
     );
 }
+
+/// Backspace right after a word reopens it with the very suggestions it had (same context, the
+/// English spelling among them), and it leaves the recent-words list.
+#[test]
+fn backspace_reopens_a_word_with_the_same_suggestions() {
+    let Some(d) = dict() else { return };
+    let mut ek = engine(d);
+    type_words(&mut ek, "kemon");
+    let mut first = Default::default();
+    for ch in "ase".chars() {
+        first = ek.push_char(ch, false);
+    }
+    let first: ekushe_core::SessionOutput = first;
+    let committed = ek.push_char(' ', false).committed.unwrap();
+    assert!(ek.recent_words().iter().any(|r| r.roman == "ase"));
+
+    let again = ek.reopen_last_word().expect("reopened");
+    assert_eq!(again.delete_before, committed.encode_utf16().count());
+    let texts = |o: &ekushe_core::SessionOutput| -> Vec<String> {
+        o.candidates.iter().map(|c| c.text.clone()).collect()
+    };
+    assert_eq!(
+        texts(&again),
+        texts(&first),
+        "same context, same suggestions"
+    );
+    assert!(!ek.recent_words().iter().any(|r| r.roman == "ase"));
+
+    // The English as typed is one of the choices
+    let mut ek = engine(d);
+    type_words(&mut ek, "facebook");
+    let again = ek.reopen_last_word().expect("reopened");
+    assert!(
+        texts(&again).iter().any(|t| t == "facebook"),
+        "{:?}",
+        texts(&again)
+    );
+}

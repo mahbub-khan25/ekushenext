@@ -107,6 +107,38 @@ assert not key(IBus.KEY_Return), "Enter must reach the application"
 assert commits[-1] == "বাংলা", f"commits: {commits}"
 print("Enter committed", repr(commits[-1]))
 
+# Backspace right after a word reopens it as the word being typed (its suggestions again), instead
+# of giving back plain English letters. The engine checks the text before the cursor first, so act
+# like an application that reports it (surrounding text) and deletes what the engine asks.
+ic.set_capabilities(caps | IBus.Capabilite.SURROUNDING_TEXT)
+deleted = []
+ic.connect("delete-surrounding-text", lambda _ic, offset, n: deleted.append((offset, n)))
+for ch in "kemon":
+    key(ord(ch))
+assert key(IBus.KEY_space)
+assert commits[-1] == "কেমন ", f"commits: {commits}"
+ic.set_surrounding_text(IBus.Text.new_from_string("কেমন "), 5, 5)
+pump(0.3)
+n_commits = len(commits)
+assert key(IBus.KEY_BackSpace), "Backspace right after a word was not handled"
+assert deleted and deleted[-1] == (-5, 5), f"the word and its space were not taken back: {deleted}"
+assert preedits[-1] == "কেমন", f"the word was not reopened: pre-edit {preedits[-3:]}"
+assert len(commits) == n_commits, f"Backspace must not write English letters: {commits[n_commits:]}"
+print("Backspace reopened", repr(preedits[-1]))
+assert key(IBus.KEY_BackSpace)
+assert preedits[-1] and preedits[-1] != "কেমন", f"a second Backspace must delete a letter: {preedits[-3:]}"
+for ch in "n":
+    key(ord(ch))
+assert key(IBus.KEY_space)
+assert commits[-1] == "কেমন ", f"the reopened word did not commit again: {commits[-2:]}"
+print("Backspace again deleted a letter; the word committed again as", repr(commits[-1]))
+# The cursor moved (the text before it is something else): Backspace is an ordinary one
+ic.set_surrounding_text(IBus.Text.new_from_string("কেমন x"), 6, 6)
+pump(0.3)
+assert not key(IBus.KEY_BackSpace), "Backspace after the cursor moved must go to the application"
+ic.set_capabilities(caps)
+pump(0.2)
+
 # A password field: keys go straight to the application, nothing is pre-edited or learned
 ic.set_content_type(IBus.InputPurpose.PASSWORD, 0)
 pump(0.3)

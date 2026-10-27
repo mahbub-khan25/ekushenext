@@ -341,6 +341,29 @@ pub extern "C" fn ek_is_composing() -> bool {
     with_shared(false, |sh| sh.ekushe.is_composing())
 }
 
+/// Backspace right after a word was committed with a space (and Backspace-undo is on): reopen the
+/// word as the word being typed, with its suggestions. Returns the output as JSON (its
+/// `delete_before` is the word and its space, in UTF-16 units, to delete before showing it) and
+/// makes it the current output for the `ek_out_*` functions; null when there is nothing to reopen.
+#[no_mangle]
+pub extern "C" fn ek_reopen_last_word() -> *mut c_char {
+    with_shared(ptr::null_mut(), |sh| {
+        if !sh.ekushe.config().backspace_undo {
+            return ptr::null_mut();
+        }
+        match sh.ekushe.reopen_last_word() {
+            Some(out) => record(sh, out),
+            None => ptr::null_mut(),
+        }
+    })
+}
+
+/// Forget the Backspace-undo (the caret moved, or a key went to the application directly).
+#[no_mangle]
+pub extern "C" fn ek_forget_undo() {
+    with_shared((), |sh| sh.ekushe.forget_undo());
+}
+
 /// True right after a word was committed with a space and Backspace-undo is turned on.
 #[no_mangle]
 pub extern "C" fn ek_can_undo() -> bool {

@@ -1,6 +1,10 @@
 **Beta.** Ekushe Next is a Bangla phonetic keyboard for **Windows 10/11 (64-bit)**, **macOS 11 or later** (Apple silicon and Intel), **Linux** (64-bit, IBus) and **Android 7 or later**. It comes with its own dictionary, which puts the Bangla Academy standard spelling first.
 
 ### What's new in this beta
+- **⌫ right after a wrong word reopens it.** On Windows, Mac and Linux, Backspace right after a word used to turn it into English letters, which then had to be typed again. Now the word opens again with its suggestions, as when you typed it: pick the right word (the English spelling is one of the choices), or press ⌫ again to delete a letter. Android already did this; on every system the word now gets exactly the suggestions it had the first time.
+- **Windows: ⌫ never takes back a word that isn't there.** After Enter, an arrow key, Delete or a click, Backspace is an ordinary Backspace.
+
+Also in this beta (from beta.25):
 - **Windows: Bangla never "just stops".** The candidate popup is no longer drawn inside the keyboard hook, which Windows could silently remove on a slow moment (antivirus scan, first font load); the hooks are also re-armed every 30 seconds, so a dropped one recovers on its own.
 - **Windows: Setup writes nothing until you click Install**, Installed Apps shows the real beta version, and uninstalling now also removes the Bangladeshi fonts Ekushe installed for your account (never a font you already had).
 - **Linux: "Remove keyboard".** Studio → Settings has **কিবোর্ড বাদ দিন** (or `ekushe-studio --remove-keyboard`): it takes Ekushe out of your desktop's keyboard list and puts back the input-method setting **কিবোর্ড যোগ করুন** changed. Run it before uninstalling the package. Adding no longer clears GNOME's keyboard history.

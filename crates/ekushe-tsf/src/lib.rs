@@ -384,6 +384,9 @@ struct TextService {
     state: RefCell<State>,
     /// The open composition; shared with edit sessions, which run while `state` may be borrowed
     composition: Rc<RefCell<Option<ITfComposition>>>,
+    /// Set by an edit session when Backspace-undo found something else before the caret (the caret
+    /// had moved): the word the engine reopened is not on screen, so it is dropped at the next key
+    reopen_failed: Rc<Cell<bool>>,
 }
 
 fn learned_words_path() -> PathBuf {
@@ -415,6 +418,7 @@ impl TextService {
                 saved_learned_version,
             }),
             composition: Rc::new(RefCell::new(None)),
+            reopen_failed: Rc::new(Cell::new(false)),
         }
     }
 }
@@ -520,18 +524,32 @@ enum Edit {
     Compose(String),
     /// Write `text` and finish the word
     Commit(String),
-    /// Replace the `expect`ed text just before the caret with `text` (Backspace-undo, Ctrl+Backspace).
+    /// Replace the `expect`ed text just before the caret with `text` (Ctrl+Backspace).
     /// If the text there is different (the caret moved), behave like a normal Backspace.
     ReplaceBefore { expect: String, text: String },
+    /// Backspace-undo: remove the `expect`ed word and space just before the caret and show `text` as
+    /// the word being typed again. If the text there is different, a normal Backspace.
+    Reopen { expect: String, text: String },
 }
 
 impl TextService_Impl {
+    /// An edit session found the caret had moved before reopening a word: the engine still holds
+    /// that word, which is not on screen. Forget it.
+    fn drop_failed_reopen(&self) {
+        if self.reopen_failed.take() {
+            let mut st = self.state.borrow_mut();
+            st.ekushe.reset_composition();
+            st.output = SessionOutput::default();
+        }
+    }
+
     fn request_edit(&self, context: &ITfContext, edit: Edit) -> Result<()> {
         let client_id = self.state.borrow().client_id;
         let session: ITfEditSession = EditSession {
             context: context.clone(),
             sink: self.to_interface::<ITfCompositionSink>(),
             composition: self.composition.clone(),
+            reopen_failed: self.reopen_failed.clone(),
             edit,
         }
         .into();
@@ -668,14 +686,16 @@ impl TextService_Impl {
                         st.output = out;
                         Edit::Compose(text)
                     } else {
-                        let out = st.ekushe.backspace();
+                        // Right after a word: reopen it as the word being typed, with its
+                        // suggestions, so a wrong word is fixed without typing it again
                         let expect = std::mem::take(&mut st.last_committed);
-                        match out.committed {
-                            Some(roman) if out.delete_before > 0 => Edit::ReplaceBefore {
-                                expect,
-                                text: roman,
-                            },
-                            _ => return Ok(false),
+                        match st.ekushe.reopen_last_word() {
+                            Some(out) => {
+                                let text = out.preedit.clone();
+                                st.output = out;
+                                Edit::Reopen { expect, text }
+                            }
+                            None => return Ok(false),
                         }
                     }
                 };
@@ -834,6 +854,7 @@ impl ITfKeyEventSink_Impl for TextService_Impl {
                 return Ok(FALSE);
             }
         }
+        self.drop_failed_reopen();
         let action = {
             let mut st = self.state.borrow_mut();
             st.shift_clean_down = false;
@@ -869,6 +890,7 @@ impl ITfKeyEventSink_Impl for TextService_Impl {
         if self.starting_word_in_private_field(ctx) {
             return Ok(FALSE);
         }
+        self.drop_failed_reopen();
         let action = {
             let mut st = self.state.borrow_mut();
             st.shift_clean_down = false;
@@ -933,6 +955,7 @@ struct EditSession {
     context: ITfContext,
     sink: ITfCompositionSink,
     composition: Rc<RefCell<Option<ITfComposition>>>,
+    reopen_failed: Rc<Cell<bool>>,
     edit: Edit,
 }
 
@@ -1020,39 +1043,67 @@ impl EditSession {
             }
             Edit::ReplaceBefore { expect, text } => {
                 self.end_composition(ec)?;
-                let range = self.selection(ec)?;
-                if !range.IsEmpty(ec)?.as_bool() {
-                    // A selection: Backspace deletes it, as usual
-                    range.SetText(ec, 0, &[])?;
-                    return Ok(());
-                }
-                range.Collapse(ec, TF_ANCHOR_START)?;
-                let want = expect.encode_utf16().count() as i32;
-                let mut moved = 0i32;
-                if want > 0 {
-                    range.ShiftStart(ec, -want, &mut moved, std::ptr::null())?;
-                }
-                let mut buf = vec![0u16; want.max(0) as usize + 1];
-                let mut got = 0u32;
-                if want > 0 && -moved == want {
-                    range.GetText(ec, 0, &mut buf, &mut got)?;
-                }
-                if want > 0 && String::from_utf16_lossy(&buf[..got as usize]) == *expect {
-                    range.SetText(ec, 0, &wide(text))?;
-                    self.caret_to_end(ec, &range)
-                } else {
-                    // The caret moved since the commit: an ordinary Backspace
-                    let one = self.selection(ec)?;
-                    one.Collapse(ec, TF_ANCHOR_START)?;
-                    let mut m = 0i32;
-                    one.ShiftStart(ec, -1, &mut m, std::ptr::null())?;
-                    if m == -1 {
-                        one.SetText(ec, 0, &[])?;
+                match self.expected_before_caret(ec, expect)? {
+                    Some(range) => {
+                        range.SetText(ec, 0, &wide(text))?;
+                        self.caret_to_end(ec, &range)
                     }
-                    Ok(())
+                    None => Ok(()),
+                }
+            }
+            Edit::Reopen { expect, text } => {
+                self.end_composition(ec)?;
+                match self.expected_before_caret(ec, expect)? {
+                    Some(range) => {
+                        // The word and its space go; the word comes back as the one being typed
+                        range.SetText(ec, 0, &[])?;
+                        self.caret_to_end(ec, &range)?;
+                        let comp = self.composition_range(ec)?;
+                        comp.SetText(ec, 0, &wide(text))?;
+                        self.caret_to_end(ec, &comp)
+                    }
+                    None => {
+                        self.reopen_failed.set(true);
+                        Ok(())
+                    }
                 }
             }
         }
+    }
+
+    /// Backspace-undo and Ctrl+Backspace: the range of `expect` just before the caret, when that is
+    /// what is there. Otherwise this does what an ordinary Backspace does (deletes the selection, or
+    /// one character) and returns `None`.
+    unsafe fn expected_before_caret(&self, ec: u32, expect: &str) -> Result<Option<ITfRange>> {
+        let range = self.selection(ec)?;
+        if !range.IsEmpty(ec)?.as_bool() {
+            // A selection: Backspace deletes it, as usual
+            range.SetText(ec, 0, &[])?;
+            return Ok(None);
+        }
+        range.Collapse(ec, TF_ANCHOR_START)?;
+        let want = expect.encode_utf16().count() as i32;
+        let mut moved = 0i32;
+        if want > 0 {
+            range.ShiftStart(ec, -want, &mut moved, std::ptr::null())?;
+        }
+        let mut buf = vec![0u16; want.max(0) as usize + 1];
+        let mut got = 0u32;
+        if want > 0 && -moved == want {
+            range.GetText(ec, 0, &mut buf, &mut got)?;
+        }
+        if want > 0 && String::from_utf16_lossy(&buf[..got as usize]) == expect {
+            return Ok(Some(range));
+        }
+        // The caret moved since the commit: an ordinary Backspace
+        let one = self.selection(ec)?;
+        one.Collapse(ec, TF_ANCHOR_START)?;
+        let mut m = 0i32;
+        one.ShiftStart(ec, -1, &mut m, std::ptr::null())?;
+        if m == -1 {
+            one.SetText(ec, 0, &[])?;
+        }
+        Ok(None)
     }
 }
 

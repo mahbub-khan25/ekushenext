@@ -168,6 +168,9 @@ static gboolean replace_before_cursor(EkusheEngine *ek, const gchar *expect, con
     return TRUE;
 }
 
+/* Backspace right after a word: if the text before the cursor is still that word and its space,
+   take them back and reopen the word as the word being typed, with its suggestions (another Bangla
+   word, or the English as typed). Backspace again then deletes a letter. */
 static gboolean undo_last(EkusheEngine *ek)
 {
     gchar *expect = g_strdup(ek->last_committed);
@@ -176,12 +179,17 @@ static gboolean undo_last(EkusheEngine *ek)
         ek_reset();
         return FALSE;
     }
-    ekushe_string_free(ek_backspace());
-    gchar *roman = take(ek_out_committed());
-    gboolean ok = roman && replace_before_cursor(ek, expect, roman);
+    gchar *json = take(ek_reopen_last_word());
+    gboolean ok = FALSE;
+    if (json) {
+        glong n = g_utf8_strlen(expect, -1);
+        ibus_engine_delete_surrounding_text((IBusEngine *)ek, -n, n);
+        render(ek);
+        ok = TRUE;
+    }
     g_free(ek->last_committed);
     ek->last_committed = NULL;
-    g_free(roman);
+    g_free(json);
     g_free(expect);
     return ok;
 }

@@ -10,6 +10,12 @@ char *ek_select(uint32_t index, uint32_t trailing);
 void ek_reset(void);
 void ek_set_private(bool is_private);
 bool ek_is_composing(void);
+/* Backspace right after a word: reopen it as the word being typed (JSON output, its delete_before
+   = the word and its space in UTF-16 units). NULL when there is nothing to reopen. Free with
+   ekushe_string_free. */
+char *ek_reopen_last_word(void);
+/* Forget the Backspace-undo (the caret moved, or a key went to the application directly). */
+void ek_forget_undo(void);
 bool ek_can_undo(void);
 uint8_t ek_language(void);
 uint8_t ek_toggle_language(void);
