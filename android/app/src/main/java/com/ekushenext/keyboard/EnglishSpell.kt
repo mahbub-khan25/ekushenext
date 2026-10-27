@@ -24,7 +24,10 @@ class EnglishSpell(context: Context, private val onAnswer: (word: String) -> Uni
     private val answers = object : LinkedHashMap<String, Answer>(64, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Answer>?) = size > 200
     }
-    private val pending = ArrayDeque<String>()
+    /** Requests waiting for an answer, by the sequence number sent with each one: answers come back
+     *  with that number, so a late or dropped answer can never be matched to the wrong word. */
+    private val pending = HashMap<Int, String>()
+    private var nextSequence = 1
 
     fun available() = session != null
 
@@ -32,26 +35,29 @@ class EnglishSpell(context: Context, private val onAnswer: (word: String) -> Uni
 
     fun ask(word: String) {
         val s = session ?: return
-        if (answers.containsKey(word) || word in pending) return
-        pending.addLast(word)
-        while (pending.size > 8) pending.removeFirst()
-        runCatching { s.getSentenceSuggestions(arrayOf(TextInfo(word)), 4) }.onFailure { pending.remove(word) }
+        if (answers.containsKey(word) || word in pending.values) return
+        if (pending.size > 32) pending.clear()
+        val seq = nextSequence++
+        pending[seq] = word
+        runCatching { s.getSentenceSuggestions(arrayOf(TextInfo(word, 0, seq)), 4) }.onFailure { pending.remove(seq) }
     }
 
     override fun onGetSentenceSuggestions(results: Array<out SentenceSuggestionsInfo>?) {
-        val word = pending.removeFirstOrNull() ?: return
-        val r = results?.firstOrNull()
+        val r = results?.firstOrNull() ?: return
         var typo = false
+        var word: String? = null
         val list = ArrayList<String>()
-        if (r != null) for (i in 0 until r.suggestionsCount) {
+        for (i in 0 until r.suggestionsCount) {
             val info = r.getSuggestionsInfoAt(i) ?: continue
+            if (word == null) word = pending.remove(info.sequence)
             val attrs = info.suggestionsAttributes
             if (attrs and SuggestionsInfo.RESULT_ATTR_IN_THE_DICTIONARY == 0 &&
                 attrs and SuggestionsInfo.RESULT_ATTR_LOOKS_LIKE_TYPO != 0) typo = true
             for (j in 0 until info.suggestionsCount) info.getSuggestionAt(j)?.let { list += it }
         }
-        answers[word] = Answer(list.distinct(), typo)
-        onAnswer(word)
+        val w = word ?: return
+        answers[w] = Answer(list.distinct(), typo)
+        onAnswer(w)
     }
 
     override fun onGetSuggestions(results: Array<out SuggestionsInfo>?) {}

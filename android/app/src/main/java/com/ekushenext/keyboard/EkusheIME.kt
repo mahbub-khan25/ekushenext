@@ -22,6 +22,9 @@ class EkusheIME : InputMethodService(), KeyboardListener {
     private lateinit var prefs: Prefs
     private var view: KeyboardView? = null
     private var last = Output()
+    /** The Bangla word (with its space) last committed, so ⌫-undo only runs when it is still right
+     *  before the cursor: after a tap elsewhere in the text, ⌫ must delete normally. */
+    private var lastCommitted: String? = null
     /** Bangla typing is on (the user's choice; fields that need plain text override it) */
     private var bangla = true
     /** The field needs plain characters: a password, a number, an address */
@@ -81,8 +84,12 @@ class EkusheIME : InputMethodService(), KeyboardListener {
         privateField = password || noLearning
         plainField = password || address || cls == InputType.TYPE_CLASS_NUMBER || cls == InputType.TYPE_CLASS_PHONE || cls == InputType.TYPE_CLASS_DATETIME
         Engine.setPrivate(privateField)
+        // An app's restartInput arrives without onFinishInput: a half-typed word still has its
+        // composing span in the editor, which the next setComposingText would replace. Close it.
+        if (restarting && (last.composing || en.isNotEmpty())) currentInputConnection?.finishComposingText()
         Engine.reset()
         last = Output()
+        lastCommitted = null
         en.clear(); enUndo = null; enKeep = null
         v.mode = when (cls) {
             InputType.TYPE_CLASS_NUMBER, InputType.TYPE_CLASS_DATETIME -> Mode.NUMBERS
@@ -143,6 +150,7 @@ class EkusheIME : InputMethodService(), KeyboardListener {
         ic.endBatchEdit()
         editing = false
         last = out
+        if (committed != null && !out.composing) lastCommitted = committed
         view?.showSuggestions(
             if (out.composing) out.candidates else emptyList(),
             if (out.composing) out.tips else emptyList(),
@@ -180,6 +188,7 @@ class EkusheIME : InputMethodService(), KeyboardListener {
             last = Output()
             view?.showSuggestions(emptyList(), emptyList(), emptyList())
         }
+        if (newSelStart != newSelEnd) lastCommitted = null
         if (!last.composing && en.isEmpty()) updateAutoShift()
     }
 
@@ -281,14 +290,24 @@ class EkusheIME : InputMethodService(), KeyboardListener {
         // Right after a word: take it back and reopen its Roman letters with their suggestions, so
         // another word can be picked
         if (typingBangla() && Engine.hasUndo()) {
-            val out = Engine.backspace()
-            if (out.deleteBefore > 0) {
-                editing = true
-                ic.deleteSurroundingText(out.deleteBefore, 0)
-                editing = false
-                last = Output()
-                out.committed?.forEach { apply(Engine.key(it)) }
-                return
+            // Only when the committed word is still right before the cursor (not after a tap
+            // elsewhere): otherwise forget the undo and delete normally
+            val word = lastCommitted
+            val before = word?.let { ic.getTextBeforeCursor(it.length, 0)?.toString() }
+            if (word != null && before == word) {
+                val out = Engine.backspace()
+                if (out.deleteBefore > 0) {
+                    editing = true
+                    ic.deleteSurroundingText(out.deleteBefore, 0)
+                    editing = false
+                    last = Output()
+                    lastCommitted = null
+                    out.committed?.forEach { apply(Engine.key(it)) }
+                    return
+                }
+            } else {
+                Engine.reset()
+                lastCommitted = null
             }
         }
         if (!typingBangla() && en.isNotEmpty()) {
@@ -406,7 +425,8 @@ class EkusheIME : InputMethodService(), KeyboardListener {
         if (!English.known(typed)) list += English.corrections(typed, 2)
         enShown = list.filter { it.isNotEmpty() }.distinct().take(6)
         view?.showSuggestions(enShown.map { Candidate(it, "") }, emptyList(), emptyList())
-        if (ask && typed.length >= 3 && !English.known(typed)) spell?.ask(typed)
+        // Never in a private field: the phone's spell checker is another app's service
+        if (ask && !privateField && typed.length >= 3 && !English.known(typed)) spell?.ask(typed)
     }
 
     /** The word being typed follows a mark with no space (a.b, x@y, #z): an address or a code */
