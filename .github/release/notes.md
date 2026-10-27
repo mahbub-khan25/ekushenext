@@ -1,6 +1,13 @@
 **Beta.** Ekushe Next is a Bangla phonetic keyboard for **Windows 10/11 (64-bit)**, **macOS 11 or later** (Apple silicon and Intel), **Linux** (64-bit, IBus) and **Android 7 or later**. It comes with its own dictionary, which puts the Bangla Academy standard spelling first.
 
 ### What's new in this beta
+- **Windows: Bangla never "just stops".** The candidate popup is no longer drawn inside the keyboard hook, which Windows could silently remove on a slow moment (antivirus scan, first font load); the hooks are also re-armed every 30 seconds, so a dropped one recovers on its own.
+- **Windows: Setup writes nothing until you click Install**, Installed Apps shows the real beta version, and uninstalling now also removes the Bangladeshi fonts Ekushe installed for your account (never a font you already had).
+- **Linux: "Remove keyboard".** Studio → Settings has **কিবোর্ড বাদ দিন** (or `ekushe-studio --remove-keyboard`): it takes Ekushe out of your desktop's keyboard list and puts back the input-method setting **কিবোর্ড যোগ করুন** changed. Run it before uninstalling the package. Adding no longer clears GNOME's keyboard history.
+- **Android: ⌫ after moving the cursor deletes normally.** It used to take back the last word at the new cursor position. The **⌫ brings the letters back** setting now actually works, a word in progress survives apps that restart input (Chrome), and the phone's spell checker is never asked about words typed in private (incognito) fields.
+- Android: the engine library is 16 KB page-aligned, as Google Play requires for Android 15.
+
+Also in this beta (from beta.24):
 - **Better spelling for everyday commands and forms.** Words like **koro, bolo, lekho, khao, thako, dhoro, shekho, poro** now give করো, বলো, লেখো, খাও, থাকো, ধরো, শেখো, পড়ো, following the vowel you type. **aro** gives আরও, **ashchi** আসছি, **jachchi** যাচ্ছি, **hok** হোক, **jetai** যেটাই, **jetao** যেটাও and **bhashi** ভাষী.
 
 Also in this beta (from beta.23):
