@@ -213,7 +213,21 @@ const WM_EKUSHE_OPEN_STUDIO: u32 = WM_APP + 3;
 const WM_EKUSHE_CONVERT_SELECTION: u32 = WM_APP + 4;
 /// Show a badge from another thread (`wparam`: which one, see `selection_badge`)
 const WM_EKUSHE_SELECTION_DONE: u32 = WM_APP + 5;
+/// The keyboard hook asks the tray thread to redraw the candidate popup (`refresh_candidate_overlay`)
+/// once the hook has returned. Drawing never happens inside the hook: Windows removes a low-level
+/// hook that takes longer than `LowLevelHooksTimeout` (about 300 ms), silently, and typing in Bangla
+/// would just stop.
+const WM_EKUSHE_REFRESH_OVERLAY: u32 = WM_APP + 6;
+/// Show the badge in `STATE.badge_banner` (posted by the hook for the same reason)
+const WM_EKUSHE_SHOW_BADGE: u32 = WM_APP + 7;
+/// Update the tray icon for the current language (posted by the hook; `Shell_NotifyIconW` talks to
+/// Explorer and can block)
+const WM_EKUSHE_UPDATE_TRAY_ICON: u32 = WM_APP + 8;
 const TIMER_SAVE_LEARNED: usize = 102;
+/// Re-install the low-level hooks every 30 s: if Windows ever dropped one (hook timeout, see
+/// `WM_EKUSHE_REFRESH_OVERLAY`), typing recovers within half a minute instead of never.
+const TIMER_REHOOK: usize = 103;
+const REHOOK_INTERVAL_MS: u32 = 30_000;
 const ES_PASSWORD_STYLE: i32 = 0x0020;
 
 unsafe fn register_embedded_bangla_fonts() {
@@ -418,12 +432,12 @@ fn main() {
             STATE.lock().ekushe.config().check_for_updates
         });
 
-        // Install global low-level keyboard hook
-        KEYBOARD_HOOK = SetWindowsHookExW(WH_KEYBOARD_LL, Some(keyboard_hook_proc), hinstance, 0);
+        // Install the global low-level keyboard hook, and the mouse hook (mouse clicks can move the
+        // caret; the mouse hook makes sure a half-typed word is then forgotten)
+        install_hooks();
         // Save learned words every 15 s when something new was learned (and again on exit)
         SetTimer(tray_hwnd, TIMER_SAVE_LEARNED, 15_000, None);
-        // Mouse clicks can move the caret; the mouse hook makes sure a half-typed word is then forgotten
-        MOUSE_HOOK = SetWindowsHookExW(WH_MOUSE_LL, Some(mouse_hook_proc), hinstance, 0);
+        SetTimer(tray_hwnd, TIMER_REHOOK, REHOOK_INTERVAL_MS, None);
         // Watches for password boxes in browsers and Store apps
         secure_field::start();
 
@@ -439,14 +453,55 @@ fn main() {
             DispatchMessageW(&msg);
         }
 
-        if !KEYBOARD_HOOK.is_null() {
-            UnhookWindowsHookEx(KEYBOARD_HOOK);
-        }
-        if !MOUSE_HOOK.is_null() {
-            UnhookWindowsHookEx(MOUSE_HOOK);
-        }
+        remove_hooks();
         save_learned_words_if_changed();
         remove_tray_icon(tray_hwnd);
+    }
+}
+
+/// Install (or re-install) the low-level keyboard and mouse hooks. Must run on the tray thread, which
+/// owns them. Re-installing a live hook is harmless: the old one is removed first.
+unsafe fn install_hooks() {
+    remove_hooks();
+    let hinstance = GetModuleHandleW(ptr::null());
+    KEYBOARD_HOOK = SetWindowsHookExW(WH_KEYBOARD_LL, Some(keyboard_hook_proc), hinstance, 0);
+    MOUSE_HOOK = SetWindowsHookExW(WH_MOUSE_LL, Some(mouse_hook_proc), hinstance, 0);
+}
+
+unsafe fn remove_hooks() {
+    if !KEYBOARD_HOOK.is_null() {
+        UnhookWindowsHookEx(KEYBOARD_HOOK);
+        KEYBOARD_HOOK = ptr::null_mut();
+    }
+    if !MOUSE_HOOK.is_null() {
+        UnhookWindowsHookEx(MOUSE_HOOK);
+        MOUSE_HOOK = ptr::null_mut();
+    }
+}
+
+/// From the keyboard hook: have the tray thread redraw (or hide) the candidate popup after the hook
+/// returns. See `WM_EKUSHE_REFRESH_OVERLAY`.
+fn request_overlay_refresh() {
+    let tray = TRAY_HWND.load(Ordering::SeqCst);
+    if tray != 0 {
+        unsafe { PostMessageW(tray as HWND, WM_EKUSHE_REFRESH_OVERLAY, 0, 0) };
+    }
+}
+
+/// From the keyboard hook: show `banner` once the hook has returned.
+fn request_badge(banner: &str) {
+    STATE.lock().badge_banner = Some(banner.to_string());
+    let tray = TRAY_HWND.load(Ordering::SeqCst);
+    if tray != 0 {
+        unsafe { PostMessageW(tray as HWND, WM_EKUSHE_SHOW_BADGE, 0, 0) };
+    }
+}
+
+/// From the keyboard hook: update the tray icon for the current language once the hook has returned.
+fn request_tray_icon_update() {
+    let tray = TRAY_HWND.load(Ordering::SeqCst);
+    if tray != 0 {
+        unsafe { PostMessageW(tray as HWND, WM_EKUSHE_UPDATE_TRAY_ICON, 0, 0) };
     }
 }
 
@@ -1070,14 +1125,13 @@ unsafe extern "system" fn keyboard_hook_proc(code: i32, wparam: WPARAM, lparam: 
                 if let Some(new_lang) = st.ekushe.on_shift_tap(now_ms) {
                     st.injected_utf16_len = 0;
                     st.last_output = SessionOutput::default();
-                    let tray_hwnd = st.tray_hwnd as HWND;
                     drop(st);
-                    add_or_update_tray_icon(tray_hwnd, false);
+                    request_tray_icon_update();
                     let msg = match new_lang {
                         InputLanguage::Bangla => "বাং · বাংলায় লিখছেন",
                         InputLanguage::English => "EN · English typing",
                     };
-                    show_mode_badge(msg);
+                    request_badge(msg);
                     return CallNextHookEx(ptr::null_mut(), code, wparam, lparam);
                 }
             }
@@ -1096,7 +1150,7 @@ unsafe extern "system" fn keyboard_hook_proc(code: i32, wparam: WPARAM, lparam: 
         if st.injected_utf16_len > 0 && (stale || st.comp_focus != focus as isize) {
             forget_composition(&mut st);
             drop(st);
-            refresh_candidate_overlay();
+            request_overlay_refresh();
             st = STATE.lock();
         }
         // Per-app language: switching to another application restores the language last used there
@@ -1109,10 +1163,9 @@ unsafe extern "system" fn keyboard_hook_proc(code: i32, wparam: WPARAM, lparam: 
                 let after = st.ekushe.on_app_focus(&exe);
                 if after != before {
                     forget_composition(&mut st);
-                    let tray_hwnd = st.tray_hwnd as HWND;
                     drop(st);
-                    add_or_update_tray_icon(tray_hwnd, false);
-                    refresh_candidate_overlay();
+                    request_tray_icon_update();
+                    request_overlay_refresh();
                     st = STATE.lock();
                 }
             }
@@ -1130,14 +1183,13 @@ unsafe extern "system" fn keyboard_hook_proc(code: i32, wparam: WPARAM, lparam: 
             let new_lang = st.ekushe.toggle_language();
             st.injected_utf16_len = 0;
             st.last_output = SessionOutput::default();
-            let tray_hwnd = st.tray_hwnd as HWND;
             drop(st);
-            add_or_update_tray_icon(tray_hwnd, false);
+            request_tray_icon_update();
             let msg = match new_lang {
                 InputLanguage::Bangla => "বাং · বাংলায় লিখছেন",
                 InputLanguage::English => "EN · English typing",
             };
-            show_mode_badge(msg);
+            request_badge(msg);
             return 1;
         }
 
@@ -1150,7 +1202,7 @@ unsafe extern "system" fn keyboard_hook_proc(code: i32, wparam: WPARAM, lparam: 
             if st.injected_utf16_len > 0 || !st.last_output.preedit.is_empty() {
                 forget_composition(&mut st);
                 drop(st);
-                refresh_candidate_overlay();
+                request_overlay_refresh();
             }
             return CallNextHookEx(ptr::null_mut(), code, wparam, lparam);
         }
@@ -1165,7 +1217,7 @@ unsafe extern "system" fn keyboard_hook_proc(code: i32, wparam: WPARAM, lparam: 
             }
             let tray = st.tray_hwnd as HWND;
             drop(st);
-            refresh_candidate_overlay();
+            request_overlay_refresh();
             PostMessageW(tray, WM_EKUSHE_CONVERT_SELECTION, 0, 0);
             return 1;
         }
@@ -1192,7 +1244,7 @@ unsafe extern "system" fn keyboard_hook_proc(code: i32, wparam: WPARAM, lparam: 
             if st.injected_utf16_len > 0 {
                 forget_composition(&mut st);
                 drop(st);
-                refresh_candidate_overlay();
+                request_overlay_refresh();
             }
             return CallNextHookEx(ptr::null_mut(), code, wparam, lparam);
         }
@@ -1209,7 +1261,7 @@ unsafe extern "system" fn keyboard_hook_proc(code: i32, wparam: WPARAM, lparam: 
             st.last_output = SessionOutput::default();
             st.injected_utf16_len = 0;
             drop(st);
-            refresh_candidate_overlay();
+            request_overlay_refresh();
             return CallNextHookEx(ptr::null_mut(), code, wparam, lparam);
         }
 
@@ -1219,7 +1271,7 @@ unsafe extern "system" fn keyboard_hook_proc(code: i32, wparam: WPARAM, lparam: 
             st.last_output = SessionOutput::default();
             st.injected_utf16_len = 0;
             drop(st);
-            refresh_candidate_overlay();
+            request_overlay_refresh();
             return 1;
         }
 
@@ -1232,7 +1284,7 @@ unsafe extern "system" fn keyboard_hook_proc(code: i32, wparam: WPARAM, lparam: 
             st.injected_utf16_len = cand_text.encode_utf16().count();
             drop(st);
             replace_active_text(prev_len, &cand_text);
-            refresh_candidate_overlay();
+            request_overlay_refresh();
             return 1;
         }
 
@@ -1257,7 +1309,7 @@ unsafe extern "system" fn keyboard_hook_proc(code: i32, wparam: WPARAM, lparam: 
                 st.last_output = out;
                 drop(st);
                 replace_active_text(prev_len, &new_text);
-                refresh_candidate_overlay();
+                request_overlay_refresh();
                 return 1;
             }
             return CallNextHookEx(ptr::null_mut(), code, wparam, lparam);
@@ -1274,7 +1326,7 @@ unsafe extern "system" fn keyboard_hook_proc(code: i32, wparam: WPARAM, lparam: 
             st.last_output = SessionOutput::default();
             drop(st);
             replace_active_text(prev_len, &committed);
-            refresh_candidate_overlay();
+            request_overlay_refresh();
             if vk == VK_RETURN {
                 return CallNextHookEx(ptr::null_mut(), code, wparam, lparam);
             }
@@ -1293,7 +1345,7 @@ unsafe extern "system" fn keyboard_hook_proc(code: i32, wparam: WPARAM, lparam: 
                     st.last_output = SessionOutput::default();
                     drop(st);
                     replace_active_text(prev_len, &to_send);
-                    refresh_candidate_overlay();
+                    request_overlay_refresh();
                     return 1;
                 } else {
                     let preedit = out.preedit.clone();
@@ -1301,7 +1353,7 @@ unsafe extern "system" fn keyboard_hook_proc(code: i32, wparam: WPARAM, lparam: 
                     st.last_output = out;
                     drop(st);
                     replace_active_text(prev_len, &preedit);
-                    refresh_candidate_overlay();
+                    request_overlay_refresh();
                     return 1;
                 }
             }
@@ -1381,7 +1433,7 @@ unsafe fn replace_active_text(backspaces: usize, new_text: &str) {
         let mut st = STATE.lock();
         forget_composition(&mut st);
         drop(st);
-        show_mode_badge("এই উইন্ডোতে লেখা পাঠানো যায়নি — Windows আটকে দিয়েছে");
+        request_badge("এই উইন্ডোতে লেখা পাঠানো যায়নি — Windows আটকে দিয়েছে");
     }
 }
 
@@ -1425,6 +1477,25 @@ unsafe extern "system" fn tray_wnd_proc(
     match msg {
         WM_TIMER if wparam == TIMER_SAVE_LEARNED => {
             save_learned_words_if_changed();
+            0
+        }
+        WM_TIMER if wparam == TIMER_REHOOK => {
+            install_hooks();
+            0
+        }
+        WM_EKUSHE_REFRESH_OVERLAY => {
+            refresh_candidate_overlay();
+            0
+        }
+        WM_EKUSHE_SHOW_BADGE => {
+            let banner = STATE.lock().badge_banner.clone();
+            if let Some(b) = banner {
+                show_mode_badge(&b);
+            }
+            0
+        }
+        WM_EKUSHE_UPDATE_TRAY_ICON => {
+            add_or_update_tray_icon(hwnd, false);
             0
         }
         WM_EKUSHE_OPEN_STUDIO => {
