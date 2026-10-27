@@ -116,6 +116,9 @@ pub extern "system" fn Java_com_ekushenext_keyboard_Engine_nativeInit(
                 .load_user_dict(&d.join("learned.tsv"));
         }
         let mut st = STATE.lock();
+        // The keyboard may already be in a field (and a private one) while the dictionary loaded on
+        // another thread: the new engine keeps that
+        ekushe.set_private_field(st.ekushe.is_private_field());
         st.dir = dir;
         st.saved_learned = ekushe.suggestions_engine().learned_version();
         st.ekushe = ekushe;
@@ -220,7 +223,10 @@ pub extern "system" fn Java_com_ekushenext_keyboard_Engine_nativeHasUndo(
     _env: JNIEnv,
     _c: JClass,
 ) -> jboolean {
-    guard(0, || STATE.lock().ekushe.has_undo() as jboolean)
+    guard(0, || {
+        let st = STATE.lock();
+        (st.ekushe.has_undo() && st.ekushe.config().backspace_undo) as jboolean
+    })
 }
 
 /// Settings the keyboard shows, as JSON.

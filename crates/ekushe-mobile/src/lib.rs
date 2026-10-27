@@ -130,6 +130,9 @@ pub unsafe extern "C" fn ekm_init(dict_path: *const c_char, dir: *const c_char) 
                 .load_user_dict(&d.join("learned.tsv"));
         }
         let mut st = STATE.lock();
+        // The keyboard may already be in a field (and a private one) while the dictionary loaded on
+        // another thread: the new engine keeps that
+        ekushe.set_private_field(st.ekushe.is_private_field());
         st.dir = dir;
         st.saved_learned = ekushe.suggestions_engine().learned_version();
         st.ekushe = ekushe;
@@ -202,7 +205,10 @@ pub extern "C" fn ekm_set_private(on: bool) {
 
 #[no_mangle]
 pub extern "C" fn ekm_has_undo() -> bool {
-    guard(false, || STATE.lock().ekushe.has_undo())
+    guard(false, || {
+        let st = STATE.lock();
+        st.ekushe.has_undo() && st.ekushe.config().backspace_undo
+    })
 }
 
 /// A Bangla word written in English letters? (English typing leaves those alone.)
