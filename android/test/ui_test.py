@@ -479,5 +479,11 @@ for label, name in [('থ্রিডি', '3d'), ('আলো', 'glow'), ('ঢ�
     hold.wait()
     sh('input keyevent KEYCODE_BACK'); time.sleep(0.8)
 
+# A keyboard crash is invisible on screen (Android restarts the keyboard, and hide_error_dialogs is
+# on above): fail if the keyboard process crashed at any point during the test
+crashes = adb('logcat', '-d', '-b', 'crash', check=False)
+if PKG in crashes or 'ekushe' in crashes.lower():
+    print(crashes[-6000:])
+    failures.append('keyboard crashed (see logcat crash buffer above)')
 print('FAILURES:', failures)
 sys.exit(1 if failures else 0)

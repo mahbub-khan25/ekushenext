@@ -14,3 +14,12 @@ cp "$ROOT/data/english/words.txt" "$ROOT/data/english/next.tsv" "$HERE/app/src/m
 mkdir -p "$HERE/app/src/main/assets/fonts"
 cp "$ROOT/assets/fonts/HindSiliguri-Regular.ttf" "$ROOT/assets/fonts/HindSiliguri-SemiBold.ttf" "$HERE/app/src/main/assets/fonts/"
 ls -la "$HERE/app/src/main/jniLibs"/*/ "$HERE/app/src/main/assets/"
+# Every library must be 16 KB page-aligned (.cargo/config.toml sets the linker flag); Google Play
+# requires it for targetSdk 35 and 16 KB-page phones can't load a 4 KB-aligned one
+for so in "$HERE"/app/src/main/jniLibs/*/libekushe_android.so; do
+  align=$(readelf -lW "$so" | awk '$1=="LOAD" {print $NF; exit}')
+  case "$align" in
+    0x4000|0x10000) echo "$so: LOAD alignment $align OK" ;;
+    *) echo "$so: LOAD alignment $align is not 16 KB" >&2; exit 1 ;;
+  esac
+done
