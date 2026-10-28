@@ -1,0 +1,14 @@
+# Everyday chat words that written Bangla hardly uses: how people type them, the Bangla spellings in use,
+# and a minimum frequency (per million) so they can compete with common written words. `ekushe-dict pack
+# --keys` gives the typed spellings to whichever candidate the corpus uses most; a row whose candidates
+# never occur in the corpus is skipped. Only words that came out wrong are listed (see eval/chat.tsv).
+# typed spellings	candidate spellings (|-separated)	minimum ppm
+joss,jos,josh	জোস|জোশ	5
+pera,pyara	প্যারা	12
+chill	চিল	2
+bro	ব্রো	2
+uff,uf,uffs	উফ|উফফ	2
+hmm,hm,hmmm	হুম|হুমম	3
+ok,oke,okay	ওকে	5
+koi	কই	30
+crush	ক্রাশ	2
