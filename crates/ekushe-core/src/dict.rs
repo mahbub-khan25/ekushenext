@@ -779,6 +779,24 @@ impl Dictionary {
         let mut v: Vec<(u32, f32, bool)> =
             scores.into_iter().map(|(id, (s, c))| (id, s, c)).collect();
         v.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap().then_with(|| a.0.cmp(&b.0)));
+        // A spoken (colloquial) form is offered right after its standard form when both match, so
+        // the standard spelling comes first and the spoken one is still at hand (খেয়েছো, খাইছো)
+        let mut i = 0;
+        while i < v.len() {
+            let info = self.info(v[i].0);
+            if info.class == WordClass::Colloquial {
+                if let Some(pos) = info
+                    .preferred
+                    .and_then(|p| v[..i].iter().position(|x| x.0 == p))
+                {
+                    if pos + 1 < i {
+                        let item = v.remove(i);
+                        v.insert(pos + 1, item);
+                    }
+                }
+            }
+            i += 1;
+        }
         v.truncate(n);
         v.into_iter()
             .map(|(id, score, completion)| Ranked {

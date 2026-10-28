@@ -28,13 +28,29 @@ fn main() {
             count(out);
         }
         Some("pairs") => {
-            let get = |k: &str| args.iter().position(|a| a == k).and_then(|i| args.get(i + 1)).cloned().expect(k);
-            pairs::pairs(&get("--vocab"), &get("--out"));
+            let get = |k: &str| args.iter().position(|a| a == k).and_then(|i| args.get(i + 1)).cloned();
+            let min = get("--min").and_then(|m| m.parse().ok()).unwrap_or(3);
+            pairs::pairs(&get("--vocab").expect("--vocab"), &get("--out").expect("--out"), min);
+        }
+        Some("merge-pairs") => {
+            // ekushe-dict merge-pairs --out FILE [--min N] A.tsv B.tsv ...: sum per-file pair counts
+            let mut out = None;
+            let mut min = 3u32;
+            let mut files = Vec::new();
+            let mut it = args.iter().skip(2);
+            while let Some(a) = it.next() {
+                match a.as_str() {
+                    "--out" => out = it.next().cloned(),
+                    "--min" => min = it.next().and_then(|m| m.parse().ok()).unwrap_or(3),
+                    f => files.push(f.to_string()),
+                }
+            }
+            pairs::merge(&files, &out.expect("--out"), min);
         }
         Some("pack") => {
             let get = |k: &str| args.iter().position(|a| a == k).and_then(|i| args.get(i + 1)).cloned();
             pack::pack(&get("--lexicon").expect("--lexicon"), get("--english").as_deref(), get("--pairs").as_deref(), get("--phrases").as_deref(),
-                       get("--vulgar").as_deref(), &get("--out").expect("--out"));
+                       get("--vulgar").as_deref(), get("--spoken").as_deref(), &get("--out").expect("--out"));
         }
         Some("roman") => {
             // Print Ekushe's romanizations for words on stdin (parity check with romanize.py)
