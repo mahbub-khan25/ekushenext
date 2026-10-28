@@ -1,65 +1,17 @@
-**Beta.** Ekushe Next is a Bangla phonetic keyboard for **Windows 10/11 (64-bit)**, **macOS 11 or later** (Apple silicon and Intel), **Linux** (64-bit, IBus) and **Android 7 or later**. It comes with its own dictionary, which puts the Bangla Academy standard spelling first.
+**Ekushe Next is here — first public beta.** A free, open-source Bangla keyboard for **Windows 10/11 (64-bit)**, **macOS 11 or later** (Apple silicon and Intel), **Linux** (64-bit, IBus) and **Android 7 or later**.
 
-### What's new in this beta
-- **⌫ right after a wrong word reopens it.** On Windows, Mac and Linux, Backspace right after a word used to turn it into English letters, which then had to be typed again. Now the word opens again with its suggestions, as when you typed it: pick the right word (the English spelling is one of the choices), or press ⌫ again to delete a letter. Android already did this; on every system the word now gets exactly the suggestions it had the first time.
-- **Windows: ⌫ never takes back a word that isn't there.** After Enter, an arrow key, Delete or a click, Backspace is an ordinary Backspace.
+Type Bangla the way it sounds, in English letters (`amar sonar bangla` → আমার সোনার বাংলা), and Ekushe writes it with the spelling you meant.
 
-Also in this beta (from beta.25):
-- **Windows: Bangla never "just stops".** The candidate popup is no longer drawn inside the keyboard hook, which Windows could silently remove on a slow moment (antivirus scan, first font load); the hooks are also re-armed every 30 seconds, so a dropped one recovers on its own.
-- **Windows: Setup writes nothing until you click Install**, Installed Apps shows the real beta version, and uninstalling now also removes the Bangladeshi fonts Ekushe installed for your account (never a font you already had).
-- **Linux: "Remove keyboard".** Studio → Settings has **কিবোর্ড বাদ দিন** (or `ekushe-studio --remove-keyboard`): it takes Ekushe out of your desktop's keyboard list and puts back the input-method setting **কিবোর্ড যোগ করুন** changed. Run it before uninstalling the package. Adding no longer clears GNOME's keyboard history.
-- **Android: ⌫ after moving the cursor deletes normally.** It used to take back the last word at the new cursor position. The **⌫ brings the letters back** setting now actually works, a word in progress survives apps that restart input (Chrome), and the phone's spell checker is never asked about words typed in private (incognito) fields.
-- Android: the engine library is 16 KB page-aligned, as Google Play requires for Android 15.
+### What makes it different
+- **Its own dictionary, built for Ekushe.** Not copied from any other keyboard. The **Bangla Academy standard spelling (প্রমিত বানান) comes first**, even when a non-standard spelling is more common online.
+- **Understands how people really type.** Chat spellings like `kemon aso`, `valo achi`, `thik ache` land on the right word, and colloquial forms (করসি, গেসি) are offered as suggestions. On our test set of 959 typed words and sentences, 98.7% come out right first time.
+- **Fix a wrong word without retyping.** Press Backspace right after a word and it opens again with its suggestions.
+- **One keyboard on every system**, with the same engine and dictionary on Windows, Mac, Linux and Android.
+- **Ekushe Studio**: a writing pad, a conjunct (যুক্তবর্ণ) guide, a spell checker, a Bijoy ⇄ Unicode converter, snippets, and backup and restore of your settings and learned words.
+- **Shortcuts for dates and phrases**: `;aj` → today's date, `;bongabdo` → the Bangla calendar date, `;somoy` → the time.
+- **Private by design.** Ekushe works offline, nothing you type ever leaves your computer or phone, and password boxes get plain English. The Android app has no internet permission at all.
 
-Also in this beta (from beta.24):
-- **Better spelling for everyday commands and forms.** Words like **koro, bolo, lekho, khao, thako, dhoro, shekho, poro** now give করো, বলো, লেখো, খাও, থাকো, ধরো, শেখো, পড়ো, following the vowel you type. **aro** gives আরও, **ashchi** আসছি, **jachchi** যাচ্ছি, **hok** হোক, **jetai** যেটাই, **jetao** যেটাও and **bhashi** ভাষী.
-
-Also in this beta (from beta.23):
-- **Linux: COSMIC setup no longer touches your GNOME or KDE sessions.** beta.22 set three input-method settings that also applied to GNOME and KDE; Ekushe now leaves them alone and removes them if beta.22 added them. On COSMIC, apps reach Ekushe where the system already sets this up (Pop!_OS does).
-
-Also in this beta (from beta.22):
-- **Linux: Ekushe on COSMIC (experimental).** Studio's **কিবোর্ড যোগ করুন** button now sets Ekushe up on COSMIC too; log out and back in once. It types in Firefox, LibreOffice and other GTK and Qt apps. COSMIC's own apps (Text Editor, Terminal, Files) don't support any input method yet, so Ekushe can't type there until COSMIC adds it.
-
-Also in this beta (from beta.21):
-- **Starts in English when you log in.** On Windows, Linux and macOS, Ekushe now starts in English like any other keyboard; double-tap Shift for Bangla. Prefer Bangla from the start? Turn on **শুরুতে বাংলা** in Studio → Settings.
-
-Also in this beta (from beta.20):
-- **Linux: one-click setup on more desktops.** Studio's **কিবোর্ড যোগ করুন** button (and `ekushe-studio --add-keyboard`) now works on **KDE Plasma, Xfce, Cinnamon, MATE and LXQt** as well as GNOME. On KDE and the others it also makes IBus the input method; log out and back in once when Studio asks. 
-
-Also in this beta (from beta.19):
-- **Linux: Ekushe Studio has its own window.** No more browser tab: Studio opens in a proper window with the Ekushe icon, on GNOME, KDE Plasma, COSMIC, Xfce, Cinnamon and other desktops. Opening it again brings the same window forward; links to websites open in your browser; **ব্যাকআপ নিন** asks where to save the file. It uses WebKitGTK, which Ubuntu and Fedora install with Ekushe (if it's missing, Studio opens in the browser as before).
-
-Also in this beta (from beta.18):
-- **Linux: you see every switch.** When you double-tap Shift (or switch from the top bar), a small **এ · বাংলা** or **EN · English** note appears next to the cursor for a moment, like the badge on Windows. GNOME hides its top-bar label when you have only one keyboard and can be slow to update it; the note always shows.
-
-Also in this beta (from beta.17):
-- **Linux: Ekushe becomes your keyboard straight away.** Studio's **কিবোর্ড যোগ করুন** button (or `ekushe-studio --add-keyboard`) now puts Ekushe first and switches to it, so double-tap Shift works right away.
-- **Linux: clearer switching.** The top bar shows **এ** for Bangla and **EN** for English, and the popup when you double-tap Shift names the language you're now typing (it used to name the other one).
-- Tip for Linux: keep a second keyboard such as English (US) in Settings → Keyboard → Input Sources, with Ekushe first. GNOME hides the top-bar label when there is only one keyboard.
-
-Also in this beta (from beta.16):
-- **Linux: one click to add the keyboard.** Installing Ekushe makes it available, but GNOME (Ubuntu, Fedora) doesn't add it to your keyboards by itself. Open **Ekushe Studio** from the applications menu and click **কিবোর্ড যোগ করুন**, or run `ekushe-studio --add-keyboard`. To do it by hand: Settings → Keyboard → Input Sources → + → **Bangla (Bangladesh)** → **Ekushe Bangla**.
-- **Linux: the top bar shows এ or EN.** Double-tap Shift switches between Bangla and English while Ekushe stays selected, and the top bar now shows which one you're in (এ for Bangla, EN for English). You can also switch from the top bar's menu.
-
-Also in this beta (from beta.15):
-- **Much better everyday Bangla.** Chat and casual spellings now land on the right word far more often (`kemon ase` → কেমন আছে, `ami valo achi`, `khaiso`, `thik ache`, `sorry`, `plz`). On our test set of 893 everyday words and sentences, Ekushe now gets 98% right, up from 91%.
-- **"A word was wrong" (Windows).** Right-click the tray icon → **✏️ ভুল শব্দ ঠিক করুন**. Your last few words are listed; pick or type the right one and Ekushe learns it at once. The list is kept in memory only (nothing from password boxes), and you can copy your corrections into a report to help improve Ekushe for everyone.
-- **Smarter learning.** Ekushe now learns when you pick a different word, not every time you press Space, so it keeps choosing by context (the word before) instead of freezing one choice.
-- **Date and time shortcuts:** `;aj` → ২৪ অক্টোবর ২০২৬, `;bar` → শনিবার, `;bongabdo` → ৮ কার্তিক ১৪৩৩ বঙ্গাব্দ (Bangladesh's revised calendar), `;somoy` → সন্ধ্যা ৭:৫০. The popup offers other forms too, like ২৪/১০/২০২৬.
-- **Backup and restore** in Studio → Settings (Windows and Linux): one file with your settings, snippets and learned words. Restoring on another computer adds to what's there and never deletes anything.
-- **Check for updates (Windows):** the tray menu shows your version and a **🔄 হালনাগাদ দেখুন** item. Ekushe still never goes online by itself; a once-a-day check can be turned on in Studio → Settings.
-
-Also in this beta (from beta.14): **Linux from the Ubuntu PPA and Fedora COPR** (`sudo add-apt-repository ppa:cicadama/ekushe` / `sudo dnf copr enable cicadama/ekushe`), so Ekushe updates with the rest of your system; an Android space bar label that fits every phone; and a **১২৩ / ?123** numbers key.
-
-Also in this beta (from beta.13): **safe English typing on Android.** Email and web addresses are typed exactly as you type them (makhan.aumi@gmail.com stays makhan.aumi@gmail.com). Only Space corrects a word, and never an address, a name in the middle of a sentence, or Banglish in English mode (ami, tomake stay as they are); clear typos are still fixed (teh → the, dont → don't, i → I). Also a full-width number pad, the phone's own Bangla font on the keys, the new shortcuts `;innalillah`, `;barik` and `;brb`, and the testers' zip renamed **Ekushe-Developer-Tools-x64.zip**.
-
-Also in this beta (from beta.12): **Ekushe Next for Android**, the same engine and dictionary as a phone keyboard (**Ekushe-Next-Android.apk**, Android 7 or later).
-  - Bangla letter hints on every key, press-and-hold for letters like ট, ৎ, ণ and ষ, suggestions and next-word predictions, ⌫ right after a word to get your letters back, and slide on Space to move the cursor.
-  - **English on the same keyboard:** tap **বাং/EN** for English with word completion, spelling fixes when you press Space, and basic next-word suggestions. It uses a 50,000-word list and the phone's own spell checker, and learns the words you use. Prefer Gboard for English (glide typing, voice)? Turn on **ইংরেজির জন্য Gboard** in the app.
-  - An emoji key next to Space, and themes: একুশে, **একুশে ডিফল্ট** and **একুশে মসৃণ** (familiar keyboard looks, light and dark), কৃষ্ণচূড়া, পদ্মা, শাপলা, কাশফুল, রাত, your wallpaper's colours, or your own photo behind the keys. Key presses can be classic, 3D, glow, ripple or bounce.
-  - No internet permission at all: nothing you type can leave the phone. Password, email and web address boxes get plain English, and nothing is learned in them.
-
-And from beta.11: **Report a problem** from the app. Choose **🐞 সমস্যা জানান (Report a problem)** in the tray menu on Windows, **Report a Problem…** in the input menu on a Mac, **Report a problem** in the IBus menu on Linux, Studio's settings, or the Help section of the Android app. No account is needed.
+This is a beta: please tell us what goes wrong, or what word Ekushe got wrong, with **Report a problem** in the app or at https://ekushenext.com/report/ (no account needed).
 
 ### Download
 - **Ekushe-Setup.exe** (or **Ekushe-Setup.zip**, if your browser blocks the .exe) installs it for your user account, with no admin rights needed. It starts with Windows, adds a Start Menu shortcut, and can be removed from Settings → Apps.
@@ -92,6 +44,8 @@ After installing:
 2. Open **Ekushe Studio** from your applications menu and click **কিবোর্ড যোগ করুন** (or run `ekushe-studio --add-keyboard`). By hand: **Settings → Keyboard → Input Sources → + → Bangla (Bangladesh) → Ekushe Bangla**.
 3. Switch keyboards with **Super+Space**. **Ekushe Studio** appears in your applications menu and opens in its own window.
 
+To take Ekushe out of your keyboards again, click **কিবোর্ড বাদ দিন** in Studio (or run `ekushe-studio --remove-keyboard`) before removing the package.
+
 Run the AppImage on its own (double-click it) to open Studio without installing anything. IBus only loads keyboards installed for the whole computer, so `--install-keyboard` asks for your password once, and `--uninstall-keyboard` removes the keyboard again.
 
 On Linux the suggestions appear in IBus's own candidate window. Backspace-undo and Ctrl+Backspace need the app to share the text around the cursor; GTK and Qt apps do.
@@ -100,7 +54,7 @@ On Linux the suggestions appear in IBus's own candidate window. Backspace-undo a
 - Type Bangla in Roman letters, e.g. `amar sonar bangla`. Space picks the highlighted word, Tab moves to the next suggestion, and Esc keeps what you typed.
 - Double-tap **Shift** to switch between Bangla and English.
 - For an exact spelling, add a mark: `,,` for hasanta, `^` for chandrabindu, `rr` for রেফ and so on. The full list is at the top of Studio's conjunct guide.
-- Press Backspace right after a word to get your Roman letters back. Ctrl+Backspace switches the last word between Bangla and English.
+- Picked the wrong word? Press Backspace right after it: the word opens again with its suggestions (the English spelling is one of them). Ctrl+Backspace switches the last word between Bangla and English.
 - Select text in any app and press **Ctrl+Alt+C** to turn Bijoy or Banglish into Bangla (Windows).
 - Right-click the tray icon to open **Studio**. It has a writing pad, a conjunct guide, a spell checker, a Bijoy ⇄ Unicode converter and settings.
 
@@ -121,4 +75,4 @@ Licence: code MPL-2.0, dictionary data CC BY-SA 4.0. See `THIRD_PARTY_NOTICES.md
 2. Open the **Ekushe Next** app and finish its two steps: turn the keyboard on, then choose it.
 3. Type in any app. Tap **বাং/EN** to switch between Bangla and English.
 
-If you installed a test build of the Android app before, uninstall it first: test builds were signed with a different key, so the phone won't install this one over them. Updates from now on install straight over this version.
+Already using an earlier beta? This version installs straight over it on every system; your settings, snippets and learned words stay.
