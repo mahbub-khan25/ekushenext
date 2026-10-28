@@ -480,14 +480,15 @@ for label, name in [('থ্রিডি', '3d'), ('আলো', 'glow'), ('ঢ�
     sh('input keyevent KEYCODE_BACK'); time.sleep(0.8)
 
 # A physical keyboard (a tablet's keyboard cover, Bluetooth): keys typed on it go through Ekushe,
-# only the suggestion strip is shown, double-tap Shift switches language, ⌫ reopens, Tab picks
+# only the suggestion strip is shown, double-tap Shift switches language, ⌫ reopens, Tab picks.
+# `input keyboard …` marks the keys as a keyboard's, as a real one does (plain `input keyevent` doesn't)
 to_top()
 text, b = field_text()
 bx1, by1, bx2, by2 = map(int, re.findall(r'\d+', b))
 tap(bx2 - 40, by2 - 25, 1.5)
 keys()
 start = field_text()[0] or ''
-sh('input text ami%sbhalo%sachi%s'); time.sleep(1)
+sh('input keyboard text ami%sbhalo%sachi%s'); time.sleep(1)
 got = field_text()[0] or ''
 expect('physical keyboard types Bangla', got[len(start):], 'আমি ভালো আছি ')
 try:
@@ -496,20 +497,20 @@ try:
 except SystemExit:
     expect('physical keyboard: only the strip is shown', False, True)
 shot('50-physical-keyboard-strip')
-sh('input keyevent KEYCODE_SHIFT_LEFT KEYCODE_SHIFT_LEFT'); time.sleep(0.6)
+sh('input keyboard keyevent KEYCODE_SHIFT_LEFT KEYCODE_SHIFT_LEFT'); time.sleep(0.6)
 start = field_text()[0] or ''
-sh('input text hello%s'); time.sleep(0.8)
+sh('input keyboard text hello%s'); time.sleep(0.8)
 got = field_text()[0] or ''
 expect('double-tap Shift: English', got[len(start):], 'hello ')
-sh('input keyevent KEYCODE_SHIFT_LEFT KEYCODE_SHIFT_LEFT'); time.sleep(0.6)
+sh('input keyboard keyevent KEYCODE_SHIFT_LEFT KEYCODE_SHIFT_LEFT'); time.sleep(0.6)
 start = field_text()[0] or ''
-sh('input text office%s'); time.sleep(0.8)
-sh('input keyevent KEYCODE_DEL'); time.sleep(0.8)
+sh('input keyboard text office%s'); time.sleep(0.8)
+sh('input keyboard keyevent KEYCODE_DEL'); time.sleep(0.8)
 got = field_text()[0] or ''
 expect('⌫ reopens the word', got[len(start):], 'অফিস')
 shot('51-physical-keyboard-reopened')
-sh('input keyevent KEYCODE_TAB'); time.sleep(0.4)
-sh('input keyevent KEYCODE_SPACE'); time.sleep(0.8)
+sh('input keyboard keyevent KEYCODE_TAB'); time.sleep(0.4)
+sh('input keyboard keyevent KEYCODE_SPACE'); time.sleep(0.8)
 got = field_text()[0] or ''
 expect('Tab picks the next suggestion', got[len(start):], 'অফিসে ')
 print('\n'.join(re.findall(r'EkusheHard: .*', adb('logcat', '-d', '-s', 'EkusheHard:I'))[-40:]))
