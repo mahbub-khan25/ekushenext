@@ -109,10 +109,27 @@ class EkusheIME : InputMethodService(), KeyboardListener {
     // suggestion strip, without which Bangla can't be typed
     override fun onEvaluateInputViewShown(): Boolean = hardKeyboard() || super.onEvaluateInputViewShown()
 
-    override fun onStartInputView(info: EditorInfo, restarting: Boolean) {
-        super.onStartInputView(info, restarting)
-        val v = view ?: return
-        v.refreshTheme()
+    // Android doesn't open a keyboard by itself (a tap in a text box) while a physical keyboard is
+    // attached, unless "Show on-screen keyboard" is on. Without the strip there are no suggestions
+    // to choose from, so Ekushe opens it (as the strip only)
+    override fun onShowInputRequested(flags: Int, configChange: Boolean): Boolean =
+        if (hardKeyboard()) true else super.onShowInputRequested(flags, configChange)
+
+    override fun onStartInput(info: EditorInfo, restarting: Boolean) {
+        super.onStartInput(info, restarting)
+        // A new field: what it accepts, and typing starts fresh. This runs even when the keyboard
+        // window stays hidden (a physical keyboard), so the field's rules hold for its keys too.
+        classify(info)
+        if (restarting && (last.composing || en.isNotEmpty())) currentInputConnection?.finishComposingText()
+        Engine.reset()
+        last = Output()
+        lastCommitted = null
+        en.clear(); enUndo = null; enKeep = null
+        hardTyping = false; keysWanted = false; hardSel = 0
+    }
+
+    /** What the field accepts: passwords and private fields learn nothing; numbers, addresses and passwords get plain characters */
+    private fun classify(info: EditorInfo): Boolean {
         val cls = info.inputType and InputType.TYPE_MASK_CLASS
         val variation = info.inputType and InputType.TYPE_MASK_VARIATION
         val password = cls == InputType.TYPE_CLASS_TEXT && variation in listOf(
@@ -125,14 +142,28 @@ class EkusheIME : InputMethodService(), KeyboardListener {
         privateField = password || noLearning
         plainField = password || address || cls == InputType.TYPE_CLASS_NUMBER || cls == InputType.TYPE_CLASS_PHONE || cls == InputType.TYPE_CLASS_DATETIME
         Engine.setPrivate(privateField)
-        // An app's restartInput arrives without onFinishInput: a half-typed word still has its
-        // composing span in the editor, which the next setComposingText would replace. Close it.
-        if (restarting && (last.composing || en.isNotEmpty())) currentInputConnection?.finishComposingText()
-        Engine.reset()
-        last = Output()
-        lastCommitted = null
-        en.clear(); enUndo = null; enKeep = null
-        hardTyping = false; keysWanted = false; hardSel = 0
+        return password
+    }
+
+    override fun onStartInputView(info: EditorInfo, restarting: Boolean) {
+        super.onStartInputView(info, restarting)
+        val v = view ?: return
+        v.refreshTheme()
+        val cls = info.inputType and InputType.TYPE_MASK_CLASS
+        val password = classify(info)
+        // The window opening in the middle of a word typed on a physical keyboard (it was hidden):
+        // keep the word, and show its suggestions
+        val midWord = !restarting && hardTyping && (last.composing || en.isNotEmpty())
+        if (!midWord) {
+            // An app's restartInput arrives without onFinishInput: a half-typed word still has its
+            // composing span in the editor, which the next setComposingText would replace. Close it.
+            if (restarting && (last.composing || en.isNotEmpty())) currentInputConnection?.finishComposingText()
+            Engine.reset()
+            last = Output()
+            lastCommitted = null
+            en.clear(); enUndo = null; enKeep = null
+            if (!hardTyping) { keysWanted = false; hardSel = 0 }
+        }
         v.mode = when (cls) {
             InputType.TYPE_CLASS_NUMBER, InputType.TYPE_CLASS_DATETIME -> Mode.NUMBERS
             InputType.TYPE_CLASS_PHONE -> Mode.PHONE
@@ -142,8 +173,8 @@ class EkusheIME : InputMethodService(), KeyboardListener {
         v.enterLabel = enterGlyph(info)
         v.shift = Shift.OFF
         updateAutoShift()
-        v.stripMessage = if (password) "পাসওয়ার্ড: সাধারণ অক্ষর" else null
-        v.showSuggestions(emptyList(), emptyList(), emptyList())
+        if (midWord && last.composing) v.showSuggestions(last.candidates, last.tips, emptyList())
+        else v.showSuggestions(emptyList(), emptyList(), emptyList())
         v.stripMessage = if (password) "পাসওয়ার্ড: সাধারণ অক্ষর · plain text" else null
         updateStripOnly()
     }
@@ -581,6 +612,7 @@ class EkusheIME : InputMethodService(), KeyboardListener {
         if (event.isCtrlPressed || event.isAltPressed || event.isMetaPressed) { finishWord(); return false }
         val typing = keyCode in TYPING_KEYS || typedChar(event) != null
         if (typing && !hardTyping) { hardTyping = true; updateStripOnly() }
+        if (typing && !isInputViewShown && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) requestShowSelf(0)
         val bn = typingBangla()
         when (keyCode) {
             KeyEvent.KEYCODE_SPACE -> {

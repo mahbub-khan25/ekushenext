@@ -513,6 +513,22 @@ sh('input keyboard keyevent KEYCODE_TAB'); time.sleep(0.4)
 sh('input keyboard keyevent KEYCODE_SPACE'); time.sleep(0.8)
 got = field_text()[0] or ''
 expect('Tab picks the next suggestion', got[len(start):], 'অফিসে ')
+# The keyboard window hidden (Back) and typing goes on on the physical keyboard: the strip comes back
+# with the word's suggestions (Android doesn't open a keyboard by itself with a physical one attached)
+sh('input keyevent KEYCODE_BACK'); time.sleep(1.2)
+adb('logcat', '-c')
+start = field_text()[0] or ''
+sh('input keyboard text aste'); time.sleep(1.2)
+try:
+    keys('STRIP_ONLY')
+    expect('hidden keyboard: typing brings the strip back', True, True)
+except SystemExit:
+    expect('hidden keyboard: typing brings the strip back', False, True)
+shot('52-physical-keyboard-strip-back')
+sh('input keyboard keyevent KEYCODE_TAB'); time.sleep(0.4)
+sh('input keyboard keyevent KEYCODE_SPACE'); time.sleep(0.8)
+got = field_text()[0] or ''
+expect('aste, Tab: আস্তে', got[len(start):], 'আস্তে ')
 print('\n'.join(re.findall(r'EkusheHard: .*', adb('logcat', '-d', '-s', 'EkusheHard:I'))[-40:]))
 sh('input keyevent KEYCODE_BACK'); time.sleep(0.8)
 
