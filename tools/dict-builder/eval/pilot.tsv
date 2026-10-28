@@ -250,8 +250,8 @@ itihas	ইতিহাস	both
 vasha	ভাষা	casual
 bhasha	ভাষা	both
 ekushe	একুশে	both
-shohid	শহীদ	casual
-shohId	শহীদ	avro
+shohid	শহিদ|শহীদ	casual
+shohId	শহিদ|শহীদ	avro
 minar	মিনার	both
 mukti	মুক্তি	both
 juddho	যুদ্ধ	casual

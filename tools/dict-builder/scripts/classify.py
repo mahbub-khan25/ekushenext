@@ -239,7 +239,7 @@ def main():
     for skel, ws in groups.items():
         if len(ws) < 2:
             continue
-        ws.sort(key=lambda x: -ppm(x))
+        ws.sort(key=lambda x: (-ppm(x), x))   # ties by word: same output every run
         top = ws[0]
         for w in ws[1:]:
             if R[w]["cls"] != "standard" or R[w]["rule"].startswith("curated") or R[top]["rule"] == "curated:distinct":
@@ -332,11 +332,11 @@ def main():
     os.makedirs(out_dir, exist_ok=True)
     with open(os.path.join(out_dir, "lexicon.tsv"), "w", encoding="utf-8") as f:
         f.write("word\tppm\ttier\tclass\tpreferred\troot\tsuffix\trule\tconfidence\ttags\n")
-        for w in sorted(ship, key=lambda x: -ppm(x)):
+        for w in sorted(ship, key=lambda x: (-ppm(x), x)):
             r = R[w]
             tier = "core" if ppm(w) >= CORE_PPM else "extended"
             f.write(f"{w}\t{ppm(w):.4f}\t{tier}\t{r['cls']}\t{r['pref']}\t{r['root']}\t{r['suffix']}\t{r['rule']}\t{r['conf']}\t{','.join(sorted(r['tags']))}\n")
-    review.sort(key=lambda x: -x[0])
+    review.sort(key=lambda x: (-x[0], x[1], x[2]))
     with open(os.path.join(out_dir, "review-spelling.tsv"), "w", encoding="utf-8") as f:
         f.write("word\tsuggested_standard\tppm_word\tppm_suggested\trule\tquestion\tdecision\n")
         seen = set()

@@ -13,10 +13,11 @@ import sys
 import unicodedata
 
 PUNCT = re.compile(r"[।,?!.;:\"'“”‘’()\-–—…]")
+JOIN = re.compile(r"(?<=\w)-(?=\w)")   # office-e, phone-e: one typed word
 
 
 def words(s):
-    return [w for w in PUNCT.sub(" ", s or "").split() if w]
+    return [w for w in PUNCT.sub(" ", JOIN.sub("", s or "")).split() if w]
 
 
 def kit_rows(path):

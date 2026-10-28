@@ -51,10 +51,14 @@ the current dictionary: `cargo run --release -p ekushe-core --example dump_pairs
 - **Spelling review:** `scripts/review_sheet.py data/dictionary/review-spelling.tsv review.xlsx` makes a
   workbook of the open spelling questions, most common first, with a dropdown per row;
   `scripts/import_review.py review.xlsx curated/spelling-seed.tsv NAME` brings the answers in as reviewed
-  decisions.
+  decisions. The first 500 questions were answered by two native speakers: 483 decisions are in
+  `curated/spelling-seed.tsv` (where they disagreed and one said "both right", both words are kept); the 17
+  where they pointed opposite ways (আলি/আলী, খ্রিষ্টান/খ্রিস্টান…) are still open.
 - **Typing kit:** `scripts/typing_kit.py kit.xlsx` makes 100 everyday sentences for someone to type the way
   they normally do; `scripts/import_typing.py eval/community.tsv kit1.xlsx kit2.xlsx …` turns the kits into
-  the held-out test set `eval/community.tsv`.
+  the held-out test set `eval/community.tsv`. Six testers so far: 2,420 typed words, 82.6% committed exactly
+  as the kit's standard spelling (86% counting everyday spellings such as যাবো for যাব). Most of the rest:
+  English words with a Bangla ending (`postta`, `classe`), dropped h (`kotay`, `mata`) and কী/কি.
 - **Why does a word rank where it does?** `cargo run --release -p ekushe-core --example why_rank --
   data/dictionary/ekushe.dict.z byabostha` prints the scores, frequencies and spellings behind it.
 

@@ -29,7 +29,7 @@ jobs:
         shell: bash
         run: |
           E=tools/dict-builder/eval
-          out=$(cargo run --release -q -p ekushe-core --example tune_eval -- data/dictionary/ekushe.dict.z $E/pilot.tsv,$E/context.tsv,$E/everyday.tsv,$E/sentences.tsv,$E/heldout.tsv,$E/verbs.tsv,$E/lookalikes.tsv,$E/spoken.tsv,$E/names.tsv,$E/chat.tsv)
+          out=$(cargo run --release -q -p ekushe-core --example tune_eval -- data/dictionary/ekushe.dict.z $E/pilot.tsv,$E/context.tsv,$E/everyday.tsv,$E/sentences.tsv,$E/heldout.tsv,$E/verbs.tsv,$E/lookalikes.tsv,$E/spoken.tsv,$E/names.tsv,$E/chat.tsv,$E/community.tsv)
           echo "$out"
           got=$(echo "$out" | sed -n 's/^TOTAL \([0-9]*\)\/.*/\1/p')
           min=$(grep -v '^#' $E/minimum.txt)
