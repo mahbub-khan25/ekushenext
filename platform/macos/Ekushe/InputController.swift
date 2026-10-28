@@ -244,6 +244,9 @@ final class EkusheInputController: IMKInputController {
         let studio = NSMenuItem(title: "Open Ekushe Studio…", action: #selector(openStudio(_:)), keyEquivalent: "")
         studio.target = self
         menu.addItem(studio)
+        let marks = NSMenuItem(title: "Marks & Conjuncts Guide (+  ,,  ^ …)", action: #selector(openMarks(_:)), keyEquivalent: "")
+        marks.target = self
+        menu.addItem(marks)
         let settings = NSMenuItem(title: "Settings…", action: #selector(openSettings(_:)), keyEquivalent: "")
         settings.target = self
         menu.addItem(settings)
@@ -261,6 +264,11 @@ final class EkusheInputController: IMKInputController {
 
     @objc func openStudio(_ sender: Any?) {
         if let url = Engine.studioURL() { NSWorkspace.shared.open(url) }
+    }
+
+    /// Studio's conjunct guide, with the marks (+ ,, ` ^ rr …) at the top
+    @objc func openMarks(_ sender: Any?) {
+        if let url = Engine.studioURL(tab: "signs") { NSWorkspace.shared.open(url) }
     }
 
     @objc func openSettings(_ sender: Any?) {

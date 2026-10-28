@@ -532,6 +532,28 @@ expect('aste, Tab: আস্তে', got[len(start):], 'আস্তে ')
 print('\n'.join(re.findall(r'EkusheHard: .*', adb('logcat', '-d', '-s', 'EkusheHard:I'))[-40:]))
 sh('input keyevent KEYCODE_BACK'); time.sleep(0.8)
 
+# The keyboard's ? button opens the app at the marks table (as+te → আস্তে …)
+ensure_app()
+to_top()
+text, b = field_text()
+if b:
+    bx1, by1, bx2, by2 = map(int, re.findall(r'\d+', b))
+    tap(bx2 - 40, by2 - 25, 1.5)
+    try:
+        _, strip_y = keys()
+        dens = int(re.findall(r'(\d+)', sh('wm density'))[-1]) / 160
+        width = int(re.findall(r'(\d+)x\d+', sh('wm size'))[-1])
+        # the ? sits fourth from the right: 52 dp buttons, 8 dp from the edge
+        tap(int(width - (8 + 3 * 52 + 26) * dens), strip_y, 2.5)
+        dismiss_anr()
+        seen = any((n.get('text') or '').startswith('চিহ্নের নিয়ম') for n in dump_nodes())
+        expect('? opens the marks table', seen, True)
+        shot('53-marks-table')
+    except SystemExit:
+        expect('? opens the marks table', False, True)
+else:
+    expect('? opens the marks table', False, True)
+
 # A keyboard crash is invisible on screen (Android restarts the keyboard, and hide_error_dialogs is
 # on above): fail if the keyboard process crashed at any point during the test
 crashes = adb('logcat', '-d', '-b', 'crash', check=False)

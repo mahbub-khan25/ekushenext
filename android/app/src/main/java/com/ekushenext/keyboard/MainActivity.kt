@@ -40,6 +40,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var root: LinearLayout
     private lateinit var scroll: ScrollView
     private var settingsAnchor: View? = null
+    private var marksAnchor: View? = null
     private lateinit var bn: Typeface
     private lateinit var bnBold: Typeface
 
@@ -98,12 +99,20 @@ class MainActivity : AppCompatActivity() {
         build()
     }
 
+    // Opened again from the keyboard (⚙, ?) while already running: take the new request
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+    }
+
     override fun onResume() {
         super.onResume()
         build()
-        if (intent?.getStringExtra("open") == "settings") {
+        val open = intent?.getStringExtra("open")
+        if (open == "settings" || open == "marks") {
             intent.removeExtra("open")
-            scroll.post { settingsAnchor?.let { scroll.smoothScrollTo(0, it.top - dp(12f)) } }
+            val at = if (open == "marks") marksAnchor else settingsAnchor
+            scroll.post { at?.let { scroll.smoothScrollTo(0, it.top - dp(12f)) } }
         }
     }
 
@@ -141,6 +150,8 @@ class MainActivity : AppCompatActivity() {
         snippets()
         section("গোপনীয়তা", "Privacy")
         privacy()
+        marksAnchor = section("চিহ্নের নিয়ম", "Marks: conjuncts, hasanta and more")
+        marks()
         section("সাহায্য", "Help")
         help()
         scroll.post { scroll.scrollTo(0, keepScroll) }
@@ -444,6 +455,40 @@ class MainActivity : AppCompatActivity() {
                     .setNegativeButton("না", null).show()
             }
         })
+        root.addView(card)
+    }
+
+    /** The exact-spelling marks, with the three that people mix up (+ ,, `) first. Opened from the
+     *  keyboard's ? button too. Every example is what the engine gives. */
+    private fun marks() {
+        val card = card()
+        card.addView(text("যুক্তবর্ণ, হসন্ত, না আলাদা? দুটি ব্যঞ্জনের মাঝে:", 15f, bnBold, textColor))
+        spaceIn(card, 8f)
+        fun row(keys: String, bangla: String, what: String) {
+            val line = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(5f), 0, dp(5f)) }
+            line.addView(text(keys, 15f, Typeface.MONOSPACE, green), LinearLayout.LayoutParams(dp(104f), ViewGroup.LayoutParams.WRAP_CONTENT))
+            line.addView(text(bangla, 19f, bnBold, textColor), LinearLayout.LayoutParams(dp(84f), ViewGroup.LayoutParams.WRAP_CONTENT))
+            line.addView(text(what, 13f, bn, subColor), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            card.addView(line)
+        }
+        row("as+te", "আস্তে", "+ যুক্তবর্ণ বানায় (স্ত)")
+        row("as,,te", "আস্‌তে", ",, হসন্ত দেখায়, যুক্ত করে না")
+        row("as`te", "আসতে", "` অক্ষর আলাদা রাখে")
+        divider(card)
+        card.addView(text("অন্য চিহ্ন", 15f, bnBold, textColor))
+        spaceIn(card, 4f)
+        row("k+t", "ক্ত", "+ যেকোনো দুটি অক্ষর জোড়ে")
+        row("allah,,", "আল্লাহ্", ",, শব্দের শেষে হসন্ত")
+        row("cha^d", "চাঁদ", "^ চন্দ্রবিন্দু")
+        row("dhorrmo", "ধর্ম", "rr রেফ")
+        row("krrishi", "কৃষি", "rri ঋ-কার")
+        row("hothat``", "হঠাৎ", "t`` খণ্ড-ত")
+        row("du:kho", "দুঃখ", ": বিসর্গ")
+        row("bakZo", "বাক্য", "Z য-ফলা")
+        row("/office", "office", "/ ইংরেজি শব্দ, যেমন আছে")
+        divider(card)
+        card.addView(text("কোথায় পাবেন: কমা (,) চেপে ধরলে ,,  +  ` ; ফুলস্টপ (.) চেপে ধরলে ^  :  /  .. । ট্যাবলেটের কিবোর্ডে + হলো Shift + =।\n" +
+            "On the keyboard: hold the comma for ,, + `, and the full stop for ^ : / ..; on a physical keyboard, + is Shift + =.", 12.5f, bn, subColor))
         root.addView(card)
     }
 

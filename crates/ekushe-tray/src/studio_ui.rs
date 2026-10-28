@@ -278,6 +278,9 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
   .marks-card { margin: 0 0 14px; padding: 12px 14px; border-radius: 14px; background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--line); }
   .marks-card h3 { margin: 0 0 8px; font-size: 0.98rem; }
   .marks-card .sub { margin: 0 0 10px; font-size: 0.85rem; color: var(--ink-soft); }
+  .marks-join { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; margin: 0 0 12px; }
+  .marks-join div { padding: 9px 11px; border-radius: 10px; background: var(--etch); box-shadow: inset 0 0 0 1px var(--line); font-size: 0.88rem; }
+  .marks-join b { display: block; font-size: 1.25rem; margin-bottom: 2px; color: var(--accent); }
   .marks-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
   .mark-item { display: flex; align-items: center; gap: 10px; padding: 7px 12px; border-radius: 10px; background: var(--etch); font-size: 0.9rem; white-space: nowrap; }
   .mark-item b { min-width: 2.4em; text-align: center; font-size: 1.25rem; color: var(--accent); }
@@ -520,8 +523,14 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
       <div class="marks-card" id="marksCard">
         <h3>বিশেষ চিহ্ন: ঠিক যেটা চান, সেটাই প্রথমে</h3>
         <p class="sub">এই চিহ্নগুলো লিখলে একুশে বোঝে আপনি ইচ্ছে করেই চাইছেন, তাই সেই বানানটিই এক নম্বরে আসে। তালিকার কোনো শব্দে এমন চিহ্ন থাকলে পপআপে তার লেখার উপায়ও দেখায় (যেমন হেঁসে: <kbd>he^se</kbd>)।</p>
+        <p class="sub"><b>যুক্তবর্ণ, হসন্ত, না আলাদা?</b> দুটি ব্যঞ্জনের মাঝে কোন চিহ্ন দেবেন:</p>
+        <div class="marks-join">
+          <div><b>আস্তে</b><kbd>as+te</kbd> &nbsp;<kbd>+</kbd> যুক্তবর্ণ বানায় (স্ত)</div>
+          <div><b>আস্‌তে</b><kbd>as,,te</kbd> &nbsp;<kbd>,,</kbd> হসন্ত দেখায়, যুক্ত করে না</div>
+          <div><b>আসতে</b><kbd>as`te</kbd> &nbsp;<kbd>`</kbd> অক্ষর আলাদা রাখে</div>
+        </div>
         <div class="marks-grid">
-          <div class="mark-item"><b>হ্</b><div><kbd>,,</kbd> হসন্ত<span>allah,, → আল্লাহ্</span></div></div>
+          <div class="mark-item"><b>হ্</b><div><kbd>,,</kbd> হসন্ত (দেখা যায়)<span>allah,, → আল্লাহ্</span></div></div>
           <div class="mark-item"><b>চাঁ</b><div><kbd>^</kbd> চন্দ্রবিন্দু<span>he^se → হেঁসে</span></div></div>
           <div class="mark-item"><b>কৃ</b><div><kbd>rri</kbd> ঋ-কার<span>krrishi → কৃষি</span></div></div>
           <div class="mark-item"><b>র্ম</b><div><kbd>rr</kbd> রেফ<span>dhorrmo → ধর্ম</span></div></div>
@@ -529,7 +538,7 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
           <div class="mark-item"><b>দুঃ</b><div><kbd>:</kbd> বিসর্গ<span>du:kho → দুঃখ</span></div></div>
           <div class="mark-item"><b>ক্য</b><div><kbd>Z</kbd> য-ফলা<span>bakZo → বাক্য</span></div></div>
           <div class="mark-item"><b>ক্ত</b><div><kbd>+</kbd> যুক্ত করুন<span>k+t → ক্ত</span></div></div>
-          <div class="mark-item"><b>লল</b><div><kbd>`</kbd> আলাদা রাখুন<span>bol`le → বললে</span></div></div>
+          <div class="mark-item"><b>সত</b><div><kbd>`</kbd> আলাদা রাখুন<span>as`te → আসতে</span></div></div>
         </div>
       </div>
       <div class="chip-bar scroll-x" id="atlasFilterBar">
