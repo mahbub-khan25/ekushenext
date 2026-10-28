@@ -512,6 +512,7 @@ sh('input keyevent KEYCODE_TAB'); time.sleep(0.4)
 sh('input keyevent KEYCODE_SPACE'); time.sleep(0.8)
 got = field_text()[0] or ''
 expect('Tab picks the next suggestion', got[len(start):], 'অফিসে ')
+print('\n'.join(re.findall(r'EkusheHard: .*', adb('logcat', '-d', '-s', 'EkusheHard:I'))[-40:]))
 sh('input keyevent KEYCODE_BACK'); time.sleep(0.8)
 
 # A keyboard crash is invisible on screen (Android restarts the keyboard, and hide_error_dialogs is

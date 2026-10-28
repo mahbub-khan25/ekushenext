@@ -531,12 +531,16 @@ class EkusheIME : InputMethodService(), KeyboardListener {
     // ───────────────────────── a physical keyboard ─────────────────────────
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
-        if (event.isFromSource(android.view.InputDevice.SOURCE_KEYBOARD) && hardKey(keyCode, event)) {
+        val handled = event.isFromSource(android.view.InputDevice.SOURCE_KEYBOARD) && hardKey(keyCode, event)
+        // debug builds: what each physical key did, for the automated test
+        if (debuggable) android.util.Log.i("EkusheHard", "${KeyEvent.keyCodeToString(keyCode)} t=${event.eventTime} src=${event.source} composing=${last.composing} n=${last.candidates.size} sel=$hardSel bangla=${typingBangla()} handled=$handled")
+        if (handled) {
             consumed += keyCode
             return true
         }
         return super.onKeyDown(keyCode, event)
     }
+    private val debuggable by lazy { (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0 }
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
         if (consumed.remove(keyCode)) {
