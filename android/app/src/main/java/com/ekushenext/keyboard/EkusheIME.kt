@@ -1,11 +1,14 @@
 package com.ekushenext.keyboard
 
 import android.content.Intent
+import android.content.res.Configuration
 import android.inputmethodservice.InputMethodService
 import android.media.AudioManager
 import android.os.Build
+import android.provider.Settings
 import android.text.InputType
 import android.view.HapticFeedbackConstants
+import android.view.KeyCharacterMap
 import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
@@ -17,6 +20,11 @@ import android.view.inputmethod.InputMethodManager
  * In English, the word being typed is shown underlined too, with completions and corrections from
  * English (a word list) and the phone's spell checker; Space places it, correcting a clear typo.
  * Password and number fields get plain characters.
+ *
+ * A physical keyboard (a tablet's keyboard cover, a Bluetooth keyboard) types through the engine too:
+ * its keys are read as the US layout whatever layout Android picked for it, double-tap Shift (or
+ * Ctrl+Space) switches Bangla ⇄ English as on a computer, Tab moves through the suggestions, and only
+ * the suggestion strip is shown, not the keys.
  */
 class EkusheIME : InputMethodService(), KeyboardListener {
     private lateinit var prefs: Prefs
@@ -45,6 +53,22 @@ class EkusheIME : InputMethodService(), KeyboardListener {
     private var enKeep: String? = null
     private var spell: EnglishSpell? = null
 
+    // ── a physical keyboard
+    /** A key came from a physical keyboard in this field */
+    private var hardTyping = false
+    /** The keys were asked for again (⌨) while a physical keyboard is attached */
+    private var keysWanted = false
+    /** The suggestion Tab moved to (0: the engine's own choice) */
+    private var hardSel = 0
+    /** Keys handled here on the way down, so their key-up doesn't reach the app either */
+    private val consumed = HashSet<Int>()
+    /** Enter pressed while a word was open: the word is placed, then the Enter goes on to the app */
+    private var enterForwarded = false
+    private var shiftAlone = false
+    private var lastShiftTap = 0L
+    /** The US layout, to read a key whatever layout Android set for the physical keyboard */
+    private val usKeys: KeyCharacterMap by lazy { KeyCharacterMap.load(KeyCharacterMap.VIRTUAL_KEYBOARD) }
+
     override fun onCreate() {
         super.onCreate()
         prefs = Prefs(this)
@@ -67,6 +91,24 @@ class EkusheIME : InputMethodService(), KeyboardListener {
     }
 
     override fun onEvaluateFullscreenMode() = false
+
+    /** A physical keyboard is attached and open (not folded away) */
+    private fun hardKeyboard(): Boolean {
+        val c = resources.configuration
+        return c.keyboard != Configuration.KEYBOARD_NOKEYS && c.hardKeyboardHidden != Configuration.HARDKEYBOARDHIDDEN_YES
+    }
+
+    /** Android's "Show on-screen keyboard" while a physical keyboard is attached */
+    private fun systemShowsKeys() =
+        runCatching { Settings.Secure.getInt(contentResolver, "show_ime_with_hard_keyboard", 0) == 1 }.getOrDefault(false)
+
+    private fun updateStripOnly() {
+        view?.stripOnly = (hardKeyboard() || hardTyping) && !keysWanted && !systemShowsKeys()
+    }
+
+    // With a physical keyboard Android would hide the keyboard altogether; Ekushe shows its
+    // suggestion strip, without which Bangla can't be typed
+    override fun onEvaluateInputViewShown(): Boolean = hardKeyboard() || super.onEvaluateInputViewShown()
 
     override fun onStartInputView(info: EditorInfo, restarting: Boolean) {
         super.onStartInputView(info, restarting)
@@ -91,6 +133,7 @@ class EkusheIME : InputMethodService(), KeyboardListener {
         last = Output()
         lastCommitted = null
         en.clear(); enUndo = null; enKeep = null
+        hardTyping = false; keysWanted = false; hardSel = 0
         v.mode = when (cls) {
             InputType.TYPE_CLASS_NUMBER, InputType.TYPE_CLASS_DATETIME -> Mode.NUMBERS
             InputType.TYPE_CLASS_PHONE -> Mode.PHONE
@@ -103,6 +146,7 @@ class EkusheIME : InputMethodService(), KeyboardListener {
         v.stripMessage = if (password) "পাসওয়ার্ড: সাধারণ অক্ষর" else null
         v.showSuggestions(emptyList(), emptyList(), emptyList())
         v.stripMessage = if (password) "পাসওয়ার্ড: সাধারণ অক্ষর · plain text" else null
+        updateStripOnly()
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
@@ -150,6 +194,7 @@ class EkusheIME : InputMethodService(), KeyboardListener {
         ic.endBatchEdit()
         editing = false
         last = out
+        hardSel = 0
         if (committed != null && !out.composing) lastCommitted = committed
         view?.showSuggestions(
             if (out.composing) out.candidates else emptyList(),
@@ -241,7 +286,7 @@ class EkusheIME : InputMethodService(), KeyboardListener {
         val now = System.currentTimeMillis()
         if (typingBangla()) {
             if (last.composing) {
-                apply(Engine.select(last.selected, ' '))
+                apply(Engine.select(if (hardSel > 0) hardSel else last.selected, ' '))
                 lastSpaceAt = now
                 return
             }
@@ -480,7 +525,136 @@ class EkusheIME : InputMethodService(), KeyboardListener {
         view?.showSuggestions(emptyList(), emptyList(), English.nextWords(a, b))
     }
 
-    override fun onLanguageToggle() {
+    // ───────────────────────── a physical keyboard ─────────────────────────
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        if (event.isFromSource(android.view.InputDevice.SOURCE_KEYBOARD) && hardKey(keyCode, event)) {
+            consumed += keyCode
+            return true
+        }
+        return super.onKeyDown(keyCode, event)
+    }
+
+    override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_SHIFT_LEFT || keyCode == KeyEvent.KEYCODE_SHIFT_RIGHT) {
+            // Shift pressed and let go on its own, twice in a row: Bangla ⇄ English, as on a computer
+            if (shiftAlone) {
+                val now = event.eventTime
+                if (now - lastShiftTap < 400) { lastShiftTap = 0; toggleLanguage(handOver = false) } else lastShiftTap = now
+            }
+            shiftAlone = false
+            return super.onKeyUp(keyCode, event)
+        }
+        if (consumed.remove(keyCode)) {
+            if (enterForwarded && (keyCode == KeyEvent.KEYCODE_ENTER || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER)) {
+                enterForwarded = false
+                currentInputConnection?.sendKeyEvent(event)
+            }
+            return true
+        }
+        return super.onKeyUp(keyCode, event)
+    }
+
+    /** A key from a physical keyboard; true if it was handled here (the app doesn't get it) */
+    private fun hardKey(keyCode: Int, event: KeyEvent): Boolean {
+        val ic = currentInputConnection ?: return false
+        // Back, Home, volume and the like (the navigation bar's buttons arrive as keys too) aren't typing
+        if (event.isSystem) return false
+        if (keyCode == KeyEvent.KEYCODE_SHIFT_LEFT || keyCode == KeyEvent.KEYCODE_SHIFT_RIGHT) {
+            if (event.repeatCount == 0) shiftAlone = true
+            return false
+        }
+        shiftAlone = false; lastShiftTap = 0
+        if (keyCode == KeyEvent.KEYCODE_LANGUAGE_SWITCH || (keyCode == KeyEvent.KEYCODE_SPACE && event.isCtrlPressed)) {
+            if (event.repeatCount == 0) toggleLanguage(handOver = false)
+            return true
+        }
+        // shortcuts (Ctrl+C, Alt+Tab …) are the app's; the word being typed stays as shown
+        if (event.isCtrlPressed || event.isAltPressed || event.isMetaPressed) { finishWord(); return false }
+        val typing = keyCode in TYPING_KEYS || typedChar(event) != null
+        if (typing && !hardTyping) { hardTyping = true; updateStripOnly() }
+        val bn = typingBangla()
+        when (keyCode) {
+            KeyEvent.KEYCODE_SPACE -> {
+                if (!bn && en.isEmpty()) return false
+                onSpace(); return true
+            }
+            KeyEvent.KEYCODE_DEL -> {
+                if (bn && (last.composing || canReopen())) { onDelete(); return true }
+                if (!bn && en.isNotEmpty()) { onDelete(); return true }
+                if (Engine.hasUndo()) { Engine.reset(); lastCommitted = null }
+                return false
+            }
+            KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER -> {
+                if (!last.composing && en.isEmpty()) return false
+                // place the word, then let the app have its Enter (a new line, or Send)
+                placeHighlighted()
+                ic.sendKeyEvent(event)
+                enterForwarded = true
+                return true
+            }
+            KeyEvent.KEYCODE_TAB -> {
+                val n = minOf(last.candidates.size, 9)
+                if (bn && last.composing && n > 1) {
+                    val cur = if (hardSel > 0) hardSel else last.selected
+                    hardSel = (cur + if (event.isShiftPressed) n - 1 else 1) % n
+                    view?.selected = hardSel
+                    return true
+                }
+                finishWord(); return false
+            }
+            KeyEvent.KEYCODE_ESCAPE -> {
+                if (!last.composing && en.isEmpty()) return false
+                placeHighlighted(); return true
+            }
+            KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN,
+            KeyEvent.KEYCODE_MOVE_HOME, KeyEvent.KEYCODE_MOVE_END, KeyEvent.KEYCODE_PAGE_UP, KeyEvent.KEYCODE_PAGE_DOWN,
+            KeyEvent.KEYCODE_FORWARD_DEL -> { finishWord(); return false }
+        }
+        val ch = typedChar(event) ?: return false
+        if (bn) { onText(ch.toString()); return true }
+        // English: the app types the key itself, unless Android's layout for this keyboard gives another script
+        if (en.isNotEmpty()) finishWord()
+        val own = event.getUnicodeChar(event.metaState)
+        if (own in 0x20..0x7e) return false
+        ic.commitText(ch.toString(), 1)
+        return true
+    }
+
+    private companion object {
+        val TYPING_KEYS = setOf(KeyEvent.KEYCODE_SPACE, KeyEvent.KEYCODE_DEL, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER, KeyEvent.KEYCODE_TAB, KeyEvent.KEYCODE_ESCAPE)
+    }
+
+    /** The character a key types on the US layout (a–z, digits, marks), with Shift and Caps Lock */
+    private fun typedChar(e: KeyEvent): Char? {
+        val own = e.getUnicodeChar(e.metaState)
+        if (own in 0x21..0x7e) return own.toChar()
+        val us = usKeys.get(e.keyCode, e.metaState and (KeyEvent.META_SHIFT_MASK or KeyEvent.META_CAPS_LOCK_ON))
+        return if (us in 0x21..0x7e) us.toChar() else null
+    }
+
+    /** The word just placed is still right before the cursor, so Backspace can reopen it */
+    private fun canReopen(): Boolean {
+        if (!Engine.hasUndo()) return false
+        val word = lastCommitted ?: return false
+        return currentInputConnection?.getTextBeforeCursor(word.length, 0)?.toString() == word
+    }
+
+    /** Place the word being typed as highlighted (Enter, Esc), with no space after it */
+    private fun placeHighlighted() {
+        if (last.composing) apply(Engine.select(if (hardSel > 0) hardSel else last.selected))
+        if (en.isNotEmpty()) { placeEnglish(correct = false); view?.showSuggestions(emptyList(), emptyList(), emptyList()) }
+    }
+
+    override fun onShowKeys() {
+        keysWanted = true
+        updateStripOnly()
+    }
+
+    override fun onLanguageToggle() = toggleLanguage(handOver = true)
+
+    /** Bangla ⇄ English. From the on-screen key, English can mean Gboard; from a physical keyboard it never does */
+    private fun toggleLanguage(handOver: Boolean) {
         finishWord()
         if (plainField) {
             view?.stripMessage = "এই ঘরে শুধু ইংরেজি · English only here"
@@ -488,7 +662,7 @@ class EkusheIME : InputMethodService(), KeyboardListener {
             return
         }
         // English in Gboard: hand over, and come back in Bangla when Gboard's 🌐 key returns here
-        if (bangla && prefs.gboardEnglish) {
+        if (handOver && bangla && prefs.gboardEnglish) {
             val id = Gboard.enabledId(this)
             if (id != null && handOver(id)) return
             view?.stripMessage = if (Gboard.installed(this)) "Gboard চালু নেই · turn on Gboard in Settings" else "Gboard নেই · Gboard isn't on this phone"
@@ -497,6 +671,7 @@ class EkusheIME : InputMethodService(), KeyboardListener {
         prefs.bangla = bangla
         view?.bangla = bangla
         view?.shift = Shift.OFF
+        if (!handOver) { view?.stripMessage = if (bangla) "বাংলা" else "English"; view?.invalidate() }
         updateAutoShift()
     }
 

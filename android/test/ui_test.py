@@ -479,6 +479,41 @@ for label, name in [('থ্রিডি', '3d'), ('আলো', 'glow'), ('ঢ�
     hold.wait()
     sh('input keyevent KEYCODE_BACK'); time.sleep(0.8)
 
+# A physical keyboard (a tablet's keyboard cover, Bluetooth): keys typed on it go through Ekushe,
+# only the suggestion strip is shown, double-tap Shift switches language, ⌫ reopens, Tab picks
+to_top()
+text, b = field_text()
+bx1, by1, bx2, by2 = map(int, re.findall(r'\d+', b))
+tap(bx2 - 40, by2 - 25, 1.5)
+keys()
+start = field_text()[0] or ''
+sh('input text ami%sbhalo%sachi%s'); time.sleep(1)
+got = field_text()[0] or ''
+expect('physical keyboard types Bangla', got[len(start):], 'আমি ভালো আছি ')
+try:
+    keys('STRIP_ONLY')
+    expect('physical keyboard: only the strip is shown', True, True)
+except SystemExit:
+    expect('physical keyboard: only the strip is shown', False, True)
+shot('50-physical-keyboard-strip')
+sh('input keyevent KEYCODE_SHIFT_LEFT KEYCODE_SHIFT_LEFT'); time.sleep(0.6)
+start = field_text()[0] or ''
+sh('input text hello%s'); time.sleep(0.8)
+got = field_text()[0] or ''
+expect('double-tap Shift: English', got[len(start):], 'hello ')
+sh('input keyevent KEYCODE_SHIFT_LEFT KEYCODE_SHIFT_LEFT'); time.sleep(0.6)
+start = field_text()[0] or ''
+sh('input text office%s'); time.sleep(0.8)
+sh('input keyevent KEYCODE_DEL'); time.sleep(0.8)
+got = field_text()[0] or ''
+expect('⌫ reopens the word', got[len(start):], 'অফিস')
+shot('51-physical-keyboard-reopened')
+sh('input keyevent KEYCODE_TAB'); time.sleep(0.4)
+sh('input keyevent KEYCODE_SPACE'); time.sleep(0.8)
+got = field_text()[0] or ''
+expect('Tab picks the next suggestion', got[len(start):], 'অফিসে ')
+sh('input keyevent KEYCODE_BACK'); time.sleep(0.8)
+
 # A keyboard crash is invisible on screen (Android restarts the keyboard, and hide_error_dialogs is
 # on above): fail if the keyboard process crashed at any point during the test
 crashes = adb('logcat', '-d', '-b', 'crash', check=False)
