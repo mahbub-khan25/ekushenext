@@ -14,6 +14,8 @@ const ZWJ: char = '\u{200D}';
 const RRA: char = '\u{09DC}';
 const RHA: char = '\u{09DD}';
 const YYA: char = '\u{09DF}';
+/// Cost of typing a word-initial য-ফলা's vowel as "a" (ব্যস্ত byasto). Matches romanize.py.
+const YA_PHALA_A: f64 = 0.2;
 /// Cost of pronouncing a word-final inherent vowel (bol → bolo). Tuned on the pilot set.
 pub const FINAL_O: f64 = 0.3;
 
@@ -307,6 +309,7 @@ pub fn romanize(word: &str, k: usize) -> Vec<(f32, String)> {
             Unit::C(cl, sg, mods) => {
                 let (cl_lists, consumed) = cluster_options(cl, *sg);
                 lists.extend(cl_lists);
+                let before = lists.len();
                 if consumed {
                 } else if let Some(s) = sg {
                     lists.push(sign(*s).unwrap().to_vec());
@@ -330,6 +333,15 @@ pub fn romanize(word: &str, k: usize) -> Vec<(f32, String)> {
                     } else {
                         vec![S("", 0.0), S("o", 0.3)]
                     });
+                }
+                // A word that starts with consonant + য-ফলা and no vowel sign is said with "æ" and
+                // typed with an a as often as with an o: ব্যস্ত byasto/byosto, ব্যক্তি byakti, ন্যায্য
+                if idx == 0 && sg.is_none() && cl.len() == 2 && cl[1] == 'য' && lists.len() > before {
+                    if let Some(v) = lists.last_mut() {
+                        if v.iter().any(|o| matches!(o, S("o", _))) {
+                            v.push(S("a", YA_PHALA_A));
+                        }
+                    }
                 }
                 for &m in mods {
                     lists.push(modifier(m).unwrap().to_vec());

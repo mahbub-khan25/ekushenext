@@ -119,6 +119,8 @@ def _cluster_options(cl, sign):
             lists.append(CONS[c])
     return lists, sign
 
+YA_PHALA_A = 0.2  # word-initial য-ফলা typed with an a (matches roman.rs)
+
 def romanize(word, k=8):
     """Up to k (cost, roman) pairs, cheapest first."""
     units = parse(word)
@@ -132,6 +134,7 @@ def romanize(word, k=8):
             cl, sign, mods = u[1], u[2], u[3]
             cl_lists, sign = _cluster_options(cl, sign)
             lists.extend(cl_lists)
+            before = len(lists)
             if sign == "_consumed":
                 pass
             elif sign:
@@ -152,6 +155,10 @@ def romanize(word, k=8):
                 nxt = units[idx + 1]
                 # inherent vowel before য় is usually pronounced (হয় hoy); before a vowel unit it is dropped
                 lists.append([("o", 0), ("", .3)] if nxt[0] == "C" else [("", 0), ("o", .3)])
+            # word-initial consonant + য-ফলা, no vowel sign: "æ", typed a or o (ব্যস্ত byasto/byosto)
+            if (idx == 0 and not sign and len(cl) == 2 and cl[1] == "য" and len(lists) > before
+                    and any(o[0] == "o" for o in lists[-1])):
+                lists[-1] = lists[-1] + [("a", YA_PHALA_A)]
         mods = u[2] if u[0] == "V" else u[3]
         for m in mods:
             lists.append(MODS[m])
