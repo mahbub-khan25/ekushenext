@@ -6,17 +6,24 @@ Built 2026-10-20 by `tools/dict-builder` (see its README).
 
 | Source | Documents | Words counted |
 | --- | --- | --- |
-| Bangla Wikipedia (2023-11-01) | 143,070 | 47,180,754 |
-| FineWeb-2 `ben_Beng` (files 000–001) | 5,982,002 | 2,132,078,875 |
-| Sangraha verified Bengali (files 0–9) | 1,492,633 | 564,586,280 |
-| **Total** | **7,617,705** | **2,743,845,909** |
+| Bangla Wikipedia (2023-11-01) | 143,071 | 47,180,754 |
+| FineWeb-2 `ben_Beng` (all files, 000–004) | 15,185,747 | 5,221,459,193 |
+| Sangraha verified Bengali (all files, 0–76) | 11,497,085 | 4,340,999,618 |
+| **Total** | **26,825,903** | **9,609,639,565** |
+
+Rebuilt 2026-10-28 from the whole of all three sources (the first build, 2026-10-20, used 2.74 billion
+words: FineWeb-2 files 000–001 and Sangraha files 0–9). Word pairs (context) are now counted over the
+whole corpus as well (they were counted over 1.68 billion words), and the engine's `PAIR_CORPUS_LOG10_M`
+follows. On the test sets the larger corpus scores the same (1025 of 1034, against 1026 for the earlier
+counts with the same rules); so does typing the most common 5,000 words (98.3% first choice) and words
+ranked 20,000–30,000 (92.8%).
 
 ## Output
 
 | File | Words | Rule |
 | --- | --- | --- |
-| `words-core.tsv` | 102,747 | ≥ 0.3 per million words |
-| `words-extended.tsv` | 315,996 | 0.03–0.3 per million |
+| `words-core.tsv` | 102,214 | ≥ 0.3 per million words |
+| `words-extended.tsv` | 300,805 | 0.03–0.3 per million |
 
 Columns: `word, ppm (mean per-million across sources), total, docs, wiki, web, sangraha, flags`.
 Flags: `single_source` (frequent in only one source, mostly names), `variant_of=X` (a confusable

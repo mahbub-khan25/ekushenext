@@ -557,8 +557,10 @@ fn wdist(
 }
 
 const SKEL_ALPHABET: &[u8] = b"bcdfghjklmnprst";
-/// log10 of the pair-counting corpus size in millions of words (~1,680 M: Wikipedia + Sangraha + FineWeb-2 000)
-const PAIR_CORPUS_LOG10_M: f32 = 3.225;
+/// log10 of the pair-counting corpus size in millions of words: all of Bangla Wikipedia, FineWeb-2 and
+/// Sangraha's verified Bengali, 9,609 M (2026-10-28; was 1,680 M, 3.225). Must match the dictionary's
+/// word pairs: tools/dict-builder/build.sh prints the word totals.
+const PAIR_CORPUS_LOG10_M: f32 = 3.983;
 
 impl Dictionary {
     /// Candidate ids for typed Roman text: its key's bucket, nearby keys (one consonant off) when the

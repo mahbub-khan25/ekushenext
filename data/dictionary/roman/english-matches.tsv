@@ -77,7 +77,6 @@
 সকল	school	0.35	skul	0
 নেক্সট	next	0.0	nekst	0
 ফিল	feel	0.0	fil	0
-শিউর	sure	0.0	siur	0
 টিম	team	0.0	tim	0
 ফ্যামিলি	family	0.0	famili	0
 কিপ	keep	0.0	kip	0
@@ -149,9 +148,8 @@
 ইউনাইটেড	united	0.25	iunited	0
 ব্ল্যাক	black	0.0	blak	0
 ফলং	following	0.25	foloing	0
-ফলিং	following	0.25	foloing	0
+ফলোয়িং	following	0.25	foloing	0
 ফেস	face	0.0	fes	0
-মেব	maybe	0.0	meb	0
 প্রেসিডেন্ট	president	0.0	president	1
 স্টোরি	story	0.0	stori	0
 কোর্স	course	0.25	kours	0
@@ -195,7 +193,6 @@
 প্রতি	pretty	0.25	preti	0
 রিমেম্বার	remember	0.35	remembar	0
 ফ্রেন্ড	friend	0.25	friend	0
-নিডস	needs	0.0	nids	0
 নিস	nice	0.0	nis	0
 নিশ	nice	0.0	nis	0
 প্লেয়িং	playing	0.25	pleing	0
@@ -272,7 +269,6 @@
 সেল্ফ	self	0.0	self	1
 স্টুডেন্টস	students	0.25	students	0
 কোস্ট	cost	0.0	kost	0
-কস্ট	cost	0.0	kost	0
 মেন	main	0.0	men	0
 মোমেন্ট	moment	0.0	moment	1
 মথুর	mother	0.35	mothar	0
@@ -322,7 +318,6 @@
 ইনসাইড	inside	0.0	insaid	0
 অনলাইন	online	0.0	onlain	0
 প্রাইভেট	private	0.25	privet	0
-প্রবলেমস	problems	0.25	problems	0
 রুটস	rights	0.35	rets	0
 সেন্স	sense	0.0	sens	0
 স্টার	star	0.0	star	1
@@ -367,7 +362,7 @@
 সেপ্টেম্বর	september	0.25	septembar	0
 সোর্স	source	0.25	sours	0
 এভিডেন্স	evidence	0.25	evidens	0
-ফল	follow	0.25	folo	0
+ফল	follow	0.0	folo	0
 অফিসিয়াল	official	0.25	ofisial	0
 প্রোডাকশন	production	0.35	produkshon	0
 রেট	rate	0.0	ret	0
@@ -438,6 +433,7 @@
 রেশ	race	0.0	res	0
 রেস	race	0.0	res	0
 সিম	seem	0.0	sim	0
+শিম	seem	0.0	sim	0
 সেভেন	seven	0.0	seven	1
 সিম্পল	simple	0.0	simpl	0
 সিম্পল	simply	0.25	simpli	0
@@ -467,7 +463,7 @@
 এক্সেস	access	0.35	akses	0
 একসেস	access	0.35	akses	0
 বেশ	base	0.0	bes	0
-বেলো	below	0.0	belo	0
+বেল	below	0.0	belo	0
 ডিপ	deep	0.0	dip	0
 দীপ	deep	0.0	dip	1
 ফলদ	followed	0.25	foloed	0
@@ -495,7 +491,6 @@
 পিএস	piece	0.0	pies	0
 রিসেন্ট	recent	0.35	resent	0
 সিং	seeing	0.0	sing	0
-স্ট্রীট	straight	0.35	straet	0
 স্ট্রেট	straight	0.25	straet	0
 ভিসিট	visit	0.0	visit	1
 বয়স	boys	0.0	boys	1
@@ -527,8 +522,8 @@
 রিসেন্টলি	recently	0.35	resentli	0
 স্টার	store	0.0	star	0
 স্টুডেন্ট	student	0.0	student	1
+তোমর	tomorrow	0.0	tomoro	0
 তোমরাও	tomorrow	0.25	tomoro	0
-তোমর	tomorrow	0.25	tomoro	0
 ট্রাক	track	0.0	trak	0
 ট্র্যাক	track	0.0	trak	0
 অডিশন	addition	0.35	adishon	0
@@ -646,7 +641,7 @@
 ইন্ডিপেন্ডেন্ট	independent	0.35	independent	0
 মাস্টার	master	0.0	mastar	0
 রুশিয়া	russia	0.25	rusia	0
-রুশা	russia	0.25	rusia	0
+রুশি	russia	0.25	rusia	0
 শিপ	ship	0.0	ship	1
 স্টক	stock	0.0	stok	0
 উইকেন্ড	weekend	0.35	oikend	0
@@ -690,7 +685,6 @@
 ড্যামেজ	damage	0.0	damej	0
 ডিসিসি	disease	0.25	disis	0
 ডাক্তার	doctor	0.35	doktar	0
-ডক্টর	doctor	0.25	doktar	0
 ড্রিঙ্ক	drink	0.0	drink	1
 ড্রাইভিং	driving	0.25	driving	0
 ফিলস	feels	0.0	fils	0
@@ -712,8 +706,8 @@
 ট্রিপ	trip	0.0	trip	1
 ব্যাসিক	basic	0.0	basik	0
 ক্যাপ্টেন	captain	0.0	kapten	0
-কারী	carry	0.0	kari	0
 কারি	carry	0.0	kari	0
+কারী	carry	0.0	kari	0
 কার্স	cars	0.0	kars	0
 ক্রাইম	crime	0.0	kraim	0
 ইফেক্টিভ	effective	0.35	efektiv	0
@@ -721,6 +715,7 @@
 ফুলি	fully	0.0	fuli	0
 ফুলই	fully	0.0	fuli	0
 হলি	highly	0.25	heli	0
+হিলি	highly	0.35	heli	0
 হোল্ডিং	holding	0.0	holding	1
 জাপান	japan	0.0	japan	1
 লাওস	laws	0.0	laos	0
@@ -815,7 +810,7 @@
 ত্রি	tree	0.0	tri	0
 ট্রি	tree	0.0	tri	0
 অহোম	whom	0.0	ohom	0
-অহম	whom	0.0	ohom	0
+ওহম	whom	0.0	ohom	0
 বেগিন	begin	0.0	begin	1
 বটম	bottom	0.0	botom	0
 বোতাম	bottom	0.35	botom	0
@@ -934,7 +929,6 @@
 মার্কেটিং	marketing	0.0	marketing	1
 মারি	mary	0.0	mari	0
 ম্যারি	mary	0.0	mari	0
-প্রডিউস	produce	0.0	prodius	0
 প্রোগ্রেস	progress	0.0	progres	0
 প্রগ্রেস	progress	0.0	progres	0
 শুটিং	shooting	0.0	shuting	0
@@ -958,6 +952,7 @@
 লেংথ	length	0.0	length	1
 লুকি	lucky	0.0	luki	0
 অন্ত	onto	0.0	onto	1
+পশুবলি	possibly	0.35	posibli	0
 পসিবল	possibly	0.25	posibli	0
 প্রভ	prove	0.0	prov	0
 শুটিং	setting	0.35	seting	0
@@ -971,6 +966,7 @@
 ড্রেস	dress	0.0	dres	0
 ইসিআর	easier	0.0	isiar	0
 ফেলো	fellow	0.0	felo	0
+ফল	fellow	0.35	felo	0
 ফ্লোরিডা	florida	0.0	florida	1
 হর্স	horse	0.0	hors	0
 স্টিক	stick	0.0	stik	0
@@ -993,14 +989,13 @@
 ইমেজেস	images	0.35	imajes	0
 মেক্সিকো	mexico	0.0	meksiko	0
 পিং	paying	0.25	peing	0
-পেং	paying	0.25	peing	0
 রেশ	raise	0.0	res	0
 রেস	raise	0.0	res	0
 রোল	roll	0.0	rol	0
 টেকনিকাল	technical	0.25	tekhnikal	0
 ট্রিট	treat	0.0	trit	0
 তড়িত	treat	0.0	trit	0
-ইউনিক	unique	0.25	iuniko	0
+ইউনিক	unique	0.0	iuniko	0
 ব্রেকিং	breaking	0.35	briking	0
 দন্ত	dont	0.0	dont	1
 ডোন্ট	dont	0.0	dont	1
@@ -1010,9 +1005,8 @@
 ফরেভার	forever	0.0	forevar	0
 হেনরি	henry	0.0	henri	0
 ইনজুরি	injury	0.0	injuri	0
-ইরন	iron	0.0	iron	1
 মার্টিন	martin	0.0	martin	1
-মডেলস	models	0.0	models	1
+মডেলস	models	0.25	models	0
 পার্লামেন্ট	parliament	0.25	parliament	0
 রেফারেন্স	reference	0.35	referens	0
 সীতেশ	sites	0.0	sites	1
@@ -1047,11 +1041,12 @@
 ফেস্টিভ্যাল	festival	0.25	festival	0
 ফ্ল্যাট	flat	0.0	flat	1
 হ্যারি	harry	0.0	hari	0
-হেলো	hello	0.0	helo	0
+হেল	hello	0.0	helo	0
 জোহানসন	johnson	0.25	johnson	0
 মেল	mail	0.0	mel	0
 ম্যাসিভ	massive	0.25	masiv	0
 পার	pair	0.0	par	0
+পিএসএস	pieces	0.0	pieses	0
 পিসেস	pieces	0.25	pieses	0
 প্লেন	plane	0.0	plen	0
 প্লেনটি	plenty	0.0	plenti	0
@@ -1076,8 +1071,8 @@
 দুটি	duty	0.0	duti	0
 ফ্যান্টাস্টিক	fantastic	0.0	fantastik	0
 ফিলিংস	feelings	0.0	filings	0
-ফলিং	flying	0.25	flying	0
 ফলোয়িং	flying	0.25	flying	0
+ফলিং	flying	0.25	flying	0
 হান্ড্রেড	hundred	0.35	hundred	0
 পাঠ	path	0.0	path	1
 প্রমিস	promise	0.0	promis	0
@@ -1105,9 +1100,6 @@
 লিমিট	limit	0.0	limit	1
 মুন	moon	0.0	mun	0
 অসিন	ocean	0.0	osin	0
-অসীন	ocean	0.0	osin	0
-পড়স	powers	0.25	poers	0
-পোরস	powers	0.25	poers	0
 প্রফিট	profit	0.0	profit	1
 প্রুফ	proof	0.0	pruf	0
 সুইট	suit	0.0	suit	1
@@ -1132,7 +1124,7 @@
 এন্ডিং	ending	0.0	ending	1
 এক্সপ্রেস	express	0.0	ekspres	0
 ফলো	flow	0.0	flo	0
-হেরো	hero	0.0	hero	1
+হের	hero	0.0	hero	1
 জোক	joke	0.0	jok	0
 জক	joke	0.0	jok	0
 প্ল্যানেট	planet	0.0	planet	1
@@ -1204,7 +1196,6 @@
 হিটস	hits	0.0	hits	1
 করি	korea	0.0	kori	0
 লিডস	leads	0.0	lids	0
-মেনটেন	maintain	0.0	menten	0
 মানতেন	maintain	0.35	menten	0
 মশিউর	measure	0.35	misiur	0
 অনার্স	owners	0.35	oners	0
@@ -1252,6 +1243,7 @@
 স্ট্রেস	stores	0.25	stores	0
 ট্রেডিং	trading	0.35	trading	0
 ভিশন	vision	0.0	vishon	0
+যের	zero	0.0	zero	1
 আলেক্স	alex	0.0	aleks	0
 করিম	cream	0.0	krim	0
 ক্রাইসিস	crisis	0.25	krisis	0
@@ -1284,8 +1276,8 @@
 মার্কেটস	markets	0.0	markets	1
 শিক	seek	0.0	sik	0
 সিক	seek	0.0	sik	0
-সোলো	solo	0.0	solo	1
-সলো	solo	0.0	solo	1
+সোল	solo	0.0	solo	1
+সল	solo	0.0	solo	1
 স্পোক	spoke	0.0	spok	0
 টিকেট	ticket	0.0	tiket	0
 টিকিট	ticket	0.35	tiket	0
@@ -1300,6 +1292,7 @@
 হ্যাং	hang	0.0	hang	1
 হাং	hang	0.0	hang	1
 ইনফো	info	0.0	info	1
+ম্যানলি	mainly	0.35	menli	0
 ম্যাক্সিমাম	maximum	0.35	maksimum	0
 অফারিং	offering	0.35	ofering	0
 পেইন্টিং	painting	0.25	penting	0
@@ -1365,7 +1358,6 @@
 খ্যাত	chat	0.0	khat	0
 খাত	chat	0.0	khat	0
 খাস	cheese	0.35	khis	0
-কিস	cheese	0.25	khis	0
 কেমিক্যাল	chemical	0.25	khemikal	0
 ক্লিনটন	clinton	0.0	klinton	0
 কম্পিটিটিভ	competitive	0.35	kompetitiv	0
@@ -1377,6 +1369,7 @@
 মেস	mess	0.0	mes	0
 নাভি	navy	0.0	navi	0
 নরমাল	normally	0.25	normali	0
+নর্মাল	normally	0.25	normali	0
 প্যারেন্ট	parent	0.25	parent	0
 পেরেন্ট	parent	0.35	parent	0
 পার্মানেন্ট	permanent	0.35	permanent	0
@@ -1424,7 +1417,6 @@
 খোশ	chose	0.0	khos	0
 খস	chose	0.0	khos	0
 সার্কল	circle	0.35	sirkl	0
-কন্সার্ট	concert	0.35	konsert	0
 ক্রাশ	crash	0.0	krash	0
 ক্র্যাশ	crash	0.0	krash	0
 ডেলিভারি	deliver	0.25	delivar	0
@@ -1432,7 +1424,6 @@
 ডেপুটি	deputy	0.0	deputi	0
 ডক্টরস	doctors	0.0	doktors	0
 ইলেকট্রনিক	electronic	0.35	elektronik	0
-ইলেক্ট্রনিক	electronic	0.35	elektronik	0
 এক্সপ্রেশন	expression	0.0	ekspreshon	0
 ফ্যাক্টরি	factory	0.0	faktori	0
 ফ্যাক্টর	factory	0.25	faktori	0
@@ -1470,16 +1461,13 @@
 সেট	sight	0.0	set	0
 সিং	sing	0.0	sing	1
 সোভিয়েত	soviet	0.25	soviet	0
-উইপন	weapon	0.35	oipon	0
 বাইক	bike	0.0	baik	0
 কুশিং	causing	0.25	kausing	0
-কন্টেস্ট	contest	0.0	kontest	0
 কনটেস্ট	contest	0.25	kontest	0
 ফিস	fees	0.0	fis	0
 ফিশ	fees	0.0	fis	0
 ফ্রান্সিসকো	francisco	0.0	fransisko	0
 হত	height	0.25	hit	0
-হাত	height	0.35	hit	0
 হিডেন	hidden	0.0	hiden	0
 হেইডেন	hidden	0.25	hiden	0
 হং	hong	0.0	hong	1
@@ -1489,14 +1477,13 @@
 অফিশিয়ালি	officially	0.25	ofisiali	0
 পিক	peak	0.0	pik	0
 পার্সন	portion	0.35	porshon	0
-পন্ডস	pounds	0.25	pounds	0
 প্রিন্সেস	princess	0.0	prinses	0
 প্রোটিন	protein	0.25	protein	0
 রিফর্ম	reform	0.35	reform	0
 স্যাম্পল	sample	0.25	sampl	0
 সিম্পল	sample	0.35	sampl	0
 সেকেন্ডারি	secondary	0.35	sekondari	0
-সমূহও	somehow	0.35	someho	0
+সমূহ	somehow	0.35	someho	0
 স্টিড	stayed	0.0	stid	0
 স্তাদ	stayed	0.35	stid	0
 উইলসন	wilson	0.35	oilson	0
@@ -1538,6 +1525,7 @@
 লোক	lock	0.0	lok	0
 নস	nose	0.0	nos	0
 নোস	nose	0.0	nos	0
+অবজেক্টস	objects	0.25	objekts	0
 প্লাস্টিক	plastic	0.0	plastik	0
 কত	quote	0.0	kot	0
 রেকর্ডিং	recording	0.0	rekording	0
@@ -1549,7 +1537,6 @@
 ড্যান্সিং	dancing	0.0	dansing	0
 ডান্সিং	dancing	0.0	dansing	0
 ডকুমেন্ট	document	0.0	dokument	0
-এমপ্লয়ি	employee	0.0	employi	0
 ফিশিং	facing	0.35	fasing	0
 ফোর্ড	ford	0.0	ford	1
 গ্যাং	gang	0.0	gang	1
@@ -1563,7 +1550,6 @@
 পারমিশন	permission	0.35	permishon	0
 পর্ন	porn	0.0	porn	1
 রেসিং	racing	0.35	rasing	0
-রেগুলেশনস	regulations	0.35	regulashons	0
 রোমান	roman	0.0	roman	1
 শোল্ডার	shoulder	0.25	shouldar	0
 সোল্ডার	shoulder	0.25	shouldar	0
@@ -1611,7 +1597,6 @@
 টপিক	topic	0.0	topik	0
 টরন্টো	toronto	0.0	toronto	1
 ইউনিভার্সাল	universal	0.35	iuniversal	0
-ইরন	earn	0.0	irn	0
 গড়েই	grey	0.0	grei	0
 গিটার	guitar	0.25	guitar	0
 হেডিং	heading	0.35	hiding	0
@@ -1636,6 +1621,7 @@
 স্ট্যাবল	stable	0.25	stabl	0
 টেম্পোরারি	temporary	0.0	temporari	0
 ট্রিক	trick	0.0	trik	0
+তরিক	trick	0.0	trik	0
 বোন	bone	0.0	bon	0
 বন	bone	0.0	bon	0
 কাম্বার	chamber	0.25	khambar	0
@@ -1663,13 +1649,14 @@
 বেডরুম	bedroom	0.0	bedrum	0
 ব্রিকস	breaks	0.0	briks	0
 কলোরাডো	colorado	0.0	kolorado	0
-কন্ট্রাস্ট	contrast	0.0	kontrast	0
 কনট্রাস্ট	contrast	0.25	kontrast	0
+কন্ট্রাস্ট	contrast	0.25	kontrast	0
 ডোনাল্ড	donald	0.0	donald	1
 এলিমেন্ট	element	0.35	element	0
 এক্সটেনশন	extension	0.25	ekstenshon	0
 ফাউন্ডার	founder	0.35	foundar	0
 গির	gear	0.0	gir	0
+গীর	gear	0.0	gir	0
 হিলস	hills	0.0	hils	0
 হিটিং	hitting	0.0	hiting	0
 জ্যাসন	jason	0.0	jason	1
@@ -1681,7 +1668,7 @@
 পোভার্টি	poverty	0.35	poverti	0
 পভার্টি	poverty	0.35	poverti	0
 প্রসেসিং	processing	0.0	prosesing	0
-রেল	railway	0.25	relo	0
+রেল	railway	0.0	relo	0
 সেনসিটিভ	sensitive	0.25	sensitiv	0
 সার্ভার	server	0.35	servar	0
 শোক	shock	0.0	shok	0
@@ -1720,7 +1707,6 @@
 সিলেক্ট	select	0.35	selekt	0
 সাইলেন্ট	silent	0.25	silent	0
 স্পোকেন	spoken	0.0	spoken	1
-শোফার	suffer	0.35	sufar	0
 টেম্পল	temple	0.0	templ	0
 ট্রিকস	tracks	0.35	traks	0
 ট্রিক্স	tracks	0.35	traks	0
@@ -1747,6 +1733,7 @@
 মুসলিমস	muslims	0.25	muslims	0
 প্যাশন	passion	0.0	pashon	0
 পিকিং	picking	0.0	piking	0
+প্যাকিং	picking	0.35	piking	0
 প্রসিডিউর	procedure	0.35	prosediur	0
 প্রডিউসার	producer	0.25	produsar	0
 প্রোডিউসার	producer	0.25	produsar	0
@@ -1828,7 +1815,7 @@
 ড্রাগন	dragon	0.0	dragon	1
 ড্রামাটিক	dramatic	0.0	dramatik	0
 ফুডস	foods	0.0	fuds	0
-ইনস্টিটিউশন	institution	0.25	institushon	0
+ইন্সটিটিউশন	institution	0.25	institushon	0
 কিংস	kings	0.0	kings	1
 লস্ট	lowest	0.25	loest	0
 মেমোরিয়াল	memorial	0.25	memorial	0
@@ -1882,7 +1869,7 @@
 সুইডেন	sudden	0.25	suden	0
 সুদান	sudden	0.35	suden	0
 থ্রোন	thrown	0.0	thron	0
-থেরন	thrown	0.25	thron	0
+ট্রন	thrown	0.25	thron	0
 আটলান্টিক	atlantic	0.0	atlantik	0
 ক্লিনিং	cleaning	0.0	klining	0
 কম্পিত	compete	0.35	kompet	0
@@ -1899,8 +1886,8 @@
 লিকুইড	liquid	0.35	likoid	0
 মেডাল	medal	0.0	medal	1
 মর্টগেজ	mortgage	0.0	mortgej	0
-ন্যারো	narrow	0.0	naro	0
-নার	narrow	0.25	naro	0
+নূর	narrow	0.35	naro	0
+নুর	narrow	0.35	naro	0
 পোস্টিং	posting	0.0	posting	1
 রস	ross	0.0	ros	0
 শীতল	seattle	0.25	sitl	0
@@ -1942,7 +1929,7 @@
 কানসাস	kansas	0.0	kansas	1
 ক্যান্সাস	kansas	0.0	kansas	1
 লিগ্যাসি	legacy	0.35	legasi	0
-মাঠেও	matthew	0.0	matheo	0
+মাঠ	matthew	0.25	matheo	0
 মনিটর	monitor	0.25	monitar	1
 প্যাট্রিক	patrick	0.0	patrik	0
 ফিল	phil	0.0	fil	1
@@ -1950,6 +1937,7 @@
 পাবলিশিং	publishing	0.35	publishing	0
 রেমন্ড	remind	0.35	remind	0
 রিসোর্ট	resort	0.35	resort	0
+রিসর্ট	resort	0.35	resort	0
 সিড	seed	0.0	sid	0
 স্টল	settle	0.25	setl	0
 স্পেল	spell	0.0	spel	0
@@ -1970,11 +1958,12 @@
 ল্যান্ডস্কেপ	landscape	0.25	landskep	0
 মিটস	meets	0.0	mits	0
 মাইক্রোসফট	microsoft	0.25	mikrosoft	0
+মাইক্রোসফ্ট	microsoft	0.25	mikrosoft	0
 অবজেক্টিভ	objective	0.25	objektiv	0
 রেসিডেন্স	residence	0.0	residens	0
 রেসিডেন্সি	residence	0.25	residens	0
-রোলি	roughly	0.25	rouli	0
 রুলি	roughly	0.25	rouli	0
+রোলি	roughly	0.25	rouli	0
 স্যালারি	salary	0.0	salari	0
 স্কোরিং	scoring	0.0	skoring	0
 স্ক্রিপ্ট	script	0.0	skript	0
@@ -1986,6 +1975,7 @@
 ব্রেস্ট	breast	0.35	brist	0
 কান্ত	cant	0.0	kant	0
 কান্ট	cant	0.0	kant	0
+কার্টার	carter	0.0	kartar	0
 কেলসি	chelsea	0.25	khelsi	0
 কেমিস্ট্রি	chemistry	0.25	khemistri	0
 করাপশন	corruption	0.35	korupshon	0
@@ -2052,7 +2042,6 @@
 ফুকন	fuckin	0.25	fukin	0
 ফান্ডামেন্টাল	fundamental	0.35	fundamental	0
 জেনিস	genius	0.25	jenius	0
-হসপিটালস	hospitals	0.25	hospitals	0
 ইনফেকশন	infection	0.25	infekshon	0
 ইনস্টাগ্রাম	instagram	0.0	instagram	1
 কনি	knee	0.0	kni	0
@@ -2189,7 +2178,6 @@
 ক্যান্ডি	candy	0.0	kandi	0
 কান্দি	candy	0.0	kandi	0
 ক্যারিয়ার	carrier	0.25	kariar	0
-সেলেব্রিটি	celebrity	0.0	selebriti	0
 সেলিব্রিটি	celebrity	0.35	selebriti	0
 সার্টিফিকেট	certificate	0.35	sertifiket	0
 কল	clay	0.0	kl	0
@@ -2207,7 +2195,6 @@
 পুলিশ	polish	0.35	polish	0
 রিকভার	recover	0.35	rekovar	0
 রেলি	rely	0.0	reli	0
-রুলিং	ruling	0.0	ruling	1
 রোলিং	ruling	0.35	ruling	0
 স্যাক্রিফাইস	sacrifice	0.25	sakrifis	0
 সোল	sole	0.0	sol	0
@@ -2230,11 +2217,13 @@
 কনট	knight	0.35	knet	0
 ল্যারি	larry	0.0	lari	0
 লোগো	logo	0.0	logo	1
+লগ	logo	0.0	logo	1
 মালেশিয়া	malaysia	0.25	malesia	0
 মুর	moore	0.0	mur	0
 ফিলিপ	philip	0.0	filip	1
 ফটোগ্রাফার	photographer	0.0	fotografar	0
 প্রিন্টিং	printing	0.0	printing	1
+পাবলিকলি	publicly	0.35	publikli	0
 সিডস	seeds	0.0	sids	0
 স্লিপ	slip	0.0	slip	1
 স্টোকস	stocks	0.0	stoks	0
@@ -2277,7 +2266,6 @@
 ক্লাসিক্যাল	classical	0.0	klasikal	0
 ক্লাসিকাল	classical	0.0	klasikal	0
 ক্লিপ	clip	0.0	klip	0
-কন্সপিরেসি	conspiracy	0.35	konspirasi	0
 কন্ট্রোভার্সি	controversy	0.35	kontroversi	0
 কুপার	cooper	0.0	kupar	0
 এনকাউন্টার	encounter	0.35	enkountar	0
@@ -2314,7 +2302,6 @@
 এররস	errors	0.0	erors	0
 ফোকাসিং	focusing	0.35	fokusing	0
 গ্যারেজ	garage	0.0	garej	0
-হোস্টেড	hosted	0.0	hosted	1
 ইন্ডিয়ান্স	indians	0.25	indians	0
 ইন্দোনেশিয়া	indonesia	0.25	indonesia	0
 ইন্সপেক্টর	inspector	0.35	inspektar	0
@@ -2354,8 +2341,8 @@
 নেলসন	nelson	0.0	nelson	1
 নিউট্রাল	neutral	0.35	neutral	0
 নোবল	noble	0.0	nobl	0
-পিক্স	picks	0.0	piks	0
 পিকস	picks	0.0	piks	0
+পিক্স	picks	0.0	piks	0
 পোল্যান্ড	poland	0.25	poland	0
 পুসি	pussy	0.0	pusi	0
 রুলেট	relate	0.35	relet	0
@@ -2375,6 +2362,7 @@
 ব্রুস	brush	0.0	brush	1
 বার্ডেন	burden	0.35	burden	0
 ক্যাম্পবেল	campbell	0.25	kampbel	0
+কার্টার	charter	0.25	khartar	0
 সিভিলিয়ান	civilian	0.25	sivilian	0
 কোয়ালিশন	coalition	0.25	koalishon	0
 কমপ্লেন	complain	0.0	komplen	0
@@ -2408,8 +2396,8 @@
 সেটিংস	settings	0.0	setings	0
 শেড	shed	0.0	shed	1
 স্নেক	snake	0.0	snek	0
-স্পন্সরড	sponsored	0.35	sponsored	0
 স্টাইলিং	stealing	0.25	stiling	0
+ট্রিপস	trips	0.0	trips	1
 আর্জেন্টিনা	argentina	0.0	arjentina	0
 বাল্টিমোর	baltimore	0.35	baltimar	0
 বোরিং	bearing	0.35	biring	0
@@ -2420,7 +2408,6 @@
 কিপার	cheaper	0.25	khipar	0
 ক্রিস্টোফার	christopher	0.25	khristofar	0
 ক্রিস	cruise	0.25	kruis	0
-করিস	cruise	0.25	kruis	0
 কাস্টডি	custody	0.35	kustodi	0
 ডিলেট	delete	0.35	delet	0
 ফেভার	fever	0.0	fevar	0
@@ -2441,7 +2428,6 @@
 পারমিট	permit	0.35	permit	0
 পেরি	perry	0.0	peri	0
 পোর্ট্রেট	portrait	0.0	portret	0
-প্রোডাক্টিভ	productive	0.35	produktiv	0
 সাফল্যই	safely	0.35	safeli	0
 শর্টস	shirts	0.35	shirts	0
 সিলেট	slight	0.25	slet	0
@@ -2486,6 +2472,7 @@
 অর্লিন্স	orleans	0.0	orlins	0
 অরলিন্স	orleans	0.25	orlins	0
 ফনিক্স	phoenix	0.25	foeniks	0
+কোটেড	quoted	0.0	koted	0
 রবিনসন	robinson	0.0	robinson	1
 সিঙ্ক	sink	0.0	sink	1
 স্কিপ	skip	0.0	skip	1
@@ -2571,6 +2558,7 @@
 সনি	sony	0.0	soni	0
 শনি	sony	0.0	soni	0
 স্পটেড	spotted	0.0	spoted	0
+স্ট্যানলি	stanley	0.25	stanlei	0
 ট্যাক্সি	taxi	0.0	taksi	0
 টোব্যাকো	tobacco	0.0	tobako	0
 টোবাকো	tobacco	0.0	tobako	0
@@ -2625,7 +2613,6 @@
 কলোনিয়াল	colonial	0.25	kolonial	0
 কমিকস	comics	0.0	komiks	0
 কমিক্স	comics	0.0	komiks	0
-কন্ট্রোলিং	controlling	0.0	kontroling	0
 ক্রুশ	crush	0.0	krush	0
 ক্রুস	crush	0.0	krush	0
 ড্রেসিং	dressing	0.0	dresing	0
@@ -2648,7 +2635,6 @@
 প্লেসিং	placing	0.35	plasing	0
 প্রোপাগান্ডা	propaganda	0.0	propaganda	1
 প্রপাগান্ডা	propaganda	0.0	propaganda	1
-রিফ্লেকশন	reflection	0.35	reflekshon	0
 রেভোলিউশনারি	revolutionary	0.25	revolushonari	0
 রেভল্যুশনারি	revolutionary	0.25	revolushonari	0
 স্ক্যান্ডাল	scandal	0.0	skandal	0
@@ -2692,8 +2678,8 @@
 প্যারেড	parade	0.0	pared	0
 পারদ	parade	0.25	pared	0
 প্যারাডাইস	paradise	0.25	paradis	0
-পিক্স	pics	0.0	piks	0
 পিকস	pics	0.0	piks	0
+পিক্স	pics	0.0	piks	0
 পলিটিশিয়ান	politician	0.25	politisian	0
 প্রিলিমিনারি	preliminary	0.35	preliminari	0
 প্রেসিডেন্সি	presidency	0.0	presidensi	0
@@ -2728,9 +2714,9 @@
 ইনফর্ম	inform	0.25	inform	0
 জেরেমি	jeremy	0.0	jeremi	0
 লেসবিয়ান	lesbian	0.25	lesbian	0
-মাইন্ডেড	minded	0.25	minded	0
 মরিস	morris	0.0	moris	0
-নর	norway	0.25	noro	0
+নর	norway	0.0	noro	0
+নূর	norway	0.35	noro	0
 পডকাস্ট	podcast	0.25	podkast	0
 পোর্টফোলিও	portfolio	0.25	portfolio	0
 প্রোডাক্টিভিটি	productivity	0.35	produktiviti	0
@@ -2754,7 +2740,6 @@
 বিম	beam	0.0	bim	0
 বীম	beam	0.0	bim	0
 বিনস	beans	0.0	bins	0
-বিন্স	beans	0.0	bins	0
 বাইন্ডিং	binding	0.25	binding	0
 বন্ডিং	binding	0.25	binding	0
 ব্লাঙ্ক	blank	0.0	blank	1
@@ -2773,7 +2758,6 @@
 ইনফ্লেশন	inflation	0.35	inflashon	0
 ইন্সপেকশন	inspection	0.25	inspekshon	0
 ইনস্টল	install	0.35	instal	0
-ইন্সটল	install	0.35	instal	0
 ইনভেন্টরি	inventory	0.25	inventori	0
 জুডিশিয়াল	judicial	0.25	judisial	0
 জুডিসিয়াল	judicial	0.25	judisial	0
@@ -2804,6 +2788,7 @@
 থান্ডার	thunder	0.35	thundar	0
 ট্র্যাজেডি	tragedy	0.0	trajedi	0
 ট্রাজেডি	tragedy	0.0	trajedi	0
+ভিন্সেন্ট	vincent	0.25	vinsent	0
 আলাইক	alike	0.0	alaik	0
 বেন্ড	bend	0.0	bend	1
 বাউন্ডারি	boundary	0.35	boundari	0
@@ -2834,7 +2819,6 @@
 প্রফেশন	profession	0.0	profeshon	0
 প্রসপেক্ট	prospect	0.25	prospekt	0
 প্রোটেক্টিভ	protective	0.0	protektiv	0
-প্রোটেকটিভ	protective	0.25	protektiv	0
 পাবলিশার	publisher	0.35	publishar	0
 পুতিন	putin	0.0	putin	1
 রিট্রিট	retreat	0.35	retrit	0
@@ -2906,7 +2890,7 @@
 নিবিড়	neighbor	0.35	nibar	0
 নেবার	neighbor	0.35	nibar	0
 প্যারিস	parish	0.25	parish	0
-পটেটো	potato	0.35	potato	0
+পতিত	potato	0.35	potato	0
 পত্র	potter	0.25	potar	0
 প্রেফারেন্স	preference	0.35	preferens	0
 রেজ	rage	0.0	rej	0
@@ -2914,7 +2898,7 @@
 সিল্ক	silk	0.0	silk	1
 স্টাম্প	stamp	0.0	stamp	1
 থ্রোন	throne	0.0	thron	0
-থেরন	throne	0.25	thron	0
+ট্রন	throne	0.25	thron	0
 ভোটার	voter	0.0	votar	0
 ওয়ার্নার	warner	0.25	oarnar	0
 বাক্স	backs	0.0	baks	0
@@ -2969,7 +2953,6 @@
 ইন্দ্র	indoor	0.25	indur	0
 ইনডোর	indoor	0.35	indur	0
 জিন্স	jeans	0.0	jins	0
-জিনস	jeans	0.0	jins	0
 কারেন	karen	0.0	karen	1
 কাড়েন	karen	0.0	karen	1
 লিস্টেড	lasted	0.35	lasted	0
@@ -2977,7 +2960,7 @@
 লেটার	lighter	0.0	letar	0
 লুকাস	lucas	0.0	lukas	0
 মার্কস	marcus	0.25	markus	0
-মার্ক্স	marcus	0.25	markus	0
+মার্কাস	marcus	0.35	markus	0
 মিস	mice	0.0	mis	0
 অলিভ	olive	0.0	oliv	0
 রজার্স	rogers	0.35	rojers	0
@@ -3000,6 +2983,7 @@
 ব্রিডিং	breeding	0.0	briding	0
 ব্রিদিং	breeding	0.0	briding	0
 ব্রাইড	bride	0.0	braid	0
+ব্রড	broadway	0.25	broado	0
 ব্রস	bros	0.0	bros	1
 ব্রোস	bros	0.0	bros	1
 বাটলার	butler	0.35	butlar	0
@@ -3047,7 +3031,6 @@
 বেকেট	bucket	0.35	buket	0
 বার্জার	burger	0.35	burjar	0
 কম্পিউটিং	computing	0.25	komputing	0
-কন্টিনেন্ট	continent	0.25	kontinent	0
 ড্রেন	drain	0.0	dren	0
 এথিক্যাল	ethical	0.0	ethikal	0
 এক্সেলেন্স	excellence	0.0	ekselens	0
@@ -3069,7 +3052,6 @@
 পেটি	petty	0.0	peti	0
 পোর্টস	ports	0.0	ports	1
 প্রোগ্রামস	programmes	0.25	programes	0
-প্রসপেক্টাস	prospects	0.25	prospekts	0
 রেইনবো	rainbow	0.25	renbo	0
 রিড	reed	0.0	rid	0
 স্ক্যান	scan	0.0	skan	0
@@ -3095,7 +3077,7 @@
 কনসাল্টিং	consulting	0.35	konsulting	0
 কুলিং	cooling	0.0	kuling	0
 কলিং	cooling	0.25	kuling	0
-ডেফিসিট	deficit	0.0	defisit	0
+ডেম	demo	0.0	demo	1
 ডেমো	demo	0.0	demo	1
 ডেমন	demon	0.0	demon	1
 ডিটেকশন	detection	0.35	detekshon	0
@@ -3148,6 +3130,7 @@
 পেনিস	penis	0.0	penis	1
 পিলস	pills	0.0	pils	0
 রাবাত	rabbit	0.35	rabit	0
+রিবিট	rabbit	0.35	rabit	0
 রেসাস	raises	0.35	reses	0
 রুথ	ruth	0.0	ruth	1
 স্যাভেজ	savage	0.25	savej	0
@@ -3161,7 +3144,7 @@
 স্ট্যাক	stack	0.0	stak	0
 স্টোনস	stance	0.35	stans	0
 স্ট্যাটিক	static	0.0	statik	0
-স্ব	subway	0.25	subo	0
+সব	subway	0.35	subo	0
 ট্যাবলেট	tablet	0.25	tablet	0
 টেন্ট	tent	0.0	tent	1
 থিসিস	thesis	0.35	thesis	0
@@ -3280,7 +3263,6 @@
 হেক	heck	0.0	hek	0
 হেলমেট	helmet	0.0	helmet	1
 ইডিয়টস	idiots	0.25	idiots	0
-ইনক্লুশন	inclusion	0.0	inklushon	0
 ইনিংস	innings	0.0	inings	0
 কিপার	keeper	0.0	kipar	0
 কুপার	keeper	0.35	kipar	0
@@ -3301,7 +3283,7 @@
 সাবস্ক্রাইব	subscribe	0.35	subskraib	0
 ভোল্টেজ	voltage	0.0	voltej	0
 বেল	bail	0.0	bel	0
-ব্রাডলি	bradley	0.25	bradlei	0
+ব্র্যাডলি	bradley	0.25	bradlei	0
 ব্র্যান্ডন	brandon	0.0	brandon	1
 ব্রেন্ডন	brandon	0.35	brandon	0
 ব্রাদার	broader	0.25	broadar	0
@@ -3343,7 +3325,6 @@
 ট্রান্সপারেন্ট	transparent	0.25	transparent	0
 ট্রাভিস	travis	0.0	travis	1
 ট্র্যাভিস	travis	0.25	travis	0
-ভিসিটর	visitor	0.35	visitar	1
 ভিটামিন	vitamin	0.0	vitamin	1
 ভলান্টারি	voluntary	0.35	voluntari	0
 অহিত	wheat	0.0	ohit	0
@@ -3352,7 +3333,7 @@
 আর্নল্ড	arnold	0.0	arnold	1
 বানান	banana	0.25	banana	0
 ব্যাটিং	betting	0.35	beting	0
-বড়	borrow	0.25	boro	0
+বড়	borrow	0.0	boro	0
 ক্যাম্পিং	camping	0.0	kamping	0
 ক্যাপিটল	capitol	0.0	kapitol	0
 ক্যাপিটাল	capitol	0.35	kapitol	0
@@ -3368,7 +3349,6 @@
 জেনেভা	geneva	0.0	jeneva	0
 হিন্দু	hindu	0.0	hindu	1
 হোল্ডিংস	holdings	0.0	holdings	1
-ইনস্টিটিউশনাল	institutional	0.25	institushonal	0
 জাভা	java	0.0	java	1
 জেফারসন	jefferson	0.35	jeferson	0
 কার্ল	karl	0.0	karl	1
@@ -3395,7 +3375,6 @@
 ড্যান্সার	dancer	0.0	dansar	0
 ডান্সার	dancer	0.0	dansar	0
 ডক	dock	0.0	dok	0
-এক্সপেডিশন	expedition	0.25	ekspedishon	0
 ফিট	feat	0.0	fit	0
 ফসল	fossil	0.25	fosil	0
 ফ্রুট	freight	0.35	frit	0
@@ -3405,8 +3384,8 @@
 লকিং	liking	0.25	liking	0
 লুকিং	liking	0.35	liking	0
 লুইস	luis	0.0	luis	1
-নিত	neat	0.0	nit	0
 নিট	neat	0.0	nit	0
+নিত	neat	0.0	nit	0
 নকল	nicole	0.25	nikol	0
 অফসেট	offset	0.0	ofset	0
 প্যালেস্টাইন	palestine	0.0	palestain	0
@@ -3423,6 +3402,8 @@
 স্পেস	shapes	0.25	shapes	0
 স্কিন	skinny	0.25	skini	0
 সনিক	sneak	0.0	snik	0
+সলভিং	solving	0.25	solving	0
+স্যার	sore	0.0	sar	0
 সার	sore	0.0	sar	0
 স্পার্ক	spark	0.0	spark	1
 ভেক্টর	vector	0.35	vektar	0
@@ -3452,7 +3433,7 @@
 মোসেস	moses	0.0	moses	1
 নেব্রাস্কা	nebraska	0.0	nebraska	1
 নিডল	needle	0.0	nidl	0
-নিদাল	needle	0.25	nidl	0
+নুডল	needle	0.35	nidl	0
 ওভাল	oval	0.0	oval	1
 পিটি	pity	0.0	piti	0
 পন্ড	pond	0.0	pond	1
@@ -3504,6 +3485,7 @@
 মার্জার	merger	0.35	merjar	0
 পোর্টেবল	portable	0.35	portabl	0
 কেবেক	quebec	0.25	koebek	0
+রিক	rico	0.0	riko	0
 রিকো	rico	0.0	riko	0
 রোবের	robbery	0.25	roberi	0
 রিবেরি	robbery	0.35	roberi	0
@@ -3513,7 +3495,7 @@
 শুটিং	shouting	0.25	shouting	0
 স্টিক	steak	0.0	stik	0
 থেরাপিস্ট	therapist	0.0	therapist	1
-থরো	thorough	0.25	thorou	0
+থর	thorough	0.25	thorou	0
 টাইসন	tuition	0.35	tuishon	0
 তুমার	tumor	0.0	tumar	0
 আর্টিলারি	artillery	0.35	artileri	0
@@ -3534,7 +3516,6 @@
 ডেডিকেশন	dedication	0.35	dedikashon	0
 ডিটেনশন	detention	0.35	detenshon	0
 ড্রেক	drake	0.0	drek	0
-এমপ্লয়ি	employ	0.25	emploi	0
 ফ্লোরেন্স	florence	0.0	florens	0
 ফরবিডেন	forbidden	0.0	forbiden	0
 ইনফ্যান্ট্রি	infantry	0.25	infantri	0
@@ -3550,8 +3531,8 @@
 নমিনি	nominee	0.0	nomini	0
 নোমানী	nominee	0.35	nomini	0
 অফেন্স	offence	0.0	ofens	0
-পেলো	pillow	0.35	pilo	0
-পিল	pillow	0.25	pilo	0
+পাল	pillow	0.35	pilo	0
+পেল	pillow	0.35	pilo	0
 পীড়িত	pirate	0.35	piret	0
 প্রেত	pirate	0.25	piret	0
 প্রেডিকশন	prediction	0.0	predikshon	0
@@ -3565,6 +3546,7 @@
 স্প্রিন্ট	sprint	0.0	sprint	1
 ট্রেক	trek	0.0	trek	1
 ট্রিক	tricky	0.25	triki	0
+তরিক	tricky	0.25	triki	0
 আদ্রিয়ান	adrian	0.25	adrian	0
 বুলেট	ballet	0.35	balet	0
 ব্যালট	ballet	0.35	balet	0
@@ -3585,8 +3567,8 @@
 ফ্রস্ট	frost	0.0	frost	1
 হেরাল্ড	herald	0.0	herald	1
 হাইক	hike	0.0	haik	0
+হল	hollow	0.0	holo	0
 হলো	hollow	0.0	holo	0
-হল	hollow	0.25	holo	0
 কেন	kane	0.0	ken	0
 কাসেদ	kissed	0.35	kised	0
 লেম	lame	0.0	lem	0
@@ -3666,7 +3648,6 @@
 ড্রিলিং	drilling	0.0	driling	0
 এলিমিনেশন	elimination	0.35	eliminashon	0
 হাল্ট	halt	0.0	halt	1
-হালত	halt	0.0	halt	1
 হেন্ডারসন	henderson	0.35	henderson	0
 ইমপ্রেস	impress	0.0	impres	0
 ইনকামিং	incoming	0.35	inkoming	0
@@ -3677,6 +3658,7 @@
 মঙ্ক	monk	0.0	monk	1
 নরম	norm	0.0	norm	1
 অর্থোডক্স	orthodox	0.0	orthodoks	0
+পেন্টার	painter	0.0	pentar	0
 পয়েন্টার	painter	0.25	pentar	0
 পিস্তল	pistol	0.0	pistol	1
 প্রিন্টার	printer	0.0	printar	0
@@ -3705,8 +3687,8 @@
 করেন	crane	0.0	kren	0
 ডেমোগ্রাফিক	demographic	0.0	demografik	0
 এসেক্স	essex	0.0	eseks	0
+এক্সাইড	exceed	0.25	eksid	0
 গ্যাব্রিয়েল	gabriel	0.25	gabriel	0
-গাব্রিয়েল	gabriel	0.25	gabriel	0
 গার্লিক	garlic	0.0	garlik	0
 হেল	hail	0.0	hel	0
 হেরোইন	heroin	0.0	heroin	1
@@ -3726,8 +3708,7 @@
 পলিট	polite	0.25	polait	0
 রোমান্স	romans	0.0	romans	1
 রোম্যান্স	romans	0.25	romans	0
-রানও	runway	0.35	runo	0
-রনো	runway	0.25	runo	0
+রান	runway	0.35	runo	0
 সেন্সাস	senses	0.35	senses	0
 সেন্সর	sensor	0.25	sensar	1
 শেঠ	seth	0.0	seth	1
@@ -3780,7 +3761,6 @@
 টস	toss	0.0	tos	0
 ট্রান্সজেন্ডার	transgender	0.0	transjendar	0
 টার্টল	turtle	0.35	turtl	0
-ভার্বাল	verbal	0.35	verbal	0
 ভোকালস	vocals	0.25	vokals	0
 আগ্রাসন	aggression	0.35	agreshon	0
 আর্মস্ট্রং	armstrong	0.0	armstrong	1
@@ -3793,15 +3773,14 @@
 ক্রোম	chrome	0.25	khrom	0
 ক্লাসিকস	classics	0.0	klasiks	0
 ক্লিনার	cleaner	0.0	klinar	0
-দেলাওয়ার	delaware	0.25	delaoar	0
 ডেলাওয়্যার	delaware	0.25	delaoar	0
+দেলাওয়ার	delaware	0.25	delaoar	0
 দম	dome	0.0	dom	0
 ডোপ	dope	0.0	dop	0
 দপ	dope	0.0	dop	0
 দ্রুত	drought	0.25	drout	0
 গিবসন	gibson	0.0	gibson	1
 গোস	gosh	0.0	gosh	1
-গস	gosh	0.0	gosh	1
 গ্রিফিন	griffin	0.0	grifin	0
 হসপিটালিটি	hospitality	0.0	hospitaliti	0
 হটেস্ট	hottest	0.0	hotest	0
@@ -3811,7 +3790,7 @@
 লেসলি	leslie	0.25	leslie	0
 মিনস	mins	0.0	mins	1
 মনুমেন্ট	monument	0.0	monument	1
-অবসেশন	obsession	0.0	obseshon	0
+অবসেশন	obsession	0.25	obseshon	0
 পার্টিকেল	particle	0.25	partikl	0
 পিনাট	peanut	0.35	pinut	0
 পিন্ট	peanut	0.25	pinut	0
@@ -3867,7 +3846,6 @@
 লাইনিং	leaning	0.25	lining	0
 ল্যানিং	leaning	0.35	lining	0
 মেমফিস	memphis	0.0	memfis	0
-মেম্ফিস	memphis	0.0	memfis	1
 মিসরি	misery	0.25	miseri	0
 মিসরী	misery	0.25	miseri	0
 মডিউল	module	0.0	modiul	0
@@ -3942,10 +3920,10 @@
 ভেরিফাই	verify	0.25	verifi	0
 ভিলেন	villain	0.0	vilen	0
 বেথ	beth	0.0	beth	1
+বেভারলি	beverly	0.35	beverli	0
 বরিস	boris	0.0	boris	1
 বুলি	bully	0.0	buli	0
 কনসুলেট	consult	0.25	konsult	0
-ডমিনেট	dominate	0.0	dominet	0
 ইকোনমিস্ট	economist	0.35	ekonomist	0
 গ্লেন	glen	0.0	glen	1
 গ্রেগরি	gregory	0.0	gregori	0
@@ -3956,7 +3934,6 @@
 ইনফরমাল	informal	0.25	informal	0
 ল্যান্ডিং	lending	0.35	lending	0
 মার্কারি	marker	0.25	markar	0
-মারকারি	marker	0.25	markar	0
 মার্শ	marsh	0.0	marsh	1
 মার্শাল	marshal	0.0	marshal	1
 মেসি	messy	0.0	mesi	0
@@ -3965,8 +3942,8 @@
 মুহাম্মাদ	muhammad	0.25	muhamad	1
 নিনজা	ninja	0.0	ninja	1
 প্যারেন্টিং	parenting	0.0	parenting	1
-পিক্স	peaks	0.0	piks	0
 পিকস	peaks	0.0	piks	0
+পিক্স	peaks	0.0	piks	0
 ফার্মাসি	pharmacy	0.0	farmasi	0
 ফার্মেসি	pharmacy	0.35	farmasi	0
 প্রসেসর	processor	0.25	prosesar	0
@@ -3975,16 +3952,16 @@
 প্রস	pros	0.0	pros	1
 পড়স	pros	0.0	pros	1
 রবার্টসন	robertson	0.35	robertson	0
-রাবিশ	rubbish	0.35	rubish	0
 রবীশ	rubbish	0.25	rubish	0
+রাবিশ	rubbish	0.35	rubish	0
 সাগা	saga	0.0	saga	1
 স্যালন	salon	0.0	salon	1
 সেভেনটিন	seventeen	0.25	seventin	0
 শিল্ডস	shields	0.25	shields	0
 স্লাইডিং	sliding	0.25	sliding	0
-সোলো	swallow	0.25	soalo	0
-সলো	swallow	0.25	soalo	0
+সাল	swallow	0.25	soalo	0
 আলবার্টা	alberta	0.35	alberta	0
+এন্টিক	antique	0.35	antiko	0
 ব্যাপ্টিস্ট	baptist	0.25	baptist	0
 বিডেন	biden	0.0	biden	1
 বুকিং	booking	0.0	buking	0
@@ -3996,7 +3973,7 @@
 করেসপন্ডেন্ট	correspondent	0.25	korespondent	0
 কুপন	coupon	0.25	koupon	0
 কোভিড	covid	0.0	kovid	0
-করতেন	curtain	0.35	kurten	0
+করতেন	curtain	0.25	kurten	0
 ডেন্টিস্ট	dentist	0.0	dentist	1
 এনভেলপ	envelope	0.25	envelop	0
 ফেড	fade	0.0	fed	0
@@ -4051,6 +4028,7 @@
 ডিসমিস	dismiss	0.0	dismis	0
 এক্সপ্লোরার	explorer	0.0	eksplorar	0
 ফরিদ	freed	0.0	frid	0
+গ্যাসলাইন	gasoline	0.0	gasolain	0
 গ্যাসোলিন	gasoline	0.25	gasolain	0
 জেনেসিস	genesis	0.0	jenesis	0
 কেরি	kerry	0.0	keri	0
@@ -4062,7 +4040,6 @@
 ম্যানিপুলেশন	manipulation	0.35	manipulashon	0
 মিসেস	misses	0.0	mises	0
 মক	mock	0.0	mok	0
-মোক	mock	0.0	mok	0
 নেকলেস	necklace	0.0	nekles	0
 পাড়া	para	0.0	para	1
 পারা	para	0.0	para	1
@@ -4083,6 +4060,7 @@
 ব্রাকেট	bracket	0.0	braket	0
 ব্র্যান্ডেড	branded	0.0	branded	1
 ব্রায়ান্ট	bryant	0.25	bryant	0
+কের	cairo	0.0	kero	0
 কার্ডিয়াক	cardiac	0.25	kardiak	0
 কমান্ডিং	commanding	0.0	komanding	0
 ক্রসিং	crashing	0.35	krashing	0
@@ -4091,7 +4069,6 @@
 ডিলেট	daylight	0.35	delet	0
 ডেভন	devon	0.0	devon	1
 ডোনা	donna	0.0	dona	0
-এলবো	elbow	0.0	elbo	0
 ফেলিক্স	felix	0.0	feliks	0
 জেনেটিক্স	genetics	0.0	jenetiks	0
 গুস	goose	0.0	gus	0
@@ -4126,10 +4103,9 @@
 আফফান	afghan	0.25	afan	0
 আহমেদ	ahmed	0.0	ahmed	1
 বইল	boil	0.0	boil	1
-বড়ো	borough	0.25	borou	0
-বোরো	borough	0.25	borou	0
+বড়	borough	0.25	borou	0
 কোন	cone	0.0	kon	0
-ক্রিটিক	critique	0.25	kritiko	0
+ক্রিটিক	critique	0.0	kritiko	0
 ক্রসিং	crushing	0.35	krushing	0
 ডেক	decay	0.0	dek	0
 ডেসার্ট	dessert	0.35	desert	0
@@ -4138,9 +4114,10 @@
 ফ্রিম্যান	freeman	0.0	friman	0
 ফরমান	freeman	0.35	friman	0
 গান্ধী	gandhi	0.0	gandhi	1
+গাট	gateway	0.25	gateo	0
 ইনোসেন্স	innocence	0.0	inosens	0
 ক্যাথেরিন	katherine	0.25	katherain	0
-লেগো	lego	0.0	lego	1
+লেগ	lego	0.0	lego	1
 মেরি	merry	0.0	meri	0
 মিক	mick	0.0	mik	0
 মিশনারি	missionary	0.25	misionari	0
@@ -4165,8 +4142,9 @@
 ভাইকিংস	vikings	0.25	vikings	0
 আহলি	wholly	0.35	oholi	0
 অক্সিডেন্টাল	accidental	0.35	aksidental	0
-এপোলো	apollo	0.35	apolo	0
-ব্রাডলি	broadly	0.25	broadli	0
+আপিল	apollo	0.35	apolo	0
+আপেল	apollo	0.35	apolo	0
+ব্র্যাডলি	broadly	0.25	broadli	0
 কাপটা	capita	0.25	kapita	0
 ক্রিস্টিনা	christina	0.25	khristina	0
 কম্প্রেশন	compression	0.0	kompreshon	0
@@ -4203,7 +4181,6 @@
 নিকেল	nickel	0.0	nikel	0
 পিআর	pier	0.0	piar	0
 প্রমিস	premise	0.25	premis	0
-রিডেম্পশন	redemption	0.35	redempshon	0
 রিপল	replay	0.35	repl	0
 রিভিশন	revision	0.35	revishon	0
 রেটেড	rooted	0.35	ruted	0
@@ -4257,7 +4234,6 @@
 পাম্পিং	pumping	0.35	pumping	0
 রেলিং	relying	0.25	relying	0
 রেসপিরেটরি	respiratory	0.35	respiratori	0
-রিটেনশন	retention	0.35	retenshon	0
 রিবন	ribbon	0.0	ribon	0
 রুমমেট	roommate	0.25	rumet	0
 রতন	rotten	0.25	roten	0
@@ -4275,6 +4251,7 @@
 আরশ	arrows	0.0	aros	0
 আরএস	arrows	0.25	aros	0
 আটলাস	atlas	0.0	atlas	1
+ব্যালেন্সিং	balancing	0.35	balansing	0
 বেনিং	banning	0.35	baning	0
 বিশপস	bishops	0.0	bishops	1
 ব্রঙ্কস	broncos	0.0	bronkos	0
@@ -4297,14 +4274,14 @@
 লাগেজ	luggage	0.35	lugej	0
 ম্যাডাম	madame	0.35	madem	0
 মাদাম	madame	0.35	madem	0
-মাগী	maggie	0.25	magie	0
 ম্যাগি	maggie	0.25	magie	0
+মাগে	maggie	0.25	magie	0
 মারিন	marion	0.25	marion	0
 ম্যারিয়ন	marion	0.25	marion	0
 মোদী	modi	0.0	modi	1
 মোদি	modi	0.0	modi	1
+মোড়ক	morocco	0.0	moroko	0
 মরক্কো	morocco	0.25	moroko	0
-মোড়ক	morocco	0.25	moroko	0
 নাটালি	natalie	0.25	natalie	0
 নাতালি	natalie	0.25	natalie	0
 পাবলো	pablo	0.0	pablo	1
@@ -4318,7 +4295,7 @@
 রসা	rosa	0.0	rosa	1
 রয়্যালটি	royalty	0.25	royalti	0
 সান্দ্রা	sandra	0.0	sandra	1
-সান্ড্রা	sandra	0.0	sandra	1
+স্যান্ড্রা	sandra	0.0	sandra	1
 স্টিকি	sticky	0.0	stiki	0
 স্টিক	sticky	0.25	stiki	0
 স্টিং	sting	0.0	sting	1
@@ -4350,8 +4327,7 @@
 জ্যারেড	jared	0.0	jared	1
 জুডি	judy	0.0	judi	0
 কিন্ডারগার্টেন	kindergarten	0.35	kindergarten	0
-লাতিন	latino	0.25	latino	0
-ল্যাটিন	latino	0.25	latino	0
+লাতিন	latino	0.0	latino	1
 মেকানিক	mechanic	0.25	mekhanik	0
 মেগান	megan	0.0	megan	1
 মডিফাই	modify	0.25	modifi	0
@@ -4368,6 +4344,7 @@
 রামেক	remake	0.35	remek	0
 রিমেক	remake	0.35	remek	0
 রেন্ডারিং	rendering	0.35	rendering	0
+স্কিনস	skins	0.0	skins	1
 স্প্রিংফিল্ড	springfield	0.25	springfield	0
 স্ট্র্যাপ	strap	0.0	strap	1
 শপিং	sweeping	0.25	soiping	0
@@ -4425,7 +4402,6 @@
 সমারসেট	somerset	0.35	somerset	0
 সুপারমার্কেট	supermarket	0.35	supermarket	0
 সিটার	sweater	0.25	soitar	0
-সেইটার	sweater	0.35	soitar	0
 টেন্যান্ট	tenant	0.25	tenant	0
 থমসন	thomson	0.0	thomson	1
 ট্র্যাকশন	traction	0.25	trakshon	0
@@ -4440,8 +4416,8 @@
 ব্যাটিং	biting	0.35	biting	0
 ব্র্যান্ডিং	branding	0.0	branding	1
 ব্রাভো	bravo	0.0	bravo	1
-কারী	carrie	0.25	karie	0
 কারি	carrie	0.25	karie	0
+কারী	carrie	0.25	karie	0
 কাটিং	chatting	0.25	khating	0
 খপ	chop	0.0	khop	0
 খোপ	chop	0.0	khop	0
@@ -4473,9 +4449,9 @@
 অবজেকশন	objection	0.25	objekshon	0
 প্যাকেট	packet	0.0	paket	0
 পকেট	packet	0.25	paket	0
-পাঠ্য	pathway	0.0	patho	0
-পাঠ	pathway	0.25	patho	0
-পোলো	polo	0.0	polo	1
+পাঠ	pathway	0.0	patho	0
+পথ	pathway	0.35	patho	0
+পল	polo	0.0	polo	1
 প্রপ	prop	0.0	prop	1
 সকার	scar	0.0	skar	0
 স্কাউটস	scouts	0.35	skouts	0
@@ -4510,6 +4486,8 @@
 দিস	dice	0.0	dis	0
 ডিশ	dice	0.0	dis	0
 ডিপ্লোমা	diploma	0.0	diploma	1
+দুন	dunno	0.0	duno	0
+ডুন	dunno	0.0	duno	0
 ফ্রেডি	freddie	0.25	fredie	0
 গার্ডনার	gardner	0.0	gardnar	0
 জেরাল্ড	gerald	0.0	jerald	0
@@ -4528,29 +4506,28 @@
 নিউরাল	neural	0.35	neural	0
 নাইট্রোজেন	nitrogen	0.25	nitrojen	0
 প্যাট্রিসিয়া	patricia	0.25	patrisia	0
+পাউল	paulo	0.0	paulo	1
 পাউলো	paulo	0.0	paulo	1
 পড়ল	payroll	0.25	perol	0
 পারল	payroll	0.35	perol	0
 ফিলিপাইন	philippine	0.0	filipain	0
 ফটোগ্রাফিক	photographic	0.0	fotografik	0
 পিং	ping	0.0	ping	1
-পটস	pots	0.0	pots	1
 প্রিক্স	prix	0.0	priks	0
 প্রফেশনালি	professionally	0.25	profesionali	0
 পিসেস	pushes	0.35	pushes	0
 রোকন	reckon	0.35	rekon	0
 রুকন	reckon	0.35	rekon	0
-রেস্ট্রিকশন	restriction	0.0	restrikshon	0
 রোভার	rover	0.0	rovar	0
 শ্যানন	shannon	0.0	shanon	0
 শিপমেন্ট	shipment	0.25	shipment	0
 স্পার্কস	sparks	0.0	sparks	1
 স্টেইনলেস	stainless	0.25	stenles	0
 স্টিলার	stellar	0.35	stelar	0
-সেটেলার	stellar	0.25	stelar	0
 সাসেক্স	sussex	0.35	suseks	0
 তামিল	tamil	0.0	tamil	1
 টাইপিং	tapping	0.25	taping	0
+তেতলী	tightly	0.0	tetli	0
 তিতলি	tightly	0.35	tetli	0
 টিনা	tina	0.0	tina	1
 তোরেস	tories	0.25	tories	0
@@ -4563,8 +4540,8 @@
 ব্লুটুথ	bluetooth	0.25	bluetuth	0
 বোলিং	boiling	0.25	boiling	0
 বরং	borrowing	0.25	boroing	0
-বলস	bowls	0.0	bols	0
 বোলস	bowls	0.0	bols	0
+বলস	bowls	0.0	bols	0
 কম্প্রেস	compares	0.25	kompares	0
 কঙ্গো	congo	0.0	kongo	0
 ডিসিপ্লিনারি	disciplinary	0.0	disiplinari	0
@@ -4578,6 +4555,7 @@
 গার	gore	0.0	gar	0
 গন	gown	0.0	gon	0
 গ্রিড	greedy	0.25	gridi	0
+হাল	halo	0.0	halo	1
 হ্যালো	halo	0.0	halo	1
 হিলটন	hilton	0.0	hilton	1
 হিল্টন	hilton	0.0	hilton	1
@@ -4640,6 +4618,7 @@
 ক্যাম্পাস	compass	0.35	kompas	0
 ড্রয়িং	drying	0.0	drying	1
 ডট	dwight	0.25	doet	0
+ডেট	dwight	0.25	doet	0
 এলিট	elliot	0.25	eliot	0
 এলিয়ট	elliot	0.25	eliot	0
 ইরোটিক	erotic	0.35	erotik	0
@@ -4701,6 +4680,7 @@
 গ্যাংস	gangs	0.0	gangs	1
 গ্লোরিয়া	gloria	0.25	gloria	0
 গ্লোরি	gloria	0.25	gloria	0
+গ্লোভ	glove	0.0	glov	0
 গ্রাম	grammy	0.25	grami	0
 গ্রিড	greed	0.0	grid	0
 গ্রিট	greet	0.0	grit	0
@@ -4730,8 +4710,8 @@
 শ্রাইন	shrine	0.0	shrain	0
 স্নাইপার	sniper	0.25	snipar	0
 স্ন্যাপার	sniper	0.35	snipar	0
-শর	sorrow	0.25	soro	0
-সর	sorrow	0.25	soro	0
+সুর	sorrow	0.35	soro	0
+সার	sorrow	0.35	soro	0
 স্টক	stoke	0.0	stok	0
 স্তন	sutton	0.25	suton	0
 স্টোন	sutton	0.25	suton	0
@@ -4743,9 +4723,9 @@
 আরএস	airways	0.35	eroes	0
 আলমাটি	almighty	0.35	almeti	0
 আলমাতি	almighty	0.35	almeti	0
+আমিন	amino	0.0	amino	1
 আরবিট্রেশন	arbitration	0.35	arbitrashon	0
-আস্তিন	ashton	0.35	ashton	0
-ইস্টন	ashton	0.35	ashton	0
+আসতেন	ashton	0.35	ashton	0
 ব্রেস	brace	0.0	bres	0
 ক্যাপশন	caption	0.25	kapshon	0
 কোলেস্টেরল	cholesterol	0.25	kholesterol	0
@@ -4760,6 +4740,7 @@
 গ্রিস	grease	0.0	gris	0
 গ্রীস	grease	0.0	gris	0
 হলো	hallway	0.25	halo	0
+হল	hallway	0.35	halo	0
 হারলেই	harley	0.0	harlei	0
 হার্লি	harley	0.25	harlei	0
 এনডিএস	indies	0.35	indies	0
@@ -4771,6 +4752,7 @@
 মিকেল	michel	0.25	mikhel	0
 মাইক্রোফোন	microphone	0.25	mikrofon	0
 মতো	motto	0.0	moto	0
+মত	motto	0.0	moto	0
 অকুপেশনাল	occupational	0.35	okupashonal	0
 পেট্রোল	petrol	0.0	petrol	1
 পেট্রল	petrol	0.0	petrol	1
@@ -4791,7 +4773,7 @@
 শিপিং	shaping	0.35	shaping	0
 স্লোগান	slogan	0.0	slogan	1
 স্পন্সরশিপ	sponsorship	0.0	sponsorship	1
-স্পন্সরশীপ	sponsorship	0.0	sponsorship	1
+স্পনসরশিপ	sponsorship	0.25	sponsorship	0
 স্টিলস	steals	0.0	stils	0
 স্টাইলস	steals	0.25	stils	0
 স্টেফান	stefan	0.0	stefan	1
@@ -4799,6 +4781,7 @@
 সার্ফিং	surfing	0.35	surfing	0
 থ্রিল	thrill	0.0	thril	0
 টাইল	tile	0.0	tail	0
+ভানেসা	vanessa	0.0	vanesa	0
 ভেনেসা	vanessa	0.35	vanesa	0
 বাডস	badass	0.25	badas	0
 বার্ড	barred	0.25	bared	0
@@ -4891,6 +4874,7 @@
 জিনোম	genome	0.35	jenom	0
 গ্রিনস	grains	0.35	grens	0
 গ্রেপ	grape	0.0	grep	0
+হেরোদ	haired	0.35	hered	0
 হ্যাস্টিংস	hastings	0.0	hastings	1
 হেস্টিংস	hastings	0.35	hastings	0
 হালান্ড	highland	0.35	heland	0
@@ -4941,6 +4925,7 @@
 খালক	chalk	0.0	khalk	0
 কিলিং	chilling	0.25	khiling	0
 কাস্টার	coaster	0.25	koastar	0
+কোটেড	coated	0.25	koated	0
 কন্টিনজেন্ট	contingent	0.25	kontinjent	0
 কর্নেল	cornell	0.0	kornel	0
 কাস্টিং	costing	0.35	kosting	0
@@ -4958,17 +4943,18 @@
 মার্ট	mart	0.0	mart	1
 মারত	mart	0.0	mart	1
 মেয়ার	meyer	0.0	meyar	0
-মিড	midway	0.25	mido	0
+মিড	midway	0.0	mido	0
+মদ	midway	0.35	mido	0
 মোনার্ক	monarch	0.25	monarkh	0
 মন্ট	monte	0.0	mont	0
 মন্ত	monte	0.0	mont	0
-মনুমেন্টস	monuments	0.0	monuments	1
+মনুমেন্টস	monuments	0.25	monuments	0
 মর্নিং	mourning	0.25	mourning	0
 মাস্টার্ড	mustard	0.35	mustard	0
 নিশান	nissan	0.0	nisan	0
 নিশানা	nissan	0.25	nisan	0
 পারসোনা	persona	0.35	persona	0
-প্লাক	plaque	0.25	plako	0
+প্লাক	plaque	0.0	plako	0
 পোয়েটিক	poetic	0.25	poetik	0
 পরিখা	preach	0.25	prikh	0
 পরখ	preach	0.35	prikh	0
@@ -4989,7 +4975,8 @@
 স্কোয়াড্রন	squadron	0.25	skoadron	0
 স্ট্যালিন	stalin	0.0	stalin	1
 স্তালিন	stalin	0.0	stalin	1
-টাকো	taco	0.0	tako	0
+তাক	taco	0.0	tako	0
+টাক	taco	0.0	tako	0
 তালিবান	taliban	0.0	taliban	1
 তালেবান	taliban	0.35	taliban	0
 থার	thor	0.0	thar	0
@@ -5012,6 +4999,7 @@
 এরিক	erik	0.0	erik	1
 এরিন	erin	0.0	erin	1
 ফিলিপিনো	filipino	0.0	filipino	1
+ফিলিপাইন	filipino	0.25	filipino	0
 ফ্লাশিং	flashing	0.0	flashing	1
 ফ্ল্যাশিং	flashing	0.0	flashing	1
 ফ্রিল্যান্স	freelance	0.25	frilans	0
@@ -5025,11 +5013,12 @@
 মার্কস	marx	0.0	marks	0
 মার্ক্স	marx	0.0	marks	0
 মরিনহো	mourinho	0.25	mourinho	0
+মোরিনহো	mourinho	0.25	mourinho	0
 নেভিগেট	navigate	0.35	naviget	0
 প্যানডেমিক	pandemic	0.25	pandemik	0
 পাইক	pike	0.0	paik	0
-প্রটেক্টর	protector	0.35	protektar	0
 প্রোটেক্টর	protector	0.35	protektar	0
+প্রটেক্টর	protector	0.35	protektar	0
 রইল	reel	0.0	ril	0
 রিস্টার্ট	restart	0.35	restart	0
 স্কার্ফ	scarf	0.0	skarf	0
@@ -5079,7 +5068,6 @@
 হাসান	hassan	0.0	hasan	0
 হার্টবিট	heartbeat	0.35	hirtbit	0
 হল্ট	holt	0.0	holt	1
-ইনসুলেশন	insulation	0.35	insulashon	0
 ইন্টার্ন	intern	0.35	intern	0
 জাকার্তা	jakarta	0.0	jakarta	1
 জুডিথ	judith	0.0	judith	1
@@ -5144,6 +5132,7 @@
 জেস	jess	0.0	jes	0
 জুলুস	julius	0.25	julius	0
 লেস্টার	lester	0.0	lestar	0
+ম্যানলি	manly	0.0	manli	0
 মার্ভিন	marvin	0.0	marvin	1
 মারভিন	marvin	0.25	marvin	0
 মোড়ল	morale	0.25	morel	0
@@ -5157,10 +5146,8 @@
 পিন্ড	pinned	0.25	pined	0
 পিন্ট	pint	0.0	pint	1
 পর্নোগ্রাফি	pornography	0.0	pornografi	0
-রাভেনশ	ravens	0.25	ravens	0
 রেডিট	reddit	0.0	redit	0
 রেমার্ক	remark	0.0	remark	1
-রেমারিক	remark	0.25	remark	0
 রেপ	repay	0.0	rep	0
 রোল্যান্ড	roland	0.25	roland	0
 সান্তিয়াগো	santiago	0.25	santiago	0
@@ -5211,14 +5198,12 @@
 কিরবি	kirby	0.0	kirbi	0
 কব	kobe	0.0	kob	0
 ক্রিস	kris	0.0	kris	1
-করিস	kris	0.0	kris	1
 লাউরি	laurie	0.25	laurie	0
 লবস্টার	lobster	0.0	lobstar	0
 ম্যানিফেস্টো	manifesto	0.0	manifesto	1
 মেথডিস্ট	methodist	0.0	methodist	1
 মেথোডিস্ট	methodist	0.0	methodist	1
 মোনাকো	monaco	0.0	monako	0
-মনাস্ট্রি	monastery	0.25	monasteri	0
 মোরালেস	morals	0.25	morals	0
 নাওমি	naomi	0.0	naomi	1
 নাড়ল	narrowly	0.25	naroli	0
@@ -5324,6 +5309,7 @@
 গিটারিস্ট	guitarist	0.25	guitarist	0
 হামাস	hamas	0.0	hamas	1
 হ্যারিয়েট	harriet	0.25	hariet	0
+হারীত	harriet	0.25	hariet	0
 হাস	hash	0.0	hash	1
 হ্যাশ	hash	0.0	hash	1
 হেলেনা	helena	0.0	helena	1
@@ -5349,7 +5335,6 @@
 সুমন	simone	0.35	simon	0
 স্কোয়াশ	squash	0.25	skoash	0
 স্টেশনারি	stationary	0.35	stashonari	0
-স্টেশনারী	stationary	0.35	stashonari	0
 টেম্পোরাল	temporal	0.0	temporal	1
 ট্র্যাকার	tracker	0.0	trakar	0
 টারবাইন	turbine	0.35	turbain	0
@@ -5439,15 +5424,14 @@
 সীতেশ	cites	0.0	sites	0
 সিতেশ	cites	0.0	sites	0
 কোল্টস	colts	0.0	kolts	0
+কোন	conway	0.0	kono	0
 কোনো	conway	0.0	kono	0
-কোনও	conway	0.0	kono	0
 ডার্ন	darn	0.0	darn	1
 ডেক্স	decks	0.0	deks	0
 ডিআরএস	diaries	0.25	diaries	0
 ডমিনিক	dominic	0.0	dominik	0
 ডোমিনিক	dominic	0.0	dominik	0
 ফিডিং	fading	0.35	fading	0
-ফারেস	fares	0.0	fares	1
 ফিজি	fiji	0.0	fiji	1
 ফ্রি	freeway	0.25	frio	0
 গ্রান	granny	0.25	grani	0
@@ -5455,7 +5439,7 @@
 হ্যান্ডকাপ	handicap	0.35	handikap	0
 হানসেন	hansen	0.0	hansen	1
 হ্যানসেন	hansen	0.25	hansen	0
-হোমো	homo	0.0	homo	1
+হোম	homo	0.0	homo	1
 ইন্টার্নশিপ	internship	0.35	internship	0
 ইন্টার্নশীপ	internship	0.35	internship	0
 ক্যাটরিনা	katrina	0.25	katrina	0
@@ -5487,6 +5471,7 @@
 বেনসন	benson	0.0	benson	1
 ব্লক	bloc	0.0	blok	0
 বড়বোন	bourbon	0.25	bourbon	0
+বোরবন	bourbon	0.25	bourbon	0
 ব্রোকার	breaker	0.35	brikar	0
 ক্যাপিটালস	capitals	0.25	kapitals	0
 কার্লেস	careless	0.25	kareles	0
@@ -5520,12 +5505,14 @@
 ক্যাথলিন	kathleen	0.25	kathlin	0
 কেন্ডাল	kendall	0.0	kendal	0
 লোশন	lawson	0.25	laoson	0
+লসন	lawson	0.25	laoson	0
 লিন্ডসে	lindsey	0.25	lindsei	0
 মেলিং	mailing	0.0	meling	0
 মেইলিং	mailing	0.25	meling	0
 মার	mare	0.0	mar	0
 মার্ক্সিস্ট	marxist	0.0	marksist	0
-মিড	meadow	0.25	mido	0
+মিড	meadow	0.0	mido	0
+মদ	meadow	0.35	mido	0
 মিডাস	meadows	0.35	midos	0
 মোটিভেট	motivate	0.0	motivet	0
 মুদি	muddy	0.0	mudi	0
@@ -5740,10 +5727,8 @@
 ভেনম	venom	0.0	venom	1
 ভিনেশ	vines	0.0	vines	1
 ওয়েলনেস	wellness	0.25	oelnes	0
-আলেপ্পো	aleppo	0.25	alepo	1
-আল্প	aleppo	0.25	alepo	0
+আলাপ	aleppo	0.35	alepo	0
 আল্পস	alps	0.0	alps	1
-এন্টার্কটিক	antarctic	0.35	antarktik	0
 আর্মেনিয়া	armenia	0.25	armenia	0
 বাড়বে	barbie	0.25	barbie	0
 ব্যাটার	batter	0.0	batar	0
@@ -5761,7 +5746,6 @@
 ডিসেন্ট	dissent	0.0	disent	0
 ডিস্টার্ব	disturb	0.35	disturb	0
 ডক্স	docks	0.0	doks	0
-ডকস	docks	0.0	doks	0
 এরিকা	erica	0.0	erika	0
 ফেন্সিং	fencing	0.0	fensing	0
 ফিল্টারিং	filtering	0.35	filtering	0
@@ -5778,8 +5762,7 @@
 ম্যাকমিলান	macmillan	0.25	makmilan	0
 মিলন	malone	0.35	malon	0
 মিলেই	miley	0.0	milei	0
-মিলো	milo	0.0	milo	1
-মিলও	milo	0.0	milo	1
+মিল	milo	0.0	milo	1
 মিস্টার	mister	0.0	mistar	0
 মাস্টার	mister	0.35	mistar	0
 মাল্টিন্যাশনাল	multinational	0.35	multinashonal	0
@@ -5812,6 +5795,7 @@
 যাক	zack	0.0	zak	0
 বাপ্তিস্ম	baptism	0.0	baptism	1
 বৈরুত	beirut	0.35	beirut	0
+ব্লাস্টিং	blasting	0.0	blasting	1
 ব্লক	bloke	0.0	blok	0
 ব্লন্ড	blond	0.0	blond	1
 বুগি	boogie	0.25	bugie	0
@@ -5868,6 +5852,7 @@
 আব্দুল্লাহ	abdullah	0.25	abdulah	1
 আকাদেমি	academia	0.25	akademia	0
 বার্নি	barney	0.25	barnei	0
+বুটিক	boutique	0.25	boutiko	0
 বাফেট	buffet	0.35	bufet	0
 বার্নার	burner	0.35	burnar	0
 কেন	cain	0.0	ken	0
@@ -5897,6 +5882,7 @@
 লেভি	levi	0.0	levi	1
 মাল্টা	malta	0.0	malta	1
 মেনস	menace	0.25	menes	0
+মেন্স	menace	0.25	menes	0
 মিথেন	methane	0.35	methen	0
 মিং	ming	0.0	ming	1
 মোনা	mona	0.0	mona	1
@@ -5911,6 +5897,7 @@
 রিবুট	reboot	0.35	rebut	0
 রোবোটিক	robotic	0.0	robotik	0
 রোবটিক	robotic	0.0	robotik	0
+রুন	runaway	0.25	runeo	0
 শাওয়ার	sawyer	0.0	saoyar	0
 স্ক্রিনপ্লে	screenplay	0.25	skrinpl	0
 সিসমিক	seismic	0.25	seismik	0
@@ -5971,10 +5958,9 @@
 মেডেন	madden	0.35	maden	0
 মালি	mali	0.0	mali	1
 মালী	mali	0.0	mali	1
-মার	marrow	0.25	maro	0
+মার	marrow	0.0	maro	0
 মেলানি	melanie	0.25	melanie	0
-মনো	mono	0.0	mono	1
-মনও	mono	0.0	mono	1
+মন	mono	0.0	mono	1
 প্যাস্ট্রি	pastry	0.0	pastri	0
 পেস্ট্রি	pastry	0.35	pastri	0
 পাওন	pawn	0.0	paon	0
@@ -6012,11 +5998,11 @@
 বলরুম	ballroom	0.35	balrum	0
 বারমুডা	bermuda	0.35	bermuda	0
 বন্ডেড	bonded	0.0	bonded	1
-বুস্টিং	boosting	0.0	busting	0
 ব্রেন্ডা	brenda	0.0	brenda	1
 ব্রিগস	briggs	0.0	brigs	0
 কালকূট	calcutta	0.25	kalkuta	0
 কালেব	caleb	0.0	kaleb	0
+ক্যানোপি	canopy	0.0	kanopi	0
 কেন	chennai	0.25	khen	0
 খান	chennai	0.35	khen	0
 কম্ব	comb	0.0	komb	0
@@ -6027,7 +6013,6 @@
 ডেনিম	denim	0.0	denim	1
 ডিপেন্ডেন্সি	dependency	0.35	dependensi	0
 ডিকেন্স	dickens	0.0	dikens	0
-ইরেকশন	erection	0.35	erekshon	0
 এক্সেটার	exeter	0.0	eksetar	0
 এক্সপ্রেস	expires	0.25	ekspires	0
 ফার	fore	0.0	far	0
@@ -6060,6 +6045,7 @@
 রেভ	rave	0.0	rev	0
 রক্তরস	reactors	0.35	riktors	0
 রিভস	reeves	0.35	rives	0
+রেন	reno	0.0	reno	1
 রেনো	reno	0.0	reno	1
 রব	robe	0.0	rob	0
 সেলস	sails	0.0	sels	0
@@ -6067,11 +6053,13 @@
 সনিক	sneaky	0.25	sniki	0
 শওকত	socket	0.35	soket	0
 স্পিনিং	spanning	0.35	spaning	0
+স্টুল	stool	0.0	stul	0
 স্ট্রিপিং	stripping	0.0	striping	0
 টিবেট	tibet	0.0	tibet	1
 টলেডো	toledo	0.0	toledo	1
 ভিটা	vita	0.0	vita	1
 উইকিলিকস	wikileaks	0.35	oikiliks	0
+বার্কিং	barking	0.0	barking	1
 বেকহাম	beckham	0.0	bekham	0
 বেকহ্যাম	beckham	0.25	bekham	0
 বেনিগনো	benign	0.25	benign	0
@@ -6086,7 +6074,7 @@
 কসমস	cosmos	0.0	kosmos	0
 ক্রলিং	curling	0.25	kurling	0
 কার্লিং	curling	0.35	kurling	0
-দূর	doorway	0.25	duro	0
+দূর	doorway	0.0	duro	0
 যেতো	getaway	0.25	jeteo	0
 জাগুয়ার	jaguar	0.25	jaguar	0
 জামাল	jamal	0.0	jamal	1
@@ -6097,7 +6085,7 @@
 মেরিল	merrill	0.0	meril	0
 মেট্রিক্স	metrics	0.0	metriks	0
 মডুলার	modular	0.0	modular	1
-নিকো	nico	0.0	niko	0
+নিক	nico	0.0	niko	0
 অসলো	oslo	0.0	oslo	1
 প্যারাসাইট	parasite	0.0	parasait	0
 পলিস	pleas	0.0	plis	0
@@ -6138,7 +6126,6 @@
 ডেস্ট্রয়ার	destroyer	0.0	destroyar	0
 ডিএসএস	diocese	0.35	dioses	0
 ডক্স	docs	0.0	doks	0
-ডকস	docs	0.0	doks	0
 ফ্লাশ	fellas	0.25	felas	0
 ফলেই	foley	0.0	folei	0
 ফিটিং	footing	0.35	futing	0
