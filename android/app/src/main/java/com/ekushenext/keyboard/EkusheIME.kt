@@ -91,6 +91,15 @@ class EkusheIME : InputMethodService(), KeyboardListener {
 
     override fun onEvaluateFullscreenMode() = false
 
+    // A physical keyboard unplugged (or folded away): the on-screen keys come straight back
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        if (newConfig.keyboard == Configuration.KEYBOARD_NOKEYS || newConfig.hardKeyboardHidden == Configuration.HARDKEYBOARDHIDDEN_YES) {
+            hardTyping = false; keysWanted = false
+        }
+        super.onConfigurationChanged(newConfig)
+        updateStripOnly()
+    }
+
     /** A physical keyboard is attached and open (not folded away) */
     private fun hardKeyboard(): Boolean {
         val c = resources.configuration

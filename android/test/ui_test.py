@@ -540,7 +540,11 @@ if b:
     bx1, by1, bx2, by2 = map(int, re.findall(r'\d+', b))
     tap(bx2 - 40, by2 - 25, 1.5)
     try:
-        _, strip_y = keys()
+        # the keys, or only the strip (the physical keyboard typed in this field just before)
+        try:
+            _, strip_y = keys()
+        except SystemExit:
+            _, strip_y = keys('STRIP_ONLY')
         dens = int(re.findall(r'(\d+)', sh('wm density'))[-1]) / 160
         width = int(re.findall(r'(\d+)x\d+', sh('wm size'))[-1])
         # the ? sits fourth from the right: 52 dp buttons, 8 dp from the edge
