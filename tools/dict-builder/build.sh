@@ -37,7 +37,8 @@ one() {
   echo "› $name" >&2
   fetch "$url" "$raw"
   rm -f "$c.fifo"; mkfifo "$c.fifo"
-  "$BIN" pairs --vocab "$VOCAB" --min 2 --out "$c.pairs.part" < "$c.fifo" & local pairs_pid=$!
+  # --cap keeps the pair counter within a few GB (8 GB machines); rarely seen pairs are dropped first
+  "$BIN" pairs --vocab "$VOCAB" --min 2 --cap "${PAIRS_CAP:-25000000}" --out "$c.pairs.part" < "$c.fifo" & local pairs_pid=$!
   python3 "$HERE/scripts/extract_text.py" "$raw" | tee "$c.fifo" | "$BIN" count --out "$c.tsv"
   wait "$pairs_pid"
   rm -f "$c.fifo"

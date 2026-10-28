@@ -1,4 +1,6 @@
-//! `ekushe-dict pairs --vocab VOCAB --out FILE`: count adjacent word pairs (bigrams) for context.
+//! `ekushe-dict pairs --vocab VOCAB --out FILE [--min N]`: count adjacent word pairs (bigrams) for
+//! context, keeping pairs seen at least N times (default 3). `merge-pairs` sums the files counted
+//! one corpus file at a time, so a build never needs the whole corpus on disk.
 //!
 //! Only words in VOCAB (one per line) are counted. Two words form a pair only when separated by
 //! whitespace alone; punctuation, digits, Latin text or line breaks end the context.
@@ -7,7 +9,7 @@ use crate::norm;
 use rustc_hash::FxHashMap;
 use std::io::{self, BufRead, BufWriter, Read, Write};
 
-pub fn pairs(vocab_path: &str, out_path: &str) {
+pub fn pairs(vocab_path: &str, out_path: &str, min: u32, cap: usize) {
     let mut vocab: FxHashMap<String, u32> = FxHashMap::default();
     let mut words: Vec<String> = Vec::new();
     for line in io::BufReader::new(std::fs::File::open(vocab_path).expect("vocab")).lines() {
@@ -59,14 +61,15 @@ pub fn pairs(vocab_path: &str, out_path: &str) {
             prev = None;           // newline, punctuation, digits, Latin: context ends
             broken = false;
         }
-        if counts.len() > 80_000_000 {
+        // Memory: past `cap` distinct pairs, those seen once so far are dropped
+        if counts.len() > cap {
             counts.retain(|_, v| *v > 1);
             pruned += 1;
             eprintln!("pruned -> {}", counts.len());
         }
         if eof { break; }
     }
-    let mut rows: Vec<(u64, u32)> = counts.into_iter().filter(|(_, c)| *c >= 3).collect();
+    let mut rows: Vec<(u64, u32)> = counts.into_iter().filter(|(_, c)| *c >= min).collect();
     rows.sort_unstable_by(|a, b| b.1.cmp(&a.1));
     let mut w = BufWriter::new(std::fs::File::create(out_path).unwrap());
     writeln!(w, "#pairs\t{total}\tpruned={pruned}").unwrap();
@@ -74,4 +77,47 @@ pub fn pairs(vocab_path: &str, out_path: &str) {
         writeln!(w, "{}\t{}\t{}", words[(k >> 32) as usize], words[(k & 0xffff_ffff) as usize], c).unwrap();
     }
     eprintln!("pairs counted={total}");
+}
+
+/// Sum pair files written by `pairs` (`#pairs TOTAL ...` header, then `a TAB b TAB count`) and keep
+/// the pairs seen at least `min` times in all.
+pub fn merge(files: &[String], out_path: &str, min: u32) {
+    let mut ids: FxHashMap<String, u32> = FxHashMap::default();
+    let mut words: Vec<String> = Vec::new();
+    let mut counts: FxHashMap<u64, u32> = FxHashMap::default();
+    let mut total: u64 = 0;
+    for f in files {
+        let file = io::BufReader::new(std::fs::File::open(f).expect("pairs file"));
+        for line in file.lines() {
+            let line = line.unwrap();
+            let mut p = line.split('\t');
+            let (a, b, c) = (p.next().unwrap_or(""), p.next().unwrap_or(""), p.next().unwrap_or(""));
+            if a == "#pairs" {
+                total += b.parse::<u64>().unwrap_or(0);
+                continue;
+            }
+            let Ok(c) = c.parse::<u32>() else { continue };
+            let mut id = |w: &str| -> u32 {
+                if let Some(&i) = ids.get(w) {
+                    return i;
+                }
+                let i = words.len() as u32;
+                ids.insert(w.to_string(), i);
+                words.push(w.to_string());
+                i
+            };
+            let k = ((id(a) as u64) << 32) | id(b) as u64;
+            let e = counts.entry(k).or_insert(0);
+            *e = e.saturating_add(c);
+        }
+        eprintln!("merged {f}: {} pairs so far", counts.len());
+    }
+    let mut rows: Vec<(u64, u32)> = counts.into_iter().filter(|(_, c)| *c >= min).collect();
+    rows.sort_unstable_by(|a, b| b.1.cmp(&a.1));
+    let mut w = BufWriter::new(std::fs::File::create(out_path).unwrap());
+    writeln!(w, "#pairs\t{total}\tmerged={}", files.len()).unwrap();
+    for (k, c) in &rows {
+        writeln!(w, "{}\t{}\t{}", words[(k >> 32) as usize], words[(k & 0xffff_ffff) as usize], c).unwrap();
+    }
+    eprintln!("wrote {out_path}: {} pairs (>= {min})", rows.len());
 }
