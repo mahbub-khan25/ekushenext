@@ -465,6 +465,8 @@ static void ekushe_property_activate(IBusEngine *e, const gchar *name, guint sta
     (void)state;
     if (g_strcmp0(name, "studio") == 0)
         open_studio(NULL);
+    else if (g_strcmp0(name, "marks") == 0)
+        open_studio("signs");
     else if (g_strcmp0(name, "settings") == 0)
         open_studio("settings");
     else if (g_strcmp0(name, "report") == 0) {
@@ -495,6 +497,10 @@ static void ekushe_engine_init(EkusheEngine *ek)
     ibus_prop_list_append(ek->props, ibus_property_new("studio", PROP_TYPE_NORMAL,
         ibus_text_new_from_string("Open Ekushe Studio"), "accessories-text-editor",
         ibus_text_new_from_string("Writing pad, conjunct guide, spell check, Bijoy converter"),
+        TRUE, TRUE, PROP_STATE_UNCHECKED, NULL));
+    ibus_prop_list_append(ek->props, ibus_property_new("marks", PROP_TYPE_NORMAL,
+        ibus_text_new_from_string("Marks & conjuncts guide (+  ,,  ^ …)"), "help-contents",
+        ibus_text_new_from_string("How to type a conjunct (as+te → আস্তে), a hasanta, a chandrabindu and more"),
         TRUE, TRUE, PROP_STATE_UNCHECKED, NULL));
     ibus_prop_list_append(ek->props, ibus_property_new("settings", PROP_TYPE_NORMAL,
         ibus_text_new_from_string("Settings"), "preferences-system",

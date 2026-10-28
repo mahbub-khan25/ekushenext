@@ -741,9 +741,21 @@ class EkusheIME : InputMethodService(), KeyboardListener {
         }
     }
 
+    override fun onHelp() {
+        finishWord()
+        openApp("marks")
+    }
+
     override fun onSettings() {
         finishWord()
-        startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK).putExtra("open", "settings"))
+        openApp("settings")
+    }
+
+    /** The app at one of its parts; if it is already open in the background, it moves there too */
+    private fun openApp(part: String) {
+        startActivity(Intent(this, MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            .putExtra("open", part))
     }
 
     override fun onHide() {

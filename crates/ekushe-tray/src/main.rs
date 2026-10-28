@@ -1642,7 +1642,7 @@ unsafe fn show_tray_context_menu(hwnd: HWND) {
         menu,
         MF_STRING,
         CMD_STUDIO_SIGNS,
-        wide_null("🔤 যুক্তবর্ণ ও কার-ফলা সহায়িকা (Signs & যুক্তবর্ণ Guide)").as_ptr(),
+        wide_null("🔤 যুক্তবর্ণ ও চিহ্নের সহায়িকা (+  ,,  ^ …)").as_ptr(),
     );
     AppendMenuW(
         menu,

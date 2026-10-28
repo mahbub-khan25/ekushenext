@@ -38,6 +38,8 @@ interface KeyboardListener {
     fun onKeyFeedback(view: View, kind: Int)
     /** Show the keys again while a physical keyboard is attached (the ⌨ button in the strip) */
     fun onShowKeys()
+    /** The ? button: how to type conjuncts, hasanta and the other marks */
+    fun onHelp()
 }
 
 enum class Mode { LETTERS, SYMBOLS, MORE_SYMBOLS, NUMBERS, PHONE, EMOJI }
@@ -523,8 +525,10 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
         val s = stripH
         val ids = listOf("lang", "emoji", "settings", "hide")
         val w = 52 * dp
-        tools = listOf(
+        tools = listOfNotNull(
             Tool("lang", RectF(8 * dp, 6 * dp, 8 * dp + 96 * dp, s - 6 * dp)),
+            // a note beside the language switch (password box, English only) takes that space
+            if (stripMessage == null) Tool("help", RectF(width - 4 * w - 8 * dp, 0f, width - 3 * w - 8 * dp, s)) else null,
             Tool("emoji", RectF(width - 3 * w - 8 * dp, 0f, width - 2 * w - 8 * dp, s)),
             Tool("settings", RectF(width - 2 * w - 8 * dp, 0f, width - w - 8 * dp, s)),
             Tool("hide", RectF(width - w - 8 * dp, 0f, width - 8 * dp, s)),
@@ -552,7 +556,7 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
         textPaint.typeface = Typeface.DEFAULT
         textPaint.textSize = 20 * dp
         textPaint.color = p.subtext
-        val glyph = mapOf("emoji" to if (stripOnly) "⌨" else "☺", "settings" to "⚙", "hide" to "⌄")
+        val glyph = mapOf("help" to "?", "emoji" to if (stripOnly) "⌨" else "☺", "settings" to "⚙", "hide" to "⌄")
         for (t in tools.drop(1)) c.drawText(glyph[t.id]!!, t.rect.centerX(), t.rect.centerY() + 7 * dp, textPaint)
         if (ids.isEmpty()) return
     }
@@ -826,6 +830,7 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
         if (chips.isNotEmpty()) { chips.firstOrNull { it.rect.contains(x, y) }?.action?.invoke(); return }
         when (tools.firstOrNull { it.rect.contains(x, y) }?.id) {
             "lang" -> listener.onLanguageToggle()
+            "help" -> listener.onHelp()
             "emoji" -> if (stripOnly) listener.onShowKeys() else openEmoji()
             "settings" -> listener.onSettings()
             "hide" -> listener.onHide()
