@@ -14,6 +14,8 @@ const ZWJ: char = '\u{200D}';
 const RRA: char = '\u{09DC}';
 const RHA: char = '\u{09DD}';
 const YYA: char = '\u{09DF}';
+/// Cost of typing ছ as s, as Bangladeshi chat does (asi, kisu, gesi). Matches romanize.py.
+const CHHA_S: f64 = 0.3;
 /// Cost of typing a word-initial য-ফলা's vowel as "a" (ব্যস্ত byasto). Matches romanize.py.
 const YA_PHALA_A: f64 = 0.2;
 /// Cost of pronouncing a word-final inherent vowel (bol → bolo). Tuned on the pilot set.
@@ -35,7 +37,7 @@ fn cons(c: char) -> Option<&'static [Opt]> {
         'ঘ' => &[S("gh", 0.0), S("g", 0.6)],
         'ঙ' => &[S("ng", 0.0), S("Ng", 0.2)],
         'চ' => &[S("c", 0.0), S("ch", 0.0)],
-        'ছ' => &[S("ch", 0.0), S("chh", 0.2), S("s", 0.3)],
+        'ছ' => &[S("ch", 0.0), S("chh", 0.2), S("s", CHHA_S)],
         'জ' => &[S("j", 0.0), S("z", 0.5)],
         'ঝ' => &[S("jh", 0.0), S("j", 0.6)],
         'ঞ' => &[S("NG", 0.0), S("n", 0.3)],
@@ -290,6 +292,68 @@ fn beam(lists: &[Vec<Opt>], k: usize) -> Vec<(f64, String)> {
     beams
 }
 
+/// Spoken verb endings that start with a consonant (চলিত): the vowel before them is not said.
+const VERB_ENDINGS: &[&str] = &[
+    "লাম",
+    "লে",
+    "লেন",
+    "লো",
+    "লি",
+    "লিস",
+    "তে",
+    "তাম",
+    "তেন",
+    "তো",
+    "তিস",
+    "ছি",
+    "ছে",
+    "ছেন",
+    "ছো",
+    "ছিস",
+    "ছিল",
+    "ছিলাম",
+    "ছিলে",
+    "ছিলেন",
+    "ছিলো",
+    "বো",
+    "বে",
+    "বেন",
+    "বি",
+    "বিস",
+];
+/// Cost of saying the stem vowel before a verb ending anyway (korote for করতে). Matches romanize.py.
+const VERB_STEM_O: f64 = 0.1;
+
+/// The text of `units` (consonant clusters with hasanta, vowel signs and marks).
+fn units_text(units: &[Unit]) -> String {
+    let mut s = String::new();
+    for u in units {
+        match u {
+            Unit::V(v, mods) => {
+                s.extend(v.iter());
+                s.extend(mods.iter());
+            }
+            Unit::C(cl, sg, mods) => {
+                for (i, c) in cl.iter().enumerate() {
+                    if i > 0 {
+                        s.push('\u{09CD}');
+                    }
+                    s.push(*c);
+                }
+                s.extend(sg.iter());
+                s.extend(mods.iter());
+            }
+        }
+    }
+    s
+}
+
+/// The rest of the word is exactly one of the spoken verb endings.
+fn verb_ending_follows(rest: &[Unit]) -> bool {
+    let t = units_text(rest);
+    VERB_ENDINGS.contains(&t.as_str())
+}
+
 /// Up to `k` `(cost, roman)` pairs, cheapest first.
 pub fn romanize(word: &str, k: usize) -> Vec<(f32, String)> {
     let units = parse(word);
@@ -328,15 +392,22 @@ pub fn romanize(word: &str, k: usize) -> Vec<(f32, String)> {
                     lists.push(vec![S("", 0.0), S("o", FINAL_O)]);
                 } else {
                     let next_is_c = matches!(units[idx + 1], Unit::C(..));
-                    lists.push(if next_is_c {
-                        vec![S("o", 0.0), S("", 0.3)]
-                    } else {
-                        vec![S("", 0.0), S("o", 0.3)]
-                    });
+                    lists.push(
+                        if next_is_c && idx > 0 && verb_ending_follows(&units[idx + 1..]) {
+                            // the stem's last vowel before a verb ending is silent: করতে korte,
+                            // আসলাম ashlam, দেখছি dekhchi (but হতে hote: a one-syllable stem keeps it)
+                            vec![S("", 0.0), S("o", VERB_STEM_O)]
+                        } else if next_is_c {
+                            vec![S("o", 0.0), S("", 0.3)]
+                        } else {
+                            vec![S("", 0.0), S("o", 0.3)]
+                        },
+                    );
                 }
                 // A word that starts with consonant + য-ফলা and no vowel sign is said with "æ" and
                 // typed with an a as often as with an o: ব্যস্ত byasto/byosto, ব্যক্তি byakti, ন্যায্য
-                if idx == 0 && sg.is_none() && cl.len() == 2 && cl[1] == 'য' && lists.len() > before {
+                if idx == 0 && sg.is_none() && cl.len() == 2 && cl[1] == 'য' && lists.len() > before
+                {
                     if let Some(v) = lists.last_mut() {
                         if v.iter().any(|o| matches!(o, S("o", _))) {
                             v.push(S("a", YA_PHALA_A));
