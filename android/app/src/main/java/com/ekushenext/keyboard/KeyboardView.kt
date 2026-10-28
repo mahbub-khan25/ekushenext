@@ -36,6 +36,8 @@ interface KeyboardListener {
     fun onHide()
     fun onEmojiCommitted(e: String)
     fun onKeyFeedback(view: View, kind: Int)
+    /** Show the keys again while a physical keyboard is attached (the ⌨ button in the strip) */
+    fun onShowKeys()
 }
 
 enum class Mode { LETTERS, SYMBOLS, MORE_SYMBOLS, NUMBERS, PHONE, EMOJI }
@@ -67,9 +69,15 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
     var tips: List<Hint> = emptyList()
     var predictions: List<String> = emptyList()
     var stripMessage: String? = null
+    /** The highlighted suggestion (what Space places); a physical keyboard's Tab moves it */
+    var selected = 0
+        set(v) { field = v; invalidate() }
+    /** A physical keyboard is in use: only the suggestion strip is shown, not the keys */
+    var stripOnly = false
+        set(v) { if (field != v) { field = v; if (v && mode == Mode.EMOJI) mode = Mode.LETTERS; requestLayout(); invalidate() } }
 
     fun showSuggestions(c: List<Candidate>, t: List<Hint>, p: List<String>) {
-        candidates = c; tips = t; predictions = p; stripScroll = 0f; stripMessage = null
+        candidates = c; tips = t; predictions = p; stripScroll = 0f; stripMessage = null; selected = 0
         invalidate()
     }
 
@@ -148,7 +156,7 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val w = MeasureSpec.getSize(widthMeasureSpec)
         val letterRows = if (prefs.numberRow) 5 else 4
-        val h = stripH + letterRows * rowH + bottomPad
+        val h = if (stripOnly) stripH else stripH + letterRows * rowH + bottomPad
         setMeasuredDimension(w, h.toInt())
     }
 
@@ -191,18 +199,18 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
         }
     }
     private fun logKeys() {
-        if (!debuggable || placed.isEmpty()) return
+        if (!debuggable || (placed.isEmpty() && !stripOnly)) return
         val loc = IntArray(2)
         getLocationOnScreen(loc)
         // again whenever the keyboard has moved (it slides in when it opens)
         if (logged && loc.contentEquals(loggedAt)) return
         logged = true
         loggedAt = loc
-        val keys = placed.joinToString(",") { (k, r) ->
+        val keys = if (stripOnly) "" else placed.joinToString(",") { (k, r) ->
             val id = if (k.type == KeyType.CHAR) k.text.replace("\\", "\\\\").replace("\"", "\\\"") else k.type.name
             "{\"k\":\"$id\",\"x\":${(loc[0] + r.centerX()).toInt()},\"y\":${(loc[1] + r.centerY()).toInt()}}"
         }
-        Log.i("EkusheKeys", "{\"mode\":\"$mode\",\"strip\":${loc[1] + (stripH / 2).toInt()},\"keys\":[$keys]}")
+        Log.i("EkusheKeys", "{\"mode\":\"${if (stripOnly) "STRIP_ONLY" else mode.name}\",\"strip\":${loc[1] + (stripH / 2).toInt()},\"keys\":[$keys]}")
     }
 
     // ───────────────────────── drawing ─────────────────────────
@@ -212,6 +220,7 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
         val b = photo
         if (b != null) drawPhoto(c, b) else c.drawColor(p.background)
         drawStrip(c)
+        if (stripOnly) { logged = false; logKeys(); return }
         if (mode == Mode.EMOJI) { drawEmoji(c); return }
         logKeys()
         if (debuggable) { removeCallbacks(relog); relogLeft = 8; postDelayed(relog, 500) }
@@ -468,7 +477,7 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
         when {
             candidates.isNotEmpty() -> {
                 candidates.forEachIndexed { i, cand ->
-                    chip(cand.text, if (cand.kind == "English") "EN" else null, i == 0, false) { listener.onCandidate(i) }
+                    chip(cand.text, if (cand.kind == "English") "EN" else null, i == selected, false) { listener.onCandidate(i) }
                 }
                 tips.forEach { t ->
                     val i = candidates.indexOfFirst { it.text == t.bangla }
@@ -543,7 +552,7 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
         textPaint.typeface = Typeface.DEFAULT
         textPaint.textSize = 20 * dp
         textPaint.color = p.subtext
-        val glyph = mapOf("emoji" to "☺", "settings" to "⚙", "hide" to "⌄")
+        val glyph = mapOf("emoji" to if (stripOnly) "⌨" else "☺", "settings" to "⚙", "hide" to "⌄")
         for (t in tools.drop(1)) c.drawText(glyph[t.id]!!, t.rect.centerX(), t.rect.centerY() + 7 * dp, textPaint)
         if (ids.isEmpty()) return
     }
@@ -680,6 +689,7 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
                 if (e.actionMasked == MotionEvent.ACTION_POINTER_DOWN && pressedKey != null) release(fire = true)
                 activePointer = e.getPointerId(i)
                 if (y < stripH) { stripDown(x); return true }
+                if (stripOnly) return true
                 if (mode == Mode.EMOJI) { emojiDragging = false; emojiDownY = y; emojiStartScroll = emojiScroll; downX = x; downY = y; return true }
                 val hit = keyAt(x, y) ?: return true
                 press(hit, x, y)
@@ -816,7 +826,7 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
         if (chips.isNotEmpty()) { chips.firstOrNull { it.rect.contains(x, y) }?.action?.invoke(); return }
         when (tools.firstOrNull { it.rect.contains(x, y) }?.id) {
             "lang" -> listener.onLanguageToggle()
-            "emoji" -> openEmoji()
+            "emoji" -> if (stripOnly) listener.onShowKeys() else openEmoji()
             "settings" -> listener.onSettings()
             "hide" -> listener.onHide()
         }

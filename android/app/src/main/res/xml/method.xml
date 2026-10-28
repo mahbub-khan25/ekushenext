@@ -7,5 +7,7 @@
         android:imeSubtypeLocale="bn_BD"
         android:languageTag="bn-BD"
         android:imeSubtypeMode="keyboard"
-        android:imeSubtypeExtraValue="AsciiCapable" />
+        android:imeSubtypeExtraValue="AsciiCapable"
+        android:physicalKeyboardHintLanguageTag="en-US"
+        android:physicalKeyboardHintLayoutType="qwerty" />
 </input-method>
