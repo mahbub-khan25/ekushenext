@@ -2,9 +2,11 @@
 
 Type Bangla the way it sounds, in English letters (`amar sonar bangla` → আমার সোনার বাংলা), and Ekushe writes it with the spelling you meant.
 
+**New in beta.2:** a larger, better-checked dictionary. `byabostha` and `byakti` now give ব্যবস্থা and ব্যক্তি, chat verbs like `khaiso` and `korsi` find the standard word with the spoken form next to it, common names (`rahim` → রহিম, `mohammad` → মোহাম্মদ) and chat words (`ok` → ওকে, `koi` → কই) come out right, and 483 spellings were confirmed by native-speaker reviewers.
+
 ### What makes it different
 - **Its own dictionary, built for Ekushe.** Not copied from any other keyboard. The **Bangla Academy standard spelling (প্রমিত বানান) comes first**, even when a non-standard spelling is more common online.
-- **Understands how people really type.** Chat spellings like `kemon aso`, `valo achi`, `thik ache` land on the right word, and colloquial forms (করসি, গেসি) are offered as suggestions. On our test set of 959 typed words and sentences, 98.7% come out right first time.
+- **Understands how people really type.** Chat spellings like `kemon aso`, `valo achi`, `thik ache` land on the right word, and colloquial forms (করসি, গেসি) are offered as suggestions. On our test set of 1,034 typed words and sentences, 99.1% come out right first time.
 - **Fix a wrong word without retyping.** Press Backspace right after a word and it opens again with its suggestions.
 - **One keyboard on every system**, with the same engine and dictionary on Windows, Mac, Linux and Android.
 - **Ekushe Studio**: a writing pad, a conjunct (যুক্তবর্ণ) guide, a spell checker, a Bijoy ⇄ Unicode converter, snippets, and backup and restore of your settings and learned words.
