@@ -1,0 +1,47 @@
+<template>
+  <style>
+    @font-face { font-family: 'Hind Siliguri'; src: url('assets/fonts/HindSiliguri-Regular.ttf'); font-weight: 400 500; }
+    @font-face { font-family: 'Hind Siliguri'; src: url('assets/fonts/HindSiliguri-SemiBold.ttf'); font-weight: 600; }
+    @font-face { font-family: 'Hind Siliguri'; src: url('assets/fonts/HindSiliguri-Bold.ttf'); font-weight: 700 900; }
+    @font-face { font-family: 'Inter Tight'; src: url('assets/fonts/InterTight.woff2'); font-weight: 300 900; }
+    @font-face { font-family: 'Ekushe Mono'; src: url('assets/fonts/DejaVuSansMono-Bold.ttf'); }
+    #root { position: absolute; inset: 0; }
+    #linux-out { position: absolute; inset: 0; }
+    #linux-head { position: absolute; top: 250px; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; }
+    #linux-head .cs-title { display: flex; align-items: center; gap: 22px; color: #fff; }
+    #linux-head .cs-bn { font-family: 'Hind Siliguri', sans-serif; font-weight: 700; font-size: 100px; }
+    .cs-tag { display: inline-block; font-family: 'Hind Siliguri', sans-serif; font-weight: 700; font-size: 44px; padding: 6px 22px; border-radius: 99px; background: #E9B949; color: #2A1C00; box-shadow: 0 0 40px rgba(233,185,73,0.6); }
+    .cs-sub { font-family: 'Inter Tight', sans-serif; font-weight: 500; color: rgba(234,243,238,0.72); text-align: center; letter-spacing: 0.01em; }
+    #linux-screen { position: absolute; top: 560px; left: 80px; width: 1280px; height: 1240px; }
+    #linux-below { position: absolute; top: 1860px; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; padding: 0 90px; }
+    #linux-line { margin-top: -60px; font-size: 36px; line-height: 1.4; }
+    .cs-hint { position: absolute; top: 470px; left: 0; right: 0; font-family: 'Inter Tight', sans-serif; font-weight: 500; font-size: 30px; color: rgba(234,243,238,0.72); text-align: center; }
+    #linux-fx { position: absolute; inset: 0; pointer-events: none; }
+  </style>
+  <!-- 47–56 s: the welcome typed on Linux, after double-tapping Shift (LaunchReveal.tsx ComputerScene). The typed words are in assets/ek.js (EK.L.linux). -->
+  <div data-hf-id="hf-e9u6" id="root" data-composition-id="linux" data-width="1440" data-height="2560">
+    <div data-hf-id="hf-9v1y" id="linux-out">
+      <div data-hf-id="hf-phrs" id="linux-head">
+        <div data-hf-id="hf-ppsf" class="cs-title">
+          <span data-hf-id="hf-vlm8" data-os="linux" data-size="78"></span>
+          <span data-hf-id="hf-cfse" class="cs-bn">Linux-এ, সব ডেস্কটপে</span>
+        </div>
+        <div data-hf-id="hf-e1uq" class="cs-sub" style="font-size:36px;margin-top:14px">Ubuntu, Fedora · GNOME, KDE and more</div>
+      </div>
+      <div data-hf-id="hf-dgi6" id="linux-screen"></div>
+      <div data-hf-id="hf-9fxd" id="linux-below">
+        <div data-hf-id="hf-01ri" id="linux-keys"></div>
+        <div data-hf-id="hf-9hyw" id="linux-line" class="cs-sub">Whatever your computer, write Bangla just the way you like.</div>
+      </div>
+    <div data-hf-id="hf-qka4" id="linux-hint" class="cs-hint">double-tap Shift to switch</div>
+      <div data-hf-id="hf-28dk" id="linux-fx"></div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      const tl = gsap.timeline({ paused: true });
+      EK.computerScene('linux', tl, 540);
+      window.__timelines["linux"] = tl;
+    })();
+  </script>
+</template>

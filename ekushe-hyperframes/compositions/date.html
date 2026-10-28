@@ -1,0 +1,63 @@
+<template>
+  <style>
+    @font-face { font-family: 'Hind Siliguri'; src: url('assets/fonts/HindSiliguri-Regular.ttf'); font-weight: 400 500; }
+    @font-face { font-family: 'Hind Siliguri'; src: url('assets/fonts/HindSiliguri-SemiBold.ttf'); font-weight: 600; }
+    @font-face { font-family: 'Hind Siliguri'; src: url('assets/fonts/HindSiliguri-Bold.ttf'); font-weight: 700 900; }
+    @font-face { font-family: 'Inter Tight'; src: url('assets/fonts/InterTight.woff2'); font-weight: 300 900; }
+    @font-face { font-family: 'Ekushe Mono'; src: url('assets/fonts/DejaVuSansMono-Bold.ttf'); }
+    #root { position: absolute; inset: 0; }
+    #date-out { position: absolute; inset: 0; }
+    #date-col { position: absolute; top: 360px; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; }
+    #date-stage { position: relative; height: 250px; width: 100%; display: grid; place-items: center; margin-top: -40px; }
+    #date-roman { position: absolute; font-family: 'Inter Tight', sans-serif; font-weight: 600; font-size: 130px; color: #E9B949; }
+    #date-bn { position: absolute; font-family: 'Hind Siliguri', sans-serif; font-weight: 700; font-size: 200px; color: #fff; }
+    #date-here { margin-top: 30px; height: 130px; font-family: 'Hind Siliguri', sans-serif; font-weight: 700; font-size: 104px; color: #2FD18E; text-shadow: 0 0 50px rgba(47,209,142,0.55); }
+    #date-sub { margin-top: 16px; font-family: 'Inter Tight', sans-serif; font-weight: 500; font-size: 38px; color: rgba(234,243,238,0.72); }
+    #date-fx { position: absolute; inset: 0; pointer-events: none; }
+  </style>
+  <!-- 16–22 s: "30 october" is typed and becomes ৩০ অক্টোবর, then "অবশেষে এসে গেছে!" (LaunchReveal.tsx DateScene) -->
+  <div data-hf-id="hf-swhu" id="root" data-composition-id="date" data-width="1440" data-height="2560">
+    <div data-hf-id="hf-opka" id="date-out">
+      <div data-hf-id="hf-sgq8" id="date-col">
+        <div data-hf-id="hf-1d2i" id="date-keys"></div>
+        <div data-hf-id="hf-fbsc" id="date-stage">
+          <div data-hf-id="hf-v34d" id="date-roman"></div>
+          <div data-hf-id="hf-c912" id="date-bn">৩০ অক্টোবর</div>
+        </div>
+        <div data-hf-id="hf-tqok" id="date-here"><span data-hf-id="hf-3ksf" id="date-here-text"></span></div>
+        <div data-hf-id="hf-0zlp" id="date-sub">30 October · It’s finally here!</div>
+      </div>
+    </div>
+    <div data-hf-id="hf-we1g" id="date-fx"></div>
+  </div>
+  <script>
+    (function () {
+      const s = (fr) => fr / 60;
+      const $ = (id) => document.getElementById(id);
+      const roman = '30 october';
+      const tl = gsap.timeline({ paused: true });
+      // the Roman date turns into Bangla (104–130)
+      tl.fromTo('#date-roman', { opacity: 1, filter: 'blur(0px)' }, { opacity: 0, filter: 'blur(12px)', duration: s(26), ease: 'power2.out' }, s(104));
+      tl.fromTo('#date-keys', { opacity: 1 }, { opacity: 0, duration: s(26), ease: 'power2.out' }, s(104));
+      tl.fromTo('#date-bn', { opacity: 0, scale: 0.8, textShadow: '0 0 0px rgba(224,48,63,0.85)' }, { opacity: 1, scale: 1, textShadow: '0 0 90px rgba(224,48,63,0.85)', duration: s(26), ease: 'power2.out' }, s(104));
+      tl.fromTo('#date-sub', { opacity: 0 }, { opacity: 1, duration: s(30), ease: 'power2.out' }, s(230));
+      // the scene leaves (336–360)
+      tl.to('#date-out', { opacity: 0, filter: 'blur(10px)', duration: s(24), ease: 'power2.out' }, s(336));
+
+      const keys = EK.KeyStrip($('date-keys'));
+      const here = EK.TypeOn($('date-here-text'), { text: 'অবশেষে এসে গেছে!', start: 170, every: 4 });
+      const fx = $('date-fx');
+      const b1 = EK.Burst(fx, { at: 110, y: 0.2, count: 40, seed: 'dt', spread: 0.6 });
+      const b2 = EK.Burst(fx, { at: 224, y: 0.28, count: 26, seed: 'dt2', spread: 0.4, colors: [EK.C.greenBright, '#ffffff', EK.C.mustard] });
+      const romanEl = $('date-roman'), keysEl = $('date-keys');
+      EK.tick(tl, 360, (f) => {
+        const n = Math.max(0, Math.min(roman.length, Math.floor((f - 20) / 6) + 1));
+        keys(roman, f >= 20 ? n : 0);
+        keysEl.style.visibility = f >= 20 ? 'visible' : 'hidden';
+        romanEl.textContent = f >= 60 ? roman.slice(0, n) : '';
+        here(f); b1(f); b2(f);
+      });
+      window.__timelines["date"] = tl;
+    })();
+  </script>
+</template>

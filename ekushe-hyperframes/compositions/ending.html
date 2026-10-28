@@ -1,0 +1,83 @@
+<template>
+  <style>
+    @font-face { font-family: 'Hind Siliguri'; src: url('assets/fonts/HindSiliguri-Regular.ttf'); font-weight: 400 500; }
+    @font-face { font-family: 'Hind Siliguri'; src: url('assets/fonts/HindSiliguri-SemiBold.ttf'); font-weight: 600; }
+    @font-face { font-family: 'Hind Siliguri'; src: url('assets/fonts/HindSiliguri-Bold.ttf'); font-weight: 700 900; }
+    @font-face { font-family: 'Inter Tight'; src: url('assets/fonts/InterTight.woff2'); font-weight: 300 900; }
+    @font-face { font-family: 'Ekushe Mono'; src: url('assets/fonts/DejaVuSansMono-Bold.ttf'); }
+    #root { position: absolute; inset: 0; }
+    #ending-col { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; padding-top: 300px; }
+    #ending-logo { width: 280px; height: 280px; border-radius: 64px; box-shadow: 0 30px 90px rgba(0,0,0,0.6), 0 0 150px rgba(224,48,63,0.55); }
+    #ending-title { display: flex; margin-top: 34px; font-family: 'Hind Siliguri', sans-serif; font-weight: 700; font-size: 150px; color: #fff; }
+    #ending-title span { white-space: pre; display: inline-block; text-shadow: 0 0 60px rgba(224,48,63,0.5); }
+    #ending-cta { margin-top: 40px; padding: 22px 60px; border-radius: 99px; background: #2FD18E; color: #03170F; font-family: 'Hind Siliguri', sans-serif; font-weight: 700; font-size: 84px; box-shadow: 0 0 90px rgba(47,209,142,0.6); }
+    #ending-pills { display: flex; gap: 22px; margin-top: 34px; }
+    .ending-pill { display: flex; align-items: center; gap: 14px; padding: 12px 28px; border-radius: 99px; background: #2FD18E; color: #03170F; font-family: 'Inter Tight', sans-serif; font-weight: 700; font-size: 38px; }
+    .ending-sub { font-family: 'Inter Tight', sans-serif; font-weight: 500; color: rgba(234,243,238,0.72); text-align: center; }
+    #ending-later { margin-top: 34px; text-align: center; }
+    #ending-later-bn { font-family: 'Hind Siliguri', sans-serif; font-weight: 600; font-size: 52px; color: #E9B949; }
+    #ending-web { margin-top: 50px; }
+    #ending-fx { position: absolute; inset: 0; pointer-events: none; }
+  </style>
+  <!-- 76–84 s: download today, where, and what's coming (LaunchReveal.tsx Ending) -->
+  <div data-hf-id="hf-bej9" id="root" data-composition-id="ending" data-width="1440" data-height="2560">
+    <div data-hf-id="hf-y4yp" id="ending-col">
+      <img data-hf-id="hf-ajqi" id="ending-logo" src="assets/img/logo_512.png" alt="Ekushe Next" />
+      <div data-hf-id="hf-7h2b" id="ending-title">একুশে নেক্সট</div>
+      <div data-hf-id="hf-ui52" id="ending-cta-wrap"><div data-hf-id="hf-qmju" id="ending-cta">ডাউনলোড করুন আজই</div></div>
+      <div data-hf-id="hf-7ikr" id="ending-pills">
+        <div data-hf-id="hf-jsu6" class="ending-pill" id="ending-pill-win"><span data-hf-id="hf-g975" data-os="win" data-size="40"></span>Windows</div>
+        <div data-hf-id="hf-tinb" class="ending-pill" id="ending-pill-mac"><span data-hf-id="hf-uhyo" data-os="mac" data-size="40"></span>macOS</div>
+        <div data-hf-id="hf-gzux" class="ending-pill" id="ending-pill-linux"><span data-hf-id="hf-qcft" data-os="linux" data-size="40"></span>Linux</div>
+      </div>
+      <div data-hf-id="hf-pqrm" class="ending-sub" id="ending-dl-sub" style="font-size:34px;margin-top:16px">Download today for Windows, macOS and Linux</div>
+      <div data-hf-id="hf-w7rh" id="ending-later">
+        <div data-hf-id="hf-r83q" id="ending-later-bn">Android আর iPhone শীঘ্রই</div>
+        <div data-hf-id="hf-jv3e" class="ending-sub" style="font-size:30px;margin-top:8px">Android and iPhone coming soon</div>
+      </div>
+      <div data-hf-id="hf-px0p" id="ending-web"></div>
+    </div>
+    <div data-hf-id="hf-443z" id="ending-fx"></div>
+  </div>
+  <script>
+    (function () {
+      const s = (fr) => fr / 60;
+      const $ = (id) => document.getElementById(id);
+      const END = { logo: 6, name: 22, cta: 70, pills: 100, later: 150, web: 200 };
+      EK.icons($('root'));
+      const title = $('ending-title');
+      title.innerHTML = EK.graphemes(title.textContent.trim()).map((g) => `<span>${g}</span>`).join('');
+
+      const tl = gsap.timeline({ paused: true });
+      tl.fromTo('#ending-col', { opacity: 0 }, { opacity: 1, duration: s(14), ease: 'none' }, 0);
+      const pop = { damping: 11, mass: 0.8 };
+      tl.fromTo('#ending-logo', { scale: 0.5, rotation: -12 }, { scale: 1, rotation: 0, duration: 2, ease: EK.sp(pop) }, s(END.logo));
+      tl.fromTo('#ending-logo', { opacity: 0 }, { opacity: 1, duration: 2, ease: EK.sp(pop, 120, 1.4) }, s(END.logo));
+      title.querySelectorAll('span').forEach((sp, i) => {
+        tl.fromTo(sp, { opacity: 0, y: 60 }, { opacity: 1, y: 0, duration: 2, ease: EK.sp({ damping: 14 }) }, s(END.name + i * 3));
+      });
+      tl.fromTo('#ending-cta', { opacity: 0, scale: 0.7 }, { opacity: 1, scale: 1, duration: 2, ease: EK.sp({ damping: 12 }) }, s(END.cta));
+      ['win', 'mac', 'linux'].forEach((k, i) => {
+        const at = s(END.pills + i * 10), cfg = { damping: 12, stiffness: 160 };
+        tl.fromTo(`#ending-pill-${k}`, { scale: 0.6, y: 30 }, { scale: 1, y: 0, duration: 2, ease: EK.sp(cfg) }, at);
+        tl.fromTo(`#ending-pill-${k}`, { opacity: 0 }, { opacity: 1, duration: 2, ease: EK.sp(cfg, 120, 1.4) }, at);
+      });
+      tl.fromTo('#ending-dl-sub', { opacity: 0 }, { opacity: 1, duration: s(25), ease: 'power2.out' }, s(END.pills + 20));
+      tl.fromTo('#ending-later', { opacity: 0 }, { opacity: 1, duration: s(30), ease: 'power2.out' }, s(END.later));
+
+      const fx = $('ending-fx');
+      const web = EK.AddressPill($('ending-web'), { text: 'www.ekushenext.com', at: END.web });
+      const b1 = EK.Burst(fx, { at: END.logo, y: 0.2, count: 44, seed: 'le', spread: 0.7 });
+      const b2 = EK.Burst(fx, { at: END.cta, y: 0.36, count: 36, seed: 'lc', spread: 0.6, colors: [EK.C.greenBright, '#ffffff', EK.C.mustard] });
+      const petals = EK.Petals(EK.el('div', 'position:absolute;inset:0', fx), { count: 18, opacity: 0.5 });
+      // the download button breathes once it has landed
+      const wrap = $('ending-cta-wrap');
+      EK.tick(tl, 480, (f) => {
+        const beat = 1 + Math.max(0, Math.sin((f - END.cta) / 9)) * 0.025 * (f > END.cta + 30 ? 1 : 0);
+        wrap.style.transform = `scale(${beat})`;
+        web(f); b1(f); b2(f); petals(f);
+      });
+      window.__timelines["ending"] = tl;
+    })();
+  </script>
+</template>

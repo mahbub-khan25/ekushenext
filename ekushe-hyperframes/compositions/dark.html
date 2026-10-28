@@ -1,0 +1,44 @@
+<template>
+  <style>
+    @font-face { font-family: 'Hind Siliguri'; src: url('assets/fonts/HindSiliguri-Regular.ttf'); font-weight: 400 500; }
+    @font-face { font-family: 'Hind Siliguri'; src: url('assets/fonts/HindSiliguri-SemiBold.ttf'); font-weight: 600; }
+    @font-face { font-family: 'Hind Siliguri'; src: url('assets/fonts/HindSiliguri-Bold.ttf'); font-weight: 700 900; }
+    @font-face { font-family: 'Inter Tight'; src: url('assets/fonts/InterTight.woff2'); font-weight: 300 900; }
+    @font-face { font-family: 'Ekushe Mono'; src: url('assets/fonts/DejaVuSansMono-Bold.ttf'); }
+    #root { position: absolute; inset: 0; }
+    .dark-line { position: absolute; left: 0; right: 0; text-align: center; }
+    #dark-wait { top: 620px; }
+    #dark-wait-bn { font-family: 'Hind Siliguri', sans-serif; font-weight: 600; font-size: 92px; color: rgba(234,243,238,0.88); }
+    #dark-dawn { top: 560px; }
+    #dark-dawn-bn { font-family: 'Hind Siliguri', sans-serif; font-weight: 700; font-size: 140px; color: #fff; text-shadow: 0 0 70px rgba(224,48,63,0.7); }
+    .dark-sub { font-family: 'Inter Tight', sans-serif; font-weight: 500; color: rgba(234,243,238,0.72); letter-spacing: 0.01em; }
+    #dark-fx { position: absolute; inset: 0; pointer-events: none; }
+  </style>
+  <!-- 0–16 s: the dark, then the sun (LaunchReveal.tsx Dark) -->
+  <div data-hf-id="hf-whxi" id="root" data-composition-id="dark" data-width="1440" data-height="2560">
+    <div data-hf-id="hf-5jtl" id="dark-wait" class="dark-line">
+      <div data-hf-id="hf-1krw" id="dark-wait-bn">অপেক্ষার প্রহর শেষে...।</div>
+      <div data-hf-id="hf-fd8v" class="dark-sub" style="font-size:36px;margin-top:16px">At the end of a long wait…</div>
+    </div>
+    <div data-hf-id="hf-xfpk" id="dark-dawn" class="dark-line">
+      <div data-hf-id="hf-s328" id="dark-dawn-bn">নতুন ভোর</div>
+      <div data-hf-id="hf-oqlg" class="dark-sub" style="font-size:38px;margin-top:10px">A new dawn</div>
+    </div>
+    <div data-hf-id="hf-9tnc" id="dark-fx"></div>
+  </div>
+  <script>
+    (function () {
+      const s = (fr) => fr / 60;
+      const tl = gsap.timeline({ paused: true });
+      // "অপেক্ষার প্রহর শেষে" fades up out of a blur, then away (frames 90–150 in, 400–450 out)
+      tl.fromTo('#dark-wait', { opacity: 0, y: 30, filter: 'blur(8px)' }, { opacity: 1, y: 0, filter: 'blur(0px)', duration: s(60), ease: 'power2.out' }, s(90));
+      tl.to('#dark-wait', { opacity: 0, y: 30, filter: 'blur(8px)', duration: s(50), ease: 'power2.out' }, s(400));
+      // "নতুন ভোর" as the sun comes up (640–700 in, 900–950 out)
+      tl.fromTo('#dark-dawn', { opacity: 0, y: 30, scale: 0.96 }, { opacity: 1, y: 0, scale: 1, duration: s(60), ease: 'power2.out' }, s(640));
+      tl.to('#dark-dawn', { opacity: 0, y: 30, scale: 0.96, duration: s(50), ease: 'power2.out' }, s(900));
+      const sweep = EK.Sweep(document.getElementById('dark-fx'), { at: EK.L.R.date - 40, dur: 60, strength: 0.16 });
+      EK.tick(tl, 960, sweep);
+      window.__timelines["dark"] = tl;
+    })();
+  </script>
+</template>

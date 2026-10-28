@@ -1,0 +1,47 @@
+<template>
+  <style>
+    @font-face { font-family: 'Hind Siliguri'; src: url('assets/fonts/HindSiliguri-Regular.ttf'); font-weight: 400 500; }
+    @font-face { font-family: 'Hind Siliguri'; src: url('assets/fonts/HindSiliguri-SemiBold.ttf'); font-weight: 600; }
+    @font-face { font-family: 'Hind Siliguri'; src: url('assets/fonts/HindSiliguri-Bold.ttf'); font-weight: 700 900; }
+    @font-face { font-family: 'Inter Tight'; src: url('assets/fonts/InterTight.woff2'); font-weight: 300 900; }
+    @font-face { font-family: 'Ekushe Mono'; src: url('assets/fonts/DejaVuSansMono-Bold.ttf'); }
+    #root { position: absolute; inset: 0; }
+    #mac-out { position: absolute; inset: 0; }
+    #mac-head { position: absolute; top: 250px; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; }
+    #mac-head .cs-title { display: flex; align-items: center; gap: 22px; color: #fff; }
+    #mac-head .cs-bn { font-family: 'Hind Siliguri', sans-serif; font-weight: 700; font-size: 100px; }
+    .cs-tag { display: inline-block; font-family: 'Hind Siliguri', sans-serif; font-weight: 700; font-size: 44px; padding: 6px 22px; border-radius: 99px; background: #E9B949; color: #2A1C00; box-shadow: 0 0 40px rgba(233,185,73,0.6); }
+    .cs-sub { font-family: 'Inter Tight', sans-serif; font-weight: 500; color: rgba(234,243,238,0.72); text-align: center; letter-spacing: 0.01em; }
+    #mac-screen { position: absolute; top: 560px; left: 80px; width: 1280px; height: 1240px; }
+    #mac-below { position: absolute; top: 1860px; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; padding: 0 90px; }
+    #mac-line { margin-top: -60px; font-size: 36px; line-height: 1.4; }
+    .cs-hint { position: absolute; top: 470px; left: 0; right: 0; font-family: 'Inter Tight', sans-serif; font-weight: 500; font-size: 30px; color: rgba(234,243,238,0.72); text-align: center; }
+    #mac-fx { position: absolute; inset: 0; pointer-events: none; }
+  </style>
+  <!-- 37–47 s: the welcome typed on a Mac, with a "new" tag (LaunchReveal.tsx ComputerScene). The typed words are in assets/ek.js (EK.L.mac). -->
+  <div data-hf-id="hf-biab" id="root" data-composition-id="mac" data-width="1440" data-height="2560">
+    <div data-hf-id="hf-rg79" id="mac-out">
+      <div data-hf-id="hf-07xl" id="mac-head">
+        <div data-hf-id="hf-ppsf" class="cs-title">
+          <span data-hf-id="hf-c5yh" data-os="mac" data-size="78"></span>
+          <span data-hf-id="hf-cr3m" class="cs-bn">এবার Mac-এও!</span>
+          <span data-hf-id="hf-4er9" id="mac-tag" class="cs-tag">নতুন</span>
+        </div>
+        <div data-hf-id="hf-b23i" class="cs-sub" style="font-size:36px;margin-top:14px">New: Ekushe Next is on the Mac too</div>
+      </div>
+      <div data-hf-id="hf-woej" id="mac-screen"></div>
+      <div data-hf-id="hf-vkv2" id="mac-below">
+        <div data-hf-id="hf-j2sn" id="mac-keys"></div>
+        <div data-hf-id="hf-zxqu" id="mac-line" class="cs-sub">Dear Bangla-speaking friends, warm wishes to you.</div>
+      </div>
+      <div data-hf-id="hf-9old" id="mac-fx"></div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      const tl = gsap.timeline({ paused: true });
+      EK.computerScene('mac', tl, 600);
+      window.__timelines["mac"] = tl;
+    })();
+  </script>
+</template>

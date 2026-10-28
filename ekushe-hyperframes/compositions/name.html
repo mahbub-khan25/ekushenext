@@ -1,0 +1,66 @@
+<template>
+  <style>
+    @font-face { font-family: 'Hind Siliguri'; src: url('assets/fonts/HindSiliguri-Regular.ttf'); font-weight: 400 500; }
+    @font-face { font-family: 'Hind Siliguri'; src: url('assets/fonts/HindSiliguri-SemiBold.ttf'); font-weight: 600; }
+    @font-face { font-family: 'Hind Siliguri'; src: url('assets/fonts/HindSiliguri-Bold.ttf'); font-weight: 700 900; }
+    @font-face { font-family: 'Inter Tight'; src: url('assets/fonts/InterTight.woff2'); font-weight: 300 900; }
+    @font-face { font-family: 'Ekushe Mono'; src: url('assets/fonts/DejaVuSansMono-Bold.ttf'); }
+    #root { position: absolute; inset: 0; }
+    #name-out { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; padding-top: 430px; }
+    #name-logo { width: 300px; height: 300px; border-radius: 68px; box-shadow: 0 30px 90px rgba(0,0,0,0.6), 0 0 160px rgba(224,48,63,0.6); }
+    #name-title { display: flex; margin-top: 40px; font-family: 'Hind Siliguri', sans-serif; font-weight: 700; font-size: 170px; color: #fff; }
+    #name-title span { white-space: pre; display: inline-block; text-shadow: 0 0 60px rgba(224,48,63,0.5); }
+    #name-today { font-family: 'Hind Siliguri', sans-serif; font-weight: 700; font-size: 76px; color: #E9B949; margin-top: 20px; }
+    #name-pills { display: flex; gap: 22px; margin-top: 30px; }
+    .name-pill { display: flex; align-items: center; gap: 14px; padding: 12px 28px; border-radius: 99px; background: #2FD18E; color: #03170F; font-family: 'Inter Tight', sans-serif; font-weight: 700; font-size: 40px; }
+    #name-sub { margin-top: 22px; font-family: 'Inter Tight', sans-serif; font-weight: 500; font-size: 36px; color: rgba(234,243,238,0.72); }
+    #name-fx { position: absolute; inset: 0; pointer-events: none; }
+  </style>
+  <!-- 22–27 s: the logo and the name; out today on all three computers (LaunchReveal.tsx NameScene) -->
+  <div data-hf-id="hf-j3ud" id="root" data-composition-id="name" data-width="1440" data-height="2560">
+    <div data-hf-id="hf-k9dj" id="name-out">
+      <img data-hf-id="hf-erqy" id="name-logo" src="assets/img/logo_512.png" alt="Ekushe Next" />
+      <div data-hf-id="hf-x9f7" id="name-title">একুশে নেক্সট</div>
+      <div data-hf-id="hf-pkdw" id="name-today">আজ থেকে পাওয়া যাচ্ছে</div>
+      <div data-hf-id="hf-czqz" id="name-pills">
+        <div data-hf-id="hf-mvza" class="name-pill" id="name-pill-win"><span data-hf-id="hf-o5f7" data-os="win" data-size="42"></span>Windows</div>
+        <div data-hf-id="hf-svrj" class="name-pill" id="name-pill-mac"><span data-hf-id="hf-z7qi" data-os="mac" data-size="42"></span>macOS</div>
+        <div data-hf-id="hf-xt5t" class="name-pill" id="name-pill-linux"><span data-hf-id="hf-2amz" data-os="linux" data-size="42"></span>Linux</div>
+      </div>
+      <div data-hf-id="hf-otez" id="name-sub">Available today on Windows, macOS and Linux</div>
+    </div>
+    <div data-hf-id="hf-7slb" id="name-fx"></div>
+  </div>
+  <script>
+    (function () {
+      const s = (fr) => fr / 60;
+      const $ = (id) => document.getElementById(id);
+      EK.icons($('root'));
+      // split the name into letters for the cascade
+      const title = $('name-title');
+      title.innerHTML = EK.graphemes(title.textContent.trim()).map((g) => `<span>${g}</span>`).join('');
+
+      const tl = gsap.timeline({ paused: true });
+      const pop = { damping: 11, mass: 0.8 };
+      tl.fromTo('#name-logo', { scale: 0.5, rotation: -14 }, { scale: 1, rotation: 0, duration: 2, ease: EK.sp(pop) }, s(8));
+      tl.fromTo('#name-logo', { opacity: 0 }, { opacity: 1, duration: 2, ease: EK.sp(pop, 120, 1.4) }, s(8));
+      title.querySelectorAll('span').forEach((sp, i) => {
+        tl.fromTo(sp, { opacity: 0, y: 60 }, { opacity: 1, y: 0, duration: 2, ease: EK.sp({ damping: 14 }) }, s(24 + i * 3));
+      });
+      tl.fromTo('#name-today', { opacity: 0 }, { opacity: 1, duration: s(25), ease: 'power2.out' }, s(90));
+      ['win', 'mac', 'linux'].forEach((k, i) => {
+        const at = s(110 + i * 12), cfg = { damping: 12, stiffness: 160 };
+        tl.fromTo(`#name-pill-${k}`, { scale: 0.6, y: 30 }, { scale: 1, y: 0, duration: 2, ease: EK.sp(cfg) }, at);
+        tl.fromTo(`#name-pill-${k}`, { opacity: 0 }, { opacity: 1, duration: 2, ease: EK.sp(cfg, 120, 1.4) }, at);
+      });
+      tl.fromTo('#name-sub', { opacity: 0 }, { opacity: 1, duration: s(25), ease: 'power2.out' }, s(150));
+      tl.to('#name-out', { opacity: 0, filter: 'blur(10px)', duration: s(22), ease: 'power2.out' }, s(278));
+
+      const fx = $('name-fx');
+      const burst = EK.Burst(fx, { at: 8, y: 0.27, count: 46, seed: 'nm', spread: 0.7 });
+      const sweep = EK.Sweep(fx, { at: 30, dur: 50, strength: 0.14 });
+      EK.tick(tl, 300, (f) => { burst(f); sweep(f); });
+      window.__timelines["name"] = tl;
+    })();
+  </script>
+</template>

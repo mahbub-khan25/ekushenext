@@ -1,0 +1,186 @@
+<template>
+  <style>
+    @font-face { font-family: 'Hind Siliguri'; src: url('assets/fonts/HindSiliguri-Regular.ttf'); font-weight: 400 500; }
+    @font-face { font-family: 'Hind Siliguri'; src: url('assets/fonts/HindSiliguri-SemiBold.ttf'); font-weight: 600; }
+    @font-face { font-family: 'Hind Siliguri'; src: url('assets/fonts/HindSiliguri-Bold.ttf'); font-weight: 700 900; }
+    @font-face { font-family: 'Inter Tight'; src: url('assets/fonts/InterTight.woff2'); font-weight: 300 900; }
+    @font-face { font-family: 'Ekushe Mono'; src: url('assets/fonts/DejaVuSansMono-Bold.ttf'); }
+    #root { position: absolute; inset: 0; }
+    #party-out { position: absolute; inset: 0; }
+    .party-count { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+    .party-ring { position: absolute; width: 700px; height: 700px; border-radius: 50%; border: 8px solid rgba(224,48,63,0.7); box-shadow: 0 0 80px rgba(224,48,63,0.5); }
+    .party-num { font-family: 'Hind Siliguri', sans-serif; font-weight: 700; font-size: 520px; color: #fff; text-shadow: 0 0 100px rgba(224,48,63,0.9); }
+    #party-flash { position: absolute; inset: 0; background: #fff; opacity: 0; }
+    #party-fx, #party-bubbles { position: absolute; inset: 0; pointer-events: none; }
+    #party-center { position: absolute; top: 960px; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; }
+    .party-line { display: flex; justify-content: center; font-family: 'Hind Siliguri', sans-serif; font-weight: 700; line-height: 1.25; }
+    .party-line span { white-space: pre; display: inline-block; }
+    #party-l1 { font-size: 140px; color: #fff; }
+    #party-l1 span { text-shadow: 0 0 60px rgba(224,48,63,0.7); }
+    #party-l2 { font-size: 150px; color: #2FD18E; }
+    #party-l2 span { text-shadow: 0 0 60px rgba(47,209,142,0.7); }
+    .party-sub { font-family: 'Inter Tight', sans-serif; font-weight: 500; color: rgba(234,243,238,0.72); text-align: center; }
+    #party-caps { display: flex; gap: 22px; margin-top: 70px; perspective: 800px; }
+    .party-cap { min-width: 150px; height: 170px; padding: 0 24px; display: grid; place-items: center; border-radius: 30px; font-weight: 700; }
+  </style>
+  <!-- 66–76 s: ৩·২·১, a flash, Bangla-letter fireworks, the name, key caps flipping from Roman to Bangla,
+       and wishes floating up (LaunchReveal.tsx PartyScene) -->
+  <div data-hf-id="hf-duyk" id="root" data-composition-id="party" data-width="1440" data-height="2560">
+    <div data-hf-id="hf-mp7k" id="party-out">
+      <div data-hf-id="hf-kbx0" class="party-count" id="party-c0"><div data-hf-id="hf-kdin" class="party-ring"></div><div data-hf-id="hf-d83q" class="party-num">৩</div></div>
+      <div data-hf-id="hf-l3kt" class="party-count" id="party-c1"><div data-hf-id="hf-ixzj" class="party-ring"></div><div data-hf-id="hf-ctsp" class="party-num">২</div></div>
+      <div data-hf-id="hf-p1ou" class="party-count" id="party-c2"><div data-hf-id="hf-ijoi" class="party-ring"></div><div data-hf-id="hf-991g" class="party-num">১</div></div>
+      <div data-hf-id="hf-bm4a" id="party-flash"></div>
+      <div data-hf-id="hf-adym" id="party-fx"></div>
+      <div data-hf-id="hf-s3l3" id="party-center">
+        <div data-hf-id="hf-b9n7" class="party-line" id="party-l1">একুশে নেক্সট</div>
+        <div data-hf-id="hf-v7qh" class="party-line" id="party-l2">এসে গেছে!</div>
+        <div data-hf-id="hf-na0b" class="party-sub" id="party-sub" style="font-size:38px;margin-top:14px">Ekushe Next is here!</div>
+        <div data-hf-id="hf-r3rz" id="party-caps"></div>
+        <div data-hf-id="hf-wo11" class="party-sub" id="party-caps-sub" style="font-size:32px;margin-top:26px">e·ku·she next → একুশে নেক্সট</div>
+      </div>
+      <div data-hf-id="hf-cdvd" id="party-bubbles"></div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      const s = (fr) => fr / 60;
+      const $ = (id) => document.getElementById(id);
+      const { C, random, spring, interp, ease, el, graphemes } = EK;
+      const W = 1440, H = 2560;
+      const BOOM = 180, FLIP = 250, BUBBLES = 290, len = EK.L.R.end - EK.L.R.party;
+      const tl = gsap.timeline({ paused: true });
+
+      // the title, letter by letter (the original's per-letter spring and bob are drawn in the tick below)
+      const letters = [];
+      ['party-l1', 'party-l2'].forEach((id, li) => {
+        const line = $(id);
+        line.innerHTML = graphemes(line.textContent.trim()).map((g) => `<span>${g}</span>`).join('');
+        line.querySelectorAll('span').forEach((sp, j) => letters.push({ sp, i: li * 12 + j }));
+      });
+      tl.fromTo('#party-sub', { opacity: 0 }, { opacity: 1, duration: s(30), ease: 'power2.out' }, s(BOOM + 40));
+      tl.fromTo('#party-caps', { opacity: 0 }, { opacity: 1, duration: s(20), ease: 'power2.out' }, s(FLIP - 20));
+      tl.fromTo('#party-caps-sub', { opacity: 0 }, { opacity: 1, duration: s(25), ease: 'power2.out' }, s(FLIP + 70));
+      tl.fromTo('#party-flash', { opacity: 0 }, { opacity: 0.65, duration: s(3), ease: 'none' }, s(BOOM));
+      tl.to('#party-flash', { opacity: 0, duration: s(23), ease: 'none' }, s(BOOM + 3));
+      tl.to('#party-out', { opacity: 0, duration: s(24), ease: 'power2.out' }, s(len - 24));
+
+      // key caps: e·ku·she·next flip over into এ·কু·শে·নেক্সট
+      const caps = [['e', 'এ'], ['ku', 'কু'], ['she', 'শে'], ['next', 'নেক্সট']].map(([a, b], i) => ({ a, b, at: FLIP + i * 14, d: el('div', '', $('party-caps')) }));
+      caps.forEach((c) => (c.d.className = 'party-cap'));
+
+      // countdown
+      const counts = [0, 1, 2].map((i) => ({ at: i * 60, box: $(`party-c${i}`) }));
+      counts.forEach((c) => { c.ring = c.box.querySelector('.party-ring'); c.num = c.box.querySelector('.party-num'); });
+
+      // fireworks that burst into Bangla letters
+      const LETTERS = graphemes('অআইঈউঊঋএঐওঔকখগঘঙচছজঝঞটঠডঢণতথদধনপফবভমযরলশষসহ');
+      const FW = [
+        { at: 180, x: 0.5, y: 0.2, c: C.red }, { at: 200, x: 0.22, y: 0.3, c: C.greenBright }, { at: 214, x: 0.78, y: 0.26, c: C.mustard },
+        { at: 262, x: 0.3, y: 0.14, c: C.coral }, { at: 290, x: 0.72, y: 0.12, c: C.greenBright }, { at: 330, x: 0.5, y: 0.3, c: C.mustard },
+        { at: 372, x: 0.18, y: 0.2, c: C.red }, { at: 396, x: 0.82, y: 0.34, c: C.coral }, { at: 440, x: 0.5, y: 0.16, c: C.greenBright },
+      ];
+      const fx = $('party-fx');
+      const works = FW.map((w, k) => {
+        const seed = `fw${k}`;
+        const at = w.at - 34;
+        const rocket = el('div', `position:absolute;left:0;top:0;width:10px;height:60px;border-radius:9px;background:linear-gradient(180deg, #fff, ${w.c}00);box-shadow:0 0 20px ${w.c}`, fx);
+        const flash = el('div', `position:absolute;left:${W * w.x - 140}px;top:${H * w.y - 140}px;width:280px;height:280px;border-radius:50%;background:radial-gradient(circle, #fff 0%, ${w.c} 30%, transparent 70%)`, fx);
+        const parts = Array.from({ length: 16 }).map((_, i) => ({
+          a: (i / 16) * Math.PI * 2 + random(`${seed}a${i}`) * 0.3,
+          r: 300 + random(`${seed}d${i}`) * 160,
+          d: el('div', `position:absolute;left:0;top:0;font-family:'Hind Siliguri',sans-serif;font-weight:700;font-size:${44 + random(`${seed}s${i}`) * 30}px;color:${i % 3 === 0 ? '#fff' : w.c};text-shadow:0 0 24px ${w.c}`, fx, LETTERS[Math.floor(random(`${seed}l${i}`) * LETTERS.length)]),
+        }));
+        return (fAbs) => {
+          const f = fAbs - at;
+          const on = f >= 0 && f <= 130;
+          const up = 34;
+          rocket.style.display = on && f < up ? 'block' : 'none';
+          const burst = on && f >= up;
+          flash.style.display = burst ? 'block' : 'none';
+          parts.forEach((p) => (p.d.style.display = burst ? 'block' : 'none'));
+          if (!on) return;
+          if (f < up) {
+            const p = ease(f, 0, up);
+            rocket.style.transform = `translate(${W * w.x - 5}px, ${interp(p, [0, 1], [H + 20, H * w.y])}px)`;
+            return;
+          }
+          const g = f - up, t = ease(g, 0, 70);
+          flash.style.opacity = interp(g, [0, 4, 20], [0, 0.9, 0]);
+          const o = interp(g, [0, 60, 96], [1, 0.9, 0]);
+          parts.forEach((p) => {
+            p.d.style.transform = `translate(${W * w.x + Math.cos(p.a) * p.r * t}px, ${H * w.y + Math.sin(p.a) * p.r * t + g * g * 0.03}px) translate(-50%, -50%)`;
+            p.d.style.opacity = o;
+          });
+        };
+      });
+      const bursts = [
+        EK.Burst(fx, { at: BOOM, y: 0.45, count: 70, seed: 'pb1', spread: 0.9 }),
+        EK.Burst(fx, { at: BOOM + 60, y: 0.5, count: 50, seed: 'pb2', spread: 0.8 }),
+        EK.Burst(fx, { at: BOOM + 160, y: 0.4, count: 50, seed: 'pb3', spread: 0.8 }),
+      ];
+      const petalBox = el('div', 'position:absolute;inset:0', fx);
+      const petals = EK.Petals(petalBox, { count: 40, from: BOOM, opacity: 0.8 });
+
+      // wishes floating up
+      const WISHES = ['অভিনন্দন!', 'অবশেষে!', 'আলহামদুলিল্লাহ', 'শুভেচ্ছা রইল', 'স্বাগতম', 'অপেক্ষা শেষ', 'অভিনন্দন!', 'শুভেচ্ছা রইল'];
+      const bubbles = WISHES.map((w, i) => ({
+        i, at: BUBBLES + i * 30, x: (i % 2 ? 0.7 : 0.3) + (random(`bx${i}`) - 0.5) * 0.25, v: 5.5 + random(`bv${i}`) * 2,
+        d: el('div', `position:absolute;left:0;top:0;padding:16px 34px;border-radius:60px;background:${['rgba(224,48,63,0.88)', 'rgba(11,107,74,0.92)', 'rgba(233,185,73,0.95)'][i % 3]};color:${i % 3 === 2 ? '#2A1C00' : '#fff'};font-family:'Hind Siliguri',sans-serif;font-weight:700;font-size:52px;white-space:nowrap;box-shadow:0 14px 40px rgba(0,0,0,0.4)`, $('party-bubbles'), w),
+      }));
+
+      const center = $('party-center');
+      EK.tick(tl, len, (f) => {
+        counts.forEach((c) => {
+          const g = f - c.at;
+          const on = g >= 0 && g < 60;
+          c.box.style.display = on ? 'flex' : 'none';
+          if (!on) return;
+          const p = spring(g, { damping: 10, stiffness: 160 });
+          const fade = 1 - ease(g, 40, 60);
+          const sc = 0.6 + ease(g, 0, 60) * 0.8;
+          c.ring.style.transform = `scale(${sc})`;
+          c.ring.style.borderColor = `rgba(224,48,63,${0.7 * fade})`;
+          c.ring.style.boxShadow = `0 0 80px rgba(224,48,63,${0.5 * fade})`;
+          c.num.style.opacity = fade;
+          c.num.style.transform = `scale(${1.6 - p * 0.6})`;
+        });
+        works.forEach((w) => w(f));
+        bursts.forEach((b) => b(f));
+        petalBox.style.display = f >= BOOM ? 'block' : 'none';
+        petals(f);
+        center.style.visibility = f >= BOOM ? 'visible' : 'hidden';
+        letters.forEach(({ sp, i }) => {
+          const t = spring(f - BOOM - 6 - i * 2, { damping: 9, stiffness: 170 });
+          const bob = Math.sin((f + i * 8) / 14) * 6;
+          sp.style.opacity = Math.min(1, t * 1.5);
+          sp.style.transform = `translateY(${(1 - t) * 120 + bob}px) scale(${0.4 + t * 0.6})`;
+        });
+        caps.forEach((c) => {
+          const p = interp(f, [c.at, c.at + 18], [0, 180]);
+          const pop = spring(f - c.at - 18, { damping: 9, stiffness: 200 });
+          const back = p > 90;
+          const d = c.d;
+          d.textContent = back ? c.b : c.a;
+          d.style.background = back ? C.greenBright : 'rgba(255,255,255,0.12)';
+          d.style.border = `3px solid ${back ? C.greenBright : 'rgba(255,255,255,0.3)'}`;
+          d.style.boxShadow = back ? `0 0 ${60 * pop}px rgba(47,209,142,0.7), 0 10px 0 #0B6B4A` : '0 10px 0 rgba(0,0,0,0.5)';
+          d.style.transform = `rotateX(${back ? p - 180 : p}deg) scale(${back ? 1 + (1 - pop) * 0.1 : 1})`;
+          d.style.color = back ? '#03170F' : '#fff';
+          d.style.fontFamily = back ? EK.FONT_BN : EK.MONO;
+          d.style.fontSize = (back ? 96 : 76) + 'px';
+        });
+        bubbles.forEach((b) => {
+          const g = f - b.at;
+          b.d.style.display = g < 0 ? 'none' : 'block';
+          if (g < 0) return;
+          const y = H + 100 - g * b.v;
+          const p = spring(g, { damping: 10 });
+          b.d.style.transform = `translate(${W * b.x + Math.sin(g / 24 + b.i) * 40}px, ${y}px) translate(-50%, 0) scale(${p})`;
+          b.d.style.opacity = interp(y, [-200, 400], [0, 1]);
+        });
+      });
+      window.__timelines["party"] = tl;
+    })();
+  </script>
+</template>

@@ -1,0 +1,128 @@
+<template>
+  <style>
+    @font-face { font-family: 'Hind Siliguri'; src: url('assets/fonts/HindSiliguri-Regular.ttf'); font-weight: 400 500; }
+    @font-face { font-family: 'Hind Siliguri'; src: url('assets/fonts/HindSiliguri-SemiBold.ttf'); font-weight: 600; }
+    @font-face { font-family: 'Hind Siliguri'; src: url('assets/fonts/HindSiliguri-Bold.ttf'); font-weight: 700 900; }
+    @font-face { font-family: 'Inter Tight'; src: url('assets/fonts/InterTight.woff2'); font-weight: 300 900; }
+    @font-face { font-family: 'Ekushe Mono'; src: url('assets/fonts/DejaVuSansMono-Bold.ttf'); }
+    #root { position: absolute; inset: 0; }
+    #phones-out { position: absolute; inset: 0; }
+    #phones-head { position: absolute; top: 230px; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; }
+    #phones-title { display: flex; align-items: center; gap: 20px; color: #fff; font-family: 'Hind Siliguri', sans-serif; font-weight: 700; font-size: 92px; }
+    .ph-sub { font-family: 'Inter Tight', sans-serif; font-weight: 500; color: rgba(234,243,238,0.72); text-align: center; }
+    #phones-row { position: absolute; top: 520px; left: 0; right: 0; display: flex; justify-content: center; gap: 60px; }
+    .ph { position: relative; width: 600px; height: 1240px; border-radius: 92px; background: #0a0a0a; padding: 18px; box-shadow: 0 40px 110px rgba(0,0,0,0.8), inset 0 0 0 3px rgba(255,255,255,0.14); }
+    .ph-screen { position: relative; width: 100%; height: 100%; border-radius: 76px; overflow: hidden; display: flex; flex-direction: column; }
+    .ph-status { height: 70px; display: flex; align-items: center; justify-content: space-between; padding: 0 48px; font-family: 'Inter Tight', sans-serif; font-weight: 700; font-size: 24px; }
+    .ph-chat { display: flex; align-items: center; gap: 16px; padding: 12px 30px; }
+    .ph-avatar { width: 62px; height: 62px; border-radius: 99px; background: linear-gradient(135deg, #F26B4F, #E0303F); display: grid; place-items: center; font-family: 'Hind Siliguri', sans-serif; font-weight: 700; font-size: 30px; color: #fff; }
+    .ph-msgs { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; gap: 16px; padding: 20px 24px; }
+    .ph-in, .ph-outmsg { padding: 14px 24px; border-radius: 30px; font-family: 'Hind Siliguri', sans-serif; font-size: 36px; }
+    .ph-in { align-self: flex-start; max-width: 78%; }
+    .ph-outmsg { align-self: flex-end; max-width: 84%; line-height: 1.4; color: #fff; transform-origin: right bottom; }
+    .ph-input { display: flex; align-items: center; gap: 12px; padding: 12px 20px; }
+    .ph-field { flex: 1; min-height: 74px; border-radius: 40px; padding: 8px 24px; display: flex; align-items: center; }
+    .ph-send { width: 70px; height: 70px; border-radius: 99px; display: grid; place-items: center; color: #fff; font-size: 34px; }
+    .ph-kb { display: block; width: 564px; }
+    .ph-ribbon { position: absolute; top: 70px; right: -36px; padding: 12px 30px; border-radius: 20px; background: #E9B949; color: #2A1C00; font-family: 'Hind Siliguri', sans-serif; font-weight: 700; font-size: 44px; box-shadow: 0 14px 40px rgba(0,0,0,0.5), 0 0 40px rgba(233,185,73,0.5); }
+    /* Android: dark chat; iPhone: light */
+    #ph-a .ph-screen { background: #101614; } #ph-a .ph-status, #ph-a .ph-chat-name { color: #eee; }
+    #ph-a .ph-chat { border-bottom: 1.5px solid rgba(255,255,255,0.08); } #ph-a .ph-in { background: #25302c; color: #eee; }
+    #ph-a .ph-outmsg { background: #0B6B4A; } #ph-a .ph-field { background: #1d2724; border: 1.5px solid rgba(255,255,255,0.12); } #ph-a .ph-send { background: #2FD18E; }
+    #ph-i .ph-screen { background: #F2F2F7; } #ph-i .ph-status, #ph-i .ph-chat-name { color: #111; }
+    #ph-i .ph-chat { border-bottom: 1.5px solid rgba(0,0,0,0.08); } #ph-i .ph-in { background: #E5E5EA; color: #111; }
+    #ph-i .ph-outmsg { background: #0A84FF; } #ph-i .ph-field { background: #fff; border: 1.5px solid rgba(0,0,0,0.12); } #ph-i .ph-send { background: #0A84FF; }
+    .ph-chat-name { font-family: 'Hind Siliguri', sans-serif; font-weight: 600; font-size: 32px; }
+    #phones-foot { position: absolute; top: 1900px; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; }
+    #phones-building { font-family: 'Hind Siliguri', sans-serif; font-weight: 600; font-size: 52px; color: #E9B949; }
+    #phones-track { margin-top: 18px; width: 820px; height: 22px; border-radius: 99px; background: rgba(255,255,255,0.12); overflow: hidden; }
+    #phones-bar { width: 100%; height: 100%; border-radius: 99px; background: linear-gradient(90deg, #E9B949, #2FD18E); box-shadow: 0 0 24px rgba(47,209,142,0.6); transform-origin: left center; }
+  </style>
+  <!-- 56–66 s: Android and iPhone, coming soon. A friend asks "ফোনে কবে আসছে?" and the reply is typed
+       and sent on both (LaunchReveal.tsx PhonesScene). The typed words are in assets/ek.js (EK.L.phone). -->
+  <div data-hf-id="hf-buuv" id="root" data-composition-id="phones" data-width="1440" data-height="2560">
+    <div data-hf-id="hf-qt85" id="phones-out">
+      <div data-hf-id="hf-ysft" id="phones-head">
+        <div data-hf-id="hf-gjwz" id="phones-title"><span data-hf-id="hf-031j" data-os="android" data-size="72"></span><span data-hf-id="hf-xvph" data-os="ios" data-size="72"></span><span data-hf-id="hf-mcf9">ফোনেও আসছে</span></div>
+        <div data-hf-id="hf-fg42" class="ph-sub" style="font-size:36px;margin-top:12px">Android and iPhone are coming soon</div>
+      </div>
+      <div data-hf-id="hf-ag4p" id="phones-row">
+        <div data-hf-id="hf-pibt" id="phones-a-wrap">
+          <div data-hf-id="hf-5tpo" class="ph" id="ph-a">
+            <div data-hf-id="hf-66w1" class="ph-screen">
+              <div data-hf-id="hf-3hcz" class="ph-status"><span data-hf-id="hf-99sl">10:30</span><span data-hf-id="hf-jrx6">●●● ▮</span></div>
+              <div data-hf-id="hf-0zqh" style="position:absolute;top:22px;left:50%;transform:translateX(-50%);width:26px;height:26px;border-radius:99px;background:#000"></div>
+              <div data-hf-id="hf-ud3v" class="ph-chat"><div data-hf-id="hf-kqle" class="ph-avatar">ব</div><div data-hf-id="hf-rvk0" class="ph-chat-name">বন্ধু</div></div>
+              <div data-hf-id="hf-crj7" class="ph-msgs"><div data-hf-id="hf-2o7w" class="ph-in">ফোনে কবে আসছে?</div><div data-hf-id="hf-cp3p" class="ph-outmsg" id="ph-a-sent"></div></div>
+              <div data-hf-id="hf-8tgv" class="ph-input"><div data-hf-id="hf-apej" class="ph-field"><div data-hf-id="hf-qtnw" id="ph-a-field"></div></div><div data-hf-id="hf-9i0q" class="ph-send" id="ph-a-send">➤</div></div>
+              <img data-hf-id="hf-kgus" class="ph-kb" style="height:370px" src="assets/img/android-kb.jpg" alt="" />
+            </div>
+            <div data-hf-id="hf-19ea" class="ph-ribbon" id="ph-a-ribbon">শীঘ্রই</div>
+          </div>
+        </div>
+        <div data-hf-id="hf-npgh" id="phones-i-wrap">
+          <div data-hf-id="hf-ee44" class="ph" id="ph-i">
+            <div data-hf-id="hf-qxyt" class="ph-screen">
+              <div data-hf-id="hf-mkrn" class="ph-status"><span data-hf-id="hf-txqh">10:30</span><span data-hf-id="hf-hpoe">●●● ▮</span></div>
+              <div data-hf-id="hf-v0ps" style="position:absolute;top:16px;left:50%;transform:translateX(-50%);width:150px;height:42px;border-radius:99px;background:#000"></div>
+              <div data-hf-id="hf-vhuj" class="ph-chat"><div data-hf-id="hf-heh2" class="ph-avatar">ব</div><div data-hf-id="hf-3xbs" class="ph-chat-name">বন্ধু</div></div>
+              <div data-hf-id="hf-aoo3" class="ph-msgs"><div data-hf-id="hf-o00k" class="ph-in">ফোনে কবে আসছে?</div><div data-hf-id="hf-brbh" class="ph-outmsg" id="ph-i-sent"></div></div>
+              <div data-hf-id="hf-xbgv" class="ph-input"><div data-hf-id="hf-cqjf" class="ph-field"><div data-hf-id="hf-p8f8" id="ph-i-field"></div></div><div data-hf-id="hf-eysy" class="ph-send" id="ph-i-send">➤</div></div>
+              <img data-hf-id="hf-ke2a" class="ph-kb" style="height:385px" src="assets/img/ios-kb.jpg" alt="" />
+            </div>
+            <div data-hf-id="hf-tyd6" class="ph-ribbon" id="ph-i-ribbon">শীঘ্রই</div>
+          </div>
+        </div>
+      </div>
+      <div data-hf-id="hf-qwaj" id="phones-foot">
+        <div data-hf-id="hf-mae4" id="phones-building">তৈরি হচ্ছে…</div>
+        <div data-hf-id="hf-c5rw" id="phones-track"><div data-hf-id="hf-97dy" id="phones-bar"></div></div>
+        <div data-hf-id="hf-ty0y" class="ph-sub" id="phones-quote" style="font-size:34px;margin-top:20px">“Coming to your phone too, wait a little.”</div>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      const s = (fr) => fr / 60;
+      const $ = (id) => document.getElementById(id);
+      const { L, C } = EK;
+      const len = L.R.party - L.R.phones;
+      EK.icons($('root'));
+      const tl = gsap.timeline({ paused: true });
+      tl.fromTo('#phones-head', { opacity: 0, y: 60 }, { opacity: 1, y: 0, duration: 2, ease: EK.sp({ damping: 16, stiffness: 90 }) }, s(4));
+      const rise = { damping: 15, stiffness: 80 };
+      tl.fromTo('#phones-a-wrap', { opacity: 0, y: 120, rotation: -10 }, { opacity: 1, y: 0, rotation: -4, duration: 2, ease: EK.sp(rise) }, s(24));
+      tl.fromTo('#phones-i-wrap', { opacity: 0, y: 160, rotation: 10 }, { opacity: 1, y: 40, rotation: 4, duration: 2, ease: EK.sp(rise) }, s(44));
+      // the "coming soon" ribbons spring on (frame 60 of each phone's own clock in the original)
+      ['a', 'i'].forEach((k) => tl.fromTo(`#ph-${k}-ribbon`, { scale: 0, rotation: -8 }, { scale: 1, rotation: 12, duration: 2, ease: EK.sp({ damping: 12 }) }, s(60)));
+      tl.fromTo('#phones-bar', { scaleX: 0 }, { scaleX: 0.82, duration: s(440), ease: 'power2.out' }, s(80));
+      const finI = EK.endOf(EK.plan(L.phone.tokens, L.phone.ios));
+      tl.fromTo('#phones-quote', { opacity: 0 }, { opacity: 1, duration: s(25), ease: 'power2.out' }, s(finI + 20));
+      tl.to('#phones-out', { opacity: 0, filter: 'blur(10px)', duration: s(24), ease: 'power2.out' }, s(len - 24));
+
+      // typing and sending on each phone
+      const phones = [['a', L.phone.android, { ink: '#eee', accent: C.greenBright }], ['i', L.phone.ios, { ink: '#111', accent: '#0B8A5C' }]].map(([k, start, col]) => {
+        const P = EK.plan(L.phone.tokens, start);
+        const fin = EK.endOf(P);
+        const sent = $(`ph-${k}-sent`);
+        sent.textContent = P.map((w) => w.b).join(' ');
+        const field = $(`ph-${k}-field`);
+        const write = EK.Written(field, { ink: col.ink, accent: col.accent, size: 34 });
+        const send = $(`ph-${k}-send`);
+        return (f) => {
+          const t = EK.typing(f, P);
+          const isSent = f >= fin + 16;
+          field.style.display = isSent ? 'none' : 'block';
+          write(t.done, t.live, f);
+          const fly = EK.spring(f - fin - 16, { damping: 14, stiffness: 120 });
+          sent.style.display = isSent ? 'block' : 'none';
+          sent.style.opacity = fly;
+          sent.style.transform = `translateY(${(1 - fly) * 60}px) scale(${0.85 + fly * 0.15})`;
+          send.style.transform = `scale(${f >= fin && f < fin + 20 ? 0.88 : 1})`;
+        };
+      });
+      EK.tick(tl, len, (f) => phones.forEach((p) => p(f)));
+      window.__timelines["phones"] = tl;
+    })();
+  </script>
+</template>
