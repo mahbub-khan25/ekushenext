@@ -30,7 +30,8 @@ fn main() {
         Some("pairs") => {
             let get = |k: &str| args.iter().position(|a| a == k).and_then(|i| args.get(i + 1)).cloned();
             let min = get("--min").and_then(|m| m.parse().ok()).unwrap_or(3);
-            pairs::pairs(&get("--vocab").expect("--vocab"), &get("--out").expect("--out"), min);
+            let cap = get("--cap").and_then(|m| m.parse().ok()).unwrap_or(80_000_000);
+            pairs::pairs(&get("--vocab").expect("--vocab"), &get("--out").expect("--out"), min, cap);
         }
         Some("merge-pairs") => {
             // ekushe-dict merge-pairs --out FILE [--min N] A.tsv B.tsv ...: sum per-file pair counts
