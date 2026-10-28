@@ -8,8 +8,8 @@ redistributed. Attribution is required for all three; keep this list in the app'
 | Source | Portion used | Licence | Downloaded | Tokens counted |
 | --- | --- | --- | --- | --- |
 | [Bangla Wikipedia](https://huggingface.co/datasets/wikimedia/wikipedia) (snapshot 2023-11-01) | `20231101.bn`, all 143,070 articles | CC BY-SA 3.0 / GFDL | 2026-10-20 | 47,180,754 |
-| [FineWeb-2](https://huggingface.co/datasets/HuggingFaceFW/fineweb-2) by Hugging Face | `ben_Beng` train files 000, 001 (2 of 5) | ODC-By 1.0 (subject to Common Crawl terms of use) | 2026-10-20 | see `build-report.md` |
-| [Sangraha](https://huggingface.co/datasets/ai4bharat/sangraha) by AI4Bharat | `verified/ben` files 0–9 (10 of 77) | CC BY 4.0 | 2026-10-20 | 564,586,280 |
+| [FineWeb-2](https://huggingface.co/datasets/HuggingFaceFW/fineweb-2) by Hugging Face | `ben_Beng` train files 000–004 (all 5) | ODC-By 1.0 (subject to Common Crawl terms of use) | 2026-10-28 | 5,221,459,193 |
+| [Sangraha](https://huggingface.co/datasets/ai4bharat/sangraha) by AI4Bharat | `verified/ben` files 0–76 (all 77) | CC BY 4.0 | 2026-10-28 | 4,340,999,618 |
 
 Phase 4 also uses the English word list of [wordfreq](https://github.com/rspeer/wordfreq) (data CC BY-SA 4.0)
 to find English loanwords (computer → কম্পিউটার). Only English spellings matched to Bangla words are kept.
