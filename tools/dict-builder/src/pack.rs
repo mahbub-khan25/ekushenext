@@ -9,7 +9,7 @@ use std::path::Path;
 const CHAT_PAIR_COUNT: u32 = 60_000;
 
 pub fn pack(lexicon: &str, english: Option<&str>, pairs: Option<&str>, phrases: Option<&str>, vulgar: Option<&str>,
-            spoken: Option<&str>, out: &str) {
+            spoken: Option<&str>, keys: Option<&str>, out: &str) {
     let mut extra: HashMap<String, Vec<String>> = HashMap::new();
     if let Some(p) = english {
         for line in std::fs::read_to_string(p).expect("english").lines() {
@@ -73,6 +73,9 @@ pub fn pack(lexicon: &str, english: Option<&str>, pairs: Option<&str>, phrases: 
     }
     if let Some(p) = spoken {
         apply_spoken(&mut b, p);
+    }
+    for p in keys.into_iter().flat_map(|k| k.split(',')) {
+        apply_keys(&mut b, p);
     }
     if let Some(p) = pairs {
         for line in std::fs::read_to_string(p).expect("pairs").lines() {
@@ -175,4 +178,43 @@ fn apply_spoken(b: &mut DictBuilder, path: &str) {
         n += 1;
     }
     eprintln!("spoken words: {n} ({added} not in the lexicon)");
+}
+
+/// Typing cost of a curated spelling for a name or a chat word (an exact match)
+const KEY_COST: f32 = 0.1;
+
+/// `curated/names.tsv`, `curated/chat-words.tsv` (`typed spellings, candidate words [, ppm]`): the
+/// way people type a word, for the candidate the corpus uses most (রহিম for rahim, not the rarer
+/// রাহিম). Candidates are `|`-separated; a row whose candidates never occur in the corpus is skipped,
+/// so nothing is invented. An optional minimum frequency (per million) is for chat words that
+/// written Bangla hardly uses (জোস).
+fn apply_keys(b: &mut DictBuilder, path: &str) {
+    let index: HashMap<String, usize> =
+        b.words.iter().enumerate().map(|(i, w)| (w.word.clone(), i)).collect();
+    let (mut n, mut skipped) = (0, Vec::new());
+    for line in std::fs::read_to_string(path).expect("keys").lines() {
+        if line.starts_with('#') || line.trim().is_empty() {
+            continue;
+        }
+        let f: Vec<&str> = line.split('\t').map(str::trim).collect();
+        if f.len() < 2 {
+            continue;
+        }
+        let best = f[1]
+            .split('|')
+            .filter_map(|w| index.get(w.trim()).map(|&i| i))
+            .filter(|&i| b.words[i].class != WordClass::Vulgar && b.words[i].class != WordClass::Typo)
+            .max_by(|&x, &y| b.words[x].ppm.partial_cmp(&b.words[y].ppm).unwrap());
+        let Some(i) = best else {
+            skipped.push(f[1].to_string());
+            continue;
+        };
+        let floor = f.get(2).and_then(|p| p.parse::<f64>().ok()).unwrap_or(0.0);
+        let r = &mut b.words[i];
+        r.ppm = r.ppm.max(floor);
+        r.flags = (r.flags | FLAG_CORE) & !FLAG_SUSPECT;
+        r.extra_roms.extend(f[0].split(',').map(str::trim).filter(|k| !k.is_empty()).map(|k| (KEY_COST, k.to_lowercase())));
+        n += 1;
+    }
+    eprintln!("{path}: {n} words with typed spellings; not in the corpus: {}", skipped.join(" "));
 }
