@@ -2,4 +2,6 @@
 # Raise it when the engine gets better. 2026-10-24: 876 of 893. 2026-10-25: 947 of 959 (verbs.tsv added).
 # 2026-10-28: 1026 of 1034 (lookalikes, spoken, names and chat added); 1025 after the rebuild from the
 # whole corpus (heldout 47 of 50 instead of 48: within noise, see data/dictionary/build-report.md).
-1025
+# 2026-10-28: 3023 of 3454 (community.tsv added: 1998 of 2420 words typed by six testers with the typing kit;
+# 483 reviewed spelling decisions imported).
+3023
