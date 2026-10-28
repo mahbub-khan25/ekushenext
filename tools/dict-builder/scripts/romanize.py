@@ -119,6 +119,20 @@ def _cluster_options(cl, sign):
             lists.append(CONS[c])
     return lists, sign
 
+# spoken verb endings that start with a consonant: the stem vowel before them is not said (matches roman.rs)
+VERB_ENDINGS = {"লাম", "লে", "লেন", "লো", "লি", "লিস", "তে", "তাম", "তেন", "তো", "তিস", "ছি", "ছে", "ছেন",
+                "ছো", "ছিস", "ছিল", "ছিলাম", "ছিলে", "ছিলেন", "ছিলো", "বো", "বে", "বেন", "বি", "বিস"}
+VERB_STEM_O = 0.1
+
+def _units_text(units):
+    out = []
+    for u in units:
+        if u[0] == "V":
+            out.append(u[1] or ""); out.extend(u[2])
+        else:
+            out.append("\u09cd".join(u[1])); out.append(u[2] or ""); out.extend(u[3])
+    return "".join(out)
+
 YA_PHALA_A = 0.2  # word-initial য-ফলা typed with an a (matches roman.rs)
 
 def romanize(word, k=8):
@@ -154,7 +168,10 @@ def romanize(word, k=8):
             else:
                 nxt = units[idx + 1]
                 # inherent vowel before য় is usually pronounced (হয় hoy); before a vowel unit it is dropped
-                lists.append([("o", 0), ("", .3)] if nxt[0] == "C" else [("", 0), ("o", .3)])
+                if nxt[0] == "C" and idx > 0 and _units_text(units[idx + 1:]) in VERB_ENDINGS:
+                    lists.append([("", 0), ("o", VERB_STEM_O)])          # করতে korte, আসলাম ashlam
+                else:
+                    lists.append([("o", 0), ("", .3)] if nxt[0] == "C" else [("", 0), ("o", .3)])
             # word-initial consonant + য-ফলা, no vowel sign: "æ", typed a or o (ব্যস্ত byasto/byosto)
             if (idx == 0 and not sign and len(cl) == 2 and cl[1] == "য" and len(lists) > before
                     and any(o[0] == "o" for o in lists[-1])):
