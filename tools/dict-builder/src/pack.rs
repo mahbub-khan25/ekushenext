@@ -8,7 +8,8 @@ use std::path::Path;
 /// The count each chat-phrase word pair gets (the corpus pairs are capped at 65,535 in the file)
 const CHAT_PAIR_COUNT: u32 = 60_000;
 
-pub fn pack(lexicon: &str, english: Option<&str>, pairs: Option<&str>, phrases: Option<&str>, vulgar: Option<&str>, out: &str) {
+pub fn pack(lexicon: &str, english: Option<&str>, pairs: Option<&str>, phrases: Option<&str>, vulgar: Option<&str>,
+            spoken: Option<&str>, out: &str) {
     let mut extra: HashMap<String, Vec<String>> = HashMap::new();
     if let Some(p) = english {
         for line in std::fs::read_to_string(p).expect("english").lines() {
@@ -70,6 +71,9 @@ pub fn pack(lexicon: &str, english: Option<&str>, pairs: Option<&str>, phrases: 
             extra_roms,
         });
     }
+    if let Some(p) = spoken {
+        apply_spoken(&mut b, p);
+    }
     if let Some(p) = pairs {
         for line in std::fs::read_to_string(p).expect("pairs").lines() {
             if line.starts_with('#') {
@@ -112,4 +116,63 @@ pub fn pack(lexicon: &str, english: Option<&str>, pairs: Option<&str>, phrases: 
     }
     let (bytes, keys) = b.write(Path::new(out)).expect("write");
     eprintln!("wrote {out}: {} words, {keys} keys, {} pairs, {:.1} MB", b.words.len(), b.pairs.len(), bytes as f64 / 1e6);
+}
+
+/// How often an everyday spoken word is assumed to occur at least (per million words). The source
+/// texts are mostly written Bangla, where chat forms like খাইছো or আসোনি are almost absent.
+const SPOKEN_PPM: f64 = 3.0;
+/// Typing cost of a spelling listed for a spoken word (cheap enough to count as an exact match)
+const SPOKEN_KEY_COST: f32 = 0.1;
+
+/// `curated/spoken.tsv` (`word, typed spellings, standard form [, ppm]`): everyday spoken words get a
+/// realistic frequency and the spellings people type for them. A word with a standard form becomes a
+/// colloquial form of it, so the standard spelling is offered first and the spoken one right after.
+fn apply_spoken(b: &mut DictBuilder, path: &str) {
+    let mut index: HashMap<String, usize> =
+        b.words.iter().enumerate().map(|(i, w)| (w.word.clone(), i)).collect();
+    let (mut n, mut added) = (0, 0);
+    for line in std::fs::read_to_string(path).expect("spoken").lines() {
+        if line.starts_with('#') || line.trim().is_empty() {
+            continue;
+        }
+        let f: Vec<&str> = line.split('\t').map(str::trim).collect();
+        let word = f[0];
+        let keys: Vec<&str> = f.get(1).map(|k| k.split(',').map(str::trim).filter(|k| !k.is_empty()).collect()).unwrap_or_default();
+        let standard = f.get(2).copied().unwrap_or("");
+        let floor = f.get(3).and_then(|p| p.parse::<f64>().ok()).unwrap_or(SPOKEN_PPM);
+        let mut ensure = |b: &mut DictBuilder, w: &str| -> usize {
+            if let Some(&i) = index.get(w) {
+                return i;
+            }
+            b.words.push(WordRecord {
+                word: w.to_string(),
+                ppm: 0.0,
+                class: WordClass::Standard,
+                flags: FLAG_CORE,
+                preferred: None,
+                extra_roms: Vec::new(),
+            });
+            index.insert(w.to_string(), b.words.len() - 1);
+            added += 1;
+            b.words.len() - 1
+        };
+        let i = ensure(b, word);
+        if b.words[i].class == WordClass::Vulgar {
+            continue;
+        }
+        let r = &mut b.words[i];
+        r.ppm = r.ppm.max(floor);
+        r.flags = (r.flags | FLAG_CORE) & !FLAG_SUSPECT;
+        r.extra_roms.extend(keys.iter().map(|k| (SPOKEN_KEY_COST, k.to_string())));
+        if !standard.is_empty() && standard != word {
+            r.class = WordClass::Colloquial;
+            r.preferred = Some(standard.to_string());
+            let s = ensure(b, standard);
+            let sr = &mut b.words[s];
+            sr.ppm = sr.ppm.max(floor);
+            sr.flags = (sr.flags | FLAG_CORE) & !FLAG_SUSPECT;
+        }
+        n += 1;
+    }
+    eprintln!("spoken words: {n} ({added} not in the lexicon)");
 }
