@@ -7,7 +7,7 @@ final class Prefs {
 
     private func bool(_ k: String, _ def: Bool) -> Bool { d.object(forKey: k) == nil ? def : d.bool(forKey: k) }
 
-    var theme: String { get { d.string(forKey: "theme") ?? "ekushe" } set { d.set(newValue, forKey: "theme") } }
+    var theme: String { get { d.string(forKey: "theme") ?? "default" } set { d.set(newValue, forKey: "theme") } }
     var keyHints: Bool { get { bool("key_hints", true) } set { d.set(newValue, forKey: "key_hints") } }
     var numberRow: Bool { get { bool("number_row", false) } set { d.set(newValue, forKey: "number_row") } }
     var keyBorders: Bool { get { bool("key_borders", true) } set { d.set(newValue, forKey: "key_borders") } }

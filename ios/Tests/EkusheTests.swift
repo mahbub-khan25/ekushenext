@@ -147,7 +147,7 @@ final class EkusheTests: XCTestCase {
         snapshot("14-numbers", theme: "ekushe") { v, _ in v.mode = .numbers }
         snapshot("15-emoji", theme: "ekushe") { v, _ in v.openEmoji() }
         snapshot("16-english", theme: "ekushe") { _, t in t.onLanguageToggle(); for c in "beau" { t.onText(String(c)) } }
-        UserDefaults.standard.set("ekushe", forKey: "theme")
+        UserDefaults.standard.set("default", forKey: "theme")
         UserDefaults.standard.set(true, forKey: "bangla")
     }
 }

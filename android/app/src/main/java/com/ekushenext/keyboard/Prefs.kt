@@ -12,7 +12,7 @@ class Prefs(context: Context) {
     private val p = context.applicationContext.getSharedPreferences("keyboard", Context.MODE_PRIVATE)
 
     var theme: String
-        get() = p.getString("theme", "ekushe") ?: "ekushe"
+        get() = p.getString("theme", "default") ?: "default"
         set(v) = p.edit().putString("theme", v).apply()
     var vibrate: Boolean
         get() = p.getBoolean("vibrate", true)

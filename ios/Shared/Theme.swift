@@ -64,7 +64,7 @@ struct Palette {
 
 /// The theme gallery, in order
 let themeChoices: [(id: String, bn: String, en: String)] = [
-    ("ekushe", "একুশে", "Ekushe"), ("default", "একুশে ডিফল্ট", "Ekushe Default"), ("smooth", "একুশে মসৃণ", "Ekushe Smooth"),
+    ("default", "একুশে ডিফল্ট", "Ekushe Default"), ("ekushe", "একুশে", "Ekushe"), ("smooth", "একুশে মসৃণ", "Ekushe Smooth"),
     ("krishnachura", "কৃষ্ণচূড়া", "Krishnachura"), ("padma", "পদ্মা", "Padma"), ("shapla", "শাপলা", "Shapla"),
     ("kashful", "কাশফুল", "Kashful"), ("night", "রাত", "Night"), ("system", "ফোনের মতো", "Follow system"),
     ("light", "সবুজ দিন", "Classic light"), ("dark", "সবুজ রাত", "Classic dark"),

@@ -182,8 +182,8 @@ data class ThemeChoice(val id: String, val bn: String, val en: String)
 
 object Themes {
     fun choices(): List<ThemeChoice> = buildList {
-        add(ThemeChoice("ekushe", "একুশে", "Ekushe"))
         add(ThemeChoice("default", "একুশে ডিফল্ট", "Ekushe Default"))
+        add(ThemeChoice("ekushe", "একুশে", "Ekushe"))
         add(ThemeChoice("smooth", "একুশে মসৃণ", "Ekushe Smooth"))
         add(ThemeChoice("krishnachura", "কৃষ্ণচূড়া", "Krishnachura"))
         add(ThemeChoice("padma", "পদ্মা", "Padma"))
