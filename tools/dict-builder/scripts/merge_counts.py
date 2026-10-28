@@ -24,7 +24,9 @@ for group in CONFUSABLE_SETS:
         for b in group:
             if a != b:
                 SUBS[a].add(b)
-MULTI_SUBS = [("ড়", "র"), ("র", "ড়"), ("ঢ়", "র"), ("ড়", "ঢ়"), ("ঢ়", "ড়")]
+MULTI_SUBS = [("ড়", "র"), ("র", "ড়"), ("ঢ়", "র"), ("ড়", "ঢ়"), ("ঢ়", "ড়"),
+              # য-ফলা with and without া sound the same: ব্যাবস্থা is a misspelling of ব্যবস্থা
+              ("্যা", "্য"), ("্য", "্যা")]
 
 def read_counts(path):
     total = 0
