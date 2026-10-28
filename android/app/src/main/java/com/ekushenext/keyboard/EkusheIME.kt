@@ -64,7 +64,6 @@ class EkusheIME : InputMethodService(), KeyboardListener {
     private val consumed = HashSet<Int>()
     /** Enter pressed while a word was open: the word is placed, then the Enter goes on to the app */
     private var enterForwarded = false
-    private var shiftAlone = false
     private var lastShiftTap = 0L
     /** The US layout, to read a key whatever layout Android set for the physical keyboard */
     private val usKeys: KeyCharacterMap by lazy { KeyCharacterMap.load(KeyCharacterMap.VIRTUAL_KEYBOARD) }
@@ -103,7 +102,7 @@ class EkusheIME : InputMethodService(), KeyboardListener {
         runCatching { Settings.Secure.getInt(contentResolver, "show_ime_with_hard_keyboard", 0) == 1 }.getOrDefault(false)
 
     private fun updateStripOnly() {
-        view?.stripOnly = (hardKeyboard() || hardTyping) && !keysWanted && !systemShowsKeys()
+        view?.stripOnly = !keysWanted && (hardTyping || (hardKeyboard() && !systemShowsKeys()))
     }
 
     // With a physical keyboard Android would hide the keyboard altogether; Ekushe shows its
@@ -342,12 +341,16 @@ class EkusheIME : InputMethodService(), KeyboardListener {
             if (word != null && before == word) {
                 val out = Engine.backspace()
                 if (out.deleteBefore > 0) {
+                    // one edit for the app: removing the word and opening its letters again, so it
+                    // reports one cursor change (with the word open), not the steps in between
+                    ic.beginBatchEdit()
                     editing = true
                     ic.deleteSurroundingText(out.deleteBefore, 0)
                     editing = false
                     last = Output()
                     lastCommitted = null
                     out.committed?.forEach { apply(Engine.key(it)) }
+                    ic.endBatchEdit()
                     return
                 }
             } else {
@@ -536,15 +539,6 @@ class EkusheIME : InputMethodService(), KeyboardListener {
     }
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
-        if (keyCode == KeyEvent.KEYCODE_SHIFT_LEFT || keyCode == KeyEvent.KEYCODE_SHIFT_RIGHT) {
-            // Shift pressed and let go on its own, twice in a row: Bangla ⇄ English, as on a computer
-            if (shiftAlone) {
-                val now = event.eventTime
-                if (now - lastShiftTap < 400) { lastShiftTap = 0; toggleLanguage(handOver = false) } else lastShiftTap = now
-            }
-            shiftAlone = false
-            return super.onKeyUp(keyCode, event)
-        }
         if (consumed.remove(keyCode)) {
             if (enterForwarded && (keyCode == KeyEvent.KEYCODE_ENTER || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER)) {
                 enterForwarded = false
@@ -561,10 +555,14 @@ class EkusheIME : InputMethodService(), KeyboardListener {
         // Back, Home, volume and the like (the navigation bar's buttons arrive as keys too) aren't typing
         if (event.isSystem) return false
         if (keyCode == KeyEvent.KEYCODE_SHIFT_LEFT || keyCode == KeyEvent.KEYCODE_SHIFT_RIGHT) {
-            if (event.repeatCount == 0) shiftAlone = true
+            // Shift tapped twice in a row with nothing between: Bangla ⇄ English, as on a computer
+            if (event.repeatCount == 0) {
+                if (lastShiftTap > 0 && event.eventTime - lastShiftTap < 400) { lastShiftTap = 0; toggleLanguage(handOver = false) }
+                else lastShiftTap = event.eventTime
+            }
             return false
         }
-        shiftAlone = false; lastShiftTap = 0
+        lastShiftTap = 0
         if (keyCode == KeyEvent.KEYCODE_LANGUAGE_SWITCH || (keyCode == KeyEvent.KEYCODE_SPACE && event.isCtrlPressed)) {
             if (event.repeatCount == 0) toggleLanguage(handOver = false)
             return true
