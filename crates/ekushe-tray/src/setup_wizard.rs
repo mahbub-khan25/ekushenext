@@ -1038,12 +1038,13 @@ unsafe fn paint_installer_canvas(hdc: HDC, rc_client: &RECT) {
     );
     SelectObject(hdc, font_card_desc as _);
     SetTextColor(hdc, text_brand);
+    let version = crate::update_check::current_version();
     let theme_label = if !IS_DARK_THEME {
-        "☀️ Light · v0.1.0"
+        format!("☀️ Light · {version}")
     } else {
-        "🌙 Dark · v0.1.0"
+        format!("🌙 Dark · {version}")
     };
-    draw_text_centered(hdc, &RECT_BTN_THEME, theme_label);
+    draw_text_centered(hdc, &RECT_BTN_THEME, &theme_label);
 
     if WIZARD_STEP == 0 {
         // ══════════════════════════════════════════════════════════════════════

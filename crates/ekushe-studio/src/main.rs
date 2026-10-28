@@ -55,7 +55,8 @@ fn main() {
     #[cfg(target_os = "linux")]
     ekushe_ffi::studio::keyboard::remove_old_cosmic_env();
     if args.iter().any(|a| a == "--version") {
-        println!("ekushe-studio {}", env!("CARGO_PKG_VERSION"));
+        let release = include_str!("../../../.github/release/VERSION").trim();
+        println!("ekushe-studio {}", release.trim_start_matches('v'));
         return;
     }
     #[cfg(target_os = "linux")]

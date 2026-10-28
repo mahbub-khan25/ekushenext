@@ -1038,8 +1038,9 @@ mod tests {
     #[test]
     fn report_url_carries_the_build_details_only() {
         let url = report_url("Windows 11 (build 26100)", &Config::default());
+        let v = release().trim_start_matches('v');
         assert!(
-            url.starts_with("https://ekushenext.com/report/?v=0.1.0"),
+            url.starts_with(&format!("https://ekushenext.com/report/?v={v}&")),
             "{url}"
         );
         assert!(

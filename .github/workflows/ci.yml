@@ -45,6 +45,8 @@ jobs:
           $v = (Get-Item target\release\ekushe.exe).VersionInfo
           Write-Host "$($v.ProductName) $($v.ProductVersion) — $($v.FileDescription)"
           if ($v.ProductName -ne 'Ekushe Next') { Write-Error "version resource missing"; exit 1 }
+          $want = (Get-Content .github/release/VERSION -Raw).Trim().TrimStart('v')
+          if ($v.ProductVersion -ne $want) { Write-Error "embedded version $($v.ProductVersion) is not this release ($want)"; exit 1 }
       - name: Install and uninstall (as a user would)
         shell: pwsh
         timeout-minutes: 5
