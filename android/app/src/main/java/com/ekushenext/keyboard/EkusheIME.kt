@@ -220,13 +220,19 @@ class EkusheIME : InputMethodService(), KeyboardListener {
     override fun onUpdateSelection(oldSelStart: Int, oldSelEnd: Int, newSelStart: Int, newSelEnd: Int, candidatesStart: Int, candidatesEnd: Int) {
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
         if (editing) return
-        if (en.isNotEmpty() && (candidatesStart == -1 || newSelEnd != candidatesEnd || newSelStart != newSelEnd)) {
+        // Apps report cursor changes late: with fast typing (a physical keyboard) the report for the
+        // word just placed can arrive after the next word was started. Before treating a report as
+        // "the cursor moved away", check the text: if the word being typed is still right before the
+        // cursor, the report is an old one.
+        fun stillAtWord(shown: String): Boolean = newSelStart == newSelEnd && shown.isNotEmpty() &&
+            currentInputConnection?.getTextBeforeCursor(shown.length, 0)?.toString() == shown
+        if (en.isNotEmpty() && (candidatesStart == -1 || newSelEnd != candidatesEnd || newSelStart != newSelEnd) && !stillAtWord(en.toString())) {
             currentInputConnection?.finishComposingText()
             en.clear(); enUndo = null
             view?.showSuggestions(emptyList(), emptyList(), emptyList())
         }
         // The cursor moved away from the word being typed (a tap in the text): the word stays as shown
-        if (last.composing && (candidatesStart == -1 || newSelEnd != candidatesEnd || newSelStart != newSelEnd)) {
+        if (last.composing && (candidatesStart == -1 || newSelEnd != candidatesEnd || newSelStart != newSelEnd) && !stillAtWord(last.preedit.ifEmpty { last.roman })) {
             currentInputConnection?.finishComposingText()
             Engine.reset()
             last = Output()
