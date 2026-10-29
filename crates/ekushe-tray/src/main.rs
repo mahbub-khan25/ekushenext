@@ -1141,9 +1141,10 @@ unsafe extern "system" fn mouse_hook_proc(code: i32, wparam: WPARAM, lparam: LPA
 /// 4. Live phonetic & fixed-layout Bangla typing in any Windows app (with Bangla digits ০-৯ in Ekushe mode and 0-9 in English mode)
 unsafe extern "system" fn keyboard_hook_proc(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
     let r = keyboard_hook_inner(code, wparam, lparam);
+    let ours = code >= 0 && (*(lparam as *const KBDLLHOOKSTRUCT)).dwExtraInfo == EKUSHE_EXTRA_INFO;
     // A key that reached the app unconverted changes the text before the caret: what was typed last
     // is no longer there to compare with (see `replace_active_text`)
-    if r != 1 && code >= 0 && (wparam as u32 == WM_KEYDOWN || wparam as u32 == 0x0104) {
+    if r != 1 && code >= 0 && !ours && (wparam as u32 == WM_KEYDOWN || wparam as u32 == 0x0104) {
         let vk = (*(lparam as *const KBDLLHOOKSTRUCT)).vkCode;
         // Shift, Ctrl, Alt, the Windows keys and Caps Lock type nothing
         if !matches!(vk, 0x10..=0x12 | 0x14 | 0x5B | 0x5C | 0xA0..=0xA5) {
@@ -1184,10 +1185,14 @@ unsafe fn keyboard_hook_inner(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRES
             } else if is_keyup && st.shift_clean_down {
                 st.shift_clean_down = false;
                 let now_ms = st.start_instant.elapsed().as_millis() as u64;
+                let pending = pending_word(&st);
                 if let Some(new_lang) = st.ekushe.on_shift_tap(now_ms) {
                     st.injected_utf16_len = 0;
                     st.last_output = SessionOutput::default();
                     drop(st);
+                    if let Some(w) = pending {
+                        replace_active_text(0, &w);
+                    }
                     request_tray_icon_update();
                     let msg = match new_lang {
                         InputLanguage::Bangla => "বাং · বাংলায় লিখছেন",
@@ -1261,10 +1266,14 @@ unsafe fn keyboard_hook_inner(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRES
         };
 
         if switch_triggered {
+            let pending = pending_word(&st);
             let new_lang = st.ekushe.toggle_language();
             st.injected_utf16_len = 0;
             st.last_output = SessionOutput::default();
             drop(st);
+            if let Some(w) = pending {
+                replace_active_text(0, &w);
+            }
             request_tray_icon_update();
             let msg = match new_lang {
                 InputLanguage::Bangla => "বাং · বাংলায় লিখছেন",
@@ -1323,9 +1332,15 @@ unsafe fn keyboard_hook_inner(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRES
         let shortcut = (ctrl_down != alt_down) || win_down || is_win_key;
         if shortcut {
             if st.injected_utf16_len > 0 {
+                let pending = pending_word(&st);
                 forget_composition(&mut st);
                 drop(st);
                 request_overlay_refresh();
+                if let Some(w) = pending {
+                    // the word first, then the key itself (it would otherwise reach the app first)
+                    replace_then_key(0, &w, vk, kb.flags);
+                    return 1;
+                }
             }
             return CallNextHookEx(ptr::null_mut(), code, wparam, lparam);
         }
@@ -1338,11 +1353,16 @@ unsafe fn keyboard_hook_inner(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRES
         // If navigation keys (PageUp/PageDown/End/Home/Left/Up/Right/Down: 0x21..=0x28) are pressed while composing,
         // keep the injected text intact and close the composition buffer cleanly.
         if (0x21..=0x28).contains(&vk) && st.injected_utf16_len > 0 {
+            let pending = pending_word(&st);
             st.ekushe.reset_composition();
             st.last_output = SessionOutput::default();
             st.injected_utf16_len = 0;
             drop(st);
             request_overlay_refresh();
+            if let Some(w) = pending {
+                replace_then_key(0, &w, vk, kb.flags);
+                return 1;
+            }
             return CallNextHookEx(ptr::null_mut(), code, wparam, lparam);
         }
 
@@ -1362,9 +1382,10 @@ unsafe fn keyboard_hook_inner(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRES
             st.last_output.selected_index = next_idx;
             let cand_text = st.last_output.candidates[next_idx].text.clone();
             let prev_len = st.injected_utf16_len;
+            let live = st.ekushe.config().type_while_composing;
             st.injected_utf16_len = cand_text.encode_utf16().count();
             drop(st);
-            replace_active_text(prev_len, &cand_text);
+            show_word(live, prev_len, &cand_text);
             request_overlay_refresh();
             return 1;
         }
@@ -1379,10 +1400,12 @@ unsafe fn keyboard_hook_inner(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRES
                 if let Some(out) = st.ekushe.reopen_last_word() {
                     let preedit = out.preedit.clone();
                     let delete = out.delete_before;
+                    let live = st.ekushe.config().type_while_composing;
                     st.injected_utf16_len = preedit.encode_utf16().count();
                     st.last_output = out;
                     drop(st);
-                    replace_active_text(delete, &preedit);
+                    // the word and its space leave the app; it is now the word being typed
+                    replace_active_text(delete, if live { &preedit } else { "" });
                     request_overlay_refresh();
                     return 1;
                 }
@@ -1390,10 +1413,11 @@ unsafe fn keyboard_hook_inner(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRES
             if prev_len > 0 {
                 let out = st.ekushe.backspace();
                 let new_text = out.preedit.clone();
+                let live = st.ekushe.config().type_while_composing;
                 st.injected_utf16_len = new_text.encode_utf16().count();
                 st.last_output = out;
                 drop(st);
-                replace_active_text(prev_len, &new_text);
+                show_word(live, prev_len, &new_text);
                 request_overlay_refresh();
                 return 1;
             }
@@ -1405,16 +1429,20 @@ unsafe fn keyboard_hook_inner(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRES
             let sel = st.last_output.selected_index;
             let trailing = if vk == VK_SPACE { Some(' ') } else { None };
             let prev_len = st.injected_utf16_len;
+            let live = st.ekushe.config().type_while_composing;
             let out = st.ekushe.select_candidate(sel, trailing);
             st.injected_utf16_len = 0;
             let committed = out.committed.clone().unwrap_or_default();
             st.last_output = SessionOutput::default();
             drop(st);
-            replace_active_text(prev_len, &committed);
-            request_overlay_refresh();
+            let typed_len = if live { prev_len } else { 0 };
             if vk == VK_RETURN {
-                return CallNextHookEx(ptr::null_mut(), code, wparam, lparam);
+                // the word, then Enter, in that order (a passed-on Enter would arrive first)
+                replace_then_key(typed_len, &committed, VK_RETURN, kb.flags);
+            } else {
+                replace_active_text(typed_len, &committed);
             }
+            request_overlay_refresh();
             return 1;
         }
 
@@ -1422,6 +1450,7 @@ unsafe fn keyboard_hook_inner(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRES
         if let Some(ch) = vk_to_char(vk, kb.scanCode, shift_down, ctrl_down && alt_down) {
             if !ch.is_control() {
                 let prev_len = st.injected_utf16_len;
+                let live = st.ekushe.config().type_while_composing;
                 let altgr = ctrl_down && alt_down;
                 let out = st.ekushe.push_char(ch, altgr);
                 if let Some(committed) = &out.committed {
@@ -1429,7 +1458,7 @@ unsafe fn keyboard_hook_inner(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRES
                     let to_send = committed.clone();
                     st.last_output = SessionOutput::default();
                     drop(st);
-                    replace_active_text(prev_len, &to_send);
+                    replace_active_text(if live { prev_len } else { 0 }, &to_send);
                     request_overlay_refresh();
                     return 1;
                 } else {
@@ -1437,7 +1466,7 @@ unsafe fn keyboard_hook_inner(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRES
                     st.injected_utf16_len = preedit.encode_utf16().count();
                     st.last_output = out;
                     drop(st);
-                    replace_active_text(prev_len, &preedit);
+                    show_word(live, prev_len, &preedit);
                     request_overlay_refresh();
                     return 1;
                 }
@@ -1485,6 +1514,32 @@ unsafe fn vk_to_char(vk: u16, scan_code: u32, shift: bool, altgr: bool) -> Optio
     } else {
         None
     }
+}
+
+/// The word being typed changed: with `type_while_composing` it is retyped in the app, otherwise
+/// it shows only in the suggestion bar until it is placed.
+unsafe fn show_word(live: bool, prev_len: usize, text: &str) {
+    if live {
+        replace_active_text(prev_len, text);
+    }
+}
+
+/// The word being typed, when it exists only in the suggestion bar (not yet typed into the app):
+/// what a key that closes it (a shortcut, an arrow, switching language) must type first
+fn pending_word(st: &AppSharedState) -> Option<String> {
+    let w = &st.last_output.preedit;
+    (!st.ekushe.config().type_while_composing && st.injected_utf16_len > 0 && !w.is_empty())
+        .then(|| w.clone())
+}
+
+/// Like `replace_active_text`, then the key `vk` itself, in one batch so the app gets them in that
+/// order (the key the user pressed is held back by the hook; the key-up that follows is theirs)
+unsafe fn replace_then_key(backspaces: usize, text: &str, vk: u16, kb_flags: u32) {
+    replace_active_text(backspaces, text);
+    // LLKHF_EXTENDED (arrows, Home, End, Page keys, the right Enter) keeps its meaning
+    let ext = if kb_flags & 1 != 0 { 0x0001 } else { 0 };
+    let key = [make_vk_input(vk, ext)];
+    SendInput(1, key.as_ptr(), size_of::<INPUT>() as i32);
 }
 
 /// What the last `replace_active_text` typed (to send only the part of a word that changed)
@@ -2096,12 +2151,13 @@ unsafe extern "system" fn overlay_wnd_proc(
             if let Some(cand_idx) = clicked_cand {
                 let mut st = STATE.lock();
                 let prev_len = st.injected_utf16_len;
+                let live = st.ekushe.config().type_while_composing;
                 let out = st.ekushe.select_candidate(cand_idx, Some(' '));
                 st.injected_utf16_len = 0;
                 let committed = out.committed.clone().unwrap_or_default();
                 st.last_output = SessionOutput::default();
                 drop(st);
-                replace_active_text(prev_len, &committed);
+                replace_active_text(if live { prev_len } else { 0 }, &committed);
                 refresh_candidate_overlay();
                 return 0;
             }
@@ -2115,10 +2171,11 @@ unsafe extern "system" fn overlay_wnd_proc(
                     last_out = st.ekushe.push_char(ch, false);
                 }
                 let preedit = last_out.preedit.clone();
+                let live = st.ekushe.config().type_while_composing;
                 st.injected_utf16_len = preedit.encode_utf16().count();
                 st.last_output = last_out;
                 drop(st);
-                replace_active_text(prev_len, &preedit);
+                show_word(live, prev_len, &preedit);
                 refresh_candidate_overlay();
                 return 0;
             }
