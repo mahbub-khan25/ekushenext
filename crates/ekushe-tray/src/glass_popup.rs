@@ -16,8 +16,8 @@ use std::ptr;
 use windows_sys::Win32::Foundation::{HWND, POINT, RECT, SIZE};
 use windows_sys::Win32::Graphics::Gdi::{
     CreateCompatibleDC, CreateDIBSection, CreateFontW, CreateRoundRectRgn, DeleteDC, DeleteObject,
-    GetDC, GetTextExtentPoint32W, GetTextMetricsW, MonitorFromPoint, ReleaseDC, SelectObject,
-    SetBkMode, SetTextColor, SetWindowRgn, TextOutW, AC_SRC_ALPHA, AC_SRC_OVER,
+    GetDC, GetTextExtentPoint32W, GetTextFaceW, GetTextMetricsW, MonitorFromPoint, ReleaseDC,
+    SelectObject, SetBkMode, SetTextColor, SetWindowRgn, TextOutW, AC_SRC_ALPHA, AC_SRC_OVER,
     ANTIALIASED_QUALITY, BITMAPINFO, BITMAPINFOHEADER, BI_RGB, BLENDFUNCTION, DIB_RGB_COLORS,
     HBITMAP, HDC, HFONT, HGDIOBJ, MONITOR_DEFAULTTONEAREST, TEXTMETRICW, TRANSPARENT,
 };
@@ -45,36 +45,38 @@ pub struct Palette {
     pub muted: Rgba,
     pub accent: Rgba,
     pub accent_ink: Rgba,
-    pub etch: Rgba,
-    pub etch_line: Rgba,
+    /// A suggestion chip (and the small buttons)
+    pub chip: Rgba,
+    pub chip_line: Rgba,
 }
 
 impl Palette {
-    /// `glass_alpha`: how opaque the card is (1.0 = solid).
+    /// The "Ekushe Default" look of the phone keyboards: a soft grey bar, light chips, and the
+    /// chosen word in blue. `glass_alpha`: how opaque the bar is (1.0 = solid).
     pub fn new(dark: bool, glass_alpha: f32) -> Self {
         if dark {
             Palette {
-                card: rgb(22, 30, 27, glass_alpha),
-                rim: rgb(255, 255, 255, 0.12),
-                hairline: rgb(0, 0, 0, 0.45),
-                ink: rgb(234, 243, 238, 1.0),
-                muted: rgb(160, 182, 172, 1.0),
-                accent: rgb(67, 199, 150, 1.0),
-                accent_ink: rgb(3, 23, 15, 1.0),
-                etch: rgb(255, 255, 255, 0.07),
-                etch_line: rgb(255, 255, 255, 0.08),
+                card: rgb(32, 33, 36, glass_alpha),
+                rim: rgb(255, 255, 255, 0.10),
+                hairline: rgb(0, 0, 0, 0.50),
+                ink: rgb(232, 234, 237, 1.0),
+                muted: rgb(154, 160, 166, 1.0),
+                accent: rgb(138, 180, 248, 1.0),
+                accent_ink: rgb(32, 33, 36, 1.0),
+                chip: rgb(255, 255, 255, 0.09),
+                chip_line: rgb(255, 255, 255, 0.05),
             }
         } else {
             Palette {
-                card: rgb(250, 252, 251, glass_alpha),
-                rim: rgb(255, 255, 255, 0.85),
-                hairline: rgb(6, 40, 29, 0.16),
-                ink: rgb(14, 36, 27, 1.0),
-                muted: rgb(84, 106, 96, 1.0),
-                accent: rgb(11, 107, 74, 1.0),
+                card: rgb(232, 234, 239, glass_alpha),
+                rim: rgb(255, 255, 255, 0.80),
+                hairline: rgb(0, 0, 0, 0.14),
+                ink: rgb(31, 31, 31, 1.0),
+                muted: rgb(95, 99, 104, 1.0),
+                accent: rgb(60, 123, 240, 1.0),
                 accent_ink: rgb(255, 255, 255, 1.0),
-                etch: rgb(255, 255, 255, 0.55),
-                etch_line: rgb(6, 40, 29, 0.09),
+                chip: rgb(255, 255, 255, 0.78),
+                chip_line: rgb(0, 0, 0, 0.04),
             }
         }
     }
@@ -82,7 +84,7 @@ impl Palette {
 
 // ───────────────────────────── Canvas ─────────────────────────────
 
-/// A premultiplied BGRA bitmap (top-down DIB) plus a scratch mask for text.
+/// A premultiplied BGRA bitmap (top-down DIB), plus a tiny one whose DC measures text.
 pub struct Canvas {
     pub w: i32,
     pub h: i32,
@@ -93,7 +95,6 @@ pub struct Canvas {
     mask_dc: HDC,
     mask_bmp: HBITMAP,
     mask_old: HGDIOBJ,
-    mask_px: *mut u32,
 }
 
 unsafe fn dib(w: i32, h: i32) -> Option<(HDC, HBITMAP, HGDIOBJ, *mut u32)> {
@@ -124,7 +125,7 @@ impl Canvas {
         let w = w.max(1);
         let h = h.max(1);
         let (dc, bmp, old, px) = dib(w, h)?;
-        let Some((mask_dc, mask_bmp, mask_old, mask_px)) = dib(w, h) else {
+        let Some((mask_dc, mask_bmp, mask_old, _)) = dib(1, 1) else {
             SelectObject(dc, old);
             DeleteObject(bmp as HGDIOBJ);
             DeleteDC(dc);
@@ -142,7 +143,6 @@ impl Canvas {
             mask_dc,
             mask_bmp,
             mask_old,
-            mask_px,
         })
     }
 
@@ -213,9 +213,9 @@ impl Canvas {
         }
     }
 
-    pub unsafe fn measure(&self, font: HFONT, s: &str) -> (i32, i32) {
+    pub unsafe fn measure(&self, font: &Font, s: &str) -> (i32, i32) {
         let w: Vec<u16> = s.encode_utf16().collect();
-        let old = SelectObject(self.mask_dc, font as HGDIOBJ);
+        let old = SelectObject(self.mask_dc, font.f as HGDIOBJ);
         let mut sz: SIZE = zeroed();
         if !w.is_empty() {
             GetTextExtentPoint32W(self.mask_dc, w.as_ptr(), w.len() as i32, &mut sz);
@@ -227,43 +227,60 @@ impl Canvas {
     }
 
     /// Draw `s` with its line box vertically centred on `cy`, starting at `x`. Returns its width.
-    pub unsafe fn text(&mut self, font: HFONT, s: &str, x: i32, cy: i32, c: Rgba) -> i32 {
+    ///
+    /// The text is drawn SS times larger and then scaled down, averaging each SS×SS block into
+    /// one pixel's coverage. At its real size GDI follows the font's own hinting rules, and many
+    /// Bangla fonts switch anti-aliasing off at text sizes, which gave jagged, pixel-looking
+    /// letters; drawn large and scaled down they come out smooth, like the rest of Windows.
+    pub unsafe fn text(&mut self, font: &Font, s: &str, x: i32, cy: i32, c: Rgba) -> i32 {
         if s.is_empty() {
             return 0;
         }
         let (tw, th) = self.measure(font, s);
         let y = cy - th / 2;
-        let x0 = (x - 2).clamp(0, self.w);
-        let x1 = (x + tw + 4).clamp(0, self.w);
-        let y0 = y.clamp(0, self.h);
-        let y1 = (y + th + 2).clamp(0, self.h);
-        if x0 >= x1 || y0 >= y1 {
+        let (ow, oh) = (tw + 12, th + 4);
+        let (bw, bh) = (ow * SS, oh * SS);
+        let Some((dc, bmp, old, bits)) = dib(bw, bh) else {
             return tw;
-        }
-        let n = (self.w * self.h) as usize;
-        let mask = std::slice::from_raw_parts_mut(self.mask_px, n);
-        for yy in y0..y1 {
-            for xx in x0..x1 {
-                mask[(yy * self.w + xx) as usize] = 0;
-            }
-        }
+        };
+        SetBkMode(dc, TRANSPARENT as i32);
+        SetTextColor(dc, 0x00FF_FFFF);
         let w: Vec<u16> = s.encode_utf16().collect();
-        let old = SelectObject(self.mask_dc, font as HGDIOBJ);
-        TextOutW(self.mask_dc, x, y, w.as_ptr(), w.len() as i32);
-        SelectObject(self.mask_dc, old);
-        let width = self.w;
+        let of = SelectObject(dc, font.big as HGDIOBJ);
+        TextOutW(dc, 4 * SS, 0, w.as_ptr(), w.len() as i32);
+        SelectObject(dc, of);
+        let big = std::slice::from_raw_parts(bits, (bw * bh) as usize);
+        let n = (self.w * self.h) as usize;
         let px = std::slice::from_raw_parts_mut(self.px, n);
-        for yy in y0..y1 {
-            for xx in x0..x1 {
-                let i = (yy * width + xx) as usize;
-                let m = mask[i];
-                // Grey anti-aliasing: take the brightest channel as coverage
-                let cov = ((m >> 16) & 0xFF).max((m >> 8) & 0xFF).max(m & 0xFF) as f32 / 255.0;
-                if cov > 0.0 {
-                    Self::blend(&mut px[i], c, cov);
+        let full = (255 * SS * SS) as f32;
+        for oy in 0..oh {
+            let dy = y + oy;
+            if dy < 0 || dy >= self.h {
+                continue;
+            }
+            for ox in 0..ow {
+                let dx = x - 4 + ox;
+                if dx < 0 || dx >= self.w {
+                    continue;
+                }
+                let mut sum = 0u32;
+                for sy in 0..SS {
+                    let row = ((oy * SS + sy) * bw + ox * SS) as usize;
+                    for sx in 0..SS as usize {
+                        let m = big[row + sx];
+                        sum += ((m >> 16) & 0xFF).max((m >> 8) & 0xFF).max(m & 0xFF);
+                    }
+                }
+                if sum > 0 {
+                    // a touch of weight, so thin strokes don't fade on the glass
+                    let cov = (sum as f32 / full).powf(0.85);
+                    Self::blend(&mut px[(dy * self.w + dx) as usize], c, cov);
                 }
             }
         }
+        SelectObject(dc, old);
+        DeleteObject(bmp as HGDIOBJ);
+        DeleteDC(dc);
         tw
     }
 
@@ -563,38 +580,79 @@ pub struct HitMap {
     pub compact: RECT,
 }
 
+/// How much larger text is drawn before it is scaled down (see `Canvas::text`)
+const SS: i32 = 4;
+
+/// A font at its real size (for measuring) and SS times larger (for drawing).
+pub struct Font {
+    f: HFONT,
+    big: HFONT,
+}
+
 struct Fonts {
-    bn: HFONT,
-    bn_small: HFONT,
-    ui: HFONT,
-    ui_small: HFONT,
+    bn: Font,
+    bn_small: Font,
+    ui: Font,
+    ui_small: Font,
+}
+
+/// Whether Windows has a font family by this name (installed, or one of Ekushe's own).
+unsafe fn has_face(face: &str) -> bool {
+    let f = wide_null(face);
+    let font = CreateFontW(-20, 0, 0, 0, 400, 0, 0, 0, 1, 0, 0, 0, 0, f.as_ptr());
+    if font.is_null() {
+        return false;
+    }
+    let dc = CreateCompatibleDC(ptr::null_mut());
+    let old = SelectObject(dc, font as HGDIOBJ);
+    let mut buf = [0u16; 64];
+    let n = GetTextFaceW(dc, buf.len() as i32, buf.as_mut_ptr());
+    SelectObject(dc, old);
+    DeleteDC(dc);
+    DeleteObject(font as HGDIOBJ);
+    n > 0
+        && String::from_utf16_lossy(&buf[..(n as usize).saturating_sub(1)])
+            .eq_ignore_ascii_case(face)
 }
 
 impl Fonts {
     unsafe fn new(bangla: &str, s: f32) -> Self {
+        // A family Windows doesn't have would fall back to whatever it substitutes; Nirmala UI is
+        // Windows' own Bangla font
+        let bangla = if has_face(bangla) {
+            bangla
+        } else {
+            "Nirmala UI"
+        };
         let mk = |px: f32, weight: i32, face: &str| {
             let f = wide_null(face);
-            CreateFontW(
-                -((px * s).round() as i32),
-                0,
-                0,
-                0,
-                weight,
-                0,
-                0,
-                0,
-                1,
-                0,
-                0,
-                ANTIALIASED_QUALITY as u32,
-                0,
-                f.as_ptr(),
-            )
+            let one = |scale: f32| {
+                CreateFontW(
+                    -((px * s * scale).round() as i32),
+                    0,
+                    0,
+                    0,
+                    weight,
+                    0,
+                    0,
+                    0,
+                    1,
+                    0,
+                    0,
+                    ANTIALIASED_QUALITY as u32,
+                    0,
+                    f.as_ptr(),
+                )
+            };
+            Font {
+                f: one(1.0),
+                big: one(SS as f32),
+            }
         };
         Fonts {
-            bn: mk(20.0, 400, bangla),
-            bn_small: mk(16.0, 400, bangla),
-            ui: mk(13.0, 600, "Segoe UI"),
+            bn: mk(19.0, 400, bangla),
+            bn_small: mk(15.0, 400, bangla),
+            ui: mk(13.0, 400, "Segoe UI"),
             ui_small: mk(11.0, 600, "Segoe UI"),
         }
     }
@@ -603,8 +661,9 @@ impl Fonts {
 impl Drop for Fonts {
     fn drop(&mut self) {
         unsafe {
-            for f in [self.bn, self.bn_small, self.ui, self.ui_small] {
-                DeleteObject(f as HGDIOBJ);
+            for f in [&self.bn, &self.bn_small, &self.ui, &self.ui_small] {
+                DeleteObject(f.f as HGDIOBJ);
+                DeleteObject(f.big as HGDIOBJ);
             }
         }
     }
@@ -665,9 +724,9 @@ pub unsafe fn render(
                 _ => (None, text.as_str(), false),
             };
             let pill_w = label
-                .map(|l| probe.measure(fonts.bn_small, l).0 as f32 + 20.0 * s)
+                .map(|l| probe.measure(&fonts.bn_small, l).0 as f32 + 20.0 * s)
                 .unwrap_or(0.0);
-            let (bw, _) = probe.measure(fonts.bn_small, body);
+            let (bw, _) = probe.measure(&fonts.bn_small, body);
             let h = 44.0 * s;
             let w = pad
                 + pill_w
@@ -686,9 +745,9 @@ pub unsafe fn render(
                     (pal.accent, pal.accent_ink)
                 };
                 c.rrect(x, 8.0 * s, x + pill_w, h - 8.0 * s, 10.0 * s, fill, 0.0);
-                let (lw, _) = c.measure(fonts.bn_small, l);
+                let (lw, _) = c.measure(&fonts.bn_small, l);
                 c.text(
-                    fonts.bn_small,
+                    &fonts.bn_small,
                     l,
                     (x + (pill_w - lw as f32) / 2.0) as i32,
                     cy,
@@ -698,7 +757,7 @@ pub unsafe fn render(
             } else {
                 x += 4.0 * s;
             }
-            c.text(fonts.bn_small, body, x as i32, cy, pal.ink);
+            c.text(&fonts.bn_small, body, x as i32, cy, pal.ink);
             Some((c, hits))
         }
         Content::Candidates {
@@ -710,8 +769,8 @@ pub unsafe fn render(
             compact,
         } => {
             let max_w = 760.0 * s;
-            let header_h = 22.0 * s;
-            let cand_h = 38.0 * s;
+            let header_h = 20.0 * s;
+            let cand_h = 40.0 * s;
             let hint_h = 28.0 * s;
 
             // Header buttons
@@ -721,18 +780,24 @@ pub unsafe fn render(
                 "যুক্তবর্ণ লুকান"
             };
             let helper_lbl = "সহায়িকা";
-            let tw = probe.measure(fonts.ui_small, toggle_lbl).0 as f32 + 14.0 * s;
-            let hw = probe.measure(fonts.ui_small, helper_lbl).0 as f32 + 14.0 * s;
-            let header_w = probe.measure(fonts.ui, roman).0 as f32 + 24.0 * s + tw + hw + 6.0 * s;
+            let tw = probe.measure(&fonts.ui_small, toggle_lbl).0 as f32 + 14.0 * s;
+            let hw = probe.measure(&fonts.ui_small, helper_lbl).0 as f32 + 14.0 * s;
+            let header_w = probe.measure(&fonts.ui, roman).0 as f32 + 24.0 * s + tw + hw + 6.0 * s;
 
             // Candidate pills (number + word)
             let mut pills = Vec::new();
             let mut x = pad;
             for (i, text) in candidates.iter().take(6).enumerate() {
                 let n = (i + 1).to_string();
-                let nw = probe.measure(fonts.ui_small, &n).0 as f32;
-                let ww = probe.measure(fonts.bn, text).0 as f32;
-                let pw = (12.0 * s + nw + 6.0 * s + ww + 14.0 * s).max(44.0 * s);
+                let nw = probe.measure(&fonts.ui_small, &n).0 as f32;
+                let ww = probe.measure(&fonts.bn, text).0 as f32;
+                // an English word on offer carries a small EN, as on the phone keyboards
+                let en = if is_english(text) {
+                    probe.measure(&fonts.ui_small, "EN").0 as f32 + 7.0 * s
+                } else {
+                    0.0
+                };
+                let pw = (12.0 * s + nw + 7.0 * s + ww + en + 14.0 * s).max(46.0 * s);
                 if x + pw > max_w - pad && !pills.is_empty() {
                     break;
                 }
@@ -750,8 +815,8 @@ pub unsafe fn render(
                     hints.len()
                 };
                 for (bn, key) in hints.iter().take(shown.min(10)) {
-                    let bw = probe.measure(fonts.bn_small, bn).0 as f32;
-                    let kw = probe.measure(fonts.ui_small, key).0 as f32;
+                    let bw = probe.measure(&fonts.bn_small, bn).0 as f32;
+                    let kw = probe.measure(&fonts.ui_small, key).0 as f32;
                     let cw = 10.0 * s + bw + 5.0 * s + kw + 10.0 * s;
                     if hx + cw > max_w - pad {
                         break;
@@ -784,7 +849,7 @@ pub unsafe fn render(
             // Header: what was typed, then the two small buttons on the right
             let hy = pad + header_h / 2.0;
             c.text(
-                fonts.ui,
+                &fonts.ui,
                 roman,
                 (pad + 4.0 * s) as i32,
                 hy as i32,
@@ -795,9 +860,9 @@ pub unsafe fn render(
             for (lbl, bw, slot) in [(helper_lbl, hw, 0), (toggle_lbl, tw, 1)] {
                 let bx = right - bw;
                 let rect = r(bx, pad, bx + bw, pad + header_h);
-                c.rrect(bx, pad, bx + bw, pad + header_h, 8.0 * s, pal.etch, 0.0);
+                c.rrect(bx, pad, bx + bw, pad + header_h, 7.0 * s, pal.chip, 0.0);
                 c.text(
-                    fonts.ui_small,
+                    &fonts.ui_small,
                     lbl,
                     (bx + 7.0 * s) as i32,
                     hy as i32,
@@ -816,34 +881,38 @@ pub unsafe fn render(
             let cy = (y0 + cand_h / 2.0) as i32;
             for (i, n, text, px, pw, nw) in pills {
                 let sel = i == *selected;
+                let rad = 10.0 * s;
                 if sel {
-                    c.rrect(px, y0, px + pw, y0 + cand_h, 12.0 * s, pal.accent, 0.0);
+                    c.rrect(px, y0, px + pw, y0 + cand_h, rad, pal.accent, 0.0);
                 } else {
-                    c.rrect(px, y0, px + pw, y0 + cand_h, 12.0 * s, pal.etch, 0.0);
-                    c.rrect(px, y0, px + pw, y0 + cand_h, 12.0 * s, pal.etch_line, 1.0);
+                    c.rrect(px, y0, px + pw, y0 + cand_h, rad, pal.chip, 0.0);
+                    c.rrect(px, y0, px + pw, y0 + cand_h, rad, pal.chip_line, 1.0);
                 }
-                let (ink, num) = if sel {
-                    (
-                        pal.accent_ink,
-                        Rgba(pal.accent_ink.0, pal.accent_ink.1, pal.accent_ink.2, 0.7),
-                    )
+                let (ink, soft) = if sel {
+                    let k = pal.accent_ink;
+                    (k, Rgba(k.0, k.1, k.2, 0.72))
                 } else {
-                    (pal.ink, pal.muted)
+                    let m = pal.muted;
+                    (pal.ink, Rgba(m.0, m.1, m.2, 0.85))
                 };
                 c.text(
-                    fonts.ui_small,
+                    &fonts.ui_small,
                     &n,
                     (px + 12.0 * s) as i32,
                     cy + (1.0 * s) as i32,
-                    num,
+                    soft,
                 );
-                c.text(
-                    fonts.bn,
-                    &text,
-                    (px + 12.0 * s + nw + 6.0 * s) as i32,
-                    cy,
-                    ink,
-                );
+                let wx = px + 12.0 * s + nw + 7.0 * s;
+                let ww = c.text(&fonts.bn, &text, wx as i32, cy, ink) as f32;
+                if is_english(&text) {
+                    c.text(
+                        &fonts.ui_small,
+                        "EN",
+                        (wx + ww + 7.0 * s) as i32,
+                        cy + (1.0 * s) as i32,
+                        soft,
+                    );
+                }
                 hits.candidates.push((r(px, y0, px + pw, y0 + cand_h), i));
             }
 
@@ -870,15 +939,15 @@ pub unsafe fn render(
                             hx + cw,
                             y1 + hint_h,
                             9.0 * s,
-                            Rgba(a.0, a.1, a.2, 0.65),
+                            Rgba(a.0, a.1, a.2, 0.55),
                             1.2 * s,
                         );
                     } else {
-                        c.rrect(hx, y1, hx + cw, y1 + hint_h, 9.0 * s, pal.etch, 0.0);
+                        c.rrect(hx, y1, hx + cw, y1 + hint_h, 9.0 * s, pal.chip, 0.0);
                     }
-                    c.text(fonts.bn_small, &bn, (hx + 10.0 * s) as i32, hcy, pal.ink);
+                    c.text(&fonts.bn_small, &bn, (hx + 10.0 * s) as i32, hcy, pal.ink);
                     c.text(
-                        fonts.ui_small,
+                        &fonts.ui_small,
                         &key,
                         (hx + 10.0 * s + bw + 5.0 * s) as i32,
                         hcy,
@@ -900,6 +969,11 @@ impl Palette {
             rgb(255, 255, 255, 1.0)
         }
     }
+}
+
+/// A word in Latin letters: an English suggestion
+fn is_english(s: &str) -> bool {
+    !s.is_empty() && s.is_ascii()
 }
 
 /// The glass card: tinted fill, a bright inner rim and a hairline outside it.
@@ -1000,7 +1074,7 @@ pub fn render_previews(dir: &std::path::Path) -> std::io::Result<Vec<std::path::
         for (dark, theme) in [(false, "light"), (true, "dark")] {
             for (scale, tag) in [(1.0f32, "100"), (1.5, "150")] {
                 let Some((mut canvas, _)) =
-                    (unsafe { render(content, "Kalpurush", scale, dark, glass_alpha(92, true)) })
+                    (unsafe { render(content, "Kalpurush", scale, dark, glass_alpha(85, true)) })
                 else {
                     continue;
                 };
