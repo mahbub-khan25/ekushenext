@@ -5,15 +5,39 @@ keyboard you turn on in Settings. It lives here:
 
 | Folder | What it is |
 |---|---|
-| `App/` | The Ekushe Next app: how to turn the keyboard on, a box to try it, help |
-| `Keyboard/` | The keyboard extension: `KeyboardView` (drawing and touch), `Typist` (the typing logic), `KeyboardViewController` (iOS) and the in-keyboard settings |
-| `Shared/` | The engine bridge, layouts, themes, settings, emoji and English help |
-| `Tests/` | Typing tests on a pretend text box, and a picture of every theme |
+| `App/` | The Ekushe Next app: getting started, the **writing pad** (`PadView.swift`) and the marks |
+| `Keyboard/` | The keyboard extension: `KeyboardView` (drawing, touch, VoiceOver), `Typist` (the typing logic), `KeyboardViewController` (iOS), the in-keyboard settings and marks |
+| `Shared/` | The engine bridge, layouts (iPhone, iPad, iPad split), themes, settings, emoji, English help, the marks list and the pad's key router |
+| `Tests/` | Typing, layout and VoiceOver tests on a pretend text box, and a picture of every theme and layout |
+| `UITests/` | The app on a simulator: every screen pictured, and the pad typing Bangla from the simulator's keyboard |
 | `../crates/ekushe-mobile` | The C bridge to the Rust engine |
 
 The keyboard doesn't ask for **Full Access**, so iOS itself keeps it off the internet. The dictionary
 is mapped straight from the app rather than unpacked into memory, because iOS stops keyboards that
-use too much memory.
+use too much memory. (Without Full Access the keyboard and the app can't share a container either,
+so the keyboard's settings live in the keyboard, under ⚙︎.)
+
+### iPhone and iPad
+
+- **iPhone**, upright and on its side (the keyboard is lower in landscape and follows a rotation).
+- **iPad**: its own layout in Apple's proportions (Delete top right, a wide Return on the indented
+  second row, Shift on both sides with `,` and `.`, a key to hide the keyboard), bigger keys and
+  letters, no key balloons. In landscape it can be **split** for thumbs (⚙︎ → ভাঙা কিবোর্ড).
+- **VoiceOver** reads and presses every key and suggestion.
+- **? in the strip** shows the marks (`+` joins, `,,` shows a hasanta, `` ` `` keeps apart …).
+
+### Physical keyboards and the writing pad
+
+iPadOS doesn't let any third-party keyboard read a physical keyboard: its keys go straight to the
+app. So the Ekushe app has a **writing pad**, where any keyboard, an iPad's keyboard cover or a
+Bluetooth one included (or Apple's own on-screen keyboard), types phonetic Bangla through the same
+engine and suggestion strip: Tab moves through the suggestions, Space places one, Backspace right
+after a word reopens it, Esc keeps what's shown, and Shift tapped twice switches Bangla ⇄ English.
+The text stays between visits; copy or share it when done. The pad uses the keyboard's own
+dictionary, from inside the keyboard, so the app carries it once.
+
+The version comes from `../.github/release/VERSION` (`build-rust.sh` writes `Version.xcconfig`), and
+both the app and the keyboard carry Apple's privacy manifest (`PrivacyInfo.xcprivacy`).
 
 ## Run it on your own iPhone or iPad (free, with Xcode)
 
@@ -55,5 +79,5 @@ Program (99 US$ a year) it lasts a year and can go to TestFlight and the App Sto
 xcodebuild test -project EkusheNext.xcodeproj -scheme EkusheNext -destination 'platform=iOS Simulator,name=iPhone 16'
 ```
 
-The GitHub workflow `.github/workflows/ios.yml` does all of this on every change and keeps the
-pictures of every theme.
+The GitHub workflow `.github/workflows/ios.yml` runs the tests on an iPhone and an iPad simulator on
+every change, and keeps the pictures of every theme, layout and app screen (`ios-keyboard-pictures`).

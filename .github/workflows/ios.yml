@@ -37,6 +37,14 @@ jobs:
           xcodebuild test -project EkusheNext.xcodeproj -scheme EkusheNext -destination "id=$SIM" \
             CODE_SIGNING_ALLOWED=NO -resultBundlePath "$RUNNER_TEMP/tests.xcresult" > "$RUNNER_TEMP/test.log" 2>&1 || { grep -E "error:|failed|XCTAssert" "$RUNNER_TEMP/test.log" | head -60; tail -40 "$RUNNER_TEMP/test.log"; exit 1; }
           grep -E "Test Case .*(passed|failed)|Executed" "$RUNNER_TEMP/test.log"
+      - name: Tests on an iPad simulator
+        working-directory: ios
+        run: |
+          SIM=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next(x['udid'] for k in sorted(d, reverse=True) if 'iOS' in k for x in d[k] if x['name'].startswith('iPad Air') or x['name'].startswith('iPad Pro')))")
+          echo "simulator $SIM"
+          xcodebuild test -project EkusheNext.xcodeproj -scheme EkusheNext -destination "id=$SIM" \
+            CODE_SIGNING_ALLOWED=NO -resultBundlePath "$RUNNER_TEMP/tests-ipad.xcresult" > "$RUNNER_TEMP/test-ipad.log" 2>&1 || { grep -E "error:|failed|XCTAssert" "$RUNNER_TEMP/test-ipad.log" | head -60; tail -40 "$RUNNER_TEMP/test-ipad.log"; exit 1; }
+          grep -E "Test Case .*(passed|failed)|Executed" "$RUNNER_TEMP/test-ipad.log"
       - name: Build for iPhone and iPad (unsigned)
         working-directory: ios
         run: |

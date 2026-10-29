@@ -25,7 +25,10 @@ final class Typist: KeyboardListener {
     var onGlobeAction: (() -> Void)?
     var onSettingsAction: (() -> Void)?
     var onHideAction: (() -> Void)?
+    var onHelpAction: (() -> Void)?
     var onClick: (() -> Void)?
+    /// The suggestion a physical keyboard's Tab moved to (0: the engine's own choice)
+    private var highlight = 0
 
     private var last = Output()
     var bangla = true
@@ -110,6 +113,7 @@ final class Typist: KeyboardListener {
         if out.composing { setMarked(out.preedit.isEmpty ? out.roman : out.preedit) }
         else if out.committed == nil && marked { setMarked("") }
         last = out
+        highlight = 0
         view?.showSuggestions(out.composing ? out.candidates : [], out.composing ? out.tips : [], !out.composing && !privateField ? out.next : [])
     }
 
@@ -167,7 +171,7 @@ final class Typist: KeyboardListener {
         guard let t = target else { return }
         let now = Date()
         if typingBangla() {
-            if last.composing { apply(Engine.select(last.selected, trailing: " ")); lastSpaceAt = now; return }
+            if last.composing { apply(Engine.select(highlight > 0 ? highlight : last.selected, trailing: " ")); lastSpaceAt = now; return }
             // two quick spaces after a word: a dari (।)
             if prefs.doubleSpaceDari && now.timeIntervalSince(lastSpaceAt) < 0.45 {
                 let before = t.contextBefore
@@ -179,6 +183,10 @@ final class Typist: KeyboardListener {
             return
         }
         if !en.isEmpty {
+            if enHighlight > 0, enHighlight < enShown.count {
+                // Tab chose another suggestion: place that one
+                onCandidate(enHighlight); return
+            }
             placeEnglish(correct: true)
             t.insert(" ")
             lastSpaceAt = now
@@ -245,7 +253,7 @@ final class Typist: KeyboardListener {
             learnEnglish(word)
             t.setMarked(word); t.unmark(); marked = false
             t.insert(" ")
-            en = ""; enUndo = nil; enKeep = nil
+            en = ""; enUndo = nil; enKeep = nil; enHighlight = 0
             lastSpaceAt = Date()
             showNextEnglish(); updateAutoShift()
             return
@@ -279,6 +287,37 @@ final class Typist: KeyboardListener {
         updateAutoShift()
     }
 
+    /// A word is being typed (Bangla or English)
+    var composing: Bool { last.composing || !en.isEmpty }
+
+    /// Tab / Shift+Tab on a physical keyboard: move through the suggestions; false if there are none
+    @discardableResult
+    func moveHighlight(back: Bool = false) -> Bool {
+        let n = min(last.composing ? last.candidates.count : enShown.count, 9)
+        guard n > 1 else { return false }
+        if last.composing {
+            let cur = highlight > 0 ? highlight : last.selected
+            highlight = (cur + (back ? n - 1 : 1)) % n
+            view?.selected = highlight
+        } else {
+            // English: Tab places the next suggestion's word on Space, through the same strip
+            enHighlight = (enHighlight + (back ? n - 1 : 1)) % n
+            view?.selected = enHighlight
+        }
+        return true
+    }
+    private var enHighlight = 0
+
+    /// Enter or Esc on a physical keyboard: place the word as highlighted, with nothing after it
+    func placeHighlighted() {
+        if last.composing { apply(Engine.select(highlight > 0 ? highlight : last.selected)); return }
+        if !en.isEmpty {
+            if enHighlight > 0, enHighlight < enShown.count { let w = enShown[enHighlight]; target?.setMarked(w); target?.unmark(); marked = false; en = ""; enHighlight = 0; view?.showSuggestions([], [], []) }
+            else { placeEnglish(correct: false); view?.showSuggestions([], [], []) }
+        }
+    }
+
+    func onHelp() { finishWord(); onHelpAction?() }
     func onGlobe() { finishWord(); onGlobeAction?() }
     func onCursorMove(_ steps: Int) { finishWord(); target?.moveCursor(steps) }
     func onSettings() { finishWord(); onSettingsAction?() }
@@ -332,6 +371,7 @@ final class Typist: KeyboardListener {
         if !E.known(en) { list += E.corrections(en, max: 2) }
         var seen = Set<String>()
         enShown = Array(list.filter { !$0.isEmpty && seen.insert($0).inserted }.prefix(6))
+        enHighlight = 0
         view?.showSuggestions(enShown.map { Candidate(text: $0, kind: "") }, [], [])
     }
 

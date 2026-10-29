@@ -18,4 +18,14 @@ lipo -create "$ROOT/target/aarch64-apple-ios-sim/release/libekushe_mobile.a" "$R
 python3 -c "import zlib,sys; open(sys.argv[2],'wb').write(zlib.decompress(open(sys.argv[1],'rb').read()))" \
   "$ROOT/data/dictionary/ekushe.dict.z" "$HERE/Data/ekushe-dictionary.bin"
 cp "$ROOT/data/english/words.txt" "$ROOT/data/english/next.tsv" "$HERE/Data/"
+# The version, from the release file (v0.2.0-beta.4 → 0.2.0, build 200004: the Android version code)
+python3 - "$ROOT/.github/release/VERSION" "$HERE/Version.xcconfig" <<'PY'
+import re, sys
+v = open(sys.argv[1]).read().strip().lstrip("v")
+m = re.match(r"(\d+)\.(\d+)\.(\d+)(?:-beta\.(\d+))?$", v)
+a, b, c, beta = (int(x) if x else None for x in m.groups())
+build = a * 10_000_000 + b * 100_000 + c * 1000 + (beta if beta is not None else 999)
+open(sys.argv[2], "w").write(f"// Written by build-rust.sh from .github/release/VERSION ({v})\nMARKETING_VERSION = {a}.{b}.{c}\nCURRENT_PROJECT_VERSION = {build}\n")
+PY
+cat "$HERE/Version.xcconfig"
 ls -la "$HERE/rust"/*/ "$HERE/Data/"

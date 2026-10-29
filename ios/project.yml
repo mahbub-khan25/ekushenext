@@ -5,11 +5,14 @@ options:
   bundleIdPrefix: com.ekushenext
   deploymentTarget:
     iOS: "16.0"
+# The version (MARKETING_VERSION, CURRENT_PROJECT_VERSION) comes from .github/release/VERSION:
+# build-rust.sh writes it to Version.xcconfig
+configFiles:
+  Debug: Version.xcconfig
+  Release: Version.xcconfig
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "0.1.0"
-    CURRENT_PROJECT_VERSION: "1"
     DEVELOPMENT_TEAM: ""   # choose your team in Xcode (Signing & Capabilities)
     SWIFT_OBJC_BRIDGING_HEADER: Shared/Bridging.h
     "LIBRARY_SEARCH_PATHS[sdk=iphoneos*]": $(PROJECT_DIR)/rust/iphoneos
@@ -22,6 +25,10 @@ targets:
     platform: iOS
     sources:
       - App
+      # the writing pad types with the keyboard's own engine, typing logic and suggestion strip
+      - Shared
+      - Keyboard/KeyboardView.swift
+      - Keyboard/Typist.swift
     dependencies:
       - target: EkusheKeyboard
     info:
@@ -29,6 +36,8 @@ targets:
       properties:
         CFBundleDisplayName: Ekushe Next
         CFBundleDevelopmentRegion: bn
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
         "UISupportedInterfaceOrientations~ipad": [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
@@ -51,6 +60,8 @@ targets:
       properties:
         CFBundleDisplayName: Ekushe Next
         CFBundleDevelopmentRegion: bn
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.keyboard-service
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).KeyboardViewController
@@ -77,6 +88,18 @@ targets:
       base:
         GENERATE_INFOPLIST_FILE: YES
         PRODUCT_BUNDLE_IDENTIFIER: com.ekushenext.app.tests
+  EkusheUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - UITests
+    dependencies:
+      - target: EkusheNext
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.ekushenext.app.uitests
+        TEST_TARGET_NAME: EkusheNext
 schemes:
   EkusheNext:
     build:
@@ -85,5 +108,6 @@ schemes:
     test:
       targets:
         - EkusheTests
+        - EkusheUITests
       environmentVariables:
         SHOTS_DIR: $(SRCROOT)/../shots
