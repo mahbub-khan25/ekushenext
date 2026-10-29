@@ -49,18 +49,18 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
     AppendMenuW, CallNextHookEx, CreatePopupMenu, CreateWindowExW, DefWindowProcW, DestroyMenu,
     DestroyWindow, DispatchMessageW, FindWindowW, GetAncestor, GetClassNameW, GetCursorPos,
     GetForegroundWindow, GetGUIThreadInfo, GetMessageW, GetSystemMetrics, GetWindowLongW,
-    GetWindowThreadProcessId, KillTimer, LoadCursorW, LoadIconW, LoadImageW, PostMessageW,
-    PostQuitMessage, RegisterClassW, SetCursor, SetForegroundWindow, SetMenuDefaultItem, SetTimer,
-    SetWindowPos, SetWindowsHookExW, ShowWindow, TrackPopupMenu, TranslateMessage,
-    UnhookWindowsHookEx, WindowFromPoint, GA_ROOT, GUITHREADINFO, GWL_STYLE, HHOOK, HICON,
-    HWND_TOPMOST, IDC_HAND, IDI_APPLICATION, IMAGE_ICON, KBDLLHOOKSTRUCT, LR_LOADFROMFILE,
-    MF_CHECKED, MF_SEPARATOR, MF_STRING, MF_UNCHECKED, MSG, MSLLHOOKSTRUCT, SM_CXSCREEN,
-    SM_CYSCREEN, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_SHOWWINDOW, SW_HIDE, TPM_BOTTOMALIGN,
-    TPM_LEFTALIGN, TPM_RETURNCMD, TPM_RIGHTBUTTON, WH_KEYBOARD_LL, WH_MOUSE_LL, WM_APP, WM_COMMAND,
-    WM_CONTEXTMENU, WM_DESTROY, WM_KEYDOWN, WM_KEYUP, WM_LBUTTONDBLCLK, WM_LBUTTONDOWN,
-    WM_LBUTTONUP, WM_MOUSEACTIVATE, WM_NULL, WM_PAINT, WM_RBUTTONUP, WM_SETCURSOR, WM_SYSKEYDOWN,
-    WM_TIMER, WNDCLASSW, WS_EX_LAYERED, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST,
-    WS_POPUP,
+    GetWindowThreadProcessId, KillTimer, LoadCursorW, LoadIconW, LoadImageW, PeekMessageW,
+    PostMessageW, PostQuitMessage, PostThreadMessageW, RegisterClassW, SetCursor,
+    SetForegroundWindow, SetMenuDefaultItem, SetTimer, SetWindowPos, SetWindowsHookExW, ShowWindow,
+    TrackPopupMenu, TranslateMessage, UnhookWindowsHookEx, WindowFromPoint, GA_ROOT, GUITHREADINFO,
+    GWL_STYLE, HHOOK, HICON, HWND_TOPMOST, IDC_HAND, IDI_APPLICATION, IMAGE_ICON, KBDLLHOOKSTRUCT,
+    LR_LOADFROMFILE, MF_CHECKED, MF_SEPARATOR, MF_STRING, MF_UNCHECKED, MSG, MSLLHOOKSTRUCT,
+    SM_CXSCREEN, SM_CYSCREEN, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_SHOWWINDOW, SW_HIDE,
+    TPM_BOTTOMALIGN, TPM_LEFTALIGN, TPM_RETURNCMD, TPM_RIGHTBUTTON, WH_KEYBOARD_LL, WH_MOUSE_LL,
+    WM_APP, WM_COMMAND, WM_CONTEXTMENU, WM_DESTROY, WM_KEYDOWN, WM_KEYUP, WM_LBUTTONDBLCLK,
+    WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MOUSEACTIVATE, WM_NULL, WM_PAINT, WM_RBUTTONUP, WM_SETCURSOR,
+    WM_SYSKEYDOWN, WM_TIMER, WNDCLASSW, WS_EX_LAYERED, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW,
+    WS_EX_TOPMOST, WS_POPUP,
 };
 
 /// Embedded 256x256 PNG logo for the Studio UI (`/logo.png`)
@@ -199,6 +199,8 @@ static STATE: Lazy<Mutex<AppSharedState>> = Lazy::new(|| {
 });
 
 static mut KEYBOARD_HOOK: HHOOK = ptr::null_mut();
+/// The thread that owns the low-level hooks and does nothing else (see `start_hook_thread`)
+static HOOK_THREAD: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 static mut MOUSE_HOOK: HHOOK = ptr::null_mut();
 /// Set by the mouse hook when the user clicks outside the candidate popup: the caret may have moved,
 /// so the half-typed word must be forgotten (never backspaced at the new position).
@@ -220,6 +222,8 @@ const WM_EKUSHE_SELECTION_DONE: u32 = WM_APP + 5;
 const WM_EKUSHE_REFRESH_OVERLAY: u32 = WM_APP + 6;
 /// Show the badge in `STATE.badge_banner` (posted by the hook for the same reason)
 const WM_EKUSHE_SHOW_BADGE: u32 = WM_APP + 7;
+/// Posted to the hook thread: re-install the hooks (see `TIMER_REHOOK`)
+const WM_EKUSHE_REHOOK: u32 = WM_APP + 40;
 /// Update the tray icon for the current language (posted by the hook; `Shell_NotifyIconW` talks to
 /// Explorer and can block)
 const WM_EKUSHE_UPDATE_TRAY_ICON: u32 = WM_APP + 8;
@@ -433,8 +437,8 @@ fn main() {
         });
 
         // Install the global low-level keyboard hook, and the mouse hook (mouse clicks can move the
-        // caret; the mouse hook makes sure a half-typed word is then forgotten)
-        install_hooks();
+        // caret; the mouse hook makes sure a half-typed word is then forgotten), on their own thread
+        start_hook_thread();
         // Save learned words every 15 s when something new was learned (and again on exit)
         SetTimer(tray_hwnd, TIMER_SAVE_LEARNED, 15_000, None);
         SetTimer(tray_hwnd, TIMER_REHOOK, REHOOK_INTERVAL_MS, None);
@@ -453,13 +457,56 @@ fn main() {
             DispatchMessageW(&msg);
         }
 
-        remove_hooks();
+        stop_hook_thread();
         save_learned_words_if_changed();
         remove_tray_icon(tray_hwnd);
     }
 }
 
-/// Install (or re-install) the low-level keyboard and mouse hooks. Must run on the tray thread, which
+/// The low-level hooks get a thread of their own that only waits for keys. Windows runs a low-level
+/// hook on the thread that installed it, between that thread's messages: on the tray thread a key
+/// had to wait whenever the popup was being drawn, and a key that waits longer than
+/// `LowLevelHooksTimeout` goes straight to the app, unconverted, while the hook still rewrites the
+/// word around it (a Latin "e" inside a Bangla word, letters typed twice). Here nothing delays it.
+unsafe fn start_hook_thread() {
+    std::thread::spawn(|| unsafe {
+        use windows_sys::Win32::System::Threading::GetCurrentThreadId;
+        let mut msg: MSG = zeroed();
+        // make sure this thread has a message queue before anyone posts to it
+        PeekMessageW(&mut msg, ptr::null_mut(), 0, 0, 0);
+        HOOK_THREAD.store(GetCurrentThreadId(), Ordering::SeqCst);
+        install_hooks();
+        while GetMessageW(&mut msg, ptr::null_mut(), 0, 0) > 0 {
+            if msg.message == WM_EKUSHE_REHOOK {
+                install_hooks();
+                continue;
+            }
+            TranslateMessage(&msg);
+            DispatchMessageW(&msg);
+        }
+        remove_hooks();
+    });
+}
+
+/// Ask the hook thread to re-install its hooks (in case Windows dropped one)
+unsafe fn rehook() {
+    let tid = HOOK_THREAD.load(Ordering::SeqCst);
+    if tid != 0 {
+        PostThreadMessageW(tid, WM_EKUSHE_REHOOK, 0, 0);
+    }
+}
+
+/// Remove the hooks (on their own thread) and end that thread
+unsafe fn stop_hook_thread() {
+    let tid = HOOK_THREAD.swap(0, Ordering::SeqCst);
+    if tid != 0 {
+        PostThreadMessageW(tid, 0x0012, 0, 0); // WM_QUIT
+                                               // give it a moment to unhook before the process exits
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+}
+
+/// Install (or re-install) the low-level keyboard and mouse hooks. Runs on the hook thread, which
 /// owns them. Re-installing a live hook is harmless: the old one is removed first.
 unsafe fn install_hooks() {
     remove_hooks();
@@ -982,6 +1029,7 @@ fn forget_composition(st: &mut AppSharedState) -> bool {
     st.last_output = SessionOutput::default();
     st.injected_utf16_len = 0;
     st.comp_focus = 0;
+    LAST_TYPED.lock().clear();
     had
 }
 
@@ -1092,6 +1140,20 @@ unsafe extern "system" fn mouse_hook_proc(code: i32, wparam: WPARAM, lparam: LPA
 /// 3. `Ctrl+Backspace` to flip the last committed word between Bangla ⇄ English
 /// 4. Live phonetic & fixed-layout Bangla typing in any Windows app (with Bangla digits ০-৯ in Ekushe mode and 0-9 in English mode)
 unsafe extern "system" fn keyboard_hook_proc(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
+    let r = keyboard_hook_inner(code, wparam, lparam);
+    // A key that reached the app unconverted changes the text before the caret: what was typed last
+    // is no longer there to compare with (see `replace_active_text`)
+    if r != 1 && code >= 0 && (wparam as u32 == WM_KEYDOWN || wparam as u32 == 0x0104) {
+        let vk = (*(lparam as *const KBDLLHOOKSTRUCT)).vkCode;
+        // Shift, Ctrl, Alt, the Windows keys and Caps Lock type nothing
+        if !matches!(vk, 0x10..=0x12 | 0x14 | 0x5B | 0x5C | 0xA0..=0xA5) {
+            LAST_TYPED.lock().clear();
+        }
+    }
+    r
+}
+
+unsafe fn keyboard_hook_inner(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
     if code < 0 {
         return CallNextHookEx(ptr::null_mut(), code, wparam, lparam);
     }
@@ -1425,8 +1487,33 @@ unsafe fn vk_to_char(vk: u16, scan_code: u32, shift: bool, altgr: bool) -> Optio
     }
 }
 
+/// What the last `replace_active_text` typed (to send only the part of a word that changed)
+static LAST_TYPED: Mutex<String> = Mutex::new(String::new());
+
 /// Atomically send `backspaces` followed by `new_text` as UTF-16 `KEYEVENTF_UNICODE` events.
+///
+/// When the text being replaced is what was typed last (the word being typed), only the part after
+/// what the two have in common is deleted and retyped: `স্বপ্ন` → `স্বপ্নপুরী` adds `পুরী` instead of
+/// deleting six letters and typing ten. Fewer keys reach the app, and fewer Backspaces land inside a
+/// conjunct, where apps differ in how much one Backspace deletes.
 unsafe fn replace_active_text(backspaces: usize, new_text: &str) {
+    let (backspaces, new_text) = {
+        let mut last = LAST_TYPED.lock();
+        let old = std::mem::replace(&mut *last, new_text.to_string());
+        if backspaces > 0 && backspaces == old.encode_utf16().count() {
+            let keep: usize = old
+                .chars()
+                .zip(new_text.chars())
+                .take_while(|(a, b)| a == b)
+                .map(|(a, _)| a.len_utf8())
+                .sum();
+            let kept16 = old[..keep].encode_utf16().count();
+            (backspaces - kept16, new_text[keep..].to_string())
+        } else {
+            (backspaces, new_text.to_string())
+        }
+    };
+    let new_text = new_text.as_str();
     let utf16: Vec<u16> = new_text.encode_utf16().collect();
     let total_events = (backspaces * 2) + (utf16.len() * 2);
     if total_events == 0 {
@@ -1503,7 +1590,7 @@ unsafe extern "system" fn tray_wnd_proc(
             0
         }
         WM_TIMER if wparam == TIMER_REHOOK => {
-            install_hooks();
+            rehook();
             0
         }
         WM_EKUSHE_REFRESH_OVERLAY => {
