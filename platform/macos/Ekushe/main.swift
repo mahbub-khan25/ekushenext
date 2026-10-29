@@ -5,6 +5,7 @@ import InputMethodKit
 /// Objects the controllers share.
 enum AppShared {
     static var server: IMKServer?
+    static var candidates: IMKCandidates?
 }
 
 let bundleID = Bundle.main.bundleIdentifier ?? "org.ekushe.inputmethod.Ekushe"
@@ -26,12 +27,6 @@ func registerInputSource() -> Int32 {
     return 1
 }
 
-// `Ekushe --render-bar DIR`: pictures of the suggestion bar (for the build)
-if let i = CommandLine.arguments.firstIndex(of: "--render-bar"), i + 1 < CommandLine.arguments.count {
-    _ = NSApplication.shared
-    exit(CandidateBar.renderPreviews(to: CommandLine.arguments[i + 1]))
-}
-
 if CommandLine.arguments.contains("--register") {
     exit(registerInputSource())
 }
@@ -42,5 +37,6 @@ guard let server = IMKServer(name: connection, bundleIdentifier: bundleID) else 
     exit(1)
 }
 AppShared.server = server
+AppShared.candidates = IMKCandidates(server: server, panelType: kIMKSingleRowSteppingCandidatePanel)
 Engine.start()
 NSApplication.shared.run()

@@ -6,7 +6,7 @@ Type Bangla the way it sounds, in English letters (`amar sonar bangla` → আ�
 
 On Android tablets, a **physical keyboard** (a keyboard cover or a Bluetooth keyboard) now types Bangla through Ekushe: only the suggestion strip shows, double-tap Shift switches Bangla ⇄ English, Tab moves through the suggestions and Backspace right after a word reopens it. New installs start with the **Ekushe Default** theme. The suggestion strip now shows whenever a physical keyboard is attached (also above the taskbar in a tablet's desktop mode), and unplugging it brings the on-screen keys back.
 
-**A new suggestion bar on Windows and Mac**, in the look of the phone keyboards: light frosted glass, rounded word chips, the chosen word in blue and a small EN on English words. On Windows, Bangla letters in the bar are now smooth instead of jagged. **Typing on Windows is fixed in Word and the browsers:** keys no longer wait behind the suggestion bar, a second copy of Ekushe (an installed one and a portable one, say) can no longer run at the same time and convert every key twice, and Ekushe warns you if the experimental input method from the Developer Tools is also installed.
+**A new suggestion bar on Windows**, in the look of the phone keyboards: light frosted glass, rounded word chips, the chosen word in blue and a small EN on English words. On Windows, Bangla letters in the bar are now smooth instead of jagged. **Typing on Windows is fixed in Word and the browsers:** keys no longer wait behind the suggestion bar, a second copy of Ekushe (an installed one and a portable one, say) can no longer run at the same time and convert every key twice, and Ekushe warns you if the experimental input method from the Developer Tools is also installed.
 
 **Help for the marks, one click away.** `+` makes a conjunct (`as+te` → আস্তে), `,,` shows a hasanta (`as,,te` → আস্‌তে) and `` ` `` keeps letters apart (``as`te`` → আসতে). The full list opens from the **?** button on the Android keyboard, **Marks & Conjuncts Guide** in the Mac and Linux menus, and the popup's সহায়িকা or the tray menu on Windows.
 
@@ -34,7 +34,7 @@ Windows builds are code-signed by **A S M Mahbub Afzal Khan**. The certificate i
 3. Pick **Ekushe Bangla** from the input menu in the menu bar (or press Control+Space / the 🌐 key to switch).
 4. The Ekushe item in that menu opens **Studio** and **Settings** in your browser.
 
-On a Mac, the suggestions appear in Ekushe's frosted bar under the word you're typing (click a word to place it), and Control+Delete flips the last word between Bangla and Roman. **Ekushe-macOS.zip** has the same app for manual install: unzip it and move **Ekushe.app** into `~/Library/Input Methods`.
+On a Mac, the suggestions appear in macOS's own candidate bar, and Control+Delete flips the last word between Bangla and Roman. **Ekushe-macOS.zip** has the same app for manual install: unzip it and move **Ekushe.app** into `~/Library/Input Methods`.
 
 ### Linux
 Ekushe is an **IBus** keyboard. IBus is the standard on Ubuntu, Fedora, Debian and GNOME, and also works on KDE.

@@ -2,7 +2,7 @@ import Cocoa
 import InputMethodKit
 
 /// One controller per text field the user types into. Keys go to the Rust engine; the word being
-/// typed is shown as marked (underlined) text, suggestions in Ekushe's own floating bar.
+/// typed is shown as marked (underlined) text, suggestions in the system candidate window.
 @objc(EkusheInputController)
 final class EkusheInputController: IMKInputController {
     private var output = EngineOutput.empty
@@ -131,7 +131,7 @@ final class EkusheInputController: IMKInputController {
         output = out
         selected = min(out.selected_index, max(0, out.candidates.count - 1))
         showMarked(out.preedit, client)
-        if out.candidates.count > 1 { showCandidates(client) } else { hideCandidates() }
+        if out.candidates.count > 1 { showCandidates() } else { hideCandidates() }
     }
 
     private func showMarked(_ text: String, _ client: IMKTextInput, replacing: NSRange? = nil) {
@@ -161,7 +161,9 @@ final class EkusheInputController: IMKInputController {
         let n = output.candidates.count
         selected = (selected + 1) % n
         showMarked(output.candidates[selected].text, client)
-        CandidateBar.shared.select(selected)
+        if let panel = AppShared.candidates {
+            panel.selectCandidate(withIdentifier: panel.candidateIdentifier(atLineNumber: selected))
+        }
     }
 
     /// Backspace right after a committed word: reopen it as the word being typed, with its
@@ -187,7 +189,7 @@ final class EkusheInputController: IMKInputController {
         selected = min(out.selected_index, max(0, out.candidates.count - 1))
         // The word and its space become the marked (still being typed) word
         showMarked(out.preedit, client, replacing: range)
-        if out.candidates.count > 1 { showCandidates(client) } else { hideCandidates() }
+        if out.candidates.count > 1 { showCandidates() } else { hideCandidates() }
         return true
     }
 
@@ -205,25 +207,34 @@ final class EkusheInputController: IMKInputController {
 
     // MARK: Candidate window
 
-    private func showCandidates(_ client: IMKTextInput) {
-        // Where the word being typed is (the app reports its line in screen coordinates)
-        var line = NSRect.zero
-        _ = client.attributes(forCharacterIndex: 0, lineHeightRectangle: &line)
-        if line.width == 0 && line.height == 0 {
-            // the app didn't say: near the pointer
-            let m = NSEvent.mouseLocation
-            line = NSRect(x: m.x, y: m.y - 20, width: 1, height: 20)
+    override func candidates(_ sender: Any!) -> [Any]! {
+        output.candidates.map { $0.text }
+    }
+
+    override func candidateSelected(_ candidateString: NSAttributedString!) {
+        guard let client = self.client(), let s = candidateString?.string,
+              let i = output.candidates.firstIndex(where: { $0.text == s }) else { return }
+        commit(i, trailing: " ", client)
+    }
+
+    override func candidateSelectionChanged(_ candidateString: NSAttributedString!) {
+        guard let client = self.client(), let s = candidateString?.string,
+              let i = output.candidates.firstIndex(where: { $0.text == s }) else { return }
+        selected = i
+        showMarked(s, client)
+    }
+
+    private func showCandidates() {
+        guard let panel = AppShared.candidates else { return }
+        panel.update()
+        panel.show(kIMKLocateCandidatesBelowHint)
+        if selected > 0 {
+            panel.selectCandidate(withIdentifier: panel.candidateIdentifier(atLineNumber: selected))
         }
-        let bar = CandidateBar.shared
-        bar.onPick = { [weak self] i in
-            guard let self = self, let c = self.client() else { return }
-            self.commit(i, trailing: " ", c)
-        }
-        bar.show(output.candidates.map { $0.text }, selected: selected, caret: line)
     }
 
     private func hideCandidates() {
-        CandidateBar.shared.hide()
+        AppShared.candidates?.hide()
     }
 
     // MARK: Menu (the Ekushe item in the menu-bar input menu)
