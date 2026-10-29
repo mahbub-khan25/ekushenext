@@ -12,6 +12,12 @@ public static class W {
 }
 '@
 
+# Start in Bangla (the default is English at login)
+$cfgDir = Join-Path $env:APPDATA 'Ekushe'
+New-Item -ItemType Directory -Force -Path $cfgDir | Out-Null
+$cfg = Join-Path $cfgDir 'config.toml'
+$old = if (Test-Path $cfg) { Get-Content -Raw $cfg } else { $null }
+Set-Content -Path $cfg -Value 'start_language = "Bangla"' -Encoding utf8
 $tray = Start-Process -FilePath $Exe -ArgumentList '--minimized' -PassThru
 Start-Sleep -Seconds 5
 $np = Start-Process notepad -PassThru
@@ -19,9 +25,7 @@ Start-Sleep -Seconds 3
 [void][W]::SetForegroundWindow($np.MainWindowHandle)
 Start-Sleep -Milliseconds 500
 
-# Bangla on (Ctrl+Space), then the sentence, as fast as SendKeys sends it
-[System.Windows.Forms.SendKeys]::SendWait('^ ')
-Start-Sleep -Milliseconds 800
+# the sentence, as fast as SendKeys sends it
 $text = 'amader deshe shopnopuree ami bangla likhi '
 $want = 'আমাদের দেশে স্বপ্নপুরী আমি বাংলা লিখি '
 [System.Windows.Forms.SendKeys]::SendWait($text)
@@ -30,8 +34,6 @@ Start-Sleep -Seconds 2
 foreach ($c in $text.ToCharArray()) { [System.Windows.Forms.SendKeys]::SendWait([string]$c) }
 Start-Sleep -Seconds 2
 
-[System.Windows.Forms.SendKeys]::SendWait('^ ')   # back to English for the shortcuts
-Start-Sleep -Milliseconds 500
 Set-Clipboard -Value ''
 [System.Windows.Forms.SendKeys]::SendWait('^(a)')
 Start-Sleep -Milliseconds 300
@@ -40,6 +42,7 @@ Start-Sleep -Milliseconds 800
 $got = (Get-Clipboard -Raw)
 Stop-Process -Id $np.Id -Force
 Stop-Process -Id $tray.Id -Force
+if ($null -ne $old) { Set-Content -Path $cfg -Value $old -NoNewline } else { Remove-Item $cfg }
 Write-Host "typed: $text (twice)"
 Write-Host "got:   $got"
 if ($got -ne ($want + $want)) {
