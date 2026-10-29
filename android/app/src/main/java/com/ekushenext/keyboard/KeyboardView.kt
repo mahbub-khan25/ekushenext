@@ -77,6 +77,9 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
     /** A physical keyboard is in use: only the suggestion strip is shown, not the keys */
     var stripOnly = false
         set(v) { if (field != v) { field = v; if (v && mode == Mode.EMOJI) mode = Mode.LETTERS; requestLayout(); invalidate() } }
+    /** Room under the strip-only bar (px) for a desktop taskbar that stays on screen over the keyboard */
+    var under = 0f
+        set(v) { if (field != v) { field = v; if (stripOnly) requestLayout(); invalidate() } }
 
     fun showSuggestions(c: List<Candidate>, t: List<Hint>, p: List<String>) {
         candidates = c; tips = t; predictions = p; stripScroll = 0f; stripMessage = null; selected = 0
@@ -158,7 +161,7 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val w = MeasureSpec.getSize(widthMeasureSpec)
         val letterRows = if (prefs.numberRow) 5 else 4
-        val h = if (stripOnly) stripH else stripH + letterRows * rowH + bottomPad
+        val h = if (stripOnly) stripH + under else stripH + letterRows * rowH + bottomPad
         setMeasuredDimension(w, h.toInt())
     }
 
@@ -222,13 +225,22 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
         val b = photo
         if (b != null) drawPhoto(c, b) else c.drawColor(p.background)
         drawStrip(c)
-        if (stripOnly) { logged = false; logKeys(); return }
+        if (stripOnly) { drawUnder(c); logged = false; logKeys(); return }
         if (mode == Mode.EMOJI) { drawEmoji(c); return }
         logKeys()
         if (debuggable) { removeCallbacks(relog); relogLeft = 8; postDelayed(relog, 500) }
         for ((k, r) in placed) drawKey(c, k, r, pressedKey == k)
         pressedKey?.let { k -> placed.firstOrNull { it.key == k }?.let { if (k.type == KeyType.CHAR && altsOpen == null) drawPreview(c, k, it.rect) } }
         altsOpen?.let { drawAlts(c, it) }
+    }
+
+    /** The room under the strip: the physical keyboard's shortcuts, in case the taskbar steps aside */
+    private fun drawUnder(c: Canvas) {
+        if (under < 40 * dp) return
+        textPaint.color = palette.subtext
+        textPaint.textSize = 12.5f * dp
+        val t = if (bangla) "Shift দুবার: বাংলা ⇄ English  ·  Tab: পরের শব্দ  ·  Space: বসায়" else "Shift twice: English ⇄ বাংলা  ·  Tab: next word  ·  Space: place it"
+        c.drawText(t, width / 2f, stripH + under / 2f + 4.5f * dp, textPaint)
     }
 
     private fun isFunction(k: Key) = k.type != KeyType.CHAR && k.type != KeyType.SPACE
