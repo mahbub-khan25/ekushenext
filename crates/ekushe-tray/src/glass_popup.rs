@@ -68,7 +68,8 @@ impl Palette {
             }
         } else {
             Palette {
-                card: rgb(232, 234, 239, glass_alpha),
+                // milky, so a colourful window behind only shows as a soft blur, not as colour
+                card: rgb(238, 240, 244, glass_alpha.max(0.88)),
                 rim: rgb(255, 255, 255, 0.80),
                 hairline: rgb(0, 0, 0, 0.14),
                 ink: rgb(31, 31, 31, 1.0),
@@ -490,7 +491,7 @@ pub unsafe fn set_backdrop(hwnd: HWND, on: bool, dark: bool, w: i32, h: i32, rad
         3
     };
     // A faint tint (AABBGGRR); the card itself carries the real colour
-    let gradient = if dark { 0x2E1B_1E16 } else { 0x18F6_F8F5 };
+    let gradient = if dark { 0x2E1B_1E16 } else { 0x99F4_F2F0 };
     let mut accent = AccentPolicy {
         state,
         flags: 0,
@@ -1014,12 +1015,13 @@ pub fn render_previews(dir: &std::path::Path) -> std::io::Result<Vec<std::path::
     // A stand-in for blurred desktop content: green field, red sun, white page
     let backdrop = |x: i32, y: i32, w: i32, h: i32| -> [f32; 3] {
         let (fx, fy) = (x as f32 / w.max(1) as f32, y as f32 / h.max(1) as f32);
+        // a window behind, already blurred by the glass: soft colour, mostly light
         let sun = (-(((fx - 0.75).powi(2) + (fy - 0.3).powi(2)) / 0.05)).exp();
         let field = fy;
         [
-            0.96 * (1.0 - field) + 0.05 * field + 0.85 * sun,
-            0.97 * (1.0 - field) + 0.42 * field - 0.4 * sun,
-            0.96 * (1.0 - field) + 0.29 * field - 0.4 * sun,
+            0.96 * (1.0 - field) + 0.55 * field + 0.25 * sun,
+            0.97 * (1.0 - field) + 0.70 * field - 0.10 * sun,
+            0.98 * (1.0 - field) + 0.85 * field - 0.10 * sun,
         ]
         .map(|v: f32| v.clamp(0.0, 1.0))
     };
