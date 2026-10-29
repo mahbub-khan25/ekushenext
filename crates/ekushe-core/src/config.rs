@@ -99,10 +99,9 @@ pub struct Config {
     pub custom_snippets: HashMap<String, String>,
     /// Backspace right after a word is committed brings back the Roman text that was typed
     pub backspace_undo: bool,
-    /// Windows: show the word being typed inside the app as it changes, by deleting and retyping it
-    /// on every key. Off by default: the word is shown in Ekushe's suggestion bar and typed into the
-    /// app once, when it is placed (Space, Enter, punctuation), because apps such as Word and the
-    /// browsers don't take keys deleted and retyped this quickly in order.
+    /// Windows: show the word being typed inside the app as it changes (on by default). Off: the
+    /// word waits in Ekushe's suggestion bar and is typed into the app once, when it is placed
+    /// (Space, Enter, punctuation), for an app that doesn't take quick retyping well.
     pub type_while_composing: bool,
     /// The language Ekushe starts in when the keyboard starts (when you log in): English by
     /// default, so the computer starts like any other; double-tap Shift for Bangla
@@ -140,7 +139,7 @@ impl Default for Config {
             phonetic_overrides: HashMap::new(),
             custom_snippets: HashMap::new(),
             backspace_undo: true,
-            type_while_composing: false,
+            type_while_composing: true,
             check_for_updates: false,
             start_language: InputLanguage::English,
         }

@@ -319,6 +319,18 @@ fn main() {
         .any(|a| a == "--minimized" || a == "--tray-only");
 
     // If an instance of Ekushe is already running in the System Tray, reuse it and open Studio if requested!
+    // Two copies (the installed one and a portable or test copy, say) would both convert every key
+    // and garble the text, so a second copy never starts: the named mutex is the check that can't
+    // miss (the Studio port file below can be stale or belong to another folder).
+    let second_copy =
+        !args.iter().any(|a| a == "--self-test") && unsafe { !claim_single_instance() };
+    if second_copy {
+        let host = unsafe { FindWindowW(wide_null("EkusheTrayHostClass").as_ptr(), ptr::null()) };
+        if !host.is_null() && (open_studio_on_launch || args.iter().any(|a| a == "--open-studio")) {
+            unsafe { PostMessageW(host, WM_EKUSHE_OPEN_STUDIO, 0, 0) };
+        }
+        return;
+    }
     if !args.iter().any(|a| a == "--self-test") {
         if let Some(existing_port) = check_existing_studio_port() {
             if open_studio_on_launch || args.iter().any(|a| a == "--open-studio") {
@@ -447,6 +459,11 @@ fn main() {
 
         // Show initial floating badge ("বাং · একুশে বাংলা সক্রিয়") and optionally open Studio
         show_mode_badge("বাং · বাংলায় লিখছেন — দুবার Shift চাপলে English");
+        // The experimental input method (Developer Tools) converts keys too, in Word and the
+        // browsers: with both running every word is typed twice and garbled
+        if experimental_ime_registered() {
+            show_mode_badge("বাং · পরীক্ষামূলক একুশে কিবোর্ডটিও চালু — Windows-এর কিবোর্ড তালিকা থেকে সরান");
+        }
         if open_studio_on_launch {
             open_studio_window(port);
         }
@@ -2192,6 +2209,33 @@ unsafe extern "system" fn overlay_wnd_proc(
 }
 
 /// Check if an existing Ekushe Studio HTTP server is already listening on localhost.
+/// The experimental text service (ekushe_tsf.dll) is registered with Windows' text services
+unsafe fn experimental_ime_registered() -> bool {
+    use windows_sys::Win32::System::Registry::{
+        RegCloseKey, RegOpenKeyExW, HKEY, HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE, KEY_READ,
+    };
+    let path = wide_null("SOFTWARE\\Microsoft\\CTF\\TIP\\{E21B0945-2102-1952-B09C-0AD55559B326}");
+    [HKEY_LOCAL_MACHINE, HKEY_CURRENT_USER].iter().any(|&root| {
+        let mut key: HKEY = ptr::null_mut();
+        let ok = RegOpenKeyExW(root, path.as_ptr(), 0, KEY_READ, &mut key) == 0;
+        if ok {
+            RegCloseKey(key);
+        }
+        ok
+    })
+}
+
+/// Hold the per-user "Ekushe is running" mutex for the life of the process. False when another copy
+/// already holds it.
+unsafe fn claim_single_instance() -> bool {
+    use windows_sys::Win32::Foundation::{GetLastError, ERROR_ALREADY_EXISTS};
+    use windows_sys::Win32::System::Threading::CreateMutexW;
+    let name = wide_null("Local\\EkusheNextTray");
+    let h = CreateMutexW(ptr::null(), 0, name.as_ptr());
+    // never closed: the mutex goes when the process does
+    !(h.is_null() || GetLastError() == ERROR_ALREADY_EXISTS)
+}
+
 fn check_existing_studio_port() -> Option<u16> {
     let port_file = setup_wizard::install_root_dir().join("studio_port.txt");
     let text = std::fs::read_to_string(port_file).ok()?;
