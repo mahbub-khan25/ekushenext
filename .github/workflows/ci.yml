@@ -114,6 +114,15 @@ jobs:
         run: cargo test -p ekushe-core -p ekushe-ffi --features "ekushe-ffi/studio ekushe-ffi/embedded-dict"
       - name: Build Ekushe.app, .pkg and .zip
         run: platform/macos/build.sh
+      - name: Suggestion bar pictures (PNG)
+        run: |
+          build/macos/Ekushe.app/Contents/MacOS/Ekushe --render-bar bar-previews
+          ls bar-previews/*.png
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: macos-bar-previews
+          path: bar-previews/*.png
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ekushe-macos
