@@ -662,6 +662,26 @@ impl Fonts {
     }
 }
 
+thread_local! {
+    /// The last fonts made, for the face and scale they were made at: the popup redraws on every key,
+    /// and making ten fonts each time also threw away GDI's cache of drawn letters
+    static FONTS: std::cell::RefCell<Option<(String, u32, std::rc::Rc<Fonts>)>> = const { std::cell::RefCell::new(None) };
+}
+
+unsafe fn cached_fonts(bangla: &str, s: f32) -> std::rc::Rc<Fonts> {
+    FONTS.with(|c| {
+        let mut c = c.borrow_mut();
+        if let Some((face, scale, f)) = c.as_ref() {
+            if face == bangla && *scale == s.to_bits() {
+                return f.clone();
+            }
+        }
+        let f = std::rc::Rc::new(Fonts::new(bangla, s));
+        *c = Some((bangla.to_string(), s.to_bits(), f.clone()));
+        f
+    })
+}
+
 impl Drop for Fonts {
     fn drop(&mut self) {
         unsafe {
@@ -696,7 +716,7 @@ pub unsafe fn render(
     glass_alpha: f32,
 ) -> Option<(Canvas, HitMap)> {
     let pal = Palette::new(dark, glass_alpha);
-    let fonts = Fonts::new(
+    let fonts = cached_fonts(
         if bangla_font.is_empty() {
             "Kalpurush"
         } else {
@@ -1088,11 +1108,16 @@ pub fn render_previews(dir: &std::path::Path) -> std::io::Result<Vec<std::path::
     for (name, content) in &samples {
         for (dark, theme) in [(false, "light"), (true, "dark")] {
             for (scale, tag) in [(1.0f32, "100"), (1.5, "150")] {
+                let t0 = std::time::Instant::now();
                 let Some((mut canvas, _)) =
                     (unsafe { render(content, "Kalpurush", scale, dark, glass_alpha(85, true)) })
                 else {
                     continue;
                 };
+                println!(
+                    "popup {name} {theme} {tag}%: drawn in {:.1} ms",
+                    t0.elapsed().as_secs_f64() * 1000.0
+                );
                 // Margin around the card so the backdrop shows
                 let (w, h) = (canvas.w, canvas.h);
                 let png = canvas.to_png_over(|x, y| {
