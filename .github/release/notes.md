@@ -83,4 +83,4 @@ Licence: code MPL-2.0, dictionary data CC BY-SA 4.0. See `THIRD_PARTY_NOTICES.md
 2. Open the **Ekushe Next** app and finish its two steps: turn the keyboard on, then choose it.
 3. Type in any app. Tap **বাং/EN** to switch between Bangla and English.
 
-Already using an earlier beta? This version installs straight over it on every system; your settings, snippets and learned words stay.
+Already using an earlier beta? This version installs straight over it on every system; your settings, snippets and learned words stay. **On a Mac, restart (or log out and back in) after installing an update:** macOS keeps the old version running until then, and while it does, keys don't reach apps with Ekushe selected.
