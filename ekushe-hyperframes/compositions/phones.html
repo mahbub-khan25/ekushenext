@@ -25,10 +25,15 @@
     .ph-send { width: 70px; height: 70px; border-radius: 99px; display: grid; place-items: center; color: #fff; font-size: 34px; }
     .ph-kb { display: block; width: 564px; }
     .ph-ribbon { position: absolute; top: 70px; right: -36px; padding: 12px 30px; border-radius: 20px; background: #E9B949; color: #2A1C00; font-family: 'Hind Siliguri', sans-serif; font-weight: 700; font-size: 44px; box-shadow: 0 14px 40px rgba(0,0,0,0.5), 0 0 40px rgba(233,185,73,0.5); }
-    /* Android: dark chat; iPhone: light */
-    #ph-a .ph-screen { background: #101614; } #ph-a .ph-status, #ph-a .ph-chat-name { color: #eee; }
-    #ph-a .ph-chat { border-bottom: 1.5px solid rgba(255,255,255,0.08); } #ph-a .ph-in { background: #25302c; color: #eee; }
-    #ph-a .ph-outmsg { background: #0B6B4A; } #ph-a .ph-field { background: #1d2724; border: 1.5px solid rgba(255,255,255,0.12); } #ph-a .ph-send { background: #2FD18E; }
+    /* Android and iPhone: light chats over the Ekushe Default keyboard (the apps' own pictures) */
+    .ph-today { background: #2FD18E; color: #03170F; box-shadow: 0 14px 40px rgba(0,0,0,0.5), 0 0 40px rgba(47,209,142,0.55); }
+    .ph-strip { height: 58px; flex: none; display: flex; align-items: center; gap: 7px; padding: 0 8px; background: #E8EAEF; overflow: hidden; }
+    .ph-chip { height: 42px; padding: 0 14px; border-radius: 10px; display: flex; align-items: center; gap: 6px; background: #F4F5F8; color: #1F1F1F; font-family: 'Hind Siliguri', sans-serif; font-weight: 500; font-size: 25px; white-space: nowrap; }
+    .ph-chip.sel { background: #3C7BF0; color: #fff; }
+    .ph-chip .en { font-family: 'Inter Tight', sans-serif; font-weight: 700; font-size: 13px; opacity: 0.7; }
+    #ph-a .ph-screen { background: #F7F8FA; } #ph-a .ph-status, #ph-a .ph-chat-name { color: #111; }
+    #ph-a .ph-chat { border-bottom: 1.5px solid rgba(0,0,0,0.08); } #ph-a .ph-in { background: #E9ECEF; color: #111; }
+    #ph-a .ph-outmsg { background: #3C7BF0; } #ph-a .ph-field { background: #fff; border: 1.5px solid rgba(0,0,0,0.12); } #ph-a .ph-send { background: #3C7BF0; }
     #ph-i .ph-screen { background: #F2F2F7; } #ph-i .ph-status, #ph-i .ph-chat-name { color: #111; }
     #ph-i .ph-chat { border-bottom: 1.5px solid rgba(0,0,0,0.08); } #ph-i .ph-in { background: #E5E5EA; color: #111; }
     #ph-i .ph-outmsg { background: #0A84FF; } #ph-i .ph-field { background: #fff; border: 1.5px solid rgba(0,0,0,0.12); } #ph-i .ph-send { background: #0A84FF; }
@@ -43,8 +48,8 @@
   <div data-hf-id="hf-buuv" id="root" data-composition-id="phones" data-width="1440" data-height="2560">
     <div data-hf-id="hf-qt85" id="phones-out">
       <div data-hf-id="hf-ysft" id="phones-head">
-        <div data-hf-id="hf-gjwz" id="phones-title"><span data-hf-id="hf-031j" data-os="android" data-size="72"></span><span data-hf-id="hf-xvph" data-os="ios" data-size="72"></span><span data-hf-id="hf-mcf9">ফোনেও আসছে</span></div>
-        <div data-hf-id="hf-fg42" class="ph-sub" style="font-size:36px;margin-top:12px">Android and iPhone are coming soon</div>
+        <div data-hf-id="hf-gjwz" id="phones-title"><span data-hf-id="hf-031j" data-os="android" data-size="72"></span><span data-hf-id="hf-mcf9">ফোনেও, আজ থেকে</span></div>
+        <div data-hf-id="hf-fg42" class="ph-sub" style="font-size:36px;margin-top:12px">Android phones and tablets today · iPhone and iPad soon</div>
       </div>
       <div data-hf-id="hf-ag4p" id="phones-row">
         <div data-hf-id="hf-pibt" id="phones-a-wrap">
@@ -55,9 +60,9 @@
               <div data-hf-id="hf-ud3v" class="ph-chat"><div data-hf-id="hf-kqle" class="ph-avatar">ব</div><div data-hf-id="hf-rvk0" class="ph-chat-name">বন্ধু</div></div>
               <div data-hf-id="hf-crj7" class="ph-msgs"><div data-hf-id="hf-2o7w" class="ph-in">ফোনে কবে আসছে?</div><div data-hf-id="hf-cp3p" class="ph-outmsg" id="ph-a-sent"></div></div>
               <div data-hf-id="hf-8tgv" class="ph-input"><div data-hf-id="hf-apej" class="ph-field"><div data-hf-id="hf-qtnw" id="ph-a-field"></div></div><div data-hf-id="hf-9i0q" class="ph-send" id="ph-a-send">➤</div></div>
-              <img data-hf-id="hf-kgus" class="ph-kb" style="height:370px" src="assets/img/android-kb.jpg" alt="" />
+              <div data-hf-id="hf-phas" class="ph-strip" id="ph-a-strip"></div><img data-hf-id="hf-kgus" class="ph-kb" style="height:313px" src="assets/img/android-keys.png" alt="" />
             </div>
-            <div data-hf-id="hf-19ea" class="ph-ribbon" id="ph-a-ribbon">শীঘ্রই</div>
+            <div data-hf-id="hf-19ea" class="ph-ribbon ph-today" id="ph-a-ribbon">আজ থেকে</div>
           </div>
         </div>
         <div data-hf-id="hf-npgh" id="phones-i-wrap">
@@ -68,14 +73,14 @@
               <div data-hf-id="hf-vhuj" class="ph-chat"><div data-hf-id="hf-heh2" class="ph-avatar">ব</div><div data-hf-id="hf-3xbs" class="ph-chat-name">বন্ধু</div></div>
               <div data-hf-id="hf-aoo3" class="ph-msgs"><div data-hf-id="hf-o00k" class="ph-in">ফোনে কবে আসছে?</div><div data-hf-id="hf-brbh" class="ph-outmsg" id="ph-i-sent"></div></div>
               <div data-hf-id="hf-xbgv" class="ph-input"><div data-hf-id="hf-cqjf" class="ph-field"><div data-hf-id="hf-p8f8" id="ph-i-field"></div></div><div data-hf-id="hf-eysy" class="ph-send" id="ph-i-send">➤</div></div>
-              <img data-hf-id="hf-ke2a" class="ph-kb" style="height:385px" src="assets/img/ios-kb.jpg" alt="" />
+              <div data-hf-id="hf-phis" class="ph-strip" id="ph-i-strip"></div><img data-hf-id="hf-ke2a" class="ph-kb" style="height:317px" src="assets/img/ios-keys.png" alt="" />
             </div>
             <div data-hf-id="hf-tyd6" class="ph-ribbon" id="ph-i-ribbon">শীঘ্রই</div>
           </div>
         </div>
       </div>
       <div data-hf-id="hf-qwaj" id="phones-foot">
-        <div data-hf-id="hf-mae4" id="phones-building">তৈরি হচ্ছে…</div>
+        <div data-hf-id="hf-mae4" id="phones-building">iPhone আর iPad তৈরি হচ্ছে…</div>
         <div data-hf-id="hf-c5rw" id="phones-track"><div data-hf-id="hf-97dy" id="phones-bar"></div></div>
         <div data-hf-id="hf-ty0y" class="ph-sub" id="phones-quote" style="font-size:34px;margin-top:20px">“Coming to your phone too, wait a little.”</div>
       </div>
@@ -93,7 +98,7 @@
       const rise = { damping: 15, stiffness: 80 };
       tl.fromTo('#phones-a-wrap', { opacity: 0, y: 120, rotation: -10 }, { opacity: 1, y: 0, rotation: -4, duration: 2, ease: EK.sp(rise) }, s(24));
       tl.fromTo('#phones-i-wrap', { opacity: 0, y: 160, rotation: 10 }, { opacity: 1, y: 40, rotation: 4, duration: 2, ease: EK.sp(rise) }, s(44));
-      // the "coming soon" ribbons spring on (frame 60 of each phone's own clock in the original)
+      // the ribbons spring on ("today" on Android, "soon" on iPhone) (frame 60 of each phone's own clock in the original)
       ['a', 'i'].forEach((k) => tl.fromTo(`#ph-${k}-ribbon`, { scale: 0, rotation: -8 }, { scale: 1, rotation: 12, duration: 2, ease: EK.sp({ damping: 12 }) }, s(60)));
       tl.fromTo('#phones-bar', { scaleX: 0 }, { scaleX: 0.82, duration: s(440), ease: 'power2.out' }, s(80));
       const finI = EK.endOf(EK.plan(L.phone.tokens, L.phone.ios));
@@ -101,8 +106,11 @@
       tl.to('#phones-out', { opacity: 0, filter: 'blur(10px)', duration: s(24), ease: 'power2.out' }, s(len - 24));
 
       // typing and sending on each phone
-      const phones = [['a', L.phone.android, { ink: '#eee', accent: C.greenBright }], ['i', L.phone.ios, { ink: '#111', accent: '#0B8A5C' }]].map(([k, start, col]) => {
-        const P = EK.plan(L.phone.tokens, start);
+      const TR = window.EK_TRACE || {};
+      const phones = [['a', L.phone.android, { ink: '#111', accent: '#3C7BF0' }, L.phone.android_tokens, TR.android], ['i', L.phone.ios, { ink: '#111', accent: '#0A84FF' }, L.phone.tokens, TR.phone]].map(([k, start, col, tokens, trace]) => {
+        const P = EK.plan(tokens, start);
+        const strip = $(`ph-${k}-strip`);
+        let stripKey = '';
         const fin = EK.endOf(P);
         const sent = $(`ph-${k}-sent`);
         sent.textContent = P.map((w) => w.b).join(' ');
@@ -110,7 +118,12 @@
         const write = EK.Written(field, { ink: col.ink, accent: col.accent, size: 34 });
         const send = $(`ph-${k}-send`);
         return (f) => {
-          const t = EK.typing(f, P);
+          const t = EK.typing(f, P, trace);
+          const sk = (t.cands || []).join('|');
+          if (sk !== stripKey) {
+            stripKey = sk;
+            strip.innerHTML = (t.cands || []).map((w, i) => `<div class="ph-chip${i === 0 ? ' sel' : ''}">${w}${/^[\x00-\x7F]+$/.test(w) ? '<span class="en">EN</span>' : ''}</div>`).join('');
+          }
           const isSent = f >= fin + 16;
           field.style.display = isSent ? 'none' : 'block';
           write(t.done, t.live, f);

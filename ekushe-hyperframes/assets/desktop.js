@@ -59,7 +59,7 @@
     if (os === 'win') el('div', `display:flex;gap:36px;padding:10px 30px;font-family:${FONT_LATIN};font-size:26px;color:#bbb;background:#202020;border-bottom:1.5px solid rgba(255,255,255,0.06)`, w, '<span>File</span><span>Edit</span><span>View</span>');
     const body = el('div', 'padding:50px 56px', w);
     const written = EK.Written(el('div', '', body), { ink, accent, size: 74 });
-    const cands = EK.Cands(el('div', 'margin-top:24px', body), { dark, logo: 'assets/img/logo_64.png' });
+    const cands = EK.Cands(el('div', 'margin-top:24px', body), { style: os === 'win' ? 'win' : os === 'mac' ? 'mac' : 'ibus' });
     let note = null;
     if (os === 'linux') note = el('div', `position:absolute;left:60px;top:150px;padding:10px 22px;border-radius:14px;background:rgba(20,20,22,0.96);border:1.5px solid rgba(255,255,255,0.15);font-family:${FONT_BN};font-weight:600;font-size:34px;color:#fff`, w, 'এ · বাংলা');
 
@@ -82,7 +82,7 @@
       scr.style.border = `3px solid rgba(255,255,255,${0.12 + glow * 0.3})`;
       badges.forEach((b) => b(on));
       written(t.done, t.live, f);
-      cands(t.live, t.picked);
+      cands(t.cands, t.picked, t.roman.slice(0, t.n));
       if (note) {
         note.style.display = noteV > 0 ? 'block' : 'none';
         note.style.opacity = noteV;
@@ -114,7 +114,7 @@
     const sweep = EK.Sweep(fx, { at: fin + 4, dur: 46, strength: 0.12 });
     const hint = $('hint');
     EK.tick(tl, len, (f) => {
-      const t = EK.typing(f, P);
+      const t = EK.typing(f, P, (window.EK_TRACE || {})[os]);
       const glow = EK.interp(f, [fin, fin + 10, fin + 60], [0, 1, 0.45]);
       const on = f >= cfg.start - 40;
       const note = Math.min(EK.ease(f, cfg.start - 40, cfg.start - 28), 1 - EK.ease(f, cfg.start + 4, cfg.start + 16));

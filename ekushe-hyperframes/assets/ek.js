@@ -23,7 +23,9 @@
     win: { start: 110, tokens: [['shobaike', 'সবাইকে'], ['shagotom!', 'স্বাগতম!'], ['aj', 'আজ'], ['theke', 'থেকে'], ['bangla', 'বাংলা'], ['lekha', 'লেখা'], ['hok', 'হোক'], ['aro', 'আরও'], ['shohoj,', 'সহজ,'], ['aro', 'আরও'], ['shundor.', 'সুন্দর।']] },
     mac: { start: 130, tokens: [['priyo', 'প্রিয়'], ['bangla', 'বাংলা'], ['bhashi', 'ভাষী'], ['bondhura,', 'বন্ধুরা,'], ['shubhechha', 'শুভেচ্ছা'], ['roilo.', 'রইল।']] },
     linux: { start: 130, tokens: [['computer', 'কম্পিউটার'], ['jetai', 'যেটাই'], ['hok,', 'হোক,'], ['bangla', 'বাংলা'], ['likhun', 'লিখুন'], ['moner', 'মনের'], ['moto.', 'মতো।']] },
-    phone: { android: 110, ios: 190, tokens: [['ashchi', 'আসছি'], ['tomar', 'তোমার'], ['phoneo,', 'ফোনেও,'], ['ektu', 'একটু'], ['opekkha', 'অপেক্ষা'], ['koro', 'করো']] },
+    phone: { android: 110, ios: 190, tokens: [['ashchi', 'আসছি'], ['tomar', 'তোমার'], ['phoneo,', 'ফোনেও,'], ['ektu', 'একটু'], ['opekkha', 'অপেক্ষা'], ['koro', 'করো']],
+      // Android is out: its reply says so
+      android_tokens: [['eshe', 'এসে'], ['geche,', 'গেছে,'], ['ekhoni', 'এখনই'], ['namiye', 'নামিয়ে'], ['nao!', 'নাও!']] },
   };
 
   /* ── Remotion's random() ── */
@@ -225,17 +227,23 @@
       return { r, b, s, e, c: e + L.gap - 4 };
     });
   }
-  function typing(f, P) {
+  /* `trace` (optional): the real engine's [word being typed, suggestions] for each letter of each
+   * word (assets/trace.js), so the bar shows what Ekushe really offers at that letter */
+  function typing(f, P, trace) {
     let done = '';
-    for (const w of P) {
+    for (let i = 0; i < P.length; i++) {
+      const w = P[i];
       if (f >= w.c) { done += (done ? ' ' : '') + w.b; continue; }
       if (f < w.s) break;
       const n = Math.min(w.r.length, Math.floor((f - w.s) / L.every) + 1);
+      const step = trace && trace[i] && trace[i][n - 1];
+      if (step) return { done, live: step[0], cands: step[1], roman: w.r, n, picked: f >= w.e };
       const g = graphemes(w.b);
       const k = f >= w.e ? g.length : Math.max(1, Math.round((n / w.r.length) * g.length));
-      return { done, live: g.slice(0, k).join(''), roman: w.r, n, picked: f >= w.e };
+      const live = g.slice(0, k).join('');
+      return { done, live, cands: [live], roman: w.r, n, picked: f >= w.e };
     }
-    return { done, live: '', roman: '', n: 0, picked: false };
+    return { done, live: '', cands: [], roman: '', n: 0, picked: false };
   }
   const endOf = (P) => P[P.length - 1].c;
 
@@ -269,20 +277,49 @@
     };
   }
 
-  /** Ekushe's suggestion bar under the text */
-  function Cands(box, { dark, logo }) {
-    const bar = el('div', `display:inline-flex;align-items:center;gap:14px;padding:10px 12px;border-radius:24px;background:${dark ? 'rgba(30,36,34,0.96)' : 'rgba(255,255,255,0.98)'};border:2px solid ${dark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)'};box-shadow:0 18px 50px rgba(0,0,0,0.35)`, box);
-    el('img', 'width:44px;height:44px;border-radius:10px;margin-left:6px', bar).src = logo;
-    const pick = el('div', `display:flex;align-items:baseline;gap:10px;padding:8px 24px;border-radius:16px;background:${C.greenBright};color:#03170F`, bar);
-    el('span', `font-family:${MONO};font-size:24px;opacity:0.6`, pick, '1');
-    const word = el('span', `font-family:${FONT_BN};font-weight:600;font-size:50px`, pick);
-    const spacer = el('div', 'height:96px;display:none', box);
-    return (w, picked) => {
-      bar.style.display = w ? 'inline-flex' : 'none';
-      spacer.style.display = w ? 'none' : 'block';
-      if (word.textContent !== w) word.textContent = w;
-      pick.style.transform = `scale(${picked ? 1.06 : 1})`;
-      pick.style.boxShadow = picked ? '0 0 36px rgba(47,209,142,0.6)' : 'none';
+  /** Ekushe's suggestion bar under the text, as the beta.5 apps draw it.
+   * style 'win': Windows' frosted bar (dark mode): the typed letters and two small buttons on top,
+   *   numbered chips, the chosen word in blue, EN on an English word.
+   * style 'mac': the Mac's frosted bar (light mode): chips only.
+   * style 'ibus': Linux, where the desktop (GNOME) draws IBus's own numbered list. */
+  function Cands(box, { style = 'win' }) {
+    const isEn = (w) => /^[\x00-\x7F]+$/.test(w);
+    const P = {
+      win: { card: 'rgba(32,33,36,0.80)', rim: 'rgba(255,255,255,0.10)', chip: 'rgba(255,255,255,0.09)', sel: '#8AB4F8', onSel: '#202124', ink: '#E8EAED', muted: '#9AA0A6' },
+      mac: { card: 'rgba(238,240,244,0.82)', rim: 'rgba(255,255,255,0.85)', chip: 'rgba(255,255,255,0.80)', sel: '#3C7BF0', onSel: '#FFFFFF', ink: '#1F1F1F', muted: '#5F6368' },
+      ibus: { card: '#2E2E32', rim: 'rgba(255,255,255,0.08)', chip: 'transparent', sel: '#3584E4', onSel: '#FFFFFF', ink: '#F2F2F2', muted: '#A8A8AD' },
+    }[style];
+    const bar = el('div', `display:inline-flex;flex-direction:column;gap:12px;padding:${style === 'ibus' ? '10px 12px' : '14px'};border-radius:${style === 'ibus' ? 16 : 24}px;background:${P.card};backdrop-filter:blur(28px) saturate(1.4);border:1.5px solid ${P.rim};box-shadow:0 24px 60px rgba(0,0,0,0.38)`, box);
+    let head = null, roman = null;
+    if (style === 'win') {
+      head = el('div', 'display:flex;align-items:center;gap:12px;padding:0 6px', bar);
+      roman = el('div', `flex:1;font-family:${FONT_LATIN};font-size:24px;color:${P.muted}`, head);
+      el('div', `padding:4px 14px;border-radius:12px;background:${P.chip};font-family:${FONT_BN};font-weight:600;font-size:20px;color:${P.muted}`, head, 'যুক্তবর্ণ লুকান');
+      el('div', `padding:4px 14px;border-radius:12px;background:${P.chip};font-family:${FONT_BN};font-weight:600;font-size:20px;color:${P.muted}`, head, 'সহায়িকা');
+    }
+    const row = el('div', `display:flex;gap:${style === 'ibus' ? 4 : 10}px`, bar);
+    const spacer = el('div', 'height:120px;display:none', box);
+    let key = '';
+    return (cands, picked, typed) => {
+      const show = cands && cands.length > 0;
+      bar.style.display = show ? 'inline-flex' : 'none';
+      spacer.style.display = show ? 'none' : 'block';
+      if (!show) return;
+      if (roman && roman.textContent !== typed) roman.textContent = typed;
+      const k = cands.join('|') + picked;
+      if (k === key) return;
+      key = k;
+      row.innerHTML = cands.map((w, i) => {
+        const sel = i === 0;
+        const en = isEn(w);
+        const font = en ? FONT_LATIN : FONT_BN;
+        const ink = sel ? P.onSel : P.ink;
+        const soft = sel ? (style === 'mac' ? 'rgba(255,255,255,0.78)' : style === 'win' ? 'rgba(32,33,36,0.7)' : 'rgba(255,255,255,0.8)') : P.muted;
+        const num = style === 'mac' ? '' : `<span style="font-family:${FONT_LATIN};font-size:22px;color:${soft}">${i + 1}${style === 'ibus' ? '.' : ''}</span>`;
+        const tag = en && style !== 'ibus' ? `<span style="font-family:${FONT_LATIN};font-weight:700;font-size:16px;color:${soft}">EN</span>` : '';
+        const glow = sel && picked ? `;box-shadow:0 0 0 4px ${P.sel}55` : '';
+        return `<div style="display:flex;align-items:center;gap:10px;height:${style === 'ibus' ? 60 : 68}px;padding:0 ${style === 'ibus' ? 16 : 22}px;border-radius:${style === 'ibus' ? 10 : 16}px;background:${sel ? P.sel : P.chip}${glow}">${num}<span style="font-family:${font};font-weight:${en ? 500 : 600};font-size:${en ? 30 : 36}px;color:${ink};white-space:nowrap">${w}</span>${tag}</div>`;
+      }).join('');
     };
   }
 

@@ -11,8 +11,8 @@
     #ending-title { display: flex; margin-top: 34px; font-family: 'Hind Siliguri', sans-serif; font-weight: 700; font-size: 150px; color: #fff; }
     #ending-title span { white-space: pre; display: inline-block; text-shadow: 0 0 60px rgba(224,48,63,0.5); }
     #ending-cta { margin-top: 40px; padding: 22px 60px; border-radius: 99px; background: #2FD18E; color: #03170F; font-family: 'Hind Siliguri', sans-serif; font-weight: 700; font-size: 84px; box-shadow: 0 0 90px rgba(47,209,142,0.6); }
-    #ending-pills { display: flex; gap: 22px; margin-top: 34px; }
-    .ending-pill { display: flex; align-items: center; gap: 14px; padding: 12px 28px; border-radius: 99px; background: #2FD18E; color: #03170F; font-family: 'Inter Tight', sans-serif; font-weight: 700; font-size: 38px; }
+    #ending-pills { display: flex; flex-wrap: wrap; justify-content: center; gap: 18px; margin-top: 34px; }
+    .ending-pill { display: flex; align-items: center; gap: 14px; padding: 12px 28px; border-radius: 99px; background: #2FD18E; color: #03170F; font-family: 'Inter Tight', sans-serif; font-weight: 700; font-size: 34px; }
     .ending-sub { font-family: 'Inter Tight', sans-serif; font-weight: 500; color: rgba(234,243,238,0.72); text-align: center; }
     #ending-later { margin-top: 34px; text-align: center; }
     #ending-later-bn { font-family: 'Hind Siliguri', sans-serif; font-weight: 600; font-size: 52px; color: #E9B949; }
@@ -29,11 +29,12 @@
         <div data-hf-id="hf-jsu6" class="ending-pill" id="ending-pill-win"><span data-hf-id="hf-g975" data-os="win" data-size="40"></span>Windows</div>
         <div data-hf-id="hf-tinb" class="ending-pill" id="ending-pill-mac"><span data-hf-id="hf-uhyo" data-os="mac" data-size="40"></span>macOS</div>
         <div data-hf-id="hf-gzux" class="ending-pill" id="ending-pill-linux"><span data-hf-id="hf-qcft" data-os="linux" data-size="40"></span>Linux</div>
+        <div data-hf-id="hf-enan" class="ending-pill" id="ending-pill-android"><span data-hf-id="hf-enai" data-os="android" data-size="40"></span>Android</div>
       </div>
-      <div data-hf-id="hf-pqrm" class="ending-sub" id="ending-dl-sub" style="font-size:34px;margin-top:16px">Download today for Windows, macOS and Linux</div>
+      <div data-hf-id="hf-pqrm" class="ending-sub" id="ending-dl-sub" style="font-size:34px;margin-top:16px">Download today for Windows, macOS, Linux and Android</div>
       <div data-hf-id="hf-w7rh" id="ending-later">
-        <div data-hf-id="hf-r83q" id="ending-later-bn">Android আর iPhone শীঘ্রই</div>
-        <div data-hf-id="hf-jv3e" class="ending-sub" style="font-size:30px;margin-top:8px">Android and iPhone coming soon</div>
+        <div data-hf-id="hf-r83q" id="ending-later-bn">iPhone আর iPad শীঘ্রই</div>
+        <div data-hf-id="hf-jv3e" class="ending-sub" style="font-size:30px;margin-top:8px">iPhone and iPad coming soon</div>
       </div>
       <div data-hf-id="hf-px0p" id="ending-web"></div>
     </div>
@@ -57,7 +58,7 @@
         tl.fromTo(sp, { opacity: 0, y: 60 }, { opacity: 1, y: 0, duration: 2, ease: EK.sp({ damping: 14 }) }, s(END.name + i * 3));
       });
       tl.fromTo('#ending-cta', { opacity: 0, scale: 0.7 }, { opacity: 1, scale: 1, duration: 2, ease: EK.sp({ damping: 12 }) }, s(END.cta));
-      ['win', 'mac', 'linux'].forEach((k, i) => {
+      ['win', 'mac', 'linux', 'android'].forEach((k, i) => {
         const at = s(END.pills + i * 10), cfg = { damping: 12, stiffness: 160 };
         tl.fromTo(`#ending-pill-${k}`, { scale: 0.6, y: 30 }, { scale: 1, y: 0, duration: 2, ease: EK.sp(cfg) }, at);
         tl.fromTo(`#ending-pill-${k}`, { opacity: 0 }, { opacity: 1, duration: 2, ease: EK.sp(cfg, 120, 1.4) }, at);

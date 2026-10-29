@@ -125,10 +125,10 @@ melody(s(RR['linux']) + 0.4, gain=0.05, up=2)
 P = RR['phones']
 place(whoosh(0.32, 0.12), s(P) - 0.1)
 for k, key in enumerate(('android', 'ios')):
-    done = typed(P + CFG['phone'][key], CFG['phone']['tokens'], gain=0.045, pan=-0.3 if k == 0 else 0.3)
+    done = typed(P + CFG['phone'][key], CFG['phone'].get(key + '_tokens', CFG['phone']['tokens']), gain=0.045, pan=-0.3 if k == 0 else 0.3)
     place(whoosh(0.2, 0.07), s(done + 16))
     place(bell(79 + k * 5, 1.0, 0.06), s(done + 20))
-place(bell(88, 1.0, 0.07), s(P + 60)); place(bell(91, 1.0, 0.05), s(P + 140))  # "coming soon"
+place(bell(88, 1.0, 0.07), s(P + 60)); place(bell(91, 1.0, 0.05), s(P + 140))  # the ribbons: "today" on Android, "soon" on iPhone
 
 # ── 66–76 s: countdown, boom, fireworks
 Q = RR['party']

@@ -6,5 +6,5 @@
   "win": { "start": 110, "tokens": [["shobaike", "সবাইকে"], ["shagotom!", "স্বাগতম!"], ["aj", "আজ"], ["theke", "থেকে"], ["bangla", "বাংলা"], ["lekha", "লেখা"], ["hok", "হোক"], ["aro", "আরও"], ["shohoj,", "সহজ,"], ["aro", "আরও"], ["shundor.", "সুন্দর।"]] },
   "mac": { "start": 130, "tokens": [["priyo", "প্রিয়"], ["bangla", "বাংলা"], ["bhashi", "ভাষী"], ["bondhura,", "বন্ধুরা,"], ["shubhechha", "শুভেচ্ছা"], ["roilo.", "রইল।"]] },
   "linux": { "start": 130, "tokens": [["computer", "কম্পিউটার"], ["jetai", "যেটাই"], ["hok,", "হোক,"], ["bangla", "বাংলা"], ["likhun", "লিখুন"], ["moner", "মনের"], ["moto.", "মতো।"]] },
-  "phone": { "android": 110, "ios": 190, "tokens": [["ashchi", "আসছি"], ["tomar", "তোমার"], ["phoneo,", "ফোনেও,"], ["ektu", "একটু"], ["opekkha", "অপেক্ষা"], ["koro", "করো"]] }
+  "phone": { "android": 110, "ios": 190, "android_tokens": [["eshe", "এসে"], ["geche,", "গেছে,"], ["ekhoni", "এখনই"], ["namiye", "নামিয়ে"], ["nao!", "নাও!"]], "tokens": [["ashchi", "আসছি"], ["tomar", "তোমার"], ["phoneo,", "ফোনেও,"], ["ektu", "একটু"], ["opekkha", "অপেক্ষা"], ["koro", "করো"]] }
 }
