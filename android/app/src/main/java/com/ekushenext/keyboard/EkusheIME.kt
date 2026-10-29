@@ -11,6 +11,8 @@ import android.view.HapticFeedbackConstants
 import android.view.KeyCharacterMap
 import android.view.KeyEvent
 import android.view.View
+import android.view.WindowInsets
+import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 
@@ -98,6 +100,7 @@ class EkusheIME : InputMethodService(), KeyboardListener {
         }
         super.onConfigurationChanged(newConfig)
         updateStripOnly()
+        view?.let { v -> v.post { v.under = if (hardKeyboard()) taskbarCover().toFloat() else 0f } }
     }
 
     /** A physical keyboard is attached and open (not folded away) */
@@ -112,6 +115,27 @@ class EkusheIME : InputMethodService(), KeyboardListener {
 
     private fun updateStripOnly() {
         view?.stripOnly = !keysWanted && (hardTyping || (hardKeyboard() && !systemShowsKeys()))
+    }
+
+    /**
+     * How much of the strip a taskbar covers. With a physical keyboard a desktop-mode taskbar stays
+     * on screen, but Android tells the keyboard it's only as tall as the slim bar it shrinks to when
+     * a keyboard opens, so the short strip ends up behind it. Apps are told its real height: the
+     * difference is the part that hides the strip. (Measured as a field opens, not on every insets
+     * change, so the strip and a taskbar that moves aside can't push each other back and forth.)
+     */
+    private fun taskbarCover(): Int {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return 0
+        return runCatching {
+            val decor = window?.window?.decorView ?: return 0
+            val display = decor.display ?: return 0
+            val types = WindowInsets.Type.navigationBars() or WindowInsets.Type.tappableElement()
+            val wm = createDisplayContext(display).getSystemService(WindowManager::class.java)
+            val forApps = wm.currentWindowMetrics.windowInsets.getInsetsIgnoringVisibility(types).bottom
+            val forKeyboard = decor.rootWindowInsets?.getInsetsIgnoringVisibility(types)?.bottom ?: 0
+            if (debuggable) android.util.Log.i("EkusheTaskbar", "apps=$forApps keyboard=$forKeyboard")
+            (forApps - forKeyboard).coerceIn(0, (120 * resources.displayMetrics.density).toInt())
+        }.getOrDefault(0)
     }
 
     // With a physical keyboard Android would hide the keyboard altogether; Ekushe shows its
@@ -186,6 +210,8 @@ class EkusheIME : InputMethodService(), KeyboardListener {
         else v.showSuggestions(emptyList(), emptyList(), emptyList())
         v.stripMessage = if (password) "পাসওয়ার্ড: সাধারণ অক্ষর · plain text" else null
         updateStripOnly()
+        // the window's insets are ready once it is laid out
+        v.post { view?.under = if (hardKeyboard()) taskbarCover().toFloat() else 0f }
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
