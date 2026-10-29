@@ -95,7 +95,7 @@ jobs:
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "system-images;android-35;google_apis;x86_64" emulator >/dev/null
           mkdir -p "$ANDROID_AVD_HOME"
           echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd --force -n test -k "system-images;android-35;google_apis;x86_64" -d pixel_tablet
-          echo "hw.keyboard=yes" >> "$ANDROID_AVD_HOME/test.avd/config.ini"
+          sed -i 's/^hw.keyboard=.*/hw.keyboard=yes/' "$ANDROID_AVD_HOME/test.avd/config.ini"
           grep -E "keyboard|lcd|device" "$ANDROID_AVD_HOME/test.avd/config.ini"
       - uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:

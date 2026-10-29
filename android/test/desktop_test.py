@@ -144,6 +144,8 @@ for nav in ['gestural', 'threebutton']:
         failures.append(f'{nav}: the strip did not show')
     elif bar is not None and not stashed and strip + 23 * dens > bar + 2:
         failures.append(f'{nav}: the strip (middle {strip}, bottom {strip + 23 * dens:.0f}) is behind the taskbar (top {bar})')
+    (OUT / f'logcat-{nav}.txt').write_text(adb('logcat', '-d', check=False))
+    print('keyboard now', sh('settings get secure default_input_method').strip(), '| ime:', ' '.join(re.findall(r'mInputShown=\S+|mCurMethodId=\S+|mCurClient=\S+', sh('dumpsys input_method'))[:3]))
     sh('input keyevent KEYCODE_ESCAPE'); sh('input keyevent KEYCODE_HOME'); time.sleep(1)
 
 crashes = adb('logcat', '-d', '-b', 'crash', check=False)
