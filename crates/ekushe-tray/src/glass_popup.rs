@@ -591,6 +591,8 @@ pub struct Font {
 
 struct Fonts {
     bn: Font,
+    /// English words on offer: Windows' own UI font, not the Bangla font's Latin letters
+    en: Font,
     bn_small: Font,
     ui: Font,
     ui_small: Font,
@@ -651,6 +653,7 @@ impl Fonts {
         };
         Fonts {
             bn: mk(19.0, 400, bangla),
+            en: mk(16.0, 400, "Segoe UI"),
             bn_small: mk(15.0, 400, bangla),
             ui: mk(13.0, 400, "Segoe UI"),
             ui_small: mk(11.0, 600, "Segoe UI"),
@@ -661,7 +664,7 @@ impl Fonts {
 impl Drop for Fonts {
     fn drop(&mut self) {
         unsafe {
-            for f in [&self.bn, &self.bn_small, &self.ui, &self.ui_small] {
+            for f in [&self.bn, &self.en, &self.bn_small, &self.ui, &self.ui_small] {
                 DeleteObject(f.f as HGDIOBJ);
                 DeleteObject(f.big as HGDIOBJ);
             }
@@ -790,7 +793,12 @@ pub unsafe fn render(
             for (i, text) in candidates.iter().take(6).enumerate() {
                 let n = (i + 1).to_string();
                 let nw = probe.measure(&fonts.ui_small, &n).0 as f32;
-                let ww = probe.measure(&fonts.bn, text).0 as f32;
+                let word_font = if is_english(text) {
+                    &fonts.en
+                } else {
+                    &fonts.bn
+                };
+                let ww = probe.measure(word_font, text).0 as f32;
                 // an English word on offer carries a small EN, as on the phone keyboards
                 let en = if is_english(text) {
                     probe.measure(&fonts.ui_small, "EN").0 as f32 + 7.0 * s
@@ -903,7 +911,12 @@ pub unsafe fn render(
                     soft,
                 );
                 let wx = px + 12.0 * s + nw + 7.0 * s;
-                let ww = c.text(&fonts.bn, &text, wx as i32, cy, ink) as f32;
+                let word_font = if is_english(&text) {
+                    &fonts.en
+                } else {
+                    &fonts.bn
+                };
+                let ww = c.text(word_font, &text, wx as i32, cy, ink) as f32;
                 if is_english(&text) {
                     c.text(
                         &fonts.ui_small,
