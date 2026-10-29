@@ -15,6 +15,8 @@ protocol KeyboardListener: AnyObject {
     func onHide()
     func onEmoji(_ e: String)
     func onKeyFeedback()
+    /// The strip's ? button: how to type conjuncts, hasanta and the other marks
+    func onHelp()
 }
 
 enum Mode { case letters, symbols, moreSymbols, numbers, emoji }
@@ -28,9 +30,9 @@ final class KeyboardView: UIView {
     private let prefs = Prefs.shared
     private(set) var palette = Palette.ekushe
 
-    var mode: Mode = .letters { didSet { buildKeys(); setNeedsDisplay() } }
-    var shift: Shift = .off { didSet { setNeedsDisplay() } }
-    var bangla = true { didSet { setNeedsDisplay() } }
+    var mode: Mode = .letters { didSet { buildKeys(); setNeedsDisplay(); if oldValue != mode { UIAccessibility.post(notification: .layoutChanged, argument: nil) } } }
+    var shift: Shift = .off { didSet { setNeedsDisplay(); accessibilityDirty = true } }
+    var bangla = true { didSet { setNeedsDisplay(); accessibilityDirty = true } }
     var enterLabel = "↵" { didSet { setNeedsDisplay() } }
     /// iOS asks for a globe key when the phone has no other way to switch keyboards
     var showsGlobe = false { didSet { if oldValue != showsGlobe { buildKeys(); setNeedsDisplay() } } }
@@ -38,18 +40,43 @@ final class KeyboardView: UIView {
     var tips: [Hint] = []
     var predictions: [String] = []
     var stripMessage: String?
+    /// The highlighted suggestion, what Space places (a physical keyboard's Tab moves it)
+    var selected = 0 { didSet { setNeedsDisplay() } }
 
     func showSuggestions(_ c: [Candidate], _ t: [Hint], _ p: [String]) {
-        candidates = c; tips = t; predictions = p; stripScroll = 0; stripMessage = nil
+        candidates = c; tips = t; predictions = p; stripScroll = 0; stripMessage = nil; selected = 0
         setNeedsDisplay()
+        accessibilityDirty = true
     }
 
-    // ── geometry
-    let stripH: CGFloat = 46
-    var rowH: CGFloat { [48, 54, 60][max(0, min(2, prefs.height))] }
-    private let gap: CGFloat = 5
-    private let bottomPad: CGFloat = 4
-    var preferredHeight: CGFloat { stripH + CGFloat(prefs.numberRow && mode == .letters ? 5 : 4) * rowH + bottomPad }
+    // ── which keyboard, and how big
+    /// Phone or iPad (the controller sets it from the device); iPad split is a setting, in landscape
+    var pad = false { didSet { if oldValue != pad { buildKeys(); setNeedsDisplay() } } }
+    var landscape = false { didSet { if oldValue != landscape { buildKeys(); setNeedsDisplay() } } }
+    /// Only the suggestion strip (the app's writing pad uses the keyboard's strip as its bar)
+    var stripOnly = false { didSet { setNeedsDisplay() } }
+    /// The buttons at the right of the strip when nothing is being typed
+    var toolIds = ["emoji", "settings", "hide"]
+    var formFactor: FormFactor { !pad ? .phone : (landscape && prefs.splitPad) ? .padSplit : .pad }
+
+    var stripH: CGFloat { pad ? 52 : landscape ? 38 : 46 }
+    var rowH: CGFloat {
+        let h = max(0, min(2, prefs.height))
+        switch (pad, landscape) {
+        case (false, false): return [48, 54, 60][h]
+        case (false, true): return [34, 38, 42][h]
+        case (true, false): return [54, 60, 66][h]
+        case (true, true): return [64, 72, 80][h]
+        }
+    }
+    private var gap: CGFloat { pad ? 7 : 5 }
+    private var bottomPad: CGFloat { pad ? 6 : 4 }
+    var preferredHeight: CGFloat {
+        if stripOnly { return stripH }
+        return stripH + CGFloat(prefs.numberRow && mode == .letters ? 5 : 4) * rowH + bottomPad
+    }
+    /// Letters grow with the keys, so the iPad's big keys don't carry phone-sized letters
+    private var textScale: CGFloat { pad ? (landscape ? 1.28 : 1.15) : landscape ? 0.92 : 1 }
 
     private struct Placed { let key: Key; let rect: CGRect }
     private var placed: [Placed] = []
@@ -61,6 +88,7 @@ final class KeyboardView: UIView {
         super.init(frame: frame)
         isMultipleTouchEnabled = true
         isOpaque = true
+        isAccessibilityElement = false
         contentMode = .redraw
         buildKeys()
     }
@@ -75,12 +103,19 @@ final class KeyboardView: UIView {
     }
 
     private func buildKeys() {
-        switch mode {
-        case .letters: rows = Layouts.letters(numberRow: prefs.numberRow, emojiKey: prefs.emojiKey, globe: showsGlobe)
-        case .symbols: rows = Layouts.symbols(emojiKey: prefs.emojiKey, globe: showsGlobe)
-        case .moreSymbols: rows = Layouts.moreSymbols(emojiKey: prefs.emojiKey, globe: showsGlobe)
-        case .numbers: rows = Layouts.numbers()
-        case .emoji: rows = []
+        let e = prefs.emojiKey, g = showsGlobe
+        switch (mode, formFactor) {
+        case (.letters, .phone): rows = Layouts.letters(numberRow: prefs.numberRow, emojiKey: e, globe: g)
+        case (.symbols, .phone): rows = Layouts.symbols(emojiKey: e, globe: g)
+        case (.moreSymbols, .phone): rows = Layouts.moreSymbols(emojiKey: e, globe: g)
+        case (.letters, .pad): rows = Layouts.padLetters(numberRow: prefs.numberRow, emojiKey: e, globe: g)
+        case (.symbols, .pad): rows = Layouts.padSymbols(emojiKey: e, globe: g)
+        case (.moreSymbols, .pad): rows = Layouts.padMoreSymbols(emojiKey: e, globe: g)
+        case (.letters, .padSplit): rows = Layouts.padSplitLetters(emojiKey: e, globe: g)
+        case (.symbols, .padSplit): rows = Layouts.padSplitSymbols(more: false, emojiKey: e, globe: g)
+        case (.moreSymbols, .padSplit): rows = Layouts.padSplitSymbols(more: true, emojiKey: e, globe: g)
+        case (.numbers, _): rows = Layouts.numbers()
+        case (.emoji, _): rows = []
         }
         layoutKeys()
     }
@@ -96,19 +131,41 @@ final class KeyboardView: UIView {
         let top = stripH
         let areaH = bounds.height - stripH - bottomPad
         let rh = areaH / CGFloat(max(1, rows.count))
-        let unitsMax = rows.map { $0.reduce(0) { $0 + $1.width } }.max() ?? 10
-        let unit = (bounds.width - gap) / (mode == .numbers ? unitsMax : max(10, unitsMax))
-        for (r, row) in rows.enumerated() {
-            let units = row.reduce(0) { $0 + $1.width }
-            var x = (bounds.width - units * unit) / 2
-            let y = top + CGFloat(r) * rh
-            for k in row {
-                let w = k.width * unit
-                out.append(Placed(key: k, rect: CGRect(x: x + gap / 2, y: y + gap / 2, width: w - gap, height: rh - gap)))
-                x += w
+        // the number pad stays a pad on an iPad's wide screen
+        let width = mode == .numbers && pad ? min(bounds.width, 560) : bounds.width
+        let left0 = (bounds.width - width) / 2
+        if rows.contains(where: { $0.contains { $0.type == .splitGap } }) {
+            // split: both halves in the same key size, at the left and right edges
+            let side = rows.map { row -> CGFloat in
+                let i = row.firstIndex { $0.type == .splitGap } ?? row.count
+                return max(row[..<i].reduce(0) { $0 + $1.width }, row[i...].reduce(0) { $0 + $1.width })
+            }.max() ?? 6.5
+            let unit = min((bounds.width * (landscape ? 0.39 : 0.45)) / side, rh * 1.25)
+            for (r, row) in rows.enumerated() {
+                let y = top + CGFloat(r) * rh
+                let i = row.firstIndex { $0.type == .splitGap } ?? row.count
+                var x = gap / 2 + 2
+                for k in row[..<i] { if !k.isGap { out.append(Placed(key: k, rect: CGRect(x: x + gap / 2, y: y + gap / 2, width: k.width * unit - gap, height: rh - gap))) }; x += k.width * unit }
+                let rightUnits = row[i...].reduce(0) { $0 + $1.width }
+                x = bounds.width - gap / 2 - 2 - rightUnits * unit
+                for k in row[i...] { if !k.isGap { out.append(Placed(key: k, rect: CGRect(x: x + gap / 2, y: y + gap / 2, width: k.width * unit - gap, height: rh - gap))) }; x += k.width * unit }
+            }
+        } else {
+            let unitsMax = rows.map { $0.reduce(0) { $0 + $1.width } }.max() ?? 10
+            let unit = (width - gap) / (mode == .numbers ? unitsMax : max(10, unitsMax))
+            for (r, row) in rows.enumerated() {
+                let units = row.reduce(0) { $0 + $1.width }
+                var x = left0 + (width - units * unit) / 2
+                let y = top + CGFloat(r) * rh
+                for k in row {
+                    let w = k.width * unit
+                    if !k.isGap { out.append(Placed(key: k, rect: CGRect(x: x + gap / 2, y: y + gap / 2, width: w - gap, height: rh - gap))) }
+                    x += w
+                }
             }
         }
         placed = out
+        accessibilityDirty = true
     }
 
     /// Where each key is (for tests)
@@ -128,6 +185,36 @@ final class KeyboardView: UIView {
         (s as NSString).draw(at: CGPoint(x: centre.x - size.width / 2, y: centre.y - size.height / 2), withAttributes: a)
     }
 
+    /// An SF Symbol, as Apple's own keyboard draws its function keys; false if it isn't there
+    @discardableResult
+    private func symbol(_ name: String, _ c: CGPoint, _ size: CGFloat, _ color: UIColor, _ weight: UIImage.SymbolWeight = .regular) -> Bool {
+        let cfg = UIImage.SymbolConfiguration(pointSize: size, weight: weight)
+        guard let img = UIImage(systemName: name, withConfiguration: cfg)?.withTintColor(color, renderingMode: .alwaysOriginal) else { return false }
+        img.draw(at: CGPoint(x: c.x - img.size.width / 2, y: c.y - img.size.height / 2))
+        return true
+    }
+
+    private func symbolName(_ k: Key) -> String? {
+        switch k.type {
+        case .delete: return "delete.left"
+        case .shift: return shift == .locked ? "capslock.fill" : shift == .on ? "shift.fill" : "shift"
+        case .globe: return "globe"
+        case .emoji: return "face.smiling"
+        case .hide: return "keyboard.chevron.compact.down"
+        case .enter:
+            switch enterLabel {
+            case "↵": return "return"
+            case "→": return "arrow.right"
+            case "🔍": return "magnifyingglass"
+            case "➤": return "paperplane"
+            case "✓": return "checkmark"
+            case "⇥": return "arrow.right.to.line"
+            default: return nil
+            }
+        default: return nil
+        }
+    }
+
     private func fill(_ r: CGRect, _ radius: CGFloat, _ c: UIColor) {
         c.setFill()
         UIBezierPath(roundedRect: r, cornerRadius: radius).fill()
@@ -138,9 +225,12 @@ final class KeyboardView: UIView {
         p.background.setFill()
         UIRectFill(bounds)
         drawStrip()
+        defer { updateAccessibility() }
+        if stripOnly { return }
         if mode == .emoji { drawEmoji(); return }
         for pl in placed { drawKey(pl.key, pl.rect, pressed: pressedKey == pl.key && pressedRect == pl.rect) }
-        if let k = pressedKey, let r = pressedRect, k.type == .char, alts == nil, mode != .numbers { drawPreview(k, r) }
+        // the iPad's keys are big enough to see under the finger: no balloon, as on Apple's iPad keyboard
+        if let k = pressedKey, let r = pressedRect, k.type == .char, alts == nil, mode != .numbers, !pad { drawPreview(k, r) }
         if let a = alts { drawAlts(a) }
     }
 
@@ -184,29 +274,32 @@ final class KeyboardView: UIView {
         }
         let fg = enter ? (p.onEnter ?? p.onAccent) : (shift == .locked && k.type == .shift) ? p.onAccent : p.text
         let c = CGPoint(x: r.midX, y: r.midY)
+        let ts = textScale
         switch k.type {
         case .space:
             // The language, plus the keyboard's name when the space bar is wide enough for both
             var label = "␣"
             if mode != .numbers {
                 let full = bangla ? "বাং · একুশে নেক্সট" : "EN · Ekushe Next"
-                let fits = (full as NSString).size(withAttributes: [.font: font(13)]).width <= r.width - 20
+                let fits = (full as NSString).size(withAttributes: [.font: font(13 * ts)]).width <= r.width - 20
                 label = fits ? full : (bangla ? "বাং" : "EN")
             }
-            draw(label, centre: c, font: font(13), color: p.subtext)
+            draw(label, centre: c, font: font(13 * ts), color: p.subtext)
         case .lang:
-            draw(bangla ? "বাং" : "EN", centre: CGPoint(x: c.x, y: c.y - 6), font: font(14, .semibold), color: bangla ? p.hint : p.subtext)
-            draw(bangla ? "EN" : "বাং", centre: CGPoint(x: c.x, y: c.y + 10), font: font(9.5), color: p.subtext)
+            draw(bangla ? "বাং" : "EN", centre: CGPoint(x: c.x, y: c.y - 6 * ts), font: font(14 * ts, .semibold), color: bangla ? p.hint : p.subtext)
+            draw(bangla ? "EN" : "বাং", centre: CGPoint(x: c.x, y: c.y + 10 * ts), font: font(9.5 * ts), color: p.subtext)
         case .enter:
-            draw(enterLabel, centre: c, font: font(enterLabel.count > 2 ? 14 : 20, .medium), color: fg)
+            if let name = symbolName(k), symbol(name, c, 19 * ts, fg, .medium) { break }
+            draw(enterLabel, centre: c, font: font((enterLabel.count > 2 ? 14 : 20) * ts, .medium), color: fg)
         default:
+            if let name = symbolName(k), symbol(name, c, 19 * ts, fg) { break }
             let t = keyText(k)
             let size: CGFloat = [.delete, .shift, .emoji, .globe].contains(k.type) ? 20 : isFunction(k) ? 15 : mode == .numbers ? 27 : t.count > 2 ? 14 : 23
-            draw(t, centre: c, font: font(size, k.letter ? .regular : .medium), color: fg)
+            draw(t, centre: c, font: font(size * ts, k.letter ? .regular : .medium), color: fg)
             if k.letter && bangla && mode == .letters && prefs.keyHints, let h = shift != .off ? k.hintShift : k.hint {
-                let a: [NSAttributedString.Key: Any] = [.font: font(10), .foregroundColor: p.hint]
+                let a: [NSAttributedString.Key: Any] = [.font: font(10 * (pad ? 1.25 : 1)), .foregroundColor: p.hint]
                 let s = (h as NSString).size(withAttributes: a)
-                (h as NSString).draw(at: CGPoint(x: r.maxX - s.width - 4, y: r.minY + 1), withAttributes: a)
+                (h as NSString).draw(at: CGPoint(x: r.maxX - s.width - (pad ? 7 : 4), y: r.minY + (pad ? 4 : 1)), withAttributes: a)
             }
             if !k.alts.isEmpty && !k.letter { fill(CGRect(x: r.maxX - 8, y: r.minY + 5, width: 3, height: 3), 1.5, p.subtext) }
         }
@@ -266,8 +359,9 @@ final class KeyboardView: UIView {
         p.strip.setFill(); UIRectFill(CGRect(x: 0, y: 0, width: bounds.width, height: stripH))
         var list: [Chip] = []
         var x: CGFloat = 8 - stripScroll
+        let cs: CGFloat = pad ? 1.12 : 1
         func chip(_ label: String, _ note: String?, strong: Bool, tip: Bool, _ action: @escaping () -> Void) {
-            let f = font(17, strong ? .semibold : .regular)
+            let f = font(17 * cs, strong ? .semibold : .regular)
             var w = (label as NSString).size(withAttributes: [.font: f]).width + 24
             if let n = note { w += (n as NSString).size(withAttributes: [.font: font(12, .bold)]).width + 8 }
             w = max(w, 52)
@@ -275,7 +369,7 @@ final class KeyboardView: UIView {
             x += w + 6
         }
         if !candidates.isEmpty {
-            for (i, c) in candidates.enumerated() { chip(c.text, c.kind == "English" ? "EN" : nil, strong: i == 0, tip: false) { [weak self] in self?.listener?.onCandidate(i) } }
+            for (i, c) in candidates.enumerated() { chip(c.text, c.kind == "English" ? "EN" : nil, strong: i == selected, tip: false) { [weak self] in self?.listener?.onCandidate(i) } }
             for t in tips { if let i = candidates.firstIndex(where: { $0.text == t.bangla }) { chip(t.bangla, t.keys, strong: false, tip: true) { [weak self] in self?.listener?.onCandidate(i) } } }
         } else if !predictions.isEmpty {
             for w in predictions { chip(w, nil, strong: false, tip: false) { [weak self] in self?.listener?.onPrediction(w) } }
@@ -289,7 +383,7 @@ final class KeyboardView: UIView {
             fill(ch.rect, 10, ch.strong ? p.accent : p.chip)
             if ch.tip { p.accent.setStroke(); let b = UIBezierPath(roundedRect: ch.rect, cornerRadius: 10); b.lineWidth = 1.5; b.stroke() }
             let noteW = ch.note.map { ($0 as NSString).size(withAttributes: [.font: font(12, .bold)]).width + 8 } ?? 0
-            draw(ch.label, centre: CGPoint(x: ch.rect.midX - noteW / 2, y: ch.rect.midY), font: font(17, ch.strong ? .semibold : .regular), color: ch.strong ? p.onAccent : p.text)
+            draw(ch.label, centre: CGPoint(x: ch.rect.midX - noteW / 2, y: ch.rect.midY), font: font(17 * cs, ch.strong ? .semibold : .regular), color: ch.strong ? p.onAccent : p.text)
             if let n = ch.note { draw(n, centre: CGPoint(x: ch.rect.maxX - 10 - noteW / 2 + 4, y: ch.rect.midY), font: font(12, .bold), color: ch.strong ? p.onAccent : p.hint) }
         }
         ctx?.restoreGState()
@@ -297,13 +391,14 @@ final class KeyboardView: UIView {
 
     private func drawToolbar() {
         let p = palette
-        let w: CGFloat = 52
-        tools = [
-            Tool(id: "lang", rect: CGRect(x: 8, y: 6, width: 96, height: stripH - 12)),
-            Tool(id: "emoji", rect: CGRect(x: bounds.width - 3 * w - 8, y: 0, width: w, height: stripH)),
-            Tool(id: "settings", rect: CGRect(x: bounds.width - 2 * w - 8, y: 0, width: w, height: stripH)),
-            Tool(id: "hide", rect: CGRect(x: bounds.width - w - 8, y: 0, width: w, height: stripH)),
-        ]
+        let w: CGFloat = pad ? 60 : 50
+        var list = [Tool(id: "lang", rect: CGRect(x: 8, y: 6, width: pad ? 112 : 96, height: stripH - 12))]
+        // a note beside the language switch (password box, English only) takes the help button's place
+        let ids = stripMessage == nil ? ["help"] + toolIds : toolIds
+        for (i, id) in ids.reversed().enumerated() {
+            list.append(Tool(id: id, rect: CGRect(x: bounds.width - CGFloat(i + 1) * w - 8, y: 0, width: w, height: stripH)))
+        }
+        tools = list
         let pill = tools[0].rect
         fill(pill, pill.height / 2, p.chip)
         fill(CGRect(x: bangla ? pill.minX : pill.midX, y: pill.minY, width: pill.width / 2, height: pill.height), pill.height / 2, p.accent)
@@ -314,8 +409,10 @@ final class KeyboardView: UIView {
             let s = (m as NSString).size(withAttributes: a)
             (m as NSString).draw(at: CGPoint(x: pill.maxX + 12, y: pill.midY - s.height / 2), withAttributes: a)
         }
-        let glyph = ["emoji": "☺︎", "settings": "⚙︎", "hide": "⌄"]
-        for t in tools.dropFirst() { draw(glyph[t.id]!, centre: CGPoint(x: t.rect.midX, y: t.rect.midY), font: font(21), color: p.subtext) }
+        let names = ["help": "questionmark.circle", "emoji": "face.smiling", "settings": "gearshape", "hide": "keyboard.chevron.compact.down"]
+        for t in tools.dropFirst() {
+            if let n = names[t.id] { symbol(n, CGPoint(x: t.rect.midX, y: t.rect.midY), pad ? 21 : 19, p.subtext) }
+        }
     }
 
     // ── emoji panel
@@ -332,8 +429,8 @@ final class KeyboardView: UIView {
     private func drawEmoji() {
         let p = palette
         let areaTop = stripH, areaBottom = bounds.height - bottomPad - tabH
-        let cols = 8
-        let cw = bounds.width / CGFloat(cols), chH: CGFloat = 46
+        let cols = emojiCols
+        let cw = bounds.width / CGFloat(cols), chH: CGFloat = pad ? 58 : 46
         var cells: [(CGRect, String)] = []
         let ctx = UIGraphicsGetCurrentContext()
         ctx?.saveGState(); ctx?.clip(to: CGRect(x: 0, y: areaTop, width: bounds.width, height: areaBottom - areaTop))
@@ -345,6 +442,7 @@ final class KeyboardView: UIView {
         if items.isEmpty { draw("এখনো কোনো ইমোজি ব্যবহার করা হয়নি", centre: CGPoint(x: bounds.width / 2, y: (areaTop + areaBottom) / 2), font: font(15), color: p.subtext) }
         ctx?.restoreGState()
         emojiCells = cells
+        accessibilityDirty = true
         let n = Emoji.groups.count + 3
         let tw = bounds.width / CGFloat(n)
         let ty = bounds.height - bottomPad - tabH
@@ -364,9 +462,12 @@ final class KeyboardView: UIView {
         emojiTabs = tabs
     }
 
+    /// Eight across on a phone; on an iPad as many as fit at a comfortable size
+    private var emojiCols: Int { max(8, Int(bounds.width / (pad ? 66 : 48))) }
+
     private func emojiMaxScroll() -> CGFloat {
-        let rowsN = (emojiItems().count + 7) / 8
-        return max(0, CGFloat(rowsN) * 46 - (bounds.height - bottomPad - tabH - stripH))
+        let rowsN = (emojiItems().count + emojiCols - 1) / emojiCols
+        return max(0, CGFloat(rowsN) * (pad ? 58 : 46) - (bounds.height - bottomPad - tabH - stripH))
     }
 
     func openEmoji() {
@@ -410,6 +511,7 @@ final class KeyboardView: UIView {
             let pt = t.location(in: self)
             downPoint = pt
             if pt.y < stripH { stripPressed = true; stripDragging = false; stripStartScroll = stripScroll; continue }
+            if stripOnly { continue }
             if mode == .emoji { emojiDragging = false; emojiStartScroll = emojiScroll; continue }
             if let hit = keyAt(pt) { press(hit, pt) }
         }
@@ -422,6 +524,7 @@ final class KeyboardView: UIView {
             if abs(pt.x - downPoint.x) > 8 { stripDragging = true }
             if stripDragging && !chips.isEmpty {
                 stripScroll = min(max(0, stripStartScroll - (pt.x - downPoint.x)), max(0, stripContentW - bounds.width + 8))
+                accessibilityDirty = true
                 setNeedsDisplay()
             }
             return
@@ -534,6 +637,8 @@ final class KeyboardView: UIView {
         case .lang: listener?.onLanguageToggle()
         case .emoji: openEmoji()
         case .globe: listener?.onGlobe()
+        case .hide: listener?.onHide()
+        case .spacer, .splitGap: break
         }
     }
 
@@ -544,6 +649,7 @@ final class KeyboardView: UIView {
         if !chips.isEmpty { chips.first(where: { $0.rect.contains(pt) })?.action(); return }
         switch tools.first(where: { $0.rect.contains(pt) })?.id {
         case "lang": listener?.onLanguageToggle()
+        case "help": listener?.onHelp()
         case "emoji": openEmoji()
         case "settings": listener?.onSettings()
         case "hide": listener?.onHide()
@@ -562,7 +668,80 @@ final class KeyboardView: UIView {
     // ── for tests: press a key as a finger would
     func tap(_ id: String) {
         guard let p = placed.first(where: { $0.key.id == id }) else { return }
+        tapPlaced(p)
+    }
+
+    private func tapPlaced(_ p: Placed) {
         press(p, CGPoint(x: p.rect.midX, y: p.rect.midY))
         release(fire: true)
+    }
+
+    /// Placed keys' ids in order (tests: the layout in use)
+    var keyIds: [String] { placed.map { $0.key.id } }
+    /// Where each placed key is (tests: geometry checks)
+    var keyRects: [(String, CGRect)] { placed.map { ($0.key.id, $0.rect) } }
+
+    // ───────────────────────── VoiceOver ─────────────────────────
+    // The keyboard is drawn as one picture, so VoiceOver gets an element for each key and each
+    // suggestion: what it is called, where it is, and what pressing it does.
+
+    var accessibilityDirty = true
+
+    private final class Element: UIAccessibilityElement {
+        var activate: (() -> Void)?
+        override func accessibilityActivate() -> Bool { activate?(); return activate != nil }
+    }
+
+    private func spoken(_ k: Key) -> String {
+        switch k.type {
+        case .char:
+            if k.letter, bangla, let h = shift != .off ? k.hintShift : k.hint { return "\(keyText(k)), \(h)" }
+            return keyText(k)
+        case .shift: return shift == .locked ? "Caps lock" : "Shift"
+        case .delete: return "Delete"
+        case .enter: return "Return"
+        case .space: return bangla ? "Space, বাংলা" : "Space"
+        case .symbols: return "Numbers and symbols"
+        case .moreSymbols: return "More symbols"
+        case .letters: return "Letters"
+        case .lang: return bangla ? "বাংলা. Switch to English" : "English. Switch to Bangla"
+        case .emoji: return "Emoji"
+        case .globe: return "Next keyboard"
+        case .hide: return "Hide keyboard"
+        case .spacer, .splitGap: return ""
+        }
+    }
+
+    private func updateAccessibility() {
+        guard accessibilityDirty else { return }
+        accessibilityDirty = false
+        var out: [Element] = []
+        func add(_ label: String, _ frame: CGRect, _ traits: UIAccessibilityTraits, _ action: @escaping () -> Void) {
+            let e = Element(accessibilityContainer: self)
+            e.accessibilityLabel = label; e.accessibilityFrameInContainerSpace = frame
+            e.accessibilityTraits = traits; e.activate = action
+            out.append(e)
+        }
+        if !chips.isEmpty {
+            for c in chips { add(c.note.map { "\(c.label), \($0)" } ?? c.label, c.rect, c.strong ? [.button, .selected] : .button, c.action) }
+        } else {
+            let names = ["lang": bangla ? "বাংলা. Switch to English" : "English. Switch to Bangla", "help": "How to type conjuncts and marks",
+                         "emoji": "Emoji", "settings": "Settings", "hide": "Hide keyboard"]
+            for t in tools { add(names[t.id] ?? t.id, t.rect, .button) { [weak self] in self?.stripTap(CGPoint(x: t.rect.midX, y: t.rect.midY)) } }
+        }
+        if !stripOnly {
+            if mode == .emoji {
+                for (r, e) in emojiCells { add(e, r, .keyboardKey) { [weak self] in self?.rememberEmoji(e); self?.listener?.onEmoji(e) } }
+                add("Letters", emojiAbc, .keyboardKey) { [weak self] in self?.mode = .letters }
+                add("Delete", emojiDel, .keyboardKey) { [weak self] in self?.listener?.onDelete() }
+            } else {
+                for pl in placed {
+                    var traits: UIAccessibilityTraits = .keyboardKey
+                    if pl.key.type == .shift && shift != .off { traits.insert(.selected) }
+                    add(spoken(pl.key), pl.rect, traits) { [weak self] in self?.tapPlaced(pl) }
+                }
+            }
+        }
+        accessibilityElements = out
     }
 }

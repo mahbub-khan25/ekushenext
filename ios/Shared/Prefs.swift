@@ -16,6 +16,8 @@ final class Prefs {
     var doubleSpaceDari: Bool { get { bool("double_space_dari", true) } set { d.set(newValue, forKey: "double_space_dari") } }
     /// Keyboard height: 0 small, 1 normal, 2 tall
     var height: Int { get { d.object(forKey: "height") == nil ? 1 : d.integer(forKey: "height") } set { d.set(newValue, forKey: "height") } }
+    /// iPad in landscape: the keyboard in two halves, for typing with the thumbs
+    var splitPad: Bool { get { bool("split_pad", false) } set { d.set(newValue, forKey: "split_pad") } }
     /// How a key shows it was pressed: classic, 3d, glow, bounce
     var pressEffect: String { get { d.string(forKey: "press_effect") ?? "classic" } set { d.set(newValue, forKey: "press_effect") } }
     var bangla: Bool { get { bool("bangla", true) } set { d.set(newValue, forKey: "bangla") } }

@@ -28,6 +28,7 @@ final class KeyboardViewController: UIInputViewController, TextTarget {
         typist.onGlobeAction = { [weak self] in self?.advanceToNextInputMode() }
         typist.onHideAction = { [weak self] in self?.dismissKeyboard() }
         typist.onSettingsAction = { [weak self] in self?.showSettings() }
+        typist.onHelpAction = { [weak self] in self?.showMarks() }
         typist.onClick = { if Prefs.shared.sound { UIDevice.current.playInputClick() } }
         kb.listener = typist
         kb.translatesAutoresizingMaskIntoConstraints = false
@@ -47,6 +48,27 @@ final class KeyboardViewController: UIInputViewController, TextTarget {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         configureForField()
+    }
+
+    /// iPhone or iPad, upright or on its side: the keys and the keyboard's height follow
+    private func updateShape(for size: CGSize? = nil) {
+        kb.pad = traitCollection.userInterfaceIdiom == .pad
+        let screen = size ?? view.window?.windowScene?.screen.bounds.size ?? UIScreen.main.bounds.size
+        kb.landscape = screen.width > screen.height
+        heightC?.constant = kb.preferredHeight
+    }
+
+    override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
+        super.viewWillTransition(to: size, with: coordinator)
+        // the keyboard is as wide as the screen, so its new width tells which way the device is held
+        let screen = UIScreen.main.bounds.size
+        let landscape = size.width > min(screen.width, screen.height) + 1
+        coordinator.animate(alongsideTransition: { [weak self] _ in
+            guard let self else { return }
+            self.kb.landscape = landscape
+            self.heightC?.constant = self.kb.preferredHeight
+            self.view.layoutIfNeeded()
+        })
     }
 
     override func viewWillDisappear(_ animated: Bool) {
@@ -81,7 +103,7 @@ final class KeyboardViewController: UIInputViewController, TextTarget {
             }
         }()
         kb.refreshTheme(dark: dark)
-        heightC?.constant = kb.preferredHeight
+        updateShape()
         typist.begin()
     }
 
@@ -111,19 +133,33 @@ final class KeyboardViewController: UIInputViewController, TextTarget {
 
     // ───────────────────────── settings ─────────────────────────
 
+    private func showPanel(_ p: UIView) {
+        p.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(p)
+        NSLayoutConstraint.activate([
+            p.leadingAnchor.constraint(equalTo: view.leadingAnchor), p.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            p.topAnchor.constraint(equalTo: view.topAnchor), p.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+        ])
+        UIAccessibility.post(notification: .screenChanged, argument: p)
+    }
+
+    /// The marks (+ ,, ` ^ rr …), inside the keyboard: a keyboard can't open its app
+    private var marks: MarksPanel?
+    private func showMarks() {
+        let m = MarksPanel(frame: kb.bounds, palette: kb.palette)
+        m.onClose = { [weak self] in self?.marks?.removeFromSuperview(); self?.marks = nil; UIAccessibility.post(notification: .screenChanged, argument: nil) }
+        showPanel(m)
+        marks = m
+    }
+
     private func showSettings() {
-        let s = SettingsPanel(frame: kb.bounds, palette: kb.palette)
+        let s = SettingsPanel(frame: kb.bounds, palette: kb.palette, pad: kb.pad)
         s.onClose = { [weak self] in
             guard let self else { return }
             self.settings?.removeFromSuperview(); self.settings = nil
             self.configureForField()
         }
-        s.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(s)
-        NSLayoutConstraint.activate([
-            s.leadingAnchor.constraint(equalTo: view.leadingAnchor), s.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            s.topAnchor.constraint(equalTo: view.topAnchor), s.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-        ])
+        showPanel(s)
         settings = s
     }
 }
@@ -132,10 +168,12 @@ final class KeyboardViewController: UIInputViewController, TextTarget {
 final class SettingsPanel: UIView {
     var onClose: (() -> Void)?
     private let palette: Palette
+    private let pad: Bool
     private let stack = UIStackView()
 
-    init(frame: CGRect, palette: Palette) {
+    init(frame: CGRect, palette: Palette, pad: Bool = false) {
         self.palette = palette
+        self.pad = pad
         super.init(frame: frame)
         backgroundColor = palette.background
         let scroll = UIScrollView()
@@ -225,11 +263,71 @@ final class SettingsPanel: UIView {
         stack.addArrangedSubview(toggle("কীর আলাদা ঘর", prefs.keyBorders) { prefs.keyBorders = $0 })
         stack.addArrangedSubview(toggle("ইমোজি বোতাম", prefs.emojiKey) { prefs.emojiKey = $0 })
         stack.addArrangedSubview(toggle("সংখ্যার সারি", prefs.numberRow) { prefs.numberRow = $0 })
+        if pad { stack.addArrangedSubview(toggle("আড়াআড়ি ধরলে ভাঙা কিবোর্ড (দুই বুড়ো আঙুলে লেখা)", prefs.splitPad) { prefs.splitPad = $0 }) }
         stack.addArrangedSubview(toggle("দুবার Space-এ দাঁড়ি (।)", prefs.doubleSpaceDari) { prefs.doubleSpaceDari = $0 })
         stack.addArrangedSubview(toggle("ইংরেজি অটোকারেক্ট", prefs.enAutocorrect) { prefs.enAutocorrect = $0 })
         stack.addArrangedSubview(toggle("ইংরেজিতে পরের শব্দ", prefs.nextWordEnglish) { prefs.nextWordEnglish = $0 })
         stack.addArrangedSubview(toggle("কী চাপার শব্দ", prefs.sound) { prefs.sound = $0 })
         stack.addArrangedSubview(label("🔒 এই কিবোর্ড “Full Access” চায় না: আপনার লেখা ফোন থেকে বের হওয়ার কোনো পথ নেই।", 12.5, .regular, palette.subtext))
         stack.addArrangedSubview(button("শেখা শব্দগুলো মুছে দিন · Forget learned words", on: false) { Engine.forgetLearned(); English.shared.forget() })
+    }
+}
+
+/// How to type conjuncts, hasanta and the other marks, inside the keyboard (the strip's ? button).
+final class MarksPanel: UIView {
+    var onClose: (() -> Void)?
+    private let palette: Palette
+
+    init(frame: CGRect, palette: Palette) {
+        self.palette = palette
+        super.init(frame: frame)
+        backgroundColor = palette.background
+        let scroll = UIScrollView(); scroll.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(scroll)
+        let stack = UIStackView(); stack.axis = .vertical; stack.spacing = 6
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        scroll.addSubview(stack)
+        NSLayoutConstraint.activate([
+            scroll.leadingAnchor.constraint(equalTo: leadingAnchor), scroll.trailingAnchor.constraint(equalTo: trailingAnchor),
+            scroll.topAnchor.constraint(equalTo: topAnchor), scroll.bottomAnchor.constraint(equalTo: bottomAnchor),
+            stack.leadingAnchor.constraint(equalTo: scroll.contentLayoutGuide.leadingAnchor, constant: 14),
+            stack.trailingAnchor.constraint(equalTo: scroll.contentLayoutGuide.trailingAnchor, constant: -14),
+            stack.topAnchor.constraint(equalTo: scroll.contentLayoutGuide.topAnchor, constant: 10),
+            stack.bottomAnchor.constraint(equalTo: scroll.contentLayoutGuide.bottomAnchor, constant: -14),
+            stack.widthAnchor.constraint(equalTo: scroll.frameLayoutGuide.widthAnchor, constant: -28),
+        ])
+        let head = UIStackView(); head.alignment = .center
+        head.addArrangedSubview(label("চিহ্নের নিয়ম · Marks", 17, .bold, palette.text))
+        let done = UIButton(type: .system)
+        done.setTitle("সম্পন্ন", for: .normal)
+        done.titleLabel?.font = .systemFont(ofSize: 15, weight: .semibold)
+        done.setTitleColor(palette.onAccent, for: .normal); done.backgroundColor = palette.accent
+        done.layer.cornerRadius = 10; done.contentEdgeInsets = UIEdgeInsets(top: 8, left: 14, bottom: 8, right: 14)
+        done.addAction(UIAction { [weak self] _ in self?.onClose?() }, for: .touchUpInside)
+        head.addArrangedSubview(done)
+        stack.addArrangedSubview(head)
+        stack.addArrangedSubview(label("যুক্তবর্ণ, হসন্ত, না আলাদা? দুটি ব্যঞ্জনের মাঝে:", 14, .semibold, palette.text))
+        Marks.join.forEach { stack.addArrangedSubview(row($0)) }
+        stack.addArrangedSubview(label("অন্য চিহ্ন", 14, .semibold, palette.text))
+        Marks.others.forEach { stack.addArrangedSubview(row($0)) }
+        stack.addArrangedSubview(label(Marks.whereBn + "\n" + Marks.whereEn, 12.5, .regular, palette.subtext))
+    }
+    required init?(coder: NSCoder) { fatalError() }
+
+    private func label(_ s: String, _ size: CGFloat, _ weight: UIFont.Weight, _ color: UIColor) -> UILabel {
+        let l = UILabel(); l.text = s; l.numberOfLines = 0; l.font = .systemFont(ofSize: size, weight: weight); l.textColor = color
+        return l
+    }
+
+    private func row(_ r: Marks.Row) -> UIView {
+        let keys = label(r.keys, 15, .medium, palette.hint); keys.font = .monospacedSystemFont(ofSize: 15, weight: .medium)
+        keys.widthAnchor.constraint(equalToConstant: 96).isActive = true
+        let bn = label(r.bangla, 19, .semibold, palette.text)
+        bn.widthAnchor.constraint(equalToConstant: 82).isActive = true
+        let what = label(r.what, 13, .regular, palette.subtext)
+        let h = UIStackView(arrangedSubviews: [keys, bn, what]); h.alignment = .center; h.spacing = 8
+        h.isAccessibilityElement = true
+        h.accessibilityLabel = "\(r.keys.map { String($0) }.joined(separator: " ")) gives \(r.bangla). \(r.whatEn)"
+        return h
     }
 }
