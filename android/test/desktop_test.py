@@ -103,8 +103,6 @@ def field():
 
 
 adb('install', '-r', '-g', APK)
-sh(f'ime enable {IME}')
-sh(f'ime set {IME}')
 sh('settings put global hide_error_dialogs 1')
 # desktop windows: freeform windows and the desktop mode on a tablet-sized screen
 adb('root'); time.sleep(3); adb('wait-for-device')
@@ -115,8 +113,12 @@ sh('setprop persist.wm.debug.desktop_mode true')
 sh('setprop persist.wm.debug.desktop_mode_2 true')
 adb('reboot')
 wait_boot()
+sh(f'ime enable {IME}')
+sh(f'ime set {IME}')
+sh('settings put secure show_ime_with_hard_keyboard 0')
+print('keyboard', sh('settings get secure default_input_method').strip())
 print('screen', sh('wm size').strip(), sh('wm density').strip())
-print('keyboard config', re.findall(r'keyboard=\S+|hardKeyboardHidden=\S+', sh('dumpsys window | grep -m1 mGlobalConfiguration'))[:3])
+print('configuration', sh('dumpsys activity configuration | grep -m1 -i "keys\\|qwerty"').strip()[:300])
 
 for nav in ['gestural', 'threebutton']:
     sh(f'cmd overlay enable-exclusive --category com.android.internal.systemui.navbar.{nav}')

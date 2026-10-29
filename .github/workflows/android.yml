@@ -87,12 +87,21 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+      # A tablet with a physical keyboard attached (hw.keyboard): made here so the emulator starts with it
+      - name: Make the tablet
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "system-images;android-35;google_apis;x86_64" emulator >/dev/null
+          echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd --force -n test -k "system-images;android-35;google_apis;x86_64" -d pixel_tablet
+          echo "hw.keyboard=yes" >> ~/.android/avd/test.avd/config.ini
+          grep -E "keyboard|lcd|device" ~/.android/avd/test.avd/config.ini
       - uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
           api-level: 35
           target: google_apis
           arch: x86_64
           profile: pixel_tablet
+          avd-name: test
+          force-avd-creation: false
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           script: python3 android/test/desktop_test.py apk/debug/app-debug.apk desktop-screenshots
