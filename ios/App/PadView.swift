@@ -53,29 +53,77 @@ final class PadTextView: UITextView {
     }
 }
 
-/// What the typing logic writes into, on the pad's text view
+/// What the typing logic writes into, on the pad's text view. The word being typed is kept by
+/// Ekushe itself (underlined in the text), not as iOS's "marked text": the system keyboard clears
+/// marked text it didn't make at its next key, which would end the word after every letter.
 final class PadTarget: TextTarget {
     weak var tv: PadTextView?
+    /// Where the word being typed is, in the text
+    private(set) var composing: NSRange?
+    var onEdit: (() -> Void)?
     init(_ tv: PadTextView) { self.tv = tv }
 
     private func edit(_ f: (PadTextView) -> Void) {
         guard let tv else { return }
         let was = tv.applying
         tv.applying = true; f(tv); tv.applying = was
+        onEdit?()
+    }
+
+    private var plainAttributes: [NSAttributedString.Key: Any] {
+        var a: [NSAttributedString.Key: Any] = [.foregroundColor: UIColor.label]
+        if let f = tv?.font { a[.font] = f }
+        return a
+    }
+
+    /// Put `s` where `r` is, the cursor after it, and return where it went
+    private func put(_ s: String, at r: NSRange, underline: Bool) -> NSRange {
+        guard let tv else { return r }
+        // never past the end of the text (the app may have changed it)
+        let len = tv.textStorage.length, loc = min(r.location, len)
+        let range = NSRange(location: loc, length: min(r.length, len - loc))
+        var attrs = plainAttributes
+        if underline { attrs[.underlineStyle] = NSUnderlineStyle.single.rawValue }
+        tv.textStorage.replaceCharacters(in: range, with: NSAttributedString(string: s, attributes: attrs))
+        let placed = NSRange(location: range.location, length: (s as NSString).length)
+        tv.selectedRange = NSRange(location: placed.location + placed.length, length: 0)
+        tv.typingAttributes = plainAttributes
+        return placed
     }
 
     var contextBefore: String {
-        guard let tv, let sel = tv.selectedTextRange, let r = tv.textRange(from: tv.beginningOfDocument, to: sel.start) else { return "" }
-        return tv.text(in: r) ?? ""
+        guard let tv else { return "" }
+        let end = min(tv.selectedRange.location, tv.textStorage.length)
+        return (tv.textStorage.string as NSString).substring(to: end)
     }
-    func insert(_ s: String) { edit { $0.insertText(s) } }
-    func deleteBackward() { edit { $0.deleteBackward() } }
-    func setMarked(_ s: String) { edit { $0.setMarkedText(s, selectedRange: NSRange(location: (s as NSString).length, length: 0)) } }
-    func unmark() { edit { $0.unmarkText() } }
+    func insert(_ s: String) {
+        edit { tv in _ = put(s, at: composing ?? tv.selectedRange, underline: false); composing = nil }
+    }
+    func deleteBackward() {
+        edit { tv in
+            if let c = composing { _ = put("", at: c, underline: false); composing = nil; return }
+            tv.deleteBackward()
+        }
+    }
+    func setMarked(_ s: String) {
+        edit { tv in
+            let r = composing ?? tv.selectedRange
+            if s.isEmpty { _ = put("", at: r, underline: false); composing = nil }
+            else { composing = put(s, at: r, underline: true) }
+        }
+    }
+    func unmark() {
+        edit { tv in
+            if let c = composing, NSMaxRange(c) <= tv.textStorage.length {
+                tv.textStorage.removeAttribute(.underlineStyle, range: c)
+            }
+            composing = nil
+        }
+    }
     func moveCursor(_ by: Int) {
         edit { tv in
-            guard let sel = tv.selectedTextRange, let p = tv.position(from: sel.start, offset: by) else { return }
-            tv.selectedTextRange = tv.textRange(from: p, to: p)
+            let n = max(0, min(tv.textStorage.length, tv.selectedRange.location + by))
+            tv.selectedRange = NSRange(location: n, length: 0)
         }
     }
 }
@@ -145,6 +193,7 @@ final class PadViewController: UIViewController, UITextViewDelegate {
         tv.inputAccessoryView = bar
 
         target = PadTarget(tv)
+        target.onEdit = { [weak self] in self?.textEdited() }
         typist = Typist(target: target, view: bar)
         typist.onHelpAction = { [weak self] in self?.onHelp?() }
         bar.listener = typist
@@ -189,11 +238,14 @@ final class PadViewController: UIViewController, UITextViewDelegate {
     }
 
     func textViewDidChangeSelection(_ textView: UITextView) {
-        // the cursor moved (a tap, an arrow key): the word being typed stays as it is shown
-        if !tv.applying && tv.markedTextRange == nil { typist.externalChange() }
+        // the cursor moved away from the word being typed (a tap, an arrow key): it stays as it is shown
+        guard !tv.applying, let c = target.composing else { return }
+        if tv.selectedRange != NSRange(location: NSMaxRange(c), length: 0) { typist.externalChange() }
     }
 
-    func textViewDidChange(_ textView: UITextView) {
+    func textViewDidChange(_ textView: UITextView) { textEdited() }
+
+    private func textEdited() {
         updatePlaceholder()
         save()
         onTextChange?(tv.text)
