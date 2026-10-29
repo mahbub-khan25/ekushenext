@@ -2,9 +2,11 @@
 
 Type Bangla the way it sounds, in English letters (`amar sonar bangla` → আমার সোনার বাংলা), and Ekushe writes it with the spelling you meant.
 
-**New in beta.2 and beta.3:** a larger, better-checked dictionary. `byabostha` and `byakti` now give ব্যবস্থা and ব্যক্তি, chat verbs like `khaiso` and `korsi` find the standard word with the spoken form next to it, common names (`rahim` → রহিম, `mohammad` → মোহাম্মদ) and chat words (`ok` → ওকে, `koi` → কই) come out right, and 483 spellings were confirmed by native-speaker reviewers.
+**New in beta.2–beta.4:** a larger, better-checked dictionary. `byabostha` and `byakti` now give ব্যবস্থা and ব্যক্তি, chat verbs like `khaiso` and `korsi` find the standard word with the spoken form next to it, common names (`rahim` → রহিম, `mohammad` → মোহাম্মদ) and chat words (`ok` → ওকে, `koi` → কই) come out right, and 483 spellings were confirmed by native-speaker reviewers.
 
-On Android tablets, a **physical keyboard** (a keyboard cover or a Bluetooth keyboard) now types Bangla through Ekushe: only the suggestion strip shows, double-tap Shift switches Bangla ⇄ English, Tab moves through the suggestions and Backspace right after a word reopens it. New installs start with the **Ekushe Default** theme.
+On Android tablets, a **physical keyboard** (a keyboard cover or a Bluetooth keyboard) now types Bangla through Ekushe: only the suggestion strip shows, double-tap Shift switches Bangla ⇄ English, Tab moves through the suggestions and Backspace right after a word reopens it. New installs start with the **Ekushe Default** theme. The suggestion strip now shows whenever a physical keyboard is attached, and unplugging it brings the on-screen keys back.
+
+**Help for the marks, one click away.** `+` makes a conjunct (`as+te` → আস্তে), `,,` shows a hasanta (`as,,te` → আস্‌তে) and `` ` `` keeps letters apart (``as`te`` → আসতে). The full list opens from the **?** button on the Android keyboard, **Marks & Conjuncts Guide** in the Mac and Linux menus, and the popup's সহায়িকা or the tray menu on Windows.
 
 ### What makes it different
 - **Its own dictionary, built for Ekushe.** Not copied from any other keyboard. The **Bangla Academy standard spelling (প্রমিত বানান) comes first**, even when a non-standard spelling is more common online.
