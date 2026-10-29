@@ -135,7 +135,9 @@ class EkusheIME : InputMethodService(), KeyboardListener {
             val taskbarTop = metrics.bounds.bottom - forApps
             val loc = IntArray(2).also { v.getLocationOnScreen(it) }
             val bottom = loc[1] + v.height
-            val cover = (bottom - taskbarTop).coerceIn(0, (120 * resources.displayMetrics.density).toInt())
+            // and a little to spare: the window can settle a few pixels lower once it grows
+            val d = resources.displayMetrics.density
+            val cover = if (bottom > taskbarTop) (bottom - taskbarTop + 4 * d).toInt().coerceAtMost((120 * d).toInt()) else 0
             if (debuggable) android.util.Log.i("EkusheTaskbar", "{\"apps\":$forApps,\"taskbarTop\":$taskbarTop,\"bottom\":$bottom,\"cover\":$cover}")
             cover
         }.getOrDefault(0)
