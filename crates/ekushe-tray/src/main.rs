@@ -191,7 +191,7 @@ static STATE: Lazy<Mutex<AppSharedState>> = Lazy::new(|| {
             right: 0,
             bottom: 0,
         },
-        popup_opacity_pct: 92,
+        popup_opacity_pct: 85,
         comp_focus: 0,
         last_fg: 0,
         saved_learned_version,
