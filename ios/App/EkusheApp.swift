@@ -30,7 +30,7 @@ struct RootView: View {
 
     var body: some View {
         TabView(selection: $tab) {
-            NavigationStack { SetupView(openPad: { tab = .pad }).navigationTitle("একুশে নেক্সট").navigationBarTitleDisplayMode(.inline) }
+            NavigationStack { SetupView(openPad: { tab = .pad }).toolbar(.hidden, for: .navigationBar) }
                 .tabItem { Label("শুরু", systemImage: "keyboard") }.tag(Tab.start)
             PadScreen(onHelp: { tab = .marks })
                 .tabItem { Label("লেখার প্যাড", systemImage: "square.and.pencil") }.tag(Tab.pad)
@@ -43,6 +43,7 @@ struct RootView: View {
 
 /// The marks, the same list as in the keyboard (its ? button) and the guide
 struct MarksView: View {
+    @Environment(\.horizontalSizeClass) private var size
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
@@ -66,16 +67,32 @@ struct MarksView: View {
             Text(title).font(.title3.bold())
             Text(sub).font(.footnote).foregroundColor(.secondary)
             ForEach(rows, id: \.keys) { r in
-                HStack(alignment: .firstTextBaseline, spacing: 12) {
-                    Text(r.keys).font(.system(.body, design: .monospaced).weight(.medium)).foregroundColor(green)
-                        .frame(minWidth: 96, alignment: .leading)
-                    Text(r.bangla).font(.title2.weight(.semibold)).frame(minWidth: 84, alignment: .leading)
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(r.what).font(.subheadline)
-                        Text(r.whatEn).font(.caption).foregroundColor(.secondary)
+                Group {
+                    if size == .compact {
+                        // a phone: the example and its result on one line, what it does under them
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                                Text(r.keys).font(.system(.body, design: .monospaced).weight(.medium)).foregroundColor(green)
+                                Text("→").foregroundColor(.secondary)
+                                Text(r.bangla).font(.title2.weight(.semibold))
+                            }
+                            Text(r.what).font(.subheadline)
+                            Text(r.whatEn).font(.caption).foregroundColor(.secondary)
+                        }
+                    } else {
+                        HStack(alignment: .firstTextBaseline, spacing: 12) {
+                            Text(r.keys).font(.system(.body, design: .monospaced).weight(.medium)).foregroundColor(green)
+                                .frame(minWidth: 110, alignment: .leading)
+                            Text(r.bangla).font(.title2.weight(.semibold)).frame(minWidth: 96, alignment: .leading)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(r.what).font(.subheadline)
+                                Text(r.whatEn).font(.caption).foregroundColor(.secondary)
+                            }
+                            Spacer(minLength: 0)
+                        }
                     }
-                    Spacer(minLength: 0)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("\(r.keys.map { String($0) }.joined(separator: " ")) gives \(r.bangla). \(r.whatEn)")
                 if r.keys != rows.last?.keys { Divider() }

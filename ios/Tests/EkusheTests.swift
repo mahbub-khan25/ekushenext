@@ -248,21 +248,24 @@ final class EkusheTests: XCTestCase {
             ("26-ipad-pro-13-portrait", 1032, true, false, false, .letters),
             ("27-ipad-mini-portrait", 744, true, false, false, .letters),
         ]
+        let doc = FakeDoc()   // the typist holds its text box weakly
         for (name, w, pad, land, split, m) in shots {
             let v = board(width: w, pad: pad, landscape: land, split: split, mode: m)
-            let t = Typist(target: FakeDoc(), view: v); v.listener = t; t.begin()
+            let t = Typist(target: doc, view: v); v.listener = t; t.begin()
             save(picture(v), name)
         }
         // typing on an iPad, and the pad's strip
         let v = board(width: 1180, pad: true, landscape: true)
-        let t = Typist(target: FakeDoc(), view: v); v.listener = t; t.begin()
+        let t = Typist(target: doc, view: v); v.listener = t; t.begin()
         for c in "aste" { t.onText(String(c)) }
-        t.moveHighlight()
+        XCTAssertTrue(t.moveHighlight())
+        XCTAssertEqual(v.selected, 1)
         save(picture(v), "28-ipad-typing-tab")
         let strip = KeyboardView(frame: CGRect(x: 0, y: 0, width: 1180, height: 60))
         strip.pad = true; strip.stripOnly = true; strip.toolIds = []
         strip.refreshTheme(dark: true); strip.frame.size.height = strip.preferredHeight; strip.layoutIfNeeded()
-        let st = Typist(target: FakeDoc(), view: strip); strip.listener = st; st.begin()
+        let doc2 = FakeDoc()
+        let st = Typist(target: doc2, view: strip); strip.listener = st; st.begin()
         save(picture(strip), "29-pad-strip-idle")
         for c in "amar" { st.onText(String(c)) }
         save(picture(strip), "30-pad-strip-typing")
