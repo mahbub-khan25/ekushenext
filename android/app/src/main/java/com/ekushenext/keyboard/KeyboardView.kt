@@ -236,7 +236,7 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
 
     /** The room under the strip: the physical keyboard's shortcuts, in case the taskbar steps aside */
     private fun drawUnder(c: Canvas) {
-        if (under < 22 * dp) return
+        if (under < 40 * dp) return
         textPaint.color = palette.subtext
         textPaint.textSize = 12.5f * dp
         val t = if (bangla) "Shift দুবার: বাংলা ⇄ English  ·  Tab: পরের শব্দ  ·  Space: বসায়" else "Shift twice: English ⇄ বাংলা  ·  Tab: next word  ·  Space: place it"

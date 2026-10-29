@@ -145,10 +145,14 @@ for nav in ['gestural', 'threebutton']:
     cover = re.findall(r'EkusheTaskbar: (.*)', adb('logcat', '-d', '-s', 'EkusheTaskbar:I'))
     shot(f'61-desktop-{nav}-typing')
     dens = int(re.findall(r'(\d+)', sh('wm density'))[-1]) / 160
+    # the taskbar's top as apps are told it (what its window frame shows is taller than the bar)
+    m = [json.loads(c) for c in cover if c.startswith('{')]
+    if m:
+        bar = m[-1]['taskbarTop']
     print(f'{nav}: strip middle={strip} taskbar top={bar} stashed={stashed} measured={cover[-1:] if cover else None} density={dens}')
     if strip is None:
         failures.append(f'{nav}: the strip did not show')
-    elif bar is not None and not stashed and strip + 23 * dens > bar + 2:
+    elif bar is not None and strip + 23 * dens > bar + 2:
         failures.append(f'{nav}: the strip (middle {strip}, bottom {strip + 23 * dens:.0f}) is behind the taskbar (top {bar})')
     (OUT / f'logcat-{nav}.txt').write_text(adb('logcat', '-d', check=False))
     print('keyboard now', sh('settings get secure default_input_method').strip(), '| ime:', ' '.join(re.findall(r'mInputShown=\S+|mCurMethodId=\S+|mCurClient=\S+', sh('dumpsys input_method'))[:3]))

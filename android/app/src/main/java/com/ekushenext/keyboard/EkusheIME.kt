@@ -119,22 +119,25 @@ class EkusheIME : InputMethodService(), KeyboardListener {
 
     /**
      * How much of the strip a taskbar covers. With a physical keyboard a desktop-mode taskbar stays
-     * on screen, but Android tells the keyboard it's only as tall as the slim bar it shrinks to when
-     * a keyboard opens, so the short strip ends up behind it. Apps are told its real height: the
-     * difference is the part that hides the strip. (Measured as a field opens, not on every insets
-     * change, so the strip and a taskbar that moves aside can't push each other back and forth.)
+     * on screen, but the keyboard is told it's only the slim bar it shrinks to, so the short strip
+     * ends up behind it. Apps are told its real height: the part of the keyboard's window below the
+     * taskbar's top is what it covers. (Measured as a field opens, not on every insets change, so
+     * the strip and a taskbar that moves aside can't push each other back and forth.)
      */
     private fun taskbarCover(): Int {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return 0
         return runCatching {
-            val decor = window?.window?.decorView ?: return 0
-            val display = decor.display ?: return 0
+            val v = view ?: return 0
+            val display = v.display ?: return 0
             val types = WindowInsets.Type.navigationBars() or WindowInsets.Type.tappableElement()
-            val wm = createDisplayContext(display).getSystemService(WindowManager::class.java)
-            val forApps = wm.currentWindowMetrics.windowInsets.getInsetsIgnoringVisibility(types).bottom
-            val forKeyboard = decor.rootWindowInsets?.getInsetsIgnoringVisibility(types)?.bottom ?: 0
-            if (debuggable) android.util.Log.i("EkusheTaskbar", "apps=$forApps keyboard=$forKeyboard")
-            (forApps - forKeyboard).coerceIn(0, (120 * resources.displayMetrics.density).toInt())
+            val metrics = createDisplayContext(display).getSystemService(WindowManager::class.java).currentWindowMetrics
+            val forApps = metrics.windowInsets.getInsetsIgnoringVisibility(types).bottom
+            val taskbarTop = metrics.bounds.bottom - forApps
+            val loc = IntArray(2).also { v.getLocationOnScreen(it) }
+            val bottom = loc[1] + v.height
+            val cover = (bottom - taskbarTop).coerceIn(0, (120 * resources.displayMetrics.density).toInt())
+            if (debuggable) android.util.Log.i("EkusheTaskbar", "{\"apps\":$forApps,\"taskbarTop\":$taskbarTop,\"bottom\":$bottom,\"cover\":$cover}")
+            cover
         }.getOrDefault(0)
     }
 
