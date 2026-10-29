@@ -1,0 +1,17 @@
+<template>
+  <style>
+    @font-face { font-family: 'Hind Siliguri'; src: url('assets/fonts/HindSiliguri-Regular.ttf'); font-weight: 400 500; }
+    @font-face { font-family: 'Hind Siliguri'; src: url('assets/fonts/HindSiliguri-SemiBold.ttf'); font-weight: 600; }
+    @font-face { font-family: 'Hind Siliguri'; src: url('assets/fonts/HindSiliguri-Bold.ttf'); font-weight: 700 900; }
+    @font-face { font-family: 'Inter Tight'; src: url('assets/fonts/InterTight.woff2'); font-weight: 300 900; }
+    #root { position: absolute; inset: 0; overflow: hidden; }
+    #win-root { position: absolute; inset: 0; }
+  </style>
+  <!-- Windows at night: the first line, in the new frosted bar. The words on screen are below; the typed line is the engine's real output (assets/trace.js). -->
+  <div id="root" data-composition-id="win" data-width="1080" data-height="1920">
+    <div id="win-root"></div>
+  </div>
+  <script>
+    window.__timelines["win"] = FILM.deviceScene({"kind": "win", "ground": "#142130", "darkTitles": true, "quiet": "রাত ১১:৫৮ · টরন্টো", "title": "যেভাবে বলেন, সেভাবে লিখুন", "en": "Type Bangla the way you say it, on Windows", "clock": "11:58 PM<br>10/29/2026", "history": [], "trace": "win", "len": 186, "id": "win", "focus": {"x": 560, "y": 560}});
+  </script>
+</template>

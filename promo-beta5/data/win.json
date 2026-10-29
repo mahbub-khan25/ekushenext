@@ -1,0 +1,196 @@
+[
+  {
+    "candidates": [
+      "ম",
+      "মা",
+      "মো",
+      "মে",
+      "মোঃ"
+    ],
+    "committed": null,
+    "key": "m",
+    "preedit": "ম",
+    "roman": "m"
+  },
+  {
+    "candidates": [
+      "মা",
+      "ম",
+      "মে",
+      "মো",
+      "ma"
+    ],
+    "committed": null,
+    "key": "a",
+    "preedit": "মা",
+    "roman": "ma"
+  },
+  {
+    "candidates": [
+      "মা,",
+      "ম,",
+      "মে,",
+      "মো,",
+      "ma,"
+    ],
+    "committed": null,
+    "key": ",",
+    "preedit": "মা,",
+    "roman": "ma,"
+  },
+  {
+    "candidates": [],
+    "committed": "মা, ",
+    "key": " ",
+    "preedit": "",
+    "roman": ""
+  },
+  {
+    "candidates": [
+      "ক",
+      "কি",
+      "কে",
+      "কী",
+      "কেউ"
+    ],
+    "committed": null,
+    "key": "k",
+    "preedit": "ক",
+    "roman": "k"
+  },
+  {
+    "candidates": [
+      "কে",
+      "কেউ",
+      "কি",
+      "কী",
+      "ke"
+    ],
+    "committed": null,
+    "key": "e",
+    "preedit": "কে",
+    "roman": "ke"
+  },
+  {
+    "candidates": [
+      "কম",
+      "কেম",
+      "কমে",
+      "কাম",
+      "kem"
+    ],
+    "committed": null,
+    "key": "m",
+    "preedit": "কম",
+    "roman": "kem"
+  },
+  {
+    "candidates": [
+      "কম",
+      "কেমো",
+      "কেম",
+      "কমে",
+      "kemo"
+    ],
+    "committed": null,
+    "key": "o",
+    "preedit": "কম",
+    "roman": "kemo"
+  },
+  {
+    "candidates": [
+      "কেমন",
+      "কামনা",
+      "কমন",
+      "কেমনে",
+      "kemon"
+    ],
+    "committed": null,
+    "key": "n",
+    "preedit": "কেমন",
+    "roman": "kemon"
+  },
+  {
+    "candidates": [],
+    "committed": "কেমন ",
+    "key": " ",
+    "preedit": "",
+    "roman": ""
+  },
+  {
+    "candidates": [
+      "আ",
+      "এ",
+      "এই",
+      "ও",
+      "আঃ"
+    ],
+    "committed": null,
+    "key": "a",
+    "preedit": "আ",
+    "roman": "a"
+  },
+  {
+    "candidates": [
+      "আছে",
+      "আছ",
+      "আছো",
+      "আচ",
+      "ac"
+    ],
+    "committed": null,
+    "key": "c",
+    "preedit": "আছে",
+    "roman": "ac"
+  },
+  {
+    "candidates": [
+      "আছ",
+      "আছে",
+      "আছো",
+      "আঁচ",
+      "ach"
+    ],
+    "committed": null,
+    "key": "h",
+    "preedit": "আছ",
+    "roman": "ach"
+  },
+  {
+    "candidates": [
+      "আছো",
+      "আছ",
+      "আছে",
+      "উচ্চ",
+      "acho"
+    ],
+    "committed": null,
+    "key": "o",
+    "preedit": "আছো",
+    "roman": "acho"
+  },
+  {
+    "candidates": [
+      "আছো?",
+      "আছ?",
+      "আছে?",
+      "উচ্চ?",
+      "acho?"
+    ],
+    "committed": null,
+    "key": "?",
+    "preedit": "আছো?",
+    "roman": "acho?"
+  },
+  {
+    "candidates": [],
+    "committed": "আছো? ",
+    "key": " ",
+    "preedit": "",
+    "roman": ""
+  },
+  {
+    "committed": "",
+    "key": "⏎"
+  }
+]

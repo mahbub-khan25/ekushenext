@@ -1,0 +1,424 @@
+[
+  {
+    "candidates": [
+      "স",
+      "শ",
+      "সে",
+      "সেই",
+      "ছ"
+    ],
+    "committed": null,
+    "key": "s",
+    "preedit": "স",
+    "roman": "s"
+  },
+  {
+    "candidates": [
+      "শ",
+      "সহ",
+      "স",
+      "সে",
+      "sh"
+    ],
+    "committed": null,
+    "key": "h",
+    "preedit": "শ",
+    "roman": "sh"
+  },
+  {
+    "candidates": [
+      "সি",
+      "শি",
+      "সেই",
+      "সই",
+      "shi"
+    ],
+    "committed": null,
+    "key": "i",
+    "preedit": "সি",
+    "roman": "shi"
+  },
+  {
+    "candidates": [
+      "সিগ",
+      "শীঘ্রই",
+      "সহগ",
+      "শিগ",
+      "shig"
+    ],
+    "committed": null,
+    "key": "g",
+    "preedit": "সিগ",
+    "roman": "shig"
+  },
+  {
+    "candidates": [
+      "সহগ",
+      "শীঘ্রই",
+      "সিগারেট",
+      "শিজ্ঞ",
+      "shigg"
+    ],
+    "committed": null,
+    "key": "g",
+    "preedit": "সহগ",
+    "roman": "shigg"
+  },
+  {
+    "candidates": [
+      "সহগ",
+      "শীঘ্রই",
+      "সিগারেট",
+      "শিজ্ঞি",
+      "shiggi"
+    ],
+    "committed": null,
+    "key": "i",
+    "preedit": "সহগ",
+    "roman": "shiggi"
+  },
+  {
+    "candidates": [
+      "শিগগির",
+      "শিগ্গির",
+      "শীগ্গির",
+      "শিজ্ঞির",
+      "shiggir"
+    ],
+    "committed": null,
+    "key": "r",
+    "preedit": "শিগগির",
+    "roman": "shiggir"
+  },
+  {
+    "candidates": [
+      "শিগগিরই",
+      "শিগগিরি",
+      "শীঘ্রই",
+      "শিজ্ঞিরি",
+      "shiggiri"
+    ],
+    "committed": null,
+    "key": "i",
+    "preedit": "শিগগিরই",
+    "roman": "shiggiri"
+  },
+  {
+    "candidates": [],
+    "committed": "শিগগিরই ",
+    "key": " ",
+    "preedit": "",
+    "roman": ""
+  },
+  {
+    "candidates": [
+      "দ",
+      "ড",
+      "দু",
+      "দুই",
+      "দেয়"
+    ],
+    "committed": null,
+    "key": "d",
+    "preedit": "দ",
+    "roman": "d"
+  },
+  {
+    "candidates": [
+      "দে",
+      "ডে",
+      "দেয়",
+      "দিয়ে",
+      "de"
+    ],
+    "committed": null,
+    "key": "e",
+    "preedit": "দে",
+    "roman": "de"
+  },
+  {
+    "candidates": [
+      "দেশ",
+      "দেশে",
+      "ডেস",
+      "দেস",
+      "des"
+    ],
+    "committed": null,
+    "key": "s",
+    "preedit": "দেশ",
+    "roman": "des"
+  },
+  {
+    "candidates": [
+      "দেশ",
+      "দেশে",
+      "দশ",
+      "ডেস",
+      "desh"
+    ],
+    "committed": null,
+    "key": "h",
+    "preedit": "দেশ",
+    "roman": "desh"
+  },
+  {
+    "candidates": [
+      "দেশে",
+      "দেশ",
+      "দিয়েছে",
+      "দিসে",
+      "deshe"
+    ],
+    "committed": null,
+    "key": "e",
+    "preedit": "দেশে",
+    "roman": "deshe"
+  },
+  {
+    "candidates": [],
+    "committed": "দেশে ",
+    "key": " ",
+    "preedit": "",
+    "roman": ""
+  },
+  {
+    "candidates": [
+      "আ",
+      "এ",
+      "এই",
+      "ও",
+      "আঃ"
+    ],
+    "committed": null,
+    "key": "a",
+    "preedit": "আ",
+    "roman": "a"
+  },
+  {
+    "candidates": [
+      "আস",
+      "আছে",
+      "আসে",
+      "আশ",
+      "as"
+    ],
+    "committed": null,
+    "key": "s",
+    "preedit": "আস",
+    "roman": "as"
+  },
+  {
+    "candidates": [
+      "আশ",
+      "আস",
+      "আঁশ",
+      "আছে",
+      "ash"
+    ],
+    "committed": null,
+    "key": "h",
+    "preedit": "আশ",
+    "roman": "ash"
+  },
+  {
+    "candidates": [
+      "আসবে",
+      "এসব",
+      "আসব",
+      "আশ্ব",
+      "ashb"
+    ],
+    "committed": null,
+    "key": "b",
+    "preedit": "আসবে",
+    "roman": "ashb"
+  },
+  {
+    "candidates": [
+      "আসব",
+      "আসবো",
+      "আসবে",
+      "এসব",
+      "ashbo"
+    ],
+    "committed": null,
+    "key": "o",
+    "preedit": "আসব",
+    "roman": "ashbo"
+  },
+  {
+    "candidates": [
+      "আসব,",
+      "আসবো,",
+      "আসবে,",
+      "এসব,",
+      "ashbo,"
+    ],
+    "committed": null,
+    "key": ",",
+    "preedit": "আসব,",
+    "roman": "ashbo,"
+  },
+  {
+    "candidates": [],
+    "committed": "আসব, ",
+    "key": " ",
+    "preedit": "",
+    "roman": ""
+  },
+  {
+    "candidates": [
+      "ই",
+      "এই",
+      "ও",
+      "এ",
+      "ওই"
+    ],
+    "committed": null,
+    "key": "i",
+    "preedit": "ই",
+    "roman": "i"
+  },
+  {
+    "candidates": [
+      "ইন",
+      "আইন",
+      "ইং",
+      "অন্য",
+      "in"
+    ],
+    "committed": null,
+    "key": "n",
+    "preedit": "ইন",
+    "roman": "in"
+  },
+  {
+    "candidates": [
+      "অংশ",
+      "ইনস",
+      "ইন্স",
+      "ইঞ্চি",
+      "ins"
+    ],
+    "committed": null,
+    "key": "s",
+    "preedit": "অংশ",
+    "roman": "ins"
+  },
+  {
+    "candidates": [
+      "অংশ",
+      "ইঞ্চি",
+      "অংশে",
+      "ইন্সহ",
+      "insh"
+    ],
+    "committed": null,
+    "key": "h",
+    "preedit": "অংশ",
+    "roman": "insh"
+  },
+  {
+    "candidates": [
+      "ইনশা",
+      "অংশ",
+      "ইঞ্চি",
+      "ইন্সহা",
+      "insha"
+    ],
+    "committed": null,
+    "key": "a",
+    "preedit": "ইনশা",
+    "roman": "insha"
+  },
+  {
+    "candidates": [
+      "অংশ",
+      "ইঞ্চি",
+      "অংশে",
+      "ইন্সহাআ",
+      "inshaA"
+    ],
+    "committed": null,
+    "key": "A",
+    "preedit": "অংশ",
+    "roman": "inshaA"
+  },
+  {
+    "candidates": [
+      "অঞ্চল",
+      "অঞ্চলে",
+      "ইনশাআল্লাহ",
+      "ইন্সহাআল",
+      "inshaAl"
+    ],
+    "committed": null,
+    "key": "l",
+    "preedit": "অঞ্চল",
+    "roman": "inshaAl"
+  },
+  {
+    "candidates": [
+      "অঞ্চল",
+      "অঞ্চলে",
+      "ইনশাআল্লাহ",
+      "ইন্সহাআল্ল",
+      "inshaAll"
+    ],
+    "committed": null,
+    "key": "l",
+    "preedit": "অঞ্চল",
+    "roman": "inshaAll"
+  },
+  {
+    "candidates": [
+      "অঞ্চল",
+      "ইনশাআল্লাহ",
+      "অঞ্চলে",
+      "ইন্সহাআল্লা",
+      "inshaAlla"
+    ],
+    "committed": null,
+    "key": "a",
+    "preedit": "অঞ্চল",
+    "roman": "inshaAlla"
+  },
+  {
+    "candidates": [
+      "ইনশাআল্লাহ",
+      "ইনশাল্লাহ",
+      "ইংশাআল্লাহ",
+      "ইন্সহাআল্লাহ",
+      "inshaAllah"
+    ],
+    "committed": null,
+    "key": "h",
+    "preedit": "ইনশাআল্লাহ",
+    "roman": "inshaAllah"
+  },
+  {
+    "candidates": [
+      "ইনশাআল্লাহ।",
+      "ইনশাল্লাহ।",
+      "ইংশাআল্লাহ।",
+      "ইন্সহাআল্লাহ।",
+      "inshaAllah।"
+    ],
+    "committed": null,
+    "key": ".",
+    "preedit": "ইনশাআল্লাহ।",
+    "roman": "inshaAllah."
+  },
+  {
+    "candidates": [],
+    "committed": "ইনশাআল্লাহ। ",
+    "key": " ",
+    "preedit": "",
+    "roman": ""
+  },
+  {
+    "committed": "",
+    "key": "⏎"
+  }
+]

@@ -1,0 +1,17 @@
+<template>
+  <style>
+    @font-face { font-family: 'Hind Siliguri'; src: url('assets/fonts/HindSiliguri-Regular.ttf'); font-weight: 400 500; }
+    @font-face { font-family: 'Hind Siliguri'; src: url('assets/fonts/HindSiliguri-SemiBold.ttf'); font-weight: 600; }
+    @font-face { font-family: 'Hind Siliguri'; src: url('assets/fonts/HindSiliguri-Bold.ttf'); font-weight: 700 900; }
+    @font-face { font-family: 'Inter Tight'; src: url('assets/fonts/InterTight.woff2'); font-weight: 300 900; }
+    #root { position: absolute; inset: 0; overflow: hidden; }
+    #mom-root { position: absolute; inset: 0; }
+  </style>
+  <!-- Ma in Dhaka at dawn: the four lines arrive, she answers on the Ekushe Default keys. -->
+  <div id="root" data-composition-id="mom" data-width="1920" data-height="1080">
+    <div id="mom-root"></div>
+  </div>
+  <script>
+    window.__timelines["mom"] = FILM.momScene({"id": "mom", "ground": "#F4E6CB", "darkTitles": false, "quiet": "সকাল ৬:৩০ · ঢাকা", "title": "মায়ের ভাষায়, সব পর্দায়", "en": "In your mother tongue, on every screen", "clock": "6:30", "name": "রাফি", "letter": "রা", "lines": ["মা, কেমন আছো?", "আজ নতুন কাজ শুরু হলো।", "তোমার হাতের রান্না খুব মিস করি।", "শিগগিরই দেশে আসব, ইনশাআল্লাহ।"], "trace": "mom", "arriveAt": 40, "typeAt": 90, "len": 322, "focus": {"x": 246, "y": 640}});
+  </script>
+</template>

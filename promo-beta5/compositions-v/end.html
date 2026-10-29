@@ -1,0 +1,81 @@
+<template>
+  <style>
+    @font-face { font-family: 'Hind Siliguri'; src: url('assets/fonts/HindSiliguri-Regular.ttf'); font-weight: 400 500; }
+    @font-face { font-family: 'Hind Siliguri'; src: url('assets/fonts/HindSiliguri-SemiBold.ttf'); font-weight: 600; }
+    @font-face { font-family: 'Hind Siliguri'; src: url('assets/fonts/HindSiliguri-Bold.ttf'); font-weight: 700 900; }
+    @font-face { font-family: 'Inter Tight'; src: url('assets/fonts/InterTight.woff2'); font-weight: 300 900; }
+    #root { position: absolute; inset: 0; overflow: hidden; background: #06372A; }
+    #end-sun { position: absolute; border-radius: 50%; background: #E0303F; }
+    #end-col { position: absolute; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; text-align: center; }
+    #end-logo { border-radius: 22%; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4); }
+    #end-name { font-family: 'Hind Siliguri', sans-serif; font-weight: 700; color: #fff; line-height: 1.2; }
+    #end-name span { display: inline-block; }
+    #end-free { font-family: 'Hind Siliguri', sans-serif; font-weight: 600; color: #EAF3EE; }
+    #end-os { font-family: 'Inter Tight', sans-serif; font-weight: 600; color: rgba(234, 243, 238, 0.78); }
+    #end-soon { font-family: 'Hind Siliguri', sans-serif; font-weight: 600; color: #E9B949; }
+    #end-cta { position: absolute; display: grid; place-items: center; background: #3C7BF0; color: #fff; font-family: 'Inter Tight', sans-serif; font-weight: 700; }
+    #end-cta-text { white-space: nowrap; }
+  </style>
+  <!-- The end card: Ma's send button (blue) shrinks into the website button; the mark, the name, what it
+       costs and where it runs. -->
+  <div id="root" data-composition-id="end" data-width="1080" data-height="1920">
+    <div id="end-sun"></div>
+    <div id="end-col">
+      <img id="end-logo" src="assets/img/logo_512.png" alt="Ekushe Next" />
+      <div id="end-name">একুশে নেক্সট</div>
+      <div id="end-free">সম্পূর্ণ ফ্রি · ওপেন সোর্স</div>
+      <div id="end-os">Windows · macOS · Linux · Android</div>
+      <div id="end-soon">iPhone আর iPad শীঘ্রই</div>
+    </div>
+    <div id="end-cta"><span id="end-cta-text">ekushenext.com</span></div>
+  </div>
+  <script>
+    (function () {
+      const F = FILM;
+      const { W, H } = F.frameSize();
+      const v = H > W;
+      const $ = (id) => document.getElementById(id);
+      const col = $('end-col'), logo = $('end-logo'), name = $('end-name'), cta = $('end-cta'), sun = $('end-sun');
+      // sizes for the frame
+      const L = v
+        ? { top: 360, logo: 300, name: 120, free: 50, os: 38, soon: 40, ctaW: 640, ctaH: 120, ctaY: 1500, ctaFont: 52, sun: 480, sunY: 270 }
+        : { top: 120, logo: 220, name: 104, free: 40, os: 30, soon: 32, ctaW: 520, ctaH: 92, ctaY: 862, ctaFont: 40, sun: 330, sunY: 65 };
+      col.style.top = `${L.top}px`;
+      logo.style.width = logo.style.height = `${L.logo}px`;
+      name.style.fontSize = `${L.name}px`;
+      name.style.marginTop = `${v ? 30 : 18}px`;
+      $('end-free').style.cssText += `;font-size:${L.free}px;margin-top:${v ? 22 : 10}px`;
+      $('end-os').style.cssText += `;font-size:${L.os}px;margin-top:${v ? 12 : 6}px`;
+      $('end-soon').style.cssText += `;font-size:${L.soon}px;margin-top:${v ? 18 : 10}px`;
+      Object.assign(sun.style, { width: `${L.sun}px`, height: `${L.sun}px`, left: `${(W - L.sun) / 2}px`, top: `${L.sunY}px` });
+      $('end-cta-text').style.fontSize = `${L.ctaFont}px`;
+      name.innerHTML = F.graphemes(name.textContent.trim()).map((g) => (g === ' ' ? '<span style="width:0.28em"></span>' : `<span>${g}</span>`)).join('');
+
+      const ctaBox = { x: (W - L.ctaW) / 2, y: L.ctaY, w: L.ctaW, h: L.ctaH };
+      const tl = gsap.timeline({ paused: true });
+      F.tick(tl, 210, (f) => {
+        // the blue frame becomes the button (0.7 s, long ease-out)
+        const p = F.expoOut(F.clamp01(f / 21));
+        const x = F.lerp(0, ctaBox.x, p), y = F.lerp(0, ctaBox.y, p);
+        const w = F.lerp(W, ctaBox.w, p), h = F.lerp(H, ctaBox.h, p);
+        Object.assign(cta.style, { left: `${x}px`, top: `${y}px`, width: `${w}px`, height: `${h}px`, borderRadius: `${F.lerp(0, ctaBox.h / 2, p)}px` });
+        $('end-cta-text').style.opacity = F.clamp01((f - 14) / 6);
+        const rise = (e, at) => {
+          const q = F.clamp01((f - at) / 5);
+          e.style.opacity = q;
+          e.style.filter = q < 1 ? `blur(${(1 - q) * 6}px)` : 'none';
+        };
+        // the mark lands, the name letter by letter, then the facts
+        const lp = F.clamp01((f - 16) / 14);
+        logo.style.opacity = Math.min(1, lp * 2);
+        logo.style.transform = `scale(${0.82 + 0.18 * F.expoOut(lp)})`;
+        name.querySelectorAll('span').forEach((s, i) => rise(s, 26 + i * 2));
+        rise($('end-free'), 52);
+        rise($('end-os'), 60);
+        rise($('end-soon'), 70);
+        sun.style.transform = `translateY(${(1 - F.expoOut(F.clamp01((f - 10) / 40))) * 120}px)`;
+      });
+      window.__timelines["end"] = tl;
+    })();
+  </script>
+</template>

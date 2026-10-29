@@ -1,0 +1,17 @@
+<template>
+  <style>
+    @font-face { font-family: 'Hind Siliguri'; src: url('assets/fonts/HindSiliguri-Regular.ttf'); font-weight: 400 500; }
+    @font-face { font-family: 'Hind Siliguri'; src: url('assets/fonts/HindSiliguri-SemiBold.ttf'); font-weight: 600; }
+    @font-face { font-family: 'Hind Siliguri'; src: url('assets/fonts/HindSiliguri-Bold.ttf'); font-weight: 700 900; }
+    @font-face { font-family: 'Inter Tight'; src: url('assets/fonts/InterTight.woff2'); font-weight: 300 900; }
+    #root { position: absolute; inset: 0; overflow: hidden; }
+    #phone-root { position: absolute; inset: 0; }
+  </style>
+  <!-- Android on the bus: the third line, on the Ekushe Default keys. The words on screen are below; the typed line is the engine's real output (assets/trace.js). -->
+  <div id="root" data-composition-id="phone" data-width="1920" data-height="1080">
+    <div id="phone-root"></div>
+  </div>
+  <script>
+    window.__timelines["phone"] = FILM.deviceScene({"kind": "phone", "ground": "#E9A273", "darkTitles": false, "quiet": "বিকেল ৫:৪০ · বাসে", "title": "চ্যাটের ভাষাও বোঝে", "en": "It understands how you chat, on Android", "clock": "5:40", "history": ["মা, কেমন আছো?", "আজ নতুন কাজ শুরু হলো।"], "trace": "phone", "len": 252, "id": "phone", "focus": {"x": 246, "y": 690}});
+  </script>
+</template>

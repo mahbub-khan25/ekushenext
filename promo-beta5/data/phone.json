@@ -1,0 +1,425 @@
+[
+  {
+    "candidates": [
+      "ত",
+      "টি",
+      "তা",
+      "তো",
+      "ট"
+    ],
+    "committed": null,
+    "key": "t",
+    "preedit": "ত",
+    "roman": "t"
+  },
+  {
+    "candidates": [
+      "তো",
+      "ত",
+      "টো",
+      "টি",
+      "to"
+    ],
+    "committed": null,
+    "key": "o",
+    "preedit": "তো",
+    "roman": "to"
+  },
+  {
+    "candidates": [
+      "তম",
+      "টম",
+      "তুমি",
+      "তোম",
+      "tom"
+    ],
+    "committed": null,
+    "key": "m",
+    "preedit": "তম",
+    "roman": "tom"
+  },
+  {
+    "candidates": [
+      "তোমা",
+      "তম",
+      "তমা",
+      "তোমায়",
+      "toma"
+    ],
+    "committed": null,
+    "key": "a",
+    "preedit": "তোমা",
+    "roman": "toma"
+  },
+  {
+    "candidates": [
+      "তোমার",
+      "তমার",
+      "তোমরা",
+      "তোমারই",
+      "tomar"
+    ],
+    "committed": null,
+    "key": "r",
+    "preedit": "তোমার",
+    "roman": "tomar"
+  },
+  {
+    "candidates": [],
+    "committed": "তোমার ",
+    "key": " ",
+    "preedit": "",
+    "roman": ""
+  },
+  {
+    "candidates": [
+      "হ",
+      "হয়",
+      "হয়ে",
+      "হে",
+      "হওয়া"
+    ],
+    "committed": null,
+    "key": "h",
+    "preedit": "হ",
+    "roman": "h"
+  },
+  {
+    "candidates": [
+      "হা",
+      "হয়",
+      "হাঁ",
+      "হয়ে",
+      "ha"
+    ],
+    "committed": null,
+    "key": "a",
+    "preedit": "হা",
+    "roman": "ha"
+  },
+  {
+    "candidates": [
+      "হয়",
+      "হয়ে",
+      "হওয়া",
+      "হাআ",
+      "haa"
+    ],
+    "committed": null,
+    "key": "a",
+    "preedit": "হয়",
+    "roman": "haa"
+  },
+  {
+    "candidates": [
+      "হাত",
+      "হাতে",
+      "হতে",
+      "হাআত",
+      "haat"
+    ],
+    "committed": null,
+    "key": "t",
+    "preedit": "হাত",
+    "roman": "haat"
+  },
+  {
+    "candidates": [
+      "হাতে",
+      "হতে",
+      "হাত",
+      "হাআতে",
+      "haate"
+    ],
+    "committed": null,
+    "key": "e",
+    "preedit": "হাতে",
+    "roman": "haate"
+  },
+  {
+    "candidates": [
+      "হাতের",
+      "হাটের",
+      "হাতির",
+      "হাআতের",
+      "haater"
+    ],
+    "committed": null,
+    "key": "r",
+    "preedit": "হাতের",
+    "roman": "haater"
+  },
+  {
+    "candidates": [],
+    "committed": "হাতের ",
+    "key": " ",
+    "preedit": "",
+    "roman": ""
+  },
+  {
+    "candidates": [
+      "র",
+      "রে",
+      "ড়",
+      "রা",
+      "রায়"
+    ],
+    "committed": null,
+    "key": "r",
+    "preedit": "র",
+    "roman": "r"
+  },
+  {
+    "candidates": [
+      "রা",
+      "রাঃ",
+      "র",
+      "রায়",
+      "ra"
+    ],
+    "committed": null,
+    "key": "a",
+    "preedit": "রা",
+    "roman": "ra"
+  },
+  {
+    "candidates": [
+      "রান",
+      "রানে",
+      "রানা",
+      "রাণ",
+      "ran"
+    ],
+    "committed": null,
+    "key": "n",
+    "preedit": "রান",
+    "roman": "ran"
+  },
+  {
+    "candidates": [
+      "রান",
+      "রান্না",
+      "রানে",
+      "রান্ন",
+      "rann"
+    ],
+    "committed": null,
+    "key": "n",
+    "preedit": "রান",
+    "roman": "rann"
+  },
+  {
+    "candidates": [
+      "রান্না",
+      "রান",
+      "রানা",
+      "রানে",
+      "ranna"
+    ],
+    "committed": null,
+    "key": "a",
+    "preedit": "রান্না",
+    "roman": "ranna"
+  },
+  {
+    "candidates": [],
+    "committed": "রান্না ",
+    "key": " ",
+    "preedit": "",
+    "roman": ""
+  },
+  {
+    "candidates": [
+      "ক",
+      "কি",
+      "কে",
+      "কী",
+      "কেউ"
+    ],
+    "committed": null,
+    "key": "k",
+    "preedit": "ক",
+    "roman": "k"
+  },
+  {
+    "candidates": [
+      "খ",
+      "কি",
+      "কে",
+      "কী",
+      "kh"
+    ],
+    "committed": null,
+    "key": "h",
+    "preedit": "খ",
+    "roman": "kh"
+  },
+  {
+    "candidates": [
+      "কেউ",
+      "কি",
+      "খু",
+      "কে",
+      "khu"
+    ],
+    "committed": null,
+    "key": "u",
+    "preedit": "কেউ",
+    "roman": "khu"
+  },
+  {
+    "candidates": [
+      "খুব",
+      "খুবই",
+      "খূব",
+      "কবি",
+      "khub"
+    ],
+    "committed": null,
+    "key": "b",
+    "preedit": "খুব",
+    "roman": "khub"
+  },
+  {
+    "candidates": [],
+    "committed": "খুব ",
+    "key": " ",
+    "preedit": "",
+    "roman": ""
+  },
+  {
+    "candidates": [
+      "ম",
+      "মা",
+      "মো",
+      "মে",
+      "মোঃ"
+    ],
+    "committed": null,
+    "key": "m",
+    "preedit": "ম",
+    "roman": "m"
+  },
+  {
+    "candidates": [
+      "মি",
+      "মিঃ",
+      "মই",
+      "ম",
+      "mi"
+    ],
+    "committed": null,
+    "key": "i",
+    "preedit": "মি",
+    "roman": "mi"
+  },
+  {
+    "candidates": [
+      "মিস",
+      "মাস",
+      "মাসে",
+      "মাছ",
+      "mis"
+    ],
+    "committed": null,
+    "key": "s",
+    "preedit": "মিস",
+    "roman": "mis"
+  },
+  {
+    "candidates": [
+      "মিস",
+      "মাস",
+      "মাসে",
+      "মিসস",
+      "miss"
+    ],
+    "committed": null,
+    "key": "s",
+    "preedit": "মিস",
+    "roman": "miss"
+  },
+  {
+    "candidates": [],
+    "committed": "মিস ",
+    "key": " ",
+    "preedit": "",
+    "roman": ""
+  },
+  {
+    "candidates": [
+      "ক",
+      "কি",
+      "কে",
+      "কী",
+      "কেউ"
+    ],
+    "committed": null,
+    "key": "k",
+    "preedit": "ক",
+    "roman": "k"
+  },
+  {
+    "candidates": [
+      "ক",
+      "কো",
+      "কি",
+      "কে",
+      "ko"
+    ],
+    "committed": null,
+    "key": "o",
+    "preedit": "ক",
+    "roman": "ko"
+  },
+  {
+    "candidates": [
+      "করি",
+      "করে",
+      "কইরা",
+      "কর",
+      "kor"
+    ],
+    "committed": null,
+    "key": "r",
+    "preedit": "করি",
+    "roman": "kor"
+  },
+  {
+    "candidates": [
+      "করি",
+      "করে",
+      "কইরা",
+      "করা",
+      "kori"
+    ],
+    "committed": null,
+    "key": "i",
+    "preedit": "করি",
+    "roman": "kori"
+  },
+  {
+    "candidates": [
+      "করি।",
+      "করে।",
+      "কইরা।",
+      "করা।",
+      "kori।"
+    ],
+    "committed": null,
+    "key": ".",
+    "preedit": "করি।",
+    "roman": "kori."
+  },
+  {
+    "candidates": [],
+    "committed": "করি। ",
+    "key": " ",
+    "preedit": "",
+    "roman": ""
+  },
+  {
+    "committed": "",
+    "key": "⏎"
+  }
+]
