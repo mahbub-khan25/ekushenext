@@ -125,6 +125,12 @@ for nav in ['gestural', 'threebutton']:
     time.sleep(4)
     sh('input keyevent KEYCODE_WAKEUP'); sh('wm dismiss-keyguard'); sh('input keyevent KEYCODE_HOME'); time.sleep(2)
     sh(f'am force-stop {PKG}')
+    # Android picks its own keyboard again after a restart: choose Ekushe now, and check it held
+    for _ in range(5):
+        sh(f'ime enable {IME}'); sh(f'ime set {IME}'); time.sleep(2)
+        if IME.split('/')[0] in sh('settings get secure default_input_method'):
+            break
+    print(nav, 'keyboard', sh('settings get secure default_input_method').strip())
     # a desktop window (freeform), as when the tablet is in desktop mode
     sh(f'am start -W --windowingMode 5 -n {PKG}/.MainActivity'); time.sleep(3)
     shot(f'60-desktop-{nav}-app')
