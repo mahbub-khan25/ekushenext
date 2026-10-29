@@ -33,7 +33,9 @@ Start-Sleep -Seconds 2
 [System.Windows.Forms.SendKeys]::SendWait('^ ')   # back to English for the shortcuts
 Start-Sleep -Milliseconds 500
 Set-Clipboard -Value ''
-[System.Windows.Forms.SendKeys]::SendWait('^a^c')
+[System.Windows.Forms.SendKeys]::SendWait('^(a)')
+Start-Sleep -Milliseconds 300
+[System.Windows.Forms.SendKeys]::SendWait('^(c)')
 Start-Sleep -Milliseconds 800
 $got = (Get-Clipboard -Raw)
 Stop-Process -Id $np.Id -Force
