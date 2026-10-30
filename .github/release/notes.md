@@ -2,6 +2,8 @@
 
 Type Bangla the way it sounds, in English letters (`amar sonar bangla` → আমার সোনার বাংলা), and Ekushe writes it with the spelling you meant.
 
+**New in beta.8:** words that start with র + য-ফলা now come out right on every platform: `rZam` gives র‍্যাম (RAM), not র্যাম, and likewise র‍্যাব, র‍্যালি, র‍্যাংকিং; a reph inside a word (কার্য, সূর্য) stays as it is. The Bijoy (SutonnyMJ) ⇄ Unicode converter in Studio and Ctrl+Alt+C now reads and writes real SutonnyMJ text correctly, including যুক্তাক্ষর, র-ফলা, রেফ and curly quotes. On Linux, choosing a fixed layout (Probhat, National and others) no longer stops Ekushe from typing.
+
 **New in beta.7 (Windows):** the installer window now always opens (on some PCs it stayed as a button on the taskbar and never appeared), and the Ekushe icon now always shows in the tray, also for the portable version and after Windows Explorer restarts.
 
 **New in beta.2–beta.6:** a larger, better-checked dictionary. `byabostha` and `byakti` now give ব্যবস্থা and ব্যক্তি, chat verbs like `khaiso` and `korsi` find the standard word with the spoken form next to it, common names (`rahim` → রহিম, `mohammad` → মোহাম্মদ) and chat words (`ok` → ওকে, `koi` → কই) come out right, and 483 spellings were confirmed by native-speaker reviewers.
