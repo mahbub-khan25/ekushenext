@@ -15,6 +15,36 @@ Ekushe Next dictionary, CC BY-SA 4.0. Derived from Bangla Wikipedia (CC BY-SA 3.
 (ODC-By 1.0), Sangraha by AI4Bharat (CC BY 4.0) and wordfreq (CC BY-SA 4.0). See
 [`data/dictionary/LICENSE.md`](data/dictionary/LICENSE.md).
 
+## Bijoy (SutonnyMJ) glyph tables (`crates/ekushe-core/src/bijoy.rs`)
+
+The glyph-to-letter tables of the Bijoy ⇄ Unicode converter come from bijoy_helper
+(https://github.com/fahidsarker/bijoy_helper), with a few corrections; the reordering code is
+Ekushe's own.
+
+```
+MIT License
+
+Copyright (c) 2022 Muhammad Fahid Sarker
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
 ## Rust libraries
 
 All Rust dependencies use permissive licences: MIT, Apache-2.0, BSD-0, Zlib, Unlicense, Unicode-3.0, or

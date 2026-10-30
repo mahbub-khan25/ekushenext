@@ -10,6 +10,7 @@
 //! - [`config`]: Hotkeys (Double-Tap Shift default, Ctrl+Space, F12, Ctrl+Alt+B), modes, and per-app profiles
 
 pub mod backup;
+pub mod bijoy;
 pub mod config;
 
 /// This build's release, e.g. `v0.1.0-beta.10` (from .github/release/VERSION).

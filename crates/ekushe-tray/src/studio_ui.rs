@@ -578,7 +578,7 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
         <button class="chip" onclick="runConvert('banglish', this)">বাংলিশ → বাংলা</button>
       </div>
       <div class="two-col">
-        <textarea id="convInput" rows="7" placeholder="এখানে লেখা পেস্ট করুন" oninput="runConvert()">Avwg evsjvq Mvb MvB| evsjv†`k Avgvi Ÿ†`k|</textarea>
+        <textarea id="convInput" rows="7" placeholder="এখানে লেখা পেস্ট করুন" oninput="runConvert()">Avwg evsjvq Mvb MvB| evsjv†`k Avgvi ¯^‡`k|</textarea>
         <textarea id="convOutput" rows="7" placeholder="ফলাফল" readonly></textarea>
       </div>
       <div class="row" style="margin-top:10px;justify-content:flex-end"><button class="btn primary" onclick="copyText(document.getElementById('convOutput').value)"><svg><use href="#i-copy"/></svg>ফলাফল কপি করুন</button></div>
