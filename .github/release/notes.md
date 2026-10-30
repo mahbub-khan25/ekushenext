@@ -2,6 +2,8 @@
 
 Type Bangla the way it sounds, in English letters (`amar sonar bangla` → আমার সোনার বাংলা), and Ekushe writes it with the spelling you meant.
 
+**New in beta.7 (Windows):** the installer window now always opens (on some PCs it stayed as a button on the taskbar and never appeared), and the Ekushe icon now always shows in the tray, also for the portable version and after Windows Explorer restarts.
+
 **New in beta.2–beta.6:** a larger, better-checked dictionary. `byabostha` and `byakti` now give ব্যবস্থা and ব্যক্তি, chat verbs like `khaiso` and `korsi` find the standard word with the spoken form next to it, common names (`rahim` → রহিম, `mohammad` → মোহাম্মদ) and chat words (`ok` → ওকে, `koi` → কই) come out right, and 483 spellings were confirmed by native-speaker reviewers.
 
 On Android tablets, a **physical keyboard** (a keyboard cover or a Bluetooth keyboard) now types Bangla through Ekushe: only the suggestion strip shows, double-tap Shift switches Bangla ⇄ English, Tab moves through the suggestions and Backspace right after a word reopens it. New installs start with the **Ekushe Default** theme. The suggestion strip now shows whenever a physical keyboard is attached (also above the taskbar in a tablet's desktop mode), and unplugging it brings the on-screen keys back.
