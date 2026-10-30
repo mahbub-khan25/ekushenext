@@ -107,7 +107,9 @@ static void render(EkusheEngine *ek)
         }
     }
     ek->selected = MIN(ek_out_selected(), ek->count ? ek->count - 1 : 0);
-    ibus_lookup_table_set_cursor_pos(ek->table, ek->selected);
+    /* IBus aborts the engine on a cursor in an empty table (fixed layouts often have no suggestions) */
+    if (ek->count > 0)
+        ibus_lookup_table_set_cursor_pos(ek->table, ek->selected);
     ibus_engine_update_lookup_table((IBusEngine *)ek, ek->table, ek->count > 1);
 }
 
