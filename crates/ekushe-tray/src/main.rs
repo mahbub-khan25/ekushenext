@@ -46,21 +46,22 @@ use windows_sys::Win32::UI::Shell::{
     NOTIFYICONDATAW,
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
-    AppendMenuW, CallNextHookEx, CreatePopupMenu, CreateWindowExW, DefWindowProcW, DestroyMenu,
-    DestroyWindow, DispatchMessageW, FindWindowW, GetAncestor, GetClassNameW, GetCursorPos,
-    GetForegroundWindow, GetGUIThreadInfo, GetMessageW, GetSystemMetrics, GetWindowLongW,
-    GetWindowThreadProcessId, KillTimer, LoadCursorW, LoadIconW, LoadImageW, PeekMessageW,
-    PostMessageW, PostQuitMessage, PostThreadMessageW, RegisterClassW, SetCursor,
-    SetForegroundWindow, SetMenuDefaultItem, SetTimer, SetWindowPos, SetWindowsHookExW, ShowWindow,
-    TrackPopupMenu, TranslateMessage, UnhookWindowsHookEx, WindowFromPoint, GA_ROOT, GUITHREADINFO,
-    GWL_STYLE, HHOOK, HICON, HWND_TOPMOST, IDC_HAND, IDI_APPLICATION, IMAGE_ICON, KBDLLHOOKSTRUCT,
-    LR_LOADFROMFILE, MF_CHECKED, MF_SEPARATOR, MF_STRING, MF_UNCHECKED, MSG, MSLLHOOKSTRUCT,
-    SM_CXSCREEN, SM_CYSCREEN, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_SHOWWINDOW, SW_HIDE,
-    TPM_BOTTOMALIGN, TPM_LEFTALIGN, TPM_RETURNCMD, TPM_RIGHTBUTTON, WH_KEYBOARD_LL, WH_MOUSE_LL,
-    WM_APP, WM_COMMAND, WM_CONTEXTMENU, WM_DESTROY, WM_KEYDOWN, WM_KEYUP, WM_LBUTTONDBLCLK,
-    WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MOUSEACTIVATE, WM_NULL, WM_PAINT, WM_RBUTTONUP, WM_SETCURSOR,
-    WM_SYSKEYDOWN, WM_TIMER, WNDCLASSW, WS_EX_LAYERED, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW,
-    WS_EX_TOPMOST, WS_POPUP,
+    AppendMenuW, CallNextHookEx, CreateIconFromResourceEx, CreatePopupMenu, CreateWindowExW,
+    DefWindowProcW, DestroyMenu, DestroyWindow, DispatchMessageW, FindWindowW, GetAncestor,
+    GetClassNameW, GetCursorPos, GetForegroundWindow, GetGUIThreadInfo, GetMessageW,
+    GetSystemMetrics, GetWindowLongW, GetWindowThreadProcessId, KillTimer, LoadCursorW, LoadIconW,
+    PeekMessageW, PostMessageW, PostQuitMessage, PostThreadMessageW, RegisterClassW,
+    RegisterWindowMessageW, SetCursor, SetForegroundWindow, SetMenuDefaultItem, SetTimer,
+    SetWindowPos, SetWindowsHookExW, ShowWindow, TrackPopupMenu, TranslateMessage,
+    UnhookWindowsHookEx, WindowFromPoint, GA_ROOT, GUITHREADINFO, GWL_STYLE, HHOOK, HICON,
+    HWND_TOPMOST, IDC_HAND, IDI_APPLICATION, KBDLLHOOKSTRUCT, LR_DEFAULTCOLOR, MF_CHECKED,
+    MF_SEPARATOR, MF_STRING, MF_UNCHECKED, MSG, MSLLHOOKSTRUCT, SM_CXSCREEN, SM_CXSMICON,
+    SM_CYSCREEN, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_SHOWWINDOW, SW_HIDE, TPM_BOTTOMALIGN,
+    TPM_LEFTALIGN, TPM_RETURNCMD, TPM_RIGHTBUTTON, WH_KEYBOARD_LL, WH_MOUSE_LL, WM_APP, WM_COMMAND,
+    WM_CONTEXTMENU, WM_DESTROY, WM_KEYDOWN, WM_KEYUP, WM_LBUTTONDBLCLK, WM_LBUTTONDOWN,
+    WM_LBUTTONUP, WM_MOUSEACTIVATE, WM_NULL, WM_PAINT, WM_RBUTTONUP, WM_SETCURSOR, WM_SYSKEYDOWN,
+    WM_TIMER, WNDCLASSW, WS_EX_LAYERED, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST,
+    WS_POPUP,
 };
 
 /// Embedded 256x256 PNG logo for the Studio UI (`/logo.png`)
@@ -231,6 +232,11 @@ const TIMER_SAVE_LEARNED: usize = 102;
 /// Re-install the low-level hooks every 30 s: if Windows ever dropped one (hook timeout, see
 /// `WM_EKUSHE_REFRESH_OVERLAY`), typing recovers within half a minute instead of never.
 const TIMER_REHOOK: usize = 103;
+/// Retries adding the tray icon when Windows refused it at start
+const TIMER_TRAY_RETRY: usize = 104;
+static TRAY_RETRIES: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+/// The message Explorer broadcasts when the taskbar is (re)created; tray icons must be added again
+static TASKBAR_CREATED: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 const REHOOK_INTERVAL_MS: u32 = 30_000;
 const ES_PASSWORD_STYLE: i32 = 0x0020;
 
@@ -442,7 +448,11 @@ fn main() {
         TRAY_HWND.store(tray_hwnd as isize, Ordering::SeqCst);
         OVERLAY_HWND.store(overlay_hwnd as isize, Ordering::SeqCst);
 
-        // Add icon to Windows System Tray
+        // Add icon to Windows System Tray (and again whenever Explorer restarts)
+        TASKBAR_CREATED.store(
+            RegisterWindowMessageW(wide_null("TaskbarCreated").as_ptr()),
+            Ordering::SeqCst,
+        );
         add_or_update_tray_icon(tray_hwnd, true);
         update_check::start_background(tray_hwnd as isize, || {
             STATE.lock().ekushe.config().check_for_updates
@@ -733,56 +743,71 @@ fn run_self_test(port: u16) {
 }
 
 /// Load `tray_bangla.ico` and `tray_english.ico` from `assets/icons/` relative to executable or workspace.
-unsafe fn load_tray_icons() -> (HICON, HICON) {
-    let candidates = [
-        PathBuf::from("assets/icons"),
-        env::current_exe()
-            .ok()
-            .and_then(|p| p.parent().map(|d| d.join("assets/icons")))
-            .unwrap_or_default(),
-        env::current_exe()
-            .ok()
-            .and_then(|p| {
-                p.parent()
-                    .and_then(|d| d.parent())
-                    .and_then(|d| d.parent())
-                    .map(|d| d.join("assets/icons"))
-            })
-            .unwrap_or_default(),
-    ];
-
-    for dir in &candidates {
-        let bn_path = dir.join("tray_bangla.ico");
-        let en_path = dir.join("tray_english.ico");
-        if bn_path.exists() && en_path.exists() {
-            let bn_w = wide_null(&bn_path.to_string_lossy());
-            let en_w = wide_null(&en_path.to_string_lossy());
-            let h_bn = LoadImageW(
-                ptr::null_mut(),
-                bn_w.as_ptr(),
-                IMAGE_ICON,
-                32,
-                32,
-                LR_LOADFROMFILE,
-            ) as HICON;
-            let h_en = LoadImageW(
-                ptr::null_mut(),
-                en_w.as_ptr(),
-                IMAGE_ICON,
-                32,
-                32,
-                LR_LOADFROMFILE,
-            ) as HICON;
-            if !h_bn.is_null() && !h_en.is_null() {
-                return (h_bn, h_en);
-            }
-        }
+/// An icon of `size` pixels from the bytes of a `.ico` file: the closest image at or above that
+/// size (PNG or bitmap). Null if the bytes aren't an icon.
+unsafe fn icon_from_ico_bytes(bytes: &[u8], size: i32) -> HICON {
+    let u16_at = |i: usize| {
+        bytes
+            .get(i..i + 2)
+            .map(|b| u16::from_le_bytes([b[0], b[1]]))
+    };
+    let u32_at = |i: usize| {
+        bytes
+            .get(i..i + 4)
+            .map(|b| u32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+    };
+    if u16_at(2) != Some(1) {
+        return ptr::null_mut();
     }
+    let count = u16_at(4).unwrap_or(0) as usize;
+    // (width, size in bytes, offset) of each image; a width of 0 means 256
+    let images: Vec<(i32, usize, usize)> = (0..count)
+        .filter_map(|n| {
+            let e = 6 + n * 16;
+            let w = *bytes.get(e)? as i32;
+            Some((
+                if w == 0 { 256 } else { w },
+                u32_at(e + 8)? as usize,
+                u32_at(e + 12)? as usize,
+            ))
+        })
+        .filter(|(_, len, off)| off.checked_add(*len).is_some_and(|end| end <= bytes.len()))
+        .collect();
+    let best = images
+        .iter()
+        .filter(|(w, _, _)| *w >= size)
+        .min_by_key(|(w, _, _)| *w)
+        .or_else(|| images.iter().max_by_key(|(w, _, _)| *w));
+    let Some(&(_, len, off)) = best else {
+        return ptr::null_mut();
+    };
+    CreateIconFromResourceEx(
+        bytes[off..].as_ptr(),
+        len as u32,
+        1,
+        0x0003_0000,
+        size,
+        size,
+        LR_DEFAULTCOLOR,
+    )
+}
 
+/// The Bangla and English tray icons, from the copies built into the program (so the portable
+/// copy shows them too, wherever it is run from), at the size Windows draws tray icons.
+unsafe fn load_tray_icons() -> (HICON, HICON) {
+    let size = GetSystemMetrics(SM_CXSMICON).max(16);
+    let h_bn = icon_from_ico_bytes(setup_wizard::ICON_TRAY_BANGLA_ICO, size);
+    let h_en = icon_from_ico_bytes(setup_wizard::ICON_TRAY_ENGLISH_ICO, size);
+    if !h_bn.is_null() && !h_en.is_null() {
+        return (h_bn, h_en);
+    }
     let fallback = LoadIconW(ptr::null_mut(), IDI_APPLICATION);
     (fallback, fallback)
 }
 
+/// Show (`is_add`) or refresh the tray icon. Windows can refuse while Explorer is starting or busy,
+/// and drops every tray icon when Explorer restarts: a failed add is retried on a timer, and a
+/// refresh that finds no icon adds it again.
 unsafe fn add_or_update_tray_icon(hwnd: HWND, is_add: bool) {
     let st = STATE.lock();
     let is_bangla = st.ekushe.language() == InputLanguage::Bangla;
@@ -813,6 +838,7 @@ unsafe fn add_or_update_tray_icon(hwnd: HWND, is_add: bool) {
     }
 
     if is_add {
+        let mut quiet = nid;
         nid.uFlags |= NIF_INFO;
         let info_title = wide_null("একুশে নেক্সট (Ekushe Next Bangla Keyboard)");
         let info_body =
@@ -823,10 +849,34 @@ unsafe fn add_or_update_tray_icon(hwnd: HWND, is_add: bool) {
         for (i, &c) in info_body.iter().take(255).enumerate() {
             nid.szInfo[i] = c;
         }
+        if Shell_NotifyIconW(NIM_ADD, &nid) == 0 {
+            // The balloon may be what was refused: try plainly, then keep trying on a timer
+            quiet.uFlags &= !NIF_INFO;
+            if Shell_NotifyIconW(NIM_ADD, &quiet) == 0 {
+                TRAY_RETRIES.store(0, Ordering::SeqCst);
+                SetTimer(hwnd, TIMER_TRAY_RETRY, 2000, None);
+            }
+        }
+    } else if Shell_NotifyIconW(NIM_MODIFY, &nid) == 0 {
+        // The icon is gone (Explorer restarted): put it back
         Shell_NotifyIconW(NIM_ADD, &nid);
-    } else {
-        Shell_NotifyIconW(NIM_MODIFY, &nid);
     }
+}
+
+/// The tray icon again, without the welcome balloon (Explorer restarted, or a retry). True when
+/// Windows took it.
+unsafe fn readd_tray_icon(hwnd: HWND) -> bool {
+    let mut nid: NOTIFYICONDATAW = zeroed();
+    nid.cbSize = size_of::<NOTIFYICONDATAW>() as u32;
+    nid.hWnd = hwnd;
+    nid.uID = 1;
+    let _ = Shell_NotifyIconW(NIM_DELETE, &nid);
+    add_or_update_tray_icon(hwnd, false);
+    let mut probe: NOTIFYICONDATAW = zeroed();
+    probe.cbSize = size_of::<NOTIFYICONDATAW>() as u32;
+    probe.hWnd = hwnd;
+    probe.uID = 1;
+    Shell_NotifyIconW(NIM_MODIFY, &probe) != 0
 }
 
 unsafe fn remove_tray_icon(hwnd: HWND) {
@@ -1656,7 +1706,19 @@ unsafe extern "system" fn tray_wnd_proc(
     wparam: WPARAM,
     lparam: LPARAM,
 ) -> LRESULT {
+    let taskbar_created = TASKBAR_CREATED.load(Ordering::SeqCst);
+    if taskbar_created != 0 && msg == taskbar_created {
+        readd_tray_icon(hwnd);
+        return 0;
+    }
     match msg {
+        WM_TIMER if wparam == TIMER_TRAY_RETRY => {
+            // Give up after two minutes; Explorer's TaskbarCreated message still brings it back
+            if readd_tray_icon(hwnd) || TRAY_RETRIES.fetch_add(1, Ordering::SeqCst) >= 60 {
+                KillTimer(hwnd, TIMER_TRAY_RETRY);
+            }
+            0
+        }
         WM_TIMER if wparam == TIMER_SAVE_LEARNED => {
             save_learned_words_if_changed();
             0
