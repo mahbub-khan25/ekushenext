@@ -19,7 +19,7 @@ gcc -O2 -Wall -Wextra -DEKUSHE_VERSION="\"$VERSION\"" platform/linux/ibus/ekushe
   $(pkg-config --cflags ibus-1.0) target/release/libekushe_ffi.a $(pkg-config --libs ibus-1.0) \
   -lpthread -ldl -lm -o "$OUT/ibus-engine-ekushe"
 echo "› Fcitx 5 addon"
-g++ -std=c++17 -O2 -Wall -Wextra -fPIC -shared platform/linux/fcitx5/ekushe-fcitx5.cpp \
+g++ -std=c++20 -O2 -Wall -Wextra -fPIC -shared platform/linux/fcitx5/ekushe-fcitx5.cpp \
   $(pkg-config --cflags Fcitx5Core) target/release/libekushe_ffi.a $(pkg-config --libs Fcitx5Core) \
   -lpthread -ldl -lm -Wl,--no-undefined -Wl,--exclude-libs,ALL -o "$OUT/libekushe.so"
 echo "› Studio window (GTK + WebKitGTK)"

@@ -171,7 +171,7 @@ jobs:
           name: ekushe-linux
           path: pkgs
       - name: Install
-        run: dnf install -y ./pkgs/*.rpm python3-gobject python3-dbus dbus-daemon dbus-tools fcitx5
+        run: dnf install -y ./pkgs/*.rpm ibus python3-gobject python3-dbus dbus-daemon dbus-tools fcitx5
       - name: Engine loads on Fedora
         run: |
           ldd /usr/libexec/ekushe/ibus-engine-ekushe | grep -i "not found" && exit 1 || true
@@ -221,7 +221,7 @@ jobs:
           rpmbuild --rebuild build/dist/ekushe-*.src.rpm --define "_rpmdir $PWD/build/dist/rpms"
       - name: Install and type
         run: |
-          dnf install -y -q build/dist/rpms/*/ekushe-*.rpm python3-gobject python3-dbus dbus-daemon dbus-tools fcitx5
+          dnf install -y -q build/dist/rpms/*/ekushe-*.rpm ibus python3-gobject python3-dbus dbus-daemon dbus-tools fcitx5
           platform/linux/dist/test-installed.sh
 
   ppa-check:
@@ -245,7 +245,7 @@ jobs:
           cd src && dpkg-buildpackage -b -us -uc
       - name: Install and type
         run: |
-          apt-get install -y -q ./build/dist/deb/ekushe_*_amd64.deb python3-gi python3-dbus gir1.2-ibus-1.0 dbus fcitx5
+          apt-get install -y -q ./build/dist/deb/ekushe_*_amd64.deb ibus python3-gi python3-dbus gir1.2-ibus-1.0 dbus fcitx5
           platform/linux/dist/test-installed.sh
 
   dict-builder:

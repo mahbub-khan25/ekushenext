@@ -49,7 +49,7 @@ $(ENGINE): platform/linux/ibus/ekushe-engine.c $(TARGET)/libekushe_ffi.a
 # Fcitx 5 addon: a shared library Fcitx loads; the Rust engine is linked in and kept private
 $(FCITX): platform/linux/fcitx5/ekushe-fcitx5.cpp $(TARGET)/libekushe_ffi.a
 	mkdir -p $(TARGET)/fcitx5
-	$(CXX) -std=c++17 $(CXXFLAGS) -Wall -fPIC -shared $< \
+	$(CXX) -std=c++20 $(CXXFLAGS) -Wall -fPIC -shared $< \
 	  $$(pkg-config --cflags Fcitx5Core) $(TARGET)/libekushe_ffi.a $$(pkg-config --libs Fcitx5Core) \
 	  -lpthread -ldl -lm $(LDFLAGS) -Wl,--no-undefined -Wl,--exclude-libs,ALL -o $@
 

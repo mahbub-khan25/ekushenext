@@ -65,6 +65,8 @@ overrides:
   rpm:
     depends:
       - (ibus or fcitx5)
+      # the IBus engine's library, also on systems that use Fcitx (nfpm doesn't add library dependencies)
+      - libibus-1.0.so.5()(64bit)
       - xdg-utils
     recommends:
       - webkit2gtk4.1
