@@ -20,7 +20,10 @@ dbus-run-session -- bash -c 'ibus-daemon --xim=false --panel=disable --emoji-ext
   export $(grep "^IBUS_ADDRESS=" "$F"); timeout 120 python3 platform/linux/ibus/test_engine.py'
 
 if command -v fcitx5 >/dev/null 2>&1; then
-  ADDON="$(ls /usr/lib*/fcitx5/libekushe.so /usr/lib/*/fcitx5/libekushe.so 2>/dev/null | head -1)"
+  ADDON=""
+  for f in /usr/lib64/fcitx5/libekushe.so /usr/lib/*/fcitx5/libekushe.so /usr/lib/fcitx5/libekushe.so; do
+    if [ -f "$f" ]; then ADDON="$f"; break; fi
+  done
   test -n "$ADDON" && test -f /usr/share/fcitx5/addon/ekushe.conf && test -f /usr/share/fcitx5/inputmethod/ekushe.conf
   if ldd "$ADDON" | grep -i "not found"; then exit 1; fi
   timeout 120 platform/linux/fcitx5/run-test.sh --installed
