@@ -207,6 +207,14 @@ fn steps(d: Desktop) -> String {
 /// `None` when this isn't a Linux desktop session at all (no settings to read).
 pub fn status() -> Option<Status> {
     std::env::var_os("XDG_CURRENT_DESKTOP")?;
+    if fcitx_in_use() {
+        return Some(Status {
+            desktop: "Fcitx 5",
+            added: fcitx_added(),
+            can_add: fcitx_has_ekushe(),
+            steps: FCITX_STEPS.into(),
+        });
+    }
     let d = desktop();
     let added = match d {
         Desktop::Gnome => gsettings_list(GNOME_KEY[0], GNOME_KEY[1])?.contains("'ekushe'"),
@@ -407,8 +415,338 @@ pub fn remove_old_cosmic_env() {
     }
 }
 
+// ---- Fcitx 5 (often on KDE Plasma): Ekushe is an addon in Fcitx's own input-method list ----
+
+const FCITX_STEPS: &str = "Fcitx Configuration (fcitx5-configtool) → Input Method → বাম পাশের তালিকা থেকে Ekushe Bangla বেছে নিয়ে → ডান পাশে যোগ করুন → Apply। তারপর Ctrl+Space দিয়ে একুশে ⇄ English।";
+const FCITX_IM: &str = "ekushe";
+
+fn fcitx_running() -> bool {
+    out(Command::new("pgrep").args(["-u", &whoami(), "-x", "fcitx5"])).is_some()
+}
+
+/// Fcitx 5 is this session's input method (not IBus): then Ekushe goes into Fcitx's list, and
+/// "add keyboard" never switches the session over to IBus.
+fn fcitx_in_use() -> bool {
+    if fcitx_running() {
+        return true;
+    }
+    ["GTK_IM_MODULE", "QT_IM_MODULE", "XMODIFIERS"]
+        .iter()
+        .any(|k| std::env::var(k).is_ok_and(|v| v.to_ascii_lowercase().contains("fcitx")))
+}
+
+/// The Fcitx addon is installed (packages built before it existed don't have it)
+fn fcitx_has_ekushe() -> bool {
+    [
+        "/usr/share/fcitx5/inputmethod/ekushe.conf",
+        "/usr/local/share/fcitx5/inputmethod/ekushe.conf",
+    ]
+    .iter()
+    .any(|p| std::path::Path::new(p).exists())
+}
+
+fn fcitx_profile_path() -> Option<std::path::PathBuf> {
+    config_dir().map(|c| c.join("fcitx5/profile"))
+}
+
+/// Ask the running Fcitx (its D-Bus controller, through gdbus)
+fn fcitx_call(method: &str, args: &[&str]) -> Option<String> {
+    out(Command::new("gdbus")
+        .args([
+            "call",
+            "--session",
+            "--dest",
+            "org.fcitx.Fcitx5",
+            "--object-path",
+            "/controller",
+            "--method",
+        ])
+        .arg(format!("org.fcitx.Fcitx.Controller1.{method}"))
+        .args(args))
+}
+
+/// The quoted strings in gdbus output, in order (`('us', [('keyboard-us', '')])` → us, keyboard-us, "").
+pub fn gvariant_strings(text: &str) -> Vec<String> {
+    let mut found = Vec::new();
+    let mut chars = text.chars();
+    while let Some(c) = chars.next() {
+        if c != '\'' && c != '"' {
+            continue;
+        }
+        let mut s = String::new();
+        while let Some(d) = chars.next() {
+            match d {
+                '\\' => {
+                    if let Some(e) = chars.next() {
+                        s.push(e);
+                    }
+                }
+                _ if d == c => break,
+                _ => s.push(d),
+            }
+        }
+        found.push(s);
+    }
+    found
+}
+
+/// An `a(ss)` list of (input method, layout) for gdbus.
+pub fn gvariant_items(items: &[(String, String)]) -> String {
+    let q = |s: &str| format!("'{}'", s.replace('\\', "\\\\").replace('\'', "\\'"));
+    if items.is_empty() {
+        return "@a(ss) []".into();
+    }
+    let inner: Vec<String> = items
+        .iter()
+        .map(|(a, b)| format!("({}, {})", q(a), q(b)))
+        .collect();
+    format!("[{}]", inner.join(", "))
+}
+
+/// (input method, layout) pairs, as in a Fcitx group
+type FcitxItems = Vec<(String, String)>;
+
+/// The running Fcitx's current group: (name, layout, items).
+fn fcitx_live_group() -> Option<(String, String, FcitxItems)> {
+    let group = gvariant_strings(&fcitx_call("CurrentInputMethodGroup", &[])?)
+        .into_iter()
+        .next()?;
+    let info = gvariant_strings(&fcitx_call("InputMethodGroupInfo", &[&group])?);
+    let (layout, rest) = info.split_first()?;
+    let items = rest
+        .chunks(2)
+        .filter(|c| c.len() == 2)
+        .map(|c| (c[0].clone(), c[1].clone()))
+        .collect();
+    Some((group, layout.clone(), items))
+}
+
+fn fcitx_set_group(group: &str, layout: &str, items: &[(String, String)]) -> bool {
+    let ok_set = fcitx_call(
+        "SetInputMethodGroupInfo",
+        &[group, layout, &gvariant_items(items)],
+    )
+    .is_some();
+    let _ = fcitx_call("Save", &[]); // write ~/.config/fcitx5/profile now, not only at logout
+    ok_set
+}
+
+/// `~/.config/fcitx5/profile` as sections: (header without brackets, lines). Lines before the first
+/// header have the header "".
+fn ini_sections(text: &str) -> Vec<(String, Vec<String>)> {
+    let mut sections = vec![(String::new(), Vec::new())];
+    for line in text.lines() {
+        let t = line.trim();
+        if t.starts_with('[') && t.ends_with(']') {
+            sections.push((t[1..t.len() - 1].to_string(), Vec::new()));
+        } else if let Some(last) = sections.last_mut() {
+            last.1.push(line.to_string());
+        }
+    }
+    sections
+}
+
+fn ini_value(lines: &[String], key: &str) -> Option<String> {
+    lines.iter().find_map(|l| {
+        let (k, v) = l.split_once('=')?;
+        (k.trim() == key).then(|| v.trim().to_string())
+    })
+}
+
+fn ini_text(sections: &[(String, Vec<String>)]) -> String {
+    let mut text = String::new();
+    for (header, lines) in sections {
+        if !header.is_empty() {
+            text.push_str(&format!("[{header}]\n"));
+        }
+        for l in lines {
+            text.push_str(l);
+            text.push('\n');
+        }
+    }
+    text
+}
+
+/// "Groups/0/Items/2" → (0, 2)
+fn item_section(header: &str) -> Option<(u32, u32)> {
+    let rest = header.strip_prefix("Groups/")?;
+    let (g, i) = rest.split_once("/Items/")?;
+    Some((g.parse().ok()?, i.parse().ok()?))
+}
+
+/// A Fcitx profile with Ekushe added at the end of the current group's list (unchanged when it is
+/// already there). `None` when the profile has no group to add to.
+pub fn fcitx_profile_with_ekushe(text: &str) -> Option<String> {
+    let mut sections = ini_sections(text);
+    let current = sections
+        .iter()
+        .find(|(h, _)| h == "GroupOrder")
+        .and_then(|(_, l)| ini_value(l, "0"))?;
+    let group: u32 = sections.iter().find_map(|(h, l)| {
+        let g = h.strip_prefix("Groups/")?.parse::<u32>().ok()?;
+        (ini_value(l, "Name").as_deref() == Some(current.as_str())).then_some(g)
+    })?;
+    let items: Vec<(u32, Option<String>)> = sections
+        .iter()
+        .filter_map(|(h, l)| {
+            item_section(h)
+                .filter(|(g, _)| *g == group)
+                .map(|(_, i)| (i, ini_value(l, "Name")))
+        })
+        .collect();
+    if items.iter().any(|(_, n)| n.as_deref() == Some(FCITX_IM)) {
+        return Some(text.to_string());
+    }
+    let next = items.iter().map(|(i, _)| i + 1).max().unwrap_or(0);
+    if let Some(last) = sections.last_mut() {
+        if last.1.last().is_some_and(|l| !l.trim().is_empty()) {
+            last.1.push(String::new());
+        }
+    }
+    sections.push((
+        format!("Groups/{group}/Items/{next}"),
+        vec![format!("Name={FCITX_IM}"), "Layout=".into(), String::new()],
+    ));
+    Some(ini_text(&sections))
+}
+
+/// A Fcitx profile without Ekushe (the other input methods renumbered, in their order).
+pub fn fcitx_profile_without_ekushe(text: &str) -> String {
+    let sections = ini_sections(text);
+    let mut kept: Vec<(String, Vec<String>)> = Vec::new();
+    let mut next: std::collections::HashMap<u32, u32> = std::collections::HashMap::new();
+    for (header, lines) in sections {
+        match item_section(&header) {
+            Some(_) if ini_value(&lines, "Name").as_deref() == Some(FCITX_IM) => {}
+            Some((g, _)) => {
+                let n = next.entry(g).or_insert(0);
+                kept.push((format!("Groups/{g}/Items/{n}"), lines));
+                *n += 1;
+            }
+            None => kept.push((header, lines)),
+        }
+    }
+    // A group that started in Ekushe starts in its first remaining input method
+    let firsts: std::collections::HashMap<u32, String> = kept
+        .iter()
+        .filter_map(|(h, l)| {
+            item_section(h)
+                .filter(|(_, i)| *i == 0)
+                .and_then(|(g, _)| Some((g, ini_value(l, "Name")?)))
+        })
+        .collect();
+    for (header, lines) in kept.iter_mut() {
+        let Some(g) = header
+            .strip_prefix("Groups/")
+            .and_then(|r| r.parse::<u32>().ok())
+        else {
+            continue;
+        };
+        for l in lines.iter_mut() {
+            if l.split_once('=')
+                .is_some_and(|(k, v)| k.trim() == "DefaultIM" && v.trim() == FCITX_IM)
+            {
+                *l = format!("DefaultIM={}", firsts.get(&g).cloned().unwrap_or_default());
+            }
+        }
+    }
+    ini_text(&kept)
+}
+
+fn fcitx_added() -> bool {
+    if fcitx_running() {
+        if let Some((_, _, items)) = fcitx_live_group() {
+            return items.iter().any(|(n, _)| n == FCITX_IM);
+        }
+    }
+    fcitx_profile_path()
+        .and_then(|p| std::fs::read_to_string(p).ok())
+        .is_some_and(|t| {
+            ini_sections(&t).iter().any(|(h, l)| {
+                item_section(h).is_some() && ini_value(l, "Name").as_deref() == Some(FCITX_IM)
+            })
+        })
+}
+
+fn fcitx_fail() -> Added {
+    Added {
+        ok: false,
+        relogin: false,
+        message: format!("নিজে থেকে যোগ করা গেল না। {FCITX_STEPS}"),
+    }
+}
+
+fn add_fcitx() -> Added {
+    if !fcitx_has_ekushe() {
+        return fcitx_fail();
+    }
+    if fcitx_running() {
+        let Some((group, layout, mut items)) = fcitx_live_group() else {
+            return fcitx_fail();
+        };
+        if !items.iter().any(|(n, _)| n == FCITX_IM) {
+            items.push((FCITX_IM.into(), String::new()));
+            if !fcitx_set_group(&group, &layout, &items) {
+                return fcitx_fail();
+            }
+        }
+        return Added {
+            ok: true,
+            relogin: false,
+            message: "একুশে Fcitx-এ যোগ হয়েছে। Ctrl+Space চেপে একুশে ⇄ English; একুশের ভেতরে ডান Shift দুবার চাপলেও English।".into(),
+        };
+    }
+    // Fcitx isn't running yet: its profile can be edited directly
+    let Some(path) = fcitx_profile_path() else {
+        return fcitx_fail();
+    };
+    let Some(new) = std::fs::read_to_string(&path)
+        .ok()
+        .and_then(|t| fcitx_profile_with_ekushe(&t))
+    else {
+        return fcitx_fail();
+    };
+    if std::fs::write(&path, new).is_err() {
+        return fcitx_fail();
+    }
+    Added {
+        ok: true,
+        relogin: true,
+        message:
+            "একুশে Fcitx-এ যোগ হয়েছে। একবার লগ আউট করে আবার ঢুকুন; তারপর Ctrl+Space চেপে একুশে ⇄ English।"
+                .into(),
+    }
+}
+
+/// Take Ekushe out of Fcitx's list (live when Fcitx runs, else in its profile). Returns success.
+fn remove_fcitx() -> bool {
+    if fcitx_running() {
+        if let Some((group, layout, items)) = fcitx_live_group() {
+            if items.iter().any(|(n, _)| n == FCITX_IM) {
+                let rest: Vec<(String, String)> =
+                    items.into_iter().filter(|(n, _)| n != FCITX_IM).collect();
+                return fcitx_set_group(&group, &layout, &rest);
+            }
+            return true;
+        }
+    }
+    let Some(path) = fcitx_profile_path() else {
+        return true;
+    };
+    match std::fs::read_to_string(&path) {
+        Ok(text) => {
+            let new = fcitx_profile_without_ekushe(&text);
+            new == text || std::fs::write(&path, new).is_ok()
+        }
+        Err(_) => true,
+    }
+}
+
 /// Add Ekushe as the first keyboard on this desktop.
 pub fn add() -> Added {
+    if fcitx_in_use() {
+        return add_fcitx();
+    }
     let d = desktop();
     match d {
         Desktop::Cosmic => add_cosmic(),
@@ -522,7 +860,7 @@ fn xinputrc_run_im() -> Option<String> {
 /// Safe to run before uninstalling the package, and after.
 pub fn remove() -> Added {
     let d = desktop();
-    let mut ok_all = true;
+    let mut ok_all = remove_fcitx();
     let mut relogin = false;
     match d {
         Desktop::Gnome => {
@@ -733,5 +1071,53 @@ mod tests {
             gnome_mru_with_ekushe("[('xkb', 'de'), ('ibus', 'ekushe')]"),
             "[('ibus', 'ekushe'), ('xkb', 'de')]"
         );
+    }
+
+    #[test]
+    fn fcitx_output_is_read() {
+        assert_eq!(
+            gvariant_strings("('us', [('keyboard-us', ''), ('ekushe', '')])"),
+            ["us", "keyboard-us", "", "ekushe", ""]
+        );
+        assert_eq!(gvariant_strings("('Default',)"), ["Default"]);
+        assert_eq!(gvariant_strings(r"('it\'s',)"), ["it's"]);
+        let items = vec![
+            ("keyboard-us".to_string(), String::new()),
+            ("ekushe".to_string(), String::new()),
+        ];
+        assert_eq!(
+            gvariant_items(&items),
+            "[('keyboard-us', ''), ('ekushe', '')]"
+        );
+        assert_eq!(gvariant_items(&[]), "@a(ss) []");
+    }
+
+    const PROFILE: &str = "[Groups/0]\n# Group Name\nName=Default\n# Layout\nDefault Layout=us\n# Default Input Method\nDefaultIM=keyboard-us\n\n[Groups/0/Items/0]\n# Name\nName=keyboard-us\n# Layout\nLayout=\n\n[GroupOrder]\n0=Default\n";
+
+    #[test]
+    fn fcitx_profile_gets_ekushe_and_loses_it_again() {
+        let added = fcitx_profile_with_ekushe(PROFILE).unwrap();
+        assert!(
+            added.contains("[Groups/0/Items/1]\nName=ekushe\nLayout=\n"),
+            "{added}"
+        );
+        assert!(added.starts_with(PROFILE.trim_end()));
+        // only once
+        assert_eq!(fcitx_profile_with_ekushe(&added).unwrap(), added);
+        let removed = fcitx_profile_without_ekushe(&added);
+        assert!(!removed.contains("ekushe"), "{removed}");
+        assert!(removed.contains("[Groups/0/Items/0]\n# Name\nName=keyboard-us"));
+        assert_eq!(fcitx_profile_without_ekushe(PROFILE), PROFILE);
+        assert!(fcitx_profile_with_ekushe("").is_none());
+    }
+
+    #[test]
+    fn fcitx_profile_renumbers_and_moves_the_default() {
+        let p = "[Groups/0]\nName=Default\nDefaultIM=ekushe\n\n[Groups/0/Items/0]\nName=ekushe\nLayout=\n\n[Groups/0/Items/1]\nName=keyboard-de\nLayout=\n\n[Groups/0/Items/2]\nName=mozc\nLayout=\n\n[GroupOrder]\n0=Default\n";
+        let r = fcitx_profile_without_ekushe(p);
+        assert!(r.contains("DefaultIM=keyboard-de"), "{r}");
+        assert!(r.contains("[Groups/0/Items/0]\nName=keyboard-de"), "{r}");
+        assert!(r.contains("[Groups/0/Items/1]\nName=mozc"), "{r}");
+        assert!(!r.contains("Items/2"), "{r}");
     }
 }
