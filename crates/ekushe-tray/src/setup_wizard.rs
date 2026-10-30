@@ -18,9 +18,9 @@ use windows_sys::Win32::Graphics::Dwm::DwmSetWindowAttribute;
 use windows_sys::Win32::Graphics::Gdi::{
     AddFontResourceW, BeginPaint, BitBlt, CreateCompatibleBitmap, CreateCompatibleDC, CreateFontW,
     CreatePen, CreateSolidBrush, DeleteDC, DeleteObject, DrawTextW, EndPaint, FillRect,
-    InvalidateRect, RoundRect, ScreenToClient, SelectObject, SetBkMode, SetTextColor, DT_CENTER,
-    DT_LEFT, DT_NOPREFIX, DT_RIGHT, DT_SINGLELINE, DT_VCENTER, HBRUSH, HDC, PAINTSTRUCT, PS_SOLID,
-    SRCCOPY, TRANSPARENT,
+    InvalidateRect, RoundRect, ScreenToClient, SelectObject, SetBkMode, SetTextColor, UpdateWindow,
+    DT_CENTER, DT_LEFT, DT_NOPREFIX, DT_RIGHT, DT_SINGLELINE, DT_VCENTER, HBRUSH, HDC, PAINTSTRUCT,
+    PS_SOLID, SRCCOPY, TRANSPARENT,
 };
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows_sys::Win32::System::Registry::{
@@ -30,11 +30,11 @@ use windows_sys::Win32::System::Registry::{
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, DrawIconEx, GetClientRect,
     GetCursorPos, GetMessageW, GetSystemMetrics, LoadCursorW, LoadIconW, LoadImageW, MessageBoxW,
-    PostMessageW, PostQuitMessage, RegisterClassW, SetCursor, SetLayeredWindowAttributes,
+    PostMessageW, PostQuitMessage, RegisterClassW, SetCursor, SetForegroundWindow,
     SetProcessDPIAware, ShowWindow, TranslateMessage, DI_NORMAL, HICON, HWND_BROADCAST, IDC_ARROW,
-    IDC_HAND, IMAGE_ICON, LR_DEFAULTCOLOR, LWA_ALPHA, MB_OK, MSG, SM_CXSCREEN, SM_CYSCREEN,
-    SW_SHOW, WM_CLOSE, WM_DESTROY, WM_FONTCHANGE, WM_LBUTTONDOWN, WM_MOUSEMOVE, WM_PAINT,
-    WM_SETCURSOR, WNDCLASSW, WS_CAPTION, WS_EX_LAYERED, WS_OVERLAPPED, WS_SYSMENU, WS_VISIBLE,
+    IDC_HAND, IMAGE_ICON, LR_DEFAULTCOLOR, MB_OK, MSG, SM_CXSCREEN, SM_CYSCREEN, SW_SHOWNORMAL,
+    WM_CLOSE, WM_DESTROY, WM_FONTCHANGE, WM_LBUTTONDOWN, WM_MOUSEMOVE, WM_PAINT, WM_SETCURSOR,
+    WNDCLASSW, WS_CAPTION, WS_MINIMIZEBOX, WS_OVERLAPPED, WS_SYSMENU,
 };
 
 use crate::{
@@ -43,8 +43,8 @@ use crate::{
 };
 
 static ICON_EKUSHE_ICO: &[u8] = include_bytes!("../../../assets/icons/ekushe.ico");
-static ICON_TRAY_BANGLA_ICO: &[u8] = include_bytes!("../../../assets/icons/tray_bangla.ico");
-static ICON_TRAY_ENGLISH_ICO: &[u8] = include_bytes!("../../../assets/icons/tray_english.ico");
+pub static ICON_TRAY_BANGLA_ICO: &[u8] = include_bytes!("../../../assets/icons/tray_bangla.ico");
+pub static ICON_TRAY_ENGLISH_ICO: &[u8] = include_bytes!("../../../assets/icons/tray_english.ico");
 
 static mut OPT_CREATE_SHORTCUTS: bool = true;
 static mut OPT_AUTO_STARTUP: bool = true;
@@ -604,11 +604,13 @@ pub unsafe fn run_gui_installer_window() {
     let x = ((screen_w - win_w) / 2).max(20);
     let y = ((screen_h - win_h) / 2).max(20);
 
+    // A plain, opaque window. It was see-through (a layered window) with Windows 11's Mica backdrop:
+    // on some PCs that left only a taskbar button that never opened.
     let hwnd = CreateWindowExW(
-        WS_EX_LAYERED,
+        0,
         class_name.as_ptr(),
         wide_null("একুশে নেক্সট বাংলা কীবোর্ড — Ekushe Next One-Click Installer").as_ptr(),
-        WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_VISIBLE,
+        WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
         x,
         y,
         win_w,
@@ -619,10 +621,19 @@ pub unsafe fn run_gui_installer_window() {
         ptr::null(),
     );
 
-    // Apply subtle Frosted Glass window translucency (96% = 245/255)
-    let _ = SetLayeredWindowAttributes(hwnd, 0, 245, LWA_ALPHA);
+    if hwnd.is_null() {
+        let msg =
+            "একুশে ইনস্টলার খোলা যায়নি। Ekushe-Portable.exe চালান, অথবা Ekushe-Setup.exe --auto-install";
+        MessageBoxW(
+            ptr::null_mut(),
+            wide_null(msg).as_ptr(),
+            wide_null("Ekushe Next Installer").as_ptr(),
+            MB_OK,
+        );
+        return;
+    }
 
-    // Keep Light Mode title bar (0), Windows 11 rounded corners (33 = DWMWCP_ROUND), and Mica backdrop (38)
+    // Light title bar (20) and Windows 11 rounded corners (33 = DWMWCP_ROUND)
     let dark_mode: i32 = 0;
     let _ = DwmSetWindowAttribute(
         hwnd,
@@ -637,15 +648,13 @@ pub unsafe fn run_gui_installer_window() {
         &round_pref as *const _ as *const _,
         size_of::<i32>() as u32,
     );
-    let backdrop_type: i32 = 2;
-    let _ = DwmSetWindowAttribute(
-        hwnd,
-        38,
-        &backdrop_type as *const _ as *const _,
-        size_of::<i32>() as u32,
-    );
 
-    ShowWindow(hwnd, SW_SHOW);
+    // Always open at normal size and in front, even when the program that started us (a browser's
+    // download list, a chat app) asked for a minimised window
+    ShowWindow(hwnd, SW_SHOWNORMAL);
+    ShowWindow(hwnd, SW_SHOWNORMAL);
+    UpdateWindow(hwnd);
+    SetForegroundWindow(hwnd);
 
     let mut msg: MSG = zeroed();
     while GetMessageW(&mut msg, ptr::null_mut(), 0, 0) > 0 {
