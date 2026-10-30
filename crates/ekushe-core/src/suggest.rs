@@ -42,6 +42,29 @@ pub enum CandidateKind {
 }
 
 /// A single candidate item returned to the UI.
+/// র + য-ফলা at the start of a word is always the English sound "rya" (র‍্যাম RAM, র‍্যাব, র‍্যালি),
+/// written র + ZWJ + ্ + য. Without the ZWJ (র্য) it shows as a reph over য, which only belongs
+/// inside a word (কার্য, সূর্য). Older word lists and typed text often lack the ZWJ.
+pub fn fix_initial_ra_ya(text: String) -> String {
+    const WRONG: &str = "\u{09B0}\u{09CD}\u{09AF}";
+    const RIGHT: &str = "\u{09B0}\u{200D}\u{09CD}\u{09AF}";
+    if !text.contains(WRONG) {
+        return text;
+    }
+    let mut out = String::with_capacity(text.len() + 3);
+    let mut rest = text.as_str();
+    while let Some(i) = rest.find(WRONG) {
+        out.push_str(&rest[..i]);
+        let word_start = out.chars().next_back().is_none_or(|c| {
+            !('\u{0980}'..='\u{09FF}').contains(&c) && c != '\u{200C}' && c != '\u{200D}'
+        });
+        out.push_str(if word_start { RIGHT } else { WRONG });
+        rest = &rest[i + WRONG.len()..];
+    }
+    out.push_str(rest);
+    out
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Candidate {
     pub text: String,
@@ -352,7 +375,8 @@ impl SuggestionEngine {
 
         let push_unique = |list: &mut Vec<Candidate>,
                            seen: &mut std::collections::HashSet<String>,
-                           cand: Candidate| {
+                           mut cand: Candidate| {
+            cand.text = fix_initial_ra_ya(cand.text);
             if !cand.text.is_empty() && seen.insert(cand.text.clone()) {
                 list.push(cand);
             }
@@ -744,7 +768,8 @@ impl SuggestionEngine {
         candidates: &mut Vec<Candidate>,
         seen: &mut std::collections::HashSet<String>,
     ) {
-        let mut push = |list: &mut Vec<Candidate>, cand: Candidate| {
+        let mut push = |list: &mut Vec<Candidate>, mut cand: Candidate| {
+            cand.text = fix_initial_ra_ya(cand.text);
             if !cand.text.is_empty() && seen.insert(cand.text.clone()) {
                 list.push(cand);
             }
@@ -1336,6 +1361,17 @@ static BUILTIN_BIGRAMS: &[(&str, &[&str])] = &[
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn ra_ya_at_the_start_of_a_word_keeps_its_zwj() {
+        let f = |s: &str| fix_initial_ra_ya(s.to_string());
+        assert_eq!(f("র্যাম"), "র\u{200D}্যাম");
+        assert_eq!(f("র‍্যাব"), "র‍্যাব", "already right");
+        assert_eq!(f("কার্য"), "কার্য", "a reph inside a word stays");
+        assert_eq!(f("অন্তর্যামী"), "অন্তর্যামী");
+        assert_eq!(f("ট্র্যাক"), "ট্র্যাক", "র-ফলা + য-ফলা stays");
+        assert_eq!(f("নতুন র্যালি"), "নতুন র\u{200D}্যালি");
+    }
 
     #[test]
     fn test_suggestions_and_emoji_and_learning() {
