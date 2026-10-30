@@ -1,9 +1,9 @@
 #!/bin/bash
-# Build Ekushe for Linux (x86_64): the IBus keyboard engine and Ekushe Studio, packaged as .deb,
-# .rpm and .AppImage. Needs Rust, gcc, pkg-config, libibus-1.0-dev, libwebkit2gtk-4.1-dev, plus nfpm and appimagetool
-# (downloaded if missing).
+# Build Ekushe for Linux (x86_64): the IBus keyboard engine, the Fcitx 5 addon and Ekushe Studio,
+# packaged as .deb, .rpm and .AppImage. Needs Rust, gcc, g++, pkg-config, libibus-1.0-dev, libfcitx5core-dev,
+# libwebkit2gtk-4.1-dev, plus nfpm and appimagetool (downloaded if missing).
 #   platform/linux/build.sh [version]          build packages into build/linux
-#   platform/linux/build.sh [version] --test   also type into a real ibus-daemon to check the engine
+#   platform/linux/build.sh [version] --test   also type into a real ibus-daemon and fcitx5 to check both
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 VERSION="${1:-0.1.0}"; VERSION="${VERSION#v}"
@@ -18,6 +18,10 @@ echo "› IBus engine"
 gcc -O2 -Wall -Wextra -DEKUSHE_VERSION="\"$VERSION\"" platform/linux/ibus/ekushe-engine.c \
   $(pkg-config --cflags ibus-1.0) target/release/libekushe_ffi.a $(pkg-config --libs ibus-1.0) \
   -lpthread -ldl -lm -o "$OUT/ibus-engine-ekushe"
+echo "› Fcitx 5 addon"
+g++ -std=c++17 -O2 -Wall -Wextra -fPIC -shared platform/linux/fcitx5/ekushe-fcitx5.cpp \
+  $(pkg-config --cflags Fcitx5Core) target/release/libekushe_ffi.a $(pkg-config --libs Fcitx5Core) \
+  -lpthread -ldl -lm -Wl,--no-undefined -Wl,--exclude-libs,ALL -o "$OUT/libekushe.so"
 echo "› Studio window (GTK + WebKitGTK)"
 gcc -O2 -Wall -Wextra -DEKUSHE_VERSION="\"$VERSION\"" platform/linux/studio/ekushe-studio-window.c \
   $(pkg-config --cflags --libs webkit2gtk-4.1 gtk+-3.0) -o "$OUT/ekushe-studio-window"
@@ -31,6 +35,11 @@ strip "$STAGE/usr/libexec/ekushe/ibus-engine-ekushe" "$STAGE/usr/libexec/ekushe/
 mkdir -p "$STAGE/usr/share/ibus/component"
 sed -e "s|@LIBEXECDIR@|/usr/libexec/ekushe|" -e "s|@DATADIR@|/usr/share|" -e "s|@BINDIR@|/usr/bin|" -e "s|@VERSION@|$VERSION|" \
   platform/linux/ibus/ekushe.xml.in > "$STAGE/usr/share/ibus/component/ekushe.xml"
+install -Dm755 "$OUT/libekushe.so" "$STAGE/usr/lib/fcitx5/libekushe.so"
+strip --strip-unneeded "$STAGE/usr/lib/fcitx5/libekushe.so"
+mkdir -p "$STAGE/usr/share/fcitx5/addon"
+sed -e "s|@VERSION@|$VERSION|" platform/linux/fcitx5/ekushe-addon.conf.in > "$STAGE/usr/share/fcitx5/addon/ekushe.conf"
+install -Dm644 platform/linux/fcitx5/ekushe-im.conf "$STAGE/usr/share/fcitx5/inputmethod/ekushe.conf"
 install -Dm644 assets/icons/logo_256.png "$STAGE/usr/share/ekushe/ekushe.png"
 install -Dm644 assets/icons/logo_256.png "$STAGE/usr/share/icons/hicolor/256x256/apps/ekushe.png"
 install -Dm644 platform/linux/packaging/ekushe-studio.desktop "$STAGE/usr/share/applications/ekushe-studio.desktop"
@@ -93,4 +102,6 @@ if [ "${2:-}" = "--test" ]; then
     export $(grep "^IBUS_ADDRESS=" "$F")
     ${PYTHON:-python3} platform/linux/ibus/test_engine.py
   '
+  echo "› Typing test against a real fcitx5"
+  platform/linux/fcitx5/run-test.sh "$OUT"
 fi

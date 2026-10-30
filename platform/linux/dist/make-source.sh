@@ -20,6 +20,8 @@ copy Cargo.toml Cargo.lock LICENSE README.md THIRD_PARTY_NOTICES.md .github/rele
      assets/icons/logo_256.png assets/fonts \
      data/dictionary/ekushe.dict.z data/dictionary/LICENSE.md data/dictionary/CC-BY-SA-4.0.txt \
      platform/linux/Makefile platform/linux/ekushe_ffi.h platform/linux/ibus platform/linux/studio platform/linux/packaging/ekushe-studio.desktop
+# The Fcitx 5 addon (releases before it existed are still rebuilt with today's packaging)
+[ -d platform/linux/fcitx5 ] && copy platform/linux/fcitx5/ekushe-fcitx5.cpp platform/linux/fcitx5/ekushe-addon.conf.in platform/linux/fcitx5/ekushe-im.conf
 rm -rf "$WORK"/crates/*/target
 
 # A workspace of just the three Linux crates. Cargo drops the other members' libraries from
