@@ -75,6 +75,10 @@ jobs:
           if (Test-Path "$root\ekushe.exe") { Write-Error "uninstall left ekushe.exe behind"; exit 1 }
           if (Test-Path "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Ekushe Next Bangla Keyboard.lnk") { Write-Error "uninstall left the shortcut"; exit 1 }
           Write-Host "uninstalled OK"
+      - name: Office install (silent, with the office's settings)
+        shell: pwsh
+        timeout-minutes: 5
+        run: ./.github/scripts/office-install-test.ps1
       - name: Candidate popup previews (PNG)
         shell: pwsh
         run: |

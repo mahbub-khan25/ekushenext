@@ -61,6 +61,25 @@ class MainActivity : AppCompatActivity() {
         }.start()
     }
 
+    // A keyboard layout file someone made (.ekushe-layout): picked with the system file picker
+    private val pickLayout = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) Thread {
+            val text = runCatching {
+                contentResolver.openInputStream(uri)?.use { s -> s.readBytes().takeIf { it.size <= 64 * 1024 }?.toString(Charsets.UTF_8) }
+            }.getOrNull()
+            val out = if (text == null) JSONObject().put("error", "too large") else Engine.importLayout(text)
+            runOnUiThread {
+                if (out.has("value")) {
+                    Engine.setConfig(JSONObject().put("layout", out.getString("value")))
+                    Toast.makeText(this, "\"${out.optString("name")}\" যোগ হয়েছে ও চালু আছে", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(this, "লেআউট যোগ করা যায়নি · ${out.optString("error")}", Toast.LENGTH_LONG).show()
+                }
+                build()
+            }
+        }.start()
+    }
+
     /** Keep a private copy, small enough for a keyboard (the long side at most 1600 px) */
     private fun savePhoto(uri: Uri) {
         val max = 1600
@@ -255,6 +274,48 @@ class MainActivity : AppCompatActivity() {
         card.addView(switch("⌫ চাপলে শব্দটি আবার খোলে", "Backspace right after a word reopens it with its suggestions", cfg.optBoolean("backspace_undo", true)) { Engine.setConfig(JSONObject().put("backspace_undo", it)) })
         divider(card)
         card.addView(switch("দুবার Space-এ দাঁড়ি (।)", "Double space types a dari", prefs.doubleSpaceDari) { prefs.doubleSpaceDari = it })
+        root.addView(card)
+        layouts(cfg)
+    }
+
+    /** Keyboard layout: phonetic, UniJoy and the other fixed layouts, and the user's own files */
+    private fun layouts(cfg: JSONObject) {
+        val card = card()
+        val list = cfg.optJSONArray("layouts") ?: JSONArray()
+        val options = (0 until list.length()).map { i ->
+            val o = list.getJSONObject(i)
+            o.getString("value") to (o.getString("name") + if (o.optBoolean("custom")) " (নিজের)" else "")
+        }
+        val current = cfg.optString("layout", "AvroPhonetic")
+        card.addView(choice("কীবোর্ড লেআউট", "Phonetic, or a fixed layout (UniJoy, National …): the keys show its Bangla", options, current) {
+            Engine.setConfig(JSONObject().put("layout", it))
+        })
+        divider(card)
+        val add = MaterialButton(this).apply {
+            text = "লেআউট ফাইল যোগ করুন"
+            typeface = bnBold
+            tint(this)
+            setOnClickListener { pickLayout.launch(arrayOf("application/json", "application/octet-stream", "*/*")) }
+        }
+        card.addView(add)
+        card.addView(text("অন্য লেআউটে অভ্যস্ত? তার একুশে লেআউট ফাইল (.ekushe-layout) যোগ করুন। ফাইলে শুধু কোন কী-তে কোন অক্ষর থাকে; একুশে যোগ করার আগে যাচাই করে।", 12.5f, bn, subColor))
+        (0 until list.length()).map { list.getJSONObject(it) }.filter { it.optBoolean("custom") }.forEach { o ->
+            val id = o.getString("value").removePrefix("Custom:")
+            card.addView(TextView(this).apply {
+                text = "✕  ${o.getString("name")}"
+                typeface = bn
+                textSize = 14.5f
+                setTextColor(textColor)
+                setPadding(dp(12f), dp(8f), dp(12f), dp(8f))
+                setOnClickListener { Engine.removeLayout(id); build() }
+            })
+        }
+        if (current != "AvroPhonetic") {
+            divider(card)
+            card.addView(switch("প্রমিত বানানের ইঙ্গিত", "When a word isn't written the standard way, offer the standard spelling next to it", cfg.optBoolean("spell_hint", true)) { Engine.setConfig(JSONObject().put("spell_hint", it)) })
+            divider(card)
+            card.addView(switch("শব্দের পরামর্শ", "Offer common words that start with what you typed", cfg.optBoolean("word_suggestions", false)) { Engine.setConfig(JSONObject().put("word_suggestions", it)) })
+        }
         root.addView(card)
     }
 

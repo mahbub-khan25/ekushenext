@@ -371,6 +371,33 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
     .hints .hint-chip:nth-child(n+5) { display: none; }
     .composer { padding: 12px; }
   }
+  /* Key map of a fixed layout (and its printed cheat sheet) */
+  .welcome-choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-top: 12px; }
+  .welcome-choice { text-align: left; padding: 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--etch-strong); color: var(--ink); cursor: pointer; font: inherit; display: flex; flex-direction: column; gap: 4px; }
+  .welcome-choice:hover, .welcome-choice:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
+  .welcome-choice span { font-size: .85rem; color: var(--ink-soft); }
+  .welcome-list { margin: 10px 0 0; padding-left: 20px; line-height: 1.9; }
+  .link-btn { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; cursor: pointer; text-decoration: underline; }
+  .keymap-back { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: grid; place-items: center; z-index: 50; padding: 16px; }
+  .keymap { background: var(--page); color: var(--ink); border-radius: 20px; padding: 18px; max-width: 980px; width: 100%; max-height: 92vh; overflow: auto; box-shadow: 0 30px 80px -30px rgba(0,0,0,.6); }
+  .keymap h3 { margin: 0 0 4px; }
+  .keymap .kb { display: grid; gap: 6px; margin-top: 12px; }
+  .keymap .kb-row { display: flex; gap: 6px; }
+  .keymap .key { position: relative; flex: 0 0 auto; width: 62px; height: 62px; border-radius: 10px; background: var(--etch-strong); box-shadow: inset 0 0 0 1px var(--line); }
+  .keymap .key .n { position: absolute; left: 0; right: 0; top: 18px; text-align: center; font-size: 1.35rem; }
+  .keymap .key .s { position: absolute; left: 6px; top: 3px; font-size: .82rem; color: var(--ink-soft); }
+  .keymap .key .a { position: absolute; right: 6px; bottom: 3px; font-size: .78rem; color: var(--accent); }
+  .keymap .key .e { position: absolute; right: 6px; top: 3px; font-size: .62rem; color: var(--ink-faint); font-family: system-ui, sans-serif; }
+  .keymap .key.link { box-shadow: inset 0 0 0 2px var(--accent); }
+  .keymap .key .n.small { font-size: .7rem; top: 24px; font-family: system-ui, sans-serif; color: var(--ink-soft); }
+  .keymap .key.link .n { color: var(--accent); font-size: .95rem; top: 21px; }
+  .keymap .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 12px; font-size: .85rem; color: var(--ink-soft); }
+  @media print {
+    body > *:not(.keymap-back) { display: none !important; }
+    .keymap-back { position: static; background: none; padding: 0; }
+    .keymap { box-shadow: none; max-height: none; overflow: visible; }
+    .keymap .no-print { display: none !important; }
+  }
 </style>
 </head>
 <body>
@@ -423,6 +450,11 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
       </div>
     </div>
 
+    <!-- Windows: another Bangla keyboard program is running next to Ekushe -->
+    <div class="etched" id="conflictBox" hidden role="status" style="margin-bottom:16px;border-left:4px solid var(--accent, #c0392b)">
+      <div class="section-title">অন্য বাংলা কীবোর্ড চালু আছে</div><div class="hint" id="conflictMsg"></div>
+    </div>
+
     <!-- Linux: the package is installed but Ekushe isn't one of the user's keyboards yet -->
     <div class="etched" id="addKeyboardBox" hidden style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
       <div><div class="section-title">একুশে এখনো আপনার কিবোর্ডের তালিকায় নেই</div><div class="hint" id="addKeyboardMsg">যোগ করলে একুশেই আপনার কিবোর্ড হবে, সব অ্যাপে। বাংলা ⇄ English বদলাতে দুবার Shift চাপুন; ওপরের বারে এ বা EN দেখাবে।</div></div>
@@ -435,6 +467,31 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
 
     <!-- Writing pad -->
     <section class="panel active" id="tab-playground" data-title="লেখার প্যাড" data-sub="রোমান হরফে লিখুন, একুশে বাংলা করে দেবে। Space চাপলে প্রথম শব্দটি বসবে।">
+      <!-- First run: how do you type Bangla? One answer sets the keyboard up for it -->
+      <div class="etched welcome" id="welcomeBox" hidden style="margin-bottom:16px">
+        <div id="welcomeAsk">
+          <div class="section-title">স্বাগতম! আপনি কীভাবে বাংলা লেখেন?</div>
+          <div class="hint">একটি বেছে নিন, একুশে সেভাবেই সেজে যাবে। পরে সেটিংসে যেকোনো সময় বদলানো যায়।</div>
+          <div class="welcome-choices">
+            <button class="welcome-choice" onclick="welcomeChoose('phonetic')"><b>ইংরেজি হরফে, উচ্চারণ করে</b><span>amar sonar bangla → আমার সোনার বাংলা (অভ্রের মতো)</span></button>
+            <button class="welcome-choice" onclick="welcomeChoose('fixed')"><b>বিজয়ের মতো কী-বোর্ডে, মুখস্থ হাতে</b><span>ইউনিজয় লেআউট: বিজয়ের প্রায় সব কী একই জায়গায়, লেখা হয় ইউনিকোডে</span></button>
+            <button class="welcome-choice" onclick="welcomeChoose('new')"><b>এখনো শিখিনি</b><span>সবচেয়ে সহজ পথ: যেমন বলেন, তেমন লিখুন</span></button>
+          </div>
+          <div class="row" style="justify-content:flex-end;margin-top:8px"><button class="btn" onclick="welcomeDone()">পরে দেখব</button></div>
+        </div>
+        <div id="welcomeFixed" hidden>
+          <div class="section-title">ইউনিজয় চালু হয়েছে ✓</div>
+          <div class="hint">বাংলা ⇄ English বদলাতে <b id="welcomeHotkey">দুবার Shift</b>। আপনার পুরনো অভ্যাসের জন্য আরও কয়েকটি জিনিস:</div>
+          <ul class="welcome-list">
+            <li><button class="link-btn" onclick="showKeyMap()">কী-ম্যাপ দেখুন ও প্রিন্ট করুন</button>: কোন কী-তে কোন অক্ষর, এক পাতায়।</li>
+            <li><button class="link-btn" onclick="welcomeGo('settings', 'layoutFileInput')">নিজের লেআউট ফাইল যোগ করুন</button>: অফিসের বা কারও বানানো অন্য সাজানো থাকলে।</li>
+            <li><button class="link-btn" onclick="welcomeGo('converter', 'fileConvInput')">পুরনো বিজয় (SutonnyMJ) ফাইল ইউনিকোডে বদলান</button>: Word বা টেক্সট ফাইল, লেখার ধরন ঠিক রেখে।</li>
+            <li id="welcomeBijoyOut" hidden><button class="link-btn" onclick="welcomeBijoyOutput()">ডিজাইনের অ্যাপে বিজয় ফন্টে লিখুন</button>: Photoshop, Illustrator, PageMaker-এ SutonnyMJ দিয়ে লিখতে চাইলে চালু করুন; অন্য সব অ্যাপে ইউনিকোডই থাকবে।</li>
+            <li>ভুল বানান লিখলে প্রমিত বানানটি পাশে দেখাবে; Space চাপলে আপনার লেখাই বসবে।</li>
+          </ul>
+          <div class="row" style="justify-content:flex-end;margin-top:8px"><button class="btn primary" onclick="document.getElementById('welcomeBox').hidden = true">ঠিক আছে</button></div>
+        </div>
+      </div>
       <div class="composer etched">
         <div class="roman-wrap">
           <svg><use href="#i-keys"/></svg>
@@ -582,6 +639,19 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
         <textarea id="convOutput" rows="7" placeholder="ফলাফল" readonly></textarea>
       </div>
       <div class="row" style="margin-top:10px;justify-content:flex-end"><button class="btn primary" onclick="copyText(document.getElementById('convOutput').value)"><svg><use href="#i-copy"/></svg>ফলাফল কপি করুন</button></div>
+      <div class="etched" style="margin-top:18px">
+        <div class="section-title">পুরো ফাইল রূপান্তর</div>
+        <div class="hint">Word (.docx) বা টেক্সট (.txt) ফাইল দিন, রূপান্তর করা নতুন ফাইল ডাউনলোড হবে; আসল ফাইল যেমন ছিল তেমনই থাকে। Word ফাইলে লেখার ধরন (বোল্ড, রং, টেবিল) ঠিক থাকে। বিজয় থেকে ইউনিকোডে শুধু SutonnyMJ-জাতীয় (…MJ) ফন্টের লেখা বদলায়, তাই ইংরেজি অংশ যেমন আছে তেমনই থাকে।</div>
+        <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center">
+          <select id="fileConvMode" style="max-width:260px">
+            <option value="bijoy2uni">বিজয় → ইউনিকোড</option>
+            <option value="uni2bijoy">ইউনিকোড → বিজয় (SutonnyMJ)</option>
+          </select>
+          <button class="btn primary" onclick="document.getElementById('fileConvInput').click()">ফাইল বেছে নিন</button>
+          <input type="file" id="fileConvInput" accept=".docx,.txt" style="display:none" onchange="convertFile(this)">
+        </div>
+        <div id="fileConvMsg" role="status" class="hint" style="margin-top:8px"></div>
+      </div>
     </section>
 
     <!-- A word was wrong -->
@@ -653,11 +723,37 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
             <label for="cfgLayout">কীবোর্ড লেআউট</label>
             <select id="cfgLayout" onchange="saveSettings()">
               <option value="AvroPhonetic">একুশে ফোনেটিক (অভ্র-সামঞ্জস্যপূর্ণ)</option>
-              <option value="Probhat">প্রভাত</option>
+              <option value="UniJoy">ইউনিজয় (UniJoy)</option>
               <option value="NationalJatiya">জাতীয়</option>
+              <option value="Probhat">প্রভাত</option>
               <option value="Bornona">বর্ণনা</option>
               <option value="MunirOptima">মুনীর অপটিমা</option>
             </select>
+            <small>ফিক্সড লেআউটে যেভাবে হাতে অভ্যাস সেভাবেই লিখুন: কার আগে বা পরে, যুক্তবর্ণের জন্য লিংক কী। একুশে সবসময় সঠিক ইউনিকোডে রাখে।</small>
+          </div>
+          <div class="setting">
+            <label>নিজের লেআউট</label>
+            <small>অন্য কোনো লেআউটে অভ্যস্ত? তার একুশে লেআউট ফাইল (.ekushe-layout) যোগ করুন, তালিকায় চলে আসবে। ফাইলে শুধু কোন কী-তে কোন অক্ষর, তা থাকে; একুশে যোগ করার আগে যাচাই করে নেয়।</small>
+            <div class="row" style="gap:8px;flex-wrap:wrap">
+              <button class="btn" onclick="document.getElementById('layoutFileInput').click()">লেআউট ফাইল যোগ করুন</button>
+              <button class="btn" onclick="exportLayout()">এই লেআউট ফাইল হিসেবে নিন</button>
+              <input type="file" id="layoutFileInput" accept=".ekushe-layout,.json,application/json" style="display:none" onchange="importLayoutFile(this)">
+            </div>
+            <div class="chip-bar" id="customLayoutList"></div>
+            <div id="layoutFileMsg" role="status" class="hint"></div>
+          </div>
+          <div id="fixedLayoutOptions">
+            <label class="toggle">
+              <span><b>প্রমিত বানানের ইঙ্গিত</b><small>ফিক্সড লেআউটে কোনো শব্দের প্রমিত বানান আলাদা হলে পাশে দেখায় (যেমন সরকারী → সরকারি)। স্পেস চাপলে যেমন লিখেছেন তেমনই থাকে; Tab চেপে ইঙ্গিতটি নিতে পারেন। শব্দের পরেই Backspace চাপলে শব্দটি আবার খোলে।</small></span>
+              <span class="switch"><input type="checkbox" id="cfgSpellHint" checked onchange="saveSettings()"><i></i></span>
+            </label>
+            <label class="toggle">
+              <span><b>শব্দের পরামর্শ</b><small>ফিক্সড লেআউটে টাইপ করার সময় ওই অক্ষর দিয়ে শুরু হওয়া প্রচলিত শব্দ দেখায় (বাং → বাংলা, বাংলাদেশ)।</small></span>
+              <span class="switch"><input type="checkbox" id="cfgWordSugg" onchange="saveSettings()"><i></i></span>
+            </label>
+            <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px">
+              <button class="btn" onclick="showKeyMap()">কী-ম্যাপ দেখুন</button>
+            </div>
           </div>
         </div>
 
@@ -667,6 +763,17 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
             <span><b>ছোট পপ-আপ</b><small>টাইপ করার সময়ের পপ-আপে যুক্তবর্ণের সারি লুকায়</small></span>
             <span class="switch"><input type="checkbox" id="cfgCompact" onchange="saveSettings()"><i></i></span>
           </label>
+          <div id="bijoyOutBox" hidden>
+            <label class="toggle">
+              <span><b>ডিজাইন অ্যাপে বিজয় (SutonnyMJ) লেখা</b><small>চালু থাকলে নিচের অ্যাপগুলোতে একুশে ইউনিকোডের বদলে বিজয় লেখা লেখে, SutonnyMJ ফন্টের সঙ্গে ব্যবহারের জন্য (Photoshop, Illustrator, InDesign, CorelDRAW, QuarkXPress)। অন্য সব অ্যাপে ইউনিকোডই থাকে। Ctrl+Alt+V চাপলে ক্লিপবোর্ডের লেখা অ্যাপ অনুযায়ী ঠিক রূপে বসে।</small></span>
+              <span class="switch"><input type="checkbox" id="cfgBijoyOut" onchange="saveSettings()"><i></i></span>
+            </label>
+            <div class="setting">
+              <label for="cfgBijoyApps">বিজয় লেখার অ্যাপ</label>
+              <textarea id="cfgBijoyApps" rows="2" onchange="saveSettings()" placeholder="photoshop.exe, indesign.exe"></textarea>
+              <small>প্রোগ্রামের নাম, কমা দিয়ে আলাদা করে।</small>
+            </div>
+          </div>
           <label class="toggle">
             <span><b>টার্মিনালে ইংরেজি</b><small>টার্মিনাল (Windows Terminal, CMD, PowerShell, ম্যাকের Terminal) ইংরেজিতে শুরু হয়; দুবার Shift চাপলে সেখানেও বাংলা</small></span>
             <span class="switch"><input type="checkbox" id="cfgTerminal" checked onchange="saveSettings()"><i></i></span>
@@ -694,7 +801,7 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
       </div>
       <div id="settingsSavedMsg" role="status" class="hint" style="margin-top:12px"></div>
       <div class="etched" id="backupBox" style="margin-top:18px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
-        <div><div class="section-title">ব্যাকআপ ও ফিরিয়ে আনা</div><div class="hint">সেটিংস, আপনার শর্টকাট আর একুশের শেখা শব্দ এক ফাইলে রাখুন। নতুন কম্পিউটারে (উইন্ডোজ বা লিনাক্স) ফাইলটি দিলেই সব ফিরে আসবে, আগের কিছু মুছবে না।</div><div id="backupMsg" role="status" class="hint" style="margin-top:6px"></div></div>
+        <div><div class="section-title">ব্যাকআপ ও ফিরিয়ে আনা</div><div class="hint">সেটিংস, আপনার শর্টকাট, যোগ করা কীবোর্ড লেআউট আর একুশের শেখা শব্দ এক ফাইলে রাখুন। নতুন কম্পিউটারে (উইন্ডোজ, ম্যাক বা লিনাক্স) ফাইলটি দিলেই সব ফিরে আসবে, আগের কিছু মুছবে না।</div><div id="backupMsg" role="status" class="hint" style="margin-top:6px"></div></div>
         <div class="row" style="gap:8px">
           <button class="btn primary" onclick="downloadBackup()">ব্যাকআপ নিন</button>
           <button class="btn" onclick="document.getElementById('restoreFile').click()">ফিরিয়ে আনুন</button>
@@ -902,6 +1009,9 @@ async function refreshState() {
     document.getElementById('addKeyboardBtn').hidden = !kb.can_add;
     if (!kb.can_add) document.getElementById('addKeyboardMsg').textContent = kb.steps;
   }
+  welcomeMaybeShow(st);
+  document.getElementById('conflictBox').hidden = !st.conflicts;
+  document.getElementById('conflictMsg').textContent = st.conflicts || '';
   const pill = document.getElementById('modePill');
   pill.className = 'lang-switch ' + (st.language === 'Bangla' ? 'bangla' : 'english');
   document.getElementById('hotkeyBadge').textContent = st.hotkey_display;
@@ -913,6 +1023,15 @@ async function refreshState() {
   const trmEl = document.getElementById('cfgTerminal');
   if (trmEl && typeof st.auto_english_in_terminals === 'boolean') trmEl.checked = st.auto_english_in_terminals;
   if (typeof st.start_bangla === 'boolean') document.getElementById('cfgStartBn').checked = st.start_bangla;
+  if (typeof st.fixed_spelling_hint === 'boolean') document.getElementById('cfgSpellHint').checked = st.fixed_spelling_hint;
+  if (typeof st.fixed_word_suggestions === 'boolean') document.getElementById('cfgWordSugg').checked = st.fixed_word_suggestions;
+  if (typeof st.bijoy_output === 'boolean') {
+    document.getElementById('bijoyOutBox').hidden = false;
+    document.getElementById('cfgBijoyOut').checked = st.bijoy_output;
+    const appsEl = document.getElementById('cfgBijoyApps');
+    if (document.activeElement !== appsEl) appsEl.value = st.bijoy_output_apps || '';
+  }
+  document.getElementById('fixedLayoutOptions').hidden = !st.active_layout || st.active_layout === 'AvroPhonetic';
   if (typeof st.check_for_updates === 'boolean' && st.app_version) {
     document.getElementById('cfgUpdatesRow').style.display = '';
     document.getElementById('cfgUpdates').checked = st.check_for_updates;
@@ -1280,6 +1399,185 @@ async function runConvert(mode, chipEl) {
   }, mode ? 0 : 150);
 }
 
+// ── Whole-file conversion (.txt, .docx) ──
+// Windows-1252 bytes 0x80-0x9F (old Bijoy .txt files are saved in this code page)
+const CP1252_HIGH = '€\u0081‚ƒ„…†‡ˆ‰Š‹Œ\u008DŽ\u008F\u0090‘’“”•–—˜™š›œ\u009DžŸ';
+function encode1252(text) {
+  const out = new Uint8Array(text.length);
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charCodeAt(i);
+    if (c < 0x80 || (c >= 0xA0 && c <= 0xFF)) out[i] = c;
+    else { const k = CP1252_HIGH.indexOf(text[i]); out[i] = k >= 0 ? 0x80 + k : 0x3F; }
+  }
+  return out;
+}
+// Convert many pieces of text in one request, kept apart by a private-use character
+async function convertPieces(mode, pieces) {
+  const SEP = '\uE001';
+  const out = [];
+  for (let i = 0; i < pieces.length; i += 400) {
+    const chunk = pieces.slice(i, i + 400);
+    const res = await fetch('/api/convert', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ mode, text: chunk.join(SEP) }) });
+    if (!res.ok) throw new Error('convert');
+    const parts = (await res.json()).result.split(SEP);
+    if (parts.length !== chunk.length) throw new Error('pieces');
+    out.push(...parts);
+  }
+  return out;
+}
+const CRC_TABLE = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(b) { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = CRC_TABLE[(c ^ b[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+async function inflateRaw(bytes) {
+  const ds = new DecompressionStream('deflate-raw');
+  const buf = await new Response(new Blob([bytes]).stream().pipeThrough(ds)).arrayBuffer();
+  return new Uint8Array(buf);
+}
+// Read a .zip (a .docx is one): [{name, data}]
+async function readZip(buf) {
+  const v = new DataView(buf), u8 = new Uint8Array(buf);
+  let eocd = -1;
+  for (let i = u8.length - 22; i >= Math.max(0, u8.length - 66000); i--) if (v.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  if (eocd < 0) throw new Error('not a zip');
+  const count = v.getUint16(eocd + 10, true);
+  let p = v.getUint32(eocd + 16, true);
+  const dec = new TextDecoder();
+  const files = [];
+  for (let n = 0; n < count; n++) {
+    if (v.getUint32(p, true) !== 0x02014b50) throw new Error('bad zip');
+    const method = v.getUint16(p + 10, true), csize = v.getUint32(p + 20, true);
+    const nlen = v.getUint16(p + 28, true), xlen = v.getUint16(p + 30, true), clen = v.getUint16(p + 32, true);
+    const local = v.getUint32(p + 42, true);
+    const name = dec.decode(u8.subarray(p + 46, p + 46 + nlen));
+    const start = local + 30 + v.getUint16(local + 26, true) + v.getUint16(local + 28, true);
+    const raw = u8.subarray(start, start + csize);
+    const data = method === 0 ? raw.slice() : method === 8 ? await inflateRaw(raw) : null;
+    if (!data) throw new Error('unsupported zip');
+    files.push({ name, data });
+    p += 46 + nlen + xlen + clen;
+  }
+  return files;
+}
+// Write a .zip with the files stored (Word opens it like any other)
+function writeZip(files) {
+  const enc = new TextEncoder();
+  const parts = [], central = [];
+  let offset = 0;
+  for (const f of files) {
+    const name = enc.encode(f.name), crc = crc32(f.data), size = f.data.length;
+    const h = new DataView(new ArrayBuffer(30));
+    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true);
+    h.setUint32(14, crc, true); h.setUint32(18, size, true); h.setUint32(22, size, true); h.setUint16(26, name.length, true);
+    parts.push(new Uint8Array(h.buffer), name, f.data);
+    const c = new DataView(new ArrayBuffer(46));
+    c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true);
+    c.setUint32(16, crc, true); c.setUint32(20, size, true); c.setUint32(24, size, true); c.setUint16(28, name.length, true);
+    c.setUint32(42, offset, true);
+    central.push(new Uint8Array(c.buffer), name);
+    offset += 30 + name.length + size;
+  }
+  const csize = central.reduce((a, b) => a + b.length, 0);
+  const e = new DataView(new ArrayBuffer(22));
+  e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true);
+  e.setUint32(12, csize, true); e.setUint32(16, offset, true);
+  return new Blob([...parts, ...central, new Uint8Array(e.buffer)], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+}
+const W_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+function runFont(run) {
+  const rPr = run.getElementsByTagNameNS(W_NS, 'rPr')[0];
+  const f = rPr && rPr.getElementsByTagNameNS(W_NS, 'rFonts')[0];
+  if (!f) return '';
+  return ['ascii', 'hAnsi', 'cs', 'eastAsia'].map(a => f.getAttributeNS(W_NS, a) || '').join(' ');
+}
+function setRunFont(doc, run, font) {
+  let rPr = run.getElementsByTagNameNS(W_NS, 'rPr')[0];
+  if (!rPr) { rPr = doc.createElementNS(W_NS, 'w:rPr'); run.insertBefore(rPr, run.firstChild); }
+  let f = rPr.getElementsByTagNameNS(W_NS, 'rFonts')[0];
+  if (!f) { f = doc.createElementNS(W_NS, 'w:rFonts'); rPr.insertBefore(f, rPr.firstChild); }
+  for (const a of ['ascii', 'hAnsi', 'cs', 'eastAsia']) f.setAttributeNS(W_NS, 'w:' + a, font);
+  if (font !== 'SutonnyMJ') { const cs = doc.createElementNS(W_NS, 'w:lang'); cs.setAttributeNS(W_NS, 'w:bidi', 'bn-BD'); if (!rPr.getElementsByTagNameNS(W_NS, 'lang')[0]) rPr.appendChild(cs); }
+}
+// Convert one Word XML part; returns [newBytes, runsConverted]
+async function convertWordXml(bytes, mode) {
+  const doc = new DOMParser().parseFromString(new TextDecoder().decode(bytes), 'application/xml');
+  if (doc.getElementsByTagName('parsererror').length) return [bytes, 0];
+  const runs = [...doc.getElementsByTagNameNS(W_NS, 'r')].filter(r => {
+    const text = [...r.getElementsByTagNameNS(W_NS, 't')].map(t => t.textContent).join('');
+    if (!text.trim()) return false;
+    if (mode === 'bijoy2uni') return /MJ\b|SutonnyMJ|Bijoy/i.test(runFont(r));
+    return /[\u0980-\u09FF]/.test(text);
+  });
+  if (!runs.length) return [bytes, 0];
+  const pieces = runs.map(r => [...r.getElementsByTagNameNS(W_NS, 't')].map(t => t.textContent).join(''));
+  const done = await convertPieces(mode, pieces);
+  const font = mode === 'bijoy2uni' ? (document.getElementById('cfgFont') && document.getElementById('cfgFont').value || 'Kalpurush') : 'SutonnyMJ';
+  runs.forEach((r, i) => {
+    const ts = [...r.getElementsByTagNameNS(W_NS, 't')];
+    ts[0].textContent = done[i];
+    ts[0].setAttribute('xml:space', 'preserve');
+    ts.slice(1).forEach(t => t.parentNode.removeChild(t));
+    setRunFont(doc, r, font);
+  });
+  return [new TextEncoder().encode(new XMLSerializer().serializeToString(doc)), runs.length];
+}
+function download(blob, name) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+}
+async function convertFile(input) {
+  const msg = document.getElementById('fileConvMsg');
+  const file = input.files && input.files[0];
+  input.value = '';
+  if (!file) return;
+  const mode = document.getElementById('fileConvMode').value;
+  const suffix = mode === 'bijoy2uni' ? '-unicode' : '-bijoy';
+  const base = file.name.replace(/\.[^.]+$/, '');
+  if (file.size > 40 * 1024 * 1024) { msg.textContent = 'ফাইলটি অনেক বড় (৪০ MB-এর বেশি)।'; return; }
+  msg.textContent = 'রূপান্তর হচ্ছে…';
+  try {
+    const buf = await file.arrayBuffer();
+    if (/\.txt$/i.test(file.name)) {
+      const bytes = new Uint8Array(buf);
+      const utf8 = bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF;
+      let text;
+      try { text = new TextDecoder('utf-8', { fatal: true }).decode(bytes); }
+      catch (e) { text = new TextDecoder('windows-1252').decode(bytes); }
+      if (utf8) text = text.replace(/^\uFEFF/, '');
+      const lines = text.split('\n');
+      const out = (await convertPieces(mode, lines)).join('\n');
+      const blob = mode === 'uni2bijoy'
+        ? new Blob([encode1252(out)], { type: 'text/plain' })
+        : new Blob(['\uFEFF' + out], { type: 'text/plain;charset=utf-8' });
+      download(blob, base + suffix + '.txt');
+      msg.textContent = `হয়ে গেছে: ${base + suffix}.txt ডাউনলোড হয়েছে।`;
+      return;
+    }
+    const files = await readZip(buf);
+    let total = 0;
+    for (const f of files) {
+      if (/^word\/(document|header\d*|footer\d*|footnotes|endnotes)\.xml$/.test(f.name)) {
+        const [data, n] = await convertWordXml(f.data, mode);
+        f.data = data;
+        total += n;
+      }
+    }
+    if (!total) {
+      msg.textContent = mode === 'bijoy2uni'
+        ? 'ফাইলে SutonnyMJ-জাতীয় (…MJ) ফন্টের কোনো লেখা পাওয়া যায়নি। লেখাটি কপি করে উপরের বাক্সে দিন।'
+        : 'ফাইলে বাংলা ইউনিকোড লেখা পাওয়া যায়নি।';
+      return;
+    }
+    download(writeZip(files), base + suffix + '.docx');
+    const bn = (n) => String(n).replace(/[0-9]/g, d => '০১২৩৪৫৬৭৮৯'[d]);
+    msg.textContent = `হয়ে গেছে: ${bn(total)}টি অংশ বদলানো হয়েছে, ${base + suffix}.docx ডাউনলোড হয়েছে।` + (mode === 'uni2bijoy' ? ' খোলার কম্পিউটারে SutonnyMJ ফন্ট থাকতে হবে।' : '');
+  } catch (e) {
+    msg.textContent = 'ফাইলটি পড়া যায়নি। এটি .docx বা .txt তো? (' + e.message + ')';
+  }
+}
+
 // ── A word was wrong ──
 let reportedText = '';
 async function loadRecent() {
@@ -1378,6 +1676,192 @@ async function removeKeyboard() {
   }
 }
 
+// ── Keyboard layouts: built-in and the user's own layout files ──
+const BUILT_IN_LAYOUT_NAMES = {
+  AvroPhonetic: 'একুশে ফোনেটিক (অভ্র-সামঞ্জস্যপূর্ণ)', UniJoy: 'ইউনিজয় (UniJoy)', NationalJatiya: 'জাতীয়',
+  Probhat: 'প্রভাত', Bornona: 'বর্ণনা', MunirOptima: 'মুনীর অপটিমা',
+};
+async function refreshLayouts() {
+  const res = await fetch('/api/layouts');
+  if (!res.ok) return;
+  const data = await res.json();
+  const sel = document.getElementById('cfgLayout');
+  sel.innerHTML = '';
+  const list = document.getElementById('customLayoutList');
+  list.innerHTML = '';
+  for (const l of data.layouts) {
+    const o = document.createElement('option');
+    o.value = l.value;
+    o.textContent = l.custom ? `${l.name} (নিজের)` : (BUILT_IN_LAYOUT_NAMES[l.value] || l.name);
+    sel.appendChild(o);
+    if (l.custom) {
+      const chip = document.createElement('span');
+      chip.className = 'chip';
+      chip.title = [l.author && ('তৈরি করেছেন: ' + l.author), l.description].filter(Boolean).join(' — ');
+      chip.textContent = l.name + ' ';
+      const x = document.createElement('button');
+      x.textContent = '✕';
+      x.setAttribute('aria-label', l.name + ' সরান');
+      x.onclick = () => removeLayout(l.id, l.name);
+      chip.appendChild(x);
+      list.appendChild(chip);
+    }
+  }
+  sel.value = data.active;
+}
+// The engine's reasons, in Bangla (the English detail stays for anything unusual)
+function layoutErrorBn(e) {
+  if (/isn't an Ekushe layout/.test(e)) return 'এটি একুশের লেআউট ফাইল নয়।';
+  if (/newer version/.test(e)) return 'ফাইলটি একুশের নতুন সংস্করণের জন্য তৈরি; একুশে আপডেট করে আবার চেষ্টা করুন।';
+  if (/fewer than 10/.test(e)) return 'ফাইলে ১০টির কম বাংলা অক্ষর আছে, লেআউটটি অসম্পূর্ণ মনে হচ্ছে।';
+  if (/too large/.test(e)) return 'ফাইলটি অনেক বড়, এটি লেআউট ফাইল নয়।';
+  if (/no name/.test(e)) return 'লেআউটের কোনো নাম নেই।';
+  if (/can't type/.test(e)) return 'ফাইলে এমন চিহ্ন আছে যা কীবোর্ড দিয়ে লেখার নয়। (' + e + ')';
+  if (/single key/.test(e)) return 'ফাইলে একটি কী-এর জায়গায় একাধিক অক্ষর আছে। (' + e + ')';
+  return e ? 'ফাইলে ভুল আছে। (' + e + ')' : 'ফাইলটি পড়া যায়নি।';
+}
+async function importLayoutFile(input) {
+  const msg = document.getElementById('layoutFileMsg');
+  const file = input.files && input.files[0];
+  input.value = '';
+  if (!file) return;
+  if (file.size > 64 * 1024) { msg.textContent = 'ফাইলটি অনেক বড়, এটি লেআউট ফাইল নয়।'; return; }
+  const res = await fetch('/api/layouts/import', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: await file.text() });
+  const out = await res.json().catch(() => ({}));
+  if (!res.ok) { msg.textContent = 'লেআউট যোগ করা যায়নি: ' + layoutErrorBn(out.error || ''); return; }
+  await refreshLayouts();
+  document.getElementById('cfgLayout').value = out.value;
+  await saveSettings();
+  msg.textContent = `"${out.imported}" যোগ হয়েছে ও চালু আছে।`;
+  toast('লেআউট যোগ হয়েছে');
+}
+async function removeLayout(id, name) {
+  if (!confirm(`"${name}" লেআউটটি সরাবেন?`)) return;
+  const res = await fetch('/api/layouts/remove', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ id }) });
+  document.getElementById('layoutFileMsg').textContent = res.ok ? `"${name}" সরানো হয়েছে।` : 'সরানো যায়নি।';
+  await refreshLayouts();
+  await refreshState();
+}
+async function exportLayout() {
+  const msg = document.getElementById('layoutFileMsg');
+  const value = document.getElementById('cfgLayout').value;
+  const res = await fetch('/api/layouts/export?id=' + encodeURIComponent(value));
+  if (!res.ok) { msg.textContent = 'ফোনেটিক টাইপিংয়ের কোনো কী-লেআউট নেই; আগে একটি ফিক্সড লেআউট বেছে নিন।'; return; }
+  const text = await res.text();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+  a.download = value.replace(/^Custom:/, '') + '.ekushe-layout';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  msg.textContent = 'লেআউট ফাইল ডাউনলোড হয়েছে। এটি বদলে নিজের লেআউট বানাতে পারেন।';
+}
+const layoutsReady = refreshLayouts();
+
+// ── Key map of the layout in use (and a printable cheat sheet) ──
+const KEY_ROWS = [
+  ['`~','1!','2@','3#','4$','5%','6^','7&','8*','9(','0)','-_','=+'],
+  ['qQ','wW','eE','rR','tT','yY','uU','iI','oO','pP','[{',']}','\\|'],
+  ['aA','sS','dD','fF','gG','hH','jJ','kK','lL',';:',"'\""],
+  ['zZ','xX','cC','vV','bB','nN','mM',',<','.>','/?'],
+];
+function keyText(t) {
+  if (t === undefined) return '';
+  return t.replace(/\u200C/g, 'ZWNJ').replace(/\u200D/g, 'ZWJ').replace(/^([\u09BE-\u09CD\u0981-\u0983\u09D7])/, '◌$1');
+}
+// ── First run: how do you type Bangla? ──
+let welcomeShown = false;
+function welcomeMaybeShow(st) {
+  if (welcomeShown || st.welcome_done !== false) return;
+  welcomeShown = true;
+  document.getElementById('welcomeBox').hidden = false;
+}
+async function welcomeDone() {
+  document.getElementById('welcomeBox').hidden = true;
+  await saveSettings({ welcome_done: true });
+}
+async function welcomeChoose(how) {
+  await layoutsReady;
+  const sel = document.getElementById('cfgLayout');
+  sel.value = how === 'fixed' ? 'UniJoy' : 'AvroPhonetic';
+  await saveSettings({ welcome_done: true });
+  await refreshState();
+  if (how !== 'fixed') {
+    document.getElementById('welcomeBox').hidden = true;
+    toast('তৈরি! amar sonar bangla লিখে দেখুন');
+    document.getElementById('romanInput').focus();
+    return;
+  }
+  document.getElementById('welcomeHotkey').textContent = document.getElementById('hotkeyBadge').textContent || 'দুবার Shift';
+  document.getElementById('welcomeBijoyOut').hidden = document.getElementById('bijoyOutBox').hidden;
+  document.getElementById('welcomeAsk').hidden = true;
+  document.getElementById('welcomeFixed').hidden = false;
+}
+function welcomeGo(tab, inputId) {
+  showTab(tab);
+  const el = document.getElementById(inputId);
+  if (el) { el.closest('.etched')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.click(); }
+}
+async function welcomeBijoyOutput() {
+  document.getElementById('cfgBijoyOut').checked = true;
+  await saveSettings();
+  toast('বিজয় আউটপুট চালু: তালিকার ডিজাইন অ্যাপগুলোতে SutonnyMJ লেখা যাবে');
+  showTab('settings');
+  document.getElementById('bijoyOutBox').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+async function showKeyMap() {
+  const value = document.getElementById('cfgLayout').value;
+  const res = await fetch('/api/layouts/export?id=' + encodeURIComponent(value));
+  if (!res.ok) { toast('ফোনেটিক টাইপিংয়ের কোনো কী-ম্যাপ নেই'); return; }
+  const l = await res.json();
+  const back = document.createElement('div');
+  back.className = 'keymap-back';
+  back.onclick = (e) => { if (e.target === back) back.remove(); };
+  const box = document.createElement('div');
+  box.className = 'keymap';
+  box.setAttribute('role', 'dialog');
+  box.setAttribute('aria-label', l.name + ' কী-ম্যাপ');
+  const h = document.createElement('h3');
+  h.textContent = l.name;
+  box.appendChild(h);
+  const kb = document.createElement('div');
+  kb.className = 'kb';
+  for (const row of KEY_ROWS) {
+    const r = document.createElement('div');
+    r.className = 'kb-row';
+    for (const pair of row) {
+      const [lo, up] = [pair[0], pair[1]];
+      const k = document.createElement('div');
+      k.className = 'key' + (l.link_key === lo ? ' link' : '');
+      const part = (cls, text) => { if (!text) return; const d = document.createElement('span'); d.className = cls + (/^[A-Z]{3,}$/.test(text) ? ' small' : ''); d.textContent = text; k.appendChild(d); };
+      part('n', l.link_key === lo ? 'লিংক' : keyText(l.keys[lo]));
+      part('s', keyText(l.keys[up]));
+      part('a', keyText(l.altgr && (l.altgr[lo] || l.altgr[up])));
+      part('e', lo.toUpperCase());
+      k.title = `${lo}: ${l.keys[lo] || '—'}   Shift+${lo}: ${l.keys[up] || '—'}`;
+      r.appendChild(k);
+    }
+    kb.appendChild(r);
+  }
+  box.appendChild(kb);
+  const legend = document.createElement('div');
+  legend.className = 'legend';
+  legend.innerHTML = '<span>বড় অক্ষর: শুধু কী</span><span>উপরে বাঁয়ে: Shift + কী</span><span style="color:var(--accent)">নিচে ডানে: AltGr (ডান Alt) + কী</span>' +
+    (l.link_key ? `<span>সবুজ ঘর (${l.link_key.toUpperCase()}): লিংক কী — এরপর ব্যঞ্জন দিলে যুক্তবর্ণ, কার দিলে পূর্ণ স্বরবর্ণ, দুবার দিলে হসন্ত</span>` : '') +
+    (l.reph_after ? '<span>রেফ: অক্ষরের পরে টাইপ করুন</span>' : '');
+  box.appendChild(legend);
+  const btns = document.createElement('div');
+  btns.className = 'row no-print';
+  btns.style.cssText = 'gap:8px;margin-top:14px';
+  const pr = document.createElement('button'); pr.className = 'btn primary'; pr.textContent = 'প্রিন্ট করুন'; pr.onclick = () => window.print();
+  const cl = document.createElement('button'); cl.className = 'btn'; cl.textContent = 'বন্ধ করুন'; cl.onclick = () => back.remove();
+  btns.append(pr, cl);
+  box.appendChild(btns);
+  back.appendChild(box);
+  document.body.appendChild(back);
+  document.addEventListener('keydown', function esc(e) { if (e.key === 'Escape') { back.remove(); document.removeEventListener('keydown', esc); } });
+}
+
 // ── Backup and restore ──
 async function downloadBackup() {
   const msg = document.getElementById('backupMsg');
@@ -1406,9 +1890,10 @@ async function restoreBackup(input) {
   if (!out.ok) { msg.textContent = 'ফিরিয়ে আনা যায়নি: এটি একুশে নেক্সটের ব্যাকআপ ফাইল নয়, বা ফাইলটি নষ্ট।'; return; }
   const r = out.restored;
   const bn = (n) => String(n).replace(/[0-9]/g, d => '০১২৩৪৫৬৭৮৯'[d]);
-  msg.textContent = `ফিরে এসেছে: ${r.settings ? 'সেটিংস, ' : ''}${bn(r.snippets)}টি শর্টকাট, ${bn(r.learned_words)}টি শেখা শব্দ।`;
+  msg.textContent = `ফিরে এসেছে: ${r.settings ? 'সেটিংস, ' : ''}${bn(r.snippets)}টি শর্টকাট, ${bn(r.learned_words)}টি শেখা শব্দ${r.layouts ? `, ${bn(r.layouts)}টি কীবোর্ড লেআউট` : ''}।`;
   toast('ব্যাকআপ থেকে ফিরিয়ে আনা হয়েছে');
   await refreshState();
+  refreshLayouts();
 }
 
 // ── Settings ──
@@ -1424,6 +1909,11 @@ async function saveSettings(extra) {
     auto_english_in_terminals: !!document.getElementById('cfgTerminal').checked,
     check_for_updates: !!document.getElementById('cfgUpdates').checked,
     start_bangla: !!document.getElementById('cfgStartBn').checked,
+    fixed_spelling_hint: !!document.getElementById('cfgSpellHint').checked,
+    fixed_word_suggestions: !!document.getElementById('cfgWordSugg').checked,
+  }, document.getElementById('bijoyOutBox').hidden ? {} : {
+    bijoy_output: !!document.getElementById('cfgBijoyOut').checked,
+    bijoy_output_apps: document.getElementById('cfgBijoyApps').value,
   }, extra || {});
   const res = await fetch('/api/settings', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
   document.getElementById('settingsSavedMsg').textContent = res.ok ? 'সংরক্ষিত হয়েছে' : 'সংরক্ষণ করা যায়নি — একুশে চালু আছে কি না দেখুন';
@@ -1442,7 +1932,13 @@ async function addCustomSnippet() {
 }
 
 const initialTab = new URLSearchParams(window.location.search).get('tab');
-showTab(initialTab && document.getElementById('tab-' + initialTab) ? initialTab : 'playground');
+if (initialTab === 'keymap') {
+  // Opened from the menu's "key map": the settings tab with the key map on top
+  showTab('settings');
+  layoutsReady.then(showKeyMap);
+} else {
+  showTab(initialTab && document.getElementById('tab-' + initialTab) ? initialTab : 'playground');
+}
 if (initialTab === 'fix') document.getElementById('navFix').style.display = '';
 updateCount();
 refreshState();

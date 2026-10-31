@@ -350,7 +350,11 @@ static gboolean ekushe_process_key_event(IBusEngine *e, guint keyval, guint keyc
             finish(ek);
         return FALSE;
     }
-    ekushe_string_free(ek_key(ch));
+    /* AltGr (Mod5) types a fixed layout's third layer (UniJoy: ঈ ঊ ঐ ঔ ...) */
+    if ((modifiers & IBUS_MOD5_MASK) && ek_fixed_layout())
+        ekushe_string_free(ek_key_altgr(ch));
+    else
+        ekushe_string_free(ek_key(ch));
     render(ek);
     return TRUE;
 }
@@ -471,6 +475,8 @@ static void ekushe_property_activate(IBusEngine *e, const gchar *name, guint sta
         open_studio("signs");
     else if (g_strcmp0(name, "settings") == 0)
         open_studio("settings");
+    else if (g_strcmp0(name, "keymap") == 0)
+        open_studio("keymap");
     else if (g_strcmp0(name, "report") == 0) {
         gchar *os = g_get_os_info(G_OS_INFO_KEY_PRETTY_NAME);
         gchar *url = take(ek_report_url(os ? os : "Linux"));
@@ -507,6 +513,10 @@ static void ekushe_engine_init(EkusheEngine *ek)
     ibus_prop_list_append(ek->props, ibus_property_new("settings", PROP_TYPE_NORMAL,
         ibus_text_new_from_string("Settings"), "preferences-system",
         ibus_text_new_from_string("Typing mode, layout, snippets"), TRUE, TRUE, PROP_STATE_UNCHECKED, NULL));
+    ibus_prop_list_append(ek->props, ibus_property_new("keymap", PROP_TYPE_NORMAL,
+        ibus_text_new_from_string("Key map of the layout"), "input-keyboard",
+        ibus_text_new_from_string("For UniJoy and the other fixed layouts: every key, with Shift and AltGr; printable"),
+        TRUE, TRUE, PROP_STATE_UNCHECKED, NULL));
     ek->mode_prop = ibus_property_new("InputMode", PROP_TYPE_NORMAL,
         ibus_text_new_from_string("বাংলা"), NULL,
         ibus_text_new_from_string("Double-tap Shift to switch between Bangla and English"), TRUE, TRUE, PROP_STATE_UNCHECKED, NULL);

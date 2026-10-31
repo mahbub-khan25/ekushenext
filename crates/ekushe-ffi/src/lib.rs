@@ -250,6 +250,61 @@ pub extern "C" fn ek_key(codepoint: u32) -> *mut c_char {
     })
 }
 
+/// Type a character with AltGr held (Option on a Mac): fixed layouts have a third layer there
+/// (UniJoy: ঈ ঊ ঐ ঔ ...). Returns `SessionOutput` JSON.
+#[no_mangle]
+pub extern "C" fn ek_key_altgr(codepoint: u32) -> *mut c_char {
+    let Some(ch) = char::from_u32(codepoint) else {
+        return ptr::null_mut();
+    };
+    with_shared(ptr::null_mut(), |sh| {
+        let out = sh.ekushe.push_char(ch, true);
+        record(sh, out)
+    })
+}
+
+/// True when a fixed layout (UniJoy, National, an imported layout ...) is in use rather than
+/// phonetic typing: hosts then pass AltGr / Option keys to the engine.
+#[no_mangle]
+pub extern "C" fn ek_fixed_layout() -> bool {
+    with_shared(false, |sh| {
+        ekushe_core::layout::FixedLayout::for_config(sh.ekushe.config()).is_some()
+    })
+}
+
+/// The name of the layout in use (for menus). Free with `ekushe_string_free`.
+#[no_mangle]
+pub extern "C" fn ek_layout_name() -> *mut c_char {
+    with_shared(ptr::null_mut(), |sh| {
+        let name = match ekushe_core::layout::FixedLayout::for_config(sh.ekushe.config()) {
+            Some(l) => l.name,
+            None => ekushe_core::layout::LayoutId::AvroPhonetic
+                .display_name()
+                .to_string(),
+        };
+        to_c(name)
+    })
+}
+
+/// True when the app in front gets Bijoy (SutonnyMJ) text instead of Unicode (Bijoy output is on
+/// and the app is in its list): the host converts what it shows and types with [`ek_to_bijoy`].
+#[no_mangle]
+pub extern "C" fn ek_bijoy_output() -> bool {
+    with_shared(false, |sh| sh.ekushe.bijoy_output_active())
+}
+
+/// Unicode Bangla text as Bijoy (SutonnyMJ). Free with `ekushe_string_free`.
+///
+/// # Safety
+/// `text` must be a valid NUL-terminated UTF-8 string or null.
+#[no_mangle]
+pub unsafe extern "C" fn ek_to_bijoy(text: *const c_char) -> *mut c_char {
+    let Some(t) = cstr(text) else {
+        return ptr::null_mut();
+    };
+    to_c(ekushe_core::convert::unicode_to_bijoy(t))
+}
+
 /// Backspace (edits the word being typed, or undoes the last conversion). Returns JSON.
 #[no_mangle]
 pub extern "C" fn ek_backspace() -> *mut c_char {

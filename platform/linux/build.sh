@@ -93,4 +93,14 @@ if [ "${2:-}" = "--test" ]; then
     export $(grep "^IBUS_ADDRESS=" "$F")
     ${PYTHON:-python3} platform/linux/ibus/test_engine.py
   '
+  echo "› Fixed layout (UniJoy) in a real ibus-daemon"
+  LAYOUT_HOME="$(mktemp -d)"
+  mkdir -p "$LAYOUT_HOME/Ekushe"
+  printf 'active_layout = "UniJoy"\n' > "$LAYOUT_HOME/Ekushe/config.toml"
+  XDG_CONFIG_HOME="$LAYOUT_HOME" dbus-run-session -- bash -c '
+    ibus-daemon --xim=false --panel=disable --emoji-extension=disable --cache=none --config=disable &
+    for i in $(seq 1 50); do F=$(ls "$XDG_CONFIG_HOME"/ibus/bus/* 2>/dev/null | head -1); [ -n "$F" ] && break; sleep 0.2; done
+    export $(grep "^IBUS_ADDRESS=" "$F")
+    ${PYTHON:-python3} platform/linux/ibus/test_fixed_layout.py
+  '
 fi

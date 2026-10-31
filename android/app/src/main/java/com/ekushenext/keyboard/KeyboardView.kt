@@ -63,7 +63,10 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
     var shift = Shift.OFF
         set(v) { field = v; invalidate() }
     var bangla = true
-        set(v) { field = v; invalidate() }
+        set(v) { val changed = field != v; field = v; if (changed && Layouts.fixed != null) buildKeys(); invalidate() }
+
+    /** The fixed layout changed (or phonetic typing came back): new keys */
+    fun reloadLayout() { buildKeys(); invalidate() }
     var enterLabel = "↵"
         set(v) { field = v; invalidate() }
     /** Suggestions for the word being typed (first = what Space places) */
@@ -146,7 +149,8 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
     private fun buildKeys() {
         Layouts.emojiKey = prefs.emojiKey
         rows = when (mode) {
-            Mode.LETTERS -> Layouts.letters(prefs.numberRow)
+            Mode.LETTERS -> Layouts.fixed?.takeIf { bangla }?.let { Layouts.fixedLetters(it, prefs.numberRow) }
+                ?: Layouts.letters(prefs.numberRow)
             Mode.SYMBOLS -> Layouts.symbols()
             Mode.MORE_SYMBOLS -> Layouts.moreSymbols()
             Mode.NUMBERS -> Layouts.numbers(false)
@@ -246,6 +250,7 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
     private fun isFunction(k: Key) = k.type != KeyType.CHAR && k.type != KeyType.SPACE
 
     private fun keyText(k: Key): String = when {
+        k.shiftLabel != null -> if (shift != Shift.OFF) k.shiftLabel else k.label
         k.letter && shift != Shift.OFF -> k.label.uppercase()
         // Symbols key: Bangla digits alone in Bangla ("?" next to them sat oddly high), ?123 in English
         k.type == KeyType.SYMBOLS && k.label == "?১২৩" -> if (bangla) "১২৩" else "?123"
