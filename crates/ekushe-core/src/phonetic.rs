@@ -295,6 +295,24 @@ impl PhoneticEngine {
                 }
             }
 
+            // 9b. `Z` with no consonant before it: য-ফলা on অ or এ, how "æ" is written
+            //     (oZa / Za -> অ্যা, eZa -> এ্যা); after a `` ` `` breaker it still joins the letter
+            //     before (r`Za -> র‍্যা). Never a literal Z in the Bangla text.
+            if rem.starts_with('Z') {
+                match out.chars().last() {
+                    Some('অ') | Some('এ') => out.push_str("্য"),
+                    // র kept apart from য-ফলা: র‍্য, not a reph (r`Zab -> র‍্যাব)
+                    Some('র') => out.push_str("\u{200D}্য"),
+                    Some(c) if is_bangla_consonant(c) => out.push_str("্য"),
+                    None => out.push_str("অ্য"),
+                    Some(_) => out.push('য'),
+                }
+                prev_consonant = true;
+                force_join = false;
+                i += 1;
+                continue;
+            }
+
             // 10. Single / digraph consonant match
             if let Some((c_len, cons_str, is_cons)) =
                 match_single_consonant(rem, i == 0, prev_consonant)
@@ -903,6 +921,18 @@ mod tests {
     fn test_classic_avro_sentence() {
         let eng = PhoneticEngine::new();
         assert_eq!(eng.transliterate("ami banglay gan gai."), "আমি বাংলায় গান গাই।");
+    }
+
+    #[test]
+    fn ya_phala_on_a_and_e() {
+        let eng = PhoneticEngine::new();
+        assert_eq!(eng.transliterate("oZap Zasid eZa"), "অ্যাপ অ্যাসিদ এ্যা");
+        assert_eq!(eng.transliterate("kZa"), "ক্যা");
+        assert_eq!(eng.transliterate("r`Zab"), "র\u{200D}্যাব");
+        // never a literal Z in Bangla text
+        for w in ["Z", "aZ", "kaZ", "r`Za", "iZa"] {
+            assert!(!eng.transliterate(w).contains('Z'), "{w}");
+        }
     }
 
     #[test]

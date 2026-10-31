@@ -14,6 +14,10 @@ const ZWJ: char = '\u{200D}';
 const RRA: char = '\u{09DC}';
 const RHA: char = '\u{09DD}';
 const YYA: char = '\u{09DF}';
+/// অ্যা (অ + য-ফলা + া, English "æ": অ্যাপ app, অ্যাসিড acid), read as one vowel. Internal only.
+const AE_A: char = '\u{E0A1}';
+/// এ্যা, the older spelling of the same sound (এ্যাসিড). Internal only.
+const AE_E: char = '\u{E0A2}';
 /// Cost of typing ছ as s, as Bangladeshi chat does (asi, kisu, gesi). Matches romanize.py.
 const CHHA_S: f64 = 0.3;
 /// Cost of typing a word-initial য-ফলা's vowel as "a" (ব্যস্ত byasto). Matches romanize.py.
@@ -100,6 +104,21 @@ fn indep(c: char) -> Option<&'static [Opt]> {
         'ঐ' => &[S("OI", 0.0), S("oi", 0.1)],
         'ও' => &[S("O", 0.0), S("o", 0.1)],
         'ঔ' => &[S("OU", 0.0), S("ou", 0.1)],
+        // "æ": typed app / aep / ep, or the Avro way oZa / eZa
+        AE_A => &[
+            S("a", 0.0),
+            S("oZa", 0.0),
+            S("ae", 0.2),
+            S("e", 0.4),
+            S("ya", 0.5),
+        ],
+        AE_E => &[
+            S("a", 0.0),
+            S("eZa", 0.0),
+            S("e", 0.1),
+            S("ae", 0.2),
+            S("ya", 0.5),
+        ],
         _ => return None,
     })
 }
@@ -172,7 +191,13 @@ fn parse(word: &str) -> Vec<Unit> {
     let mut units = Vec::new();
     let mut i = 0;
     while i < n {
-        let c = w[i];
+        let mut c = w[i];
+        // অ্যা / এ্যা (and অ্য / এ্য with no া) are one vowel sound
+        if matches!(c, 'অ' | 'এ') && w.get(i + 1) == Some(&HC) && w.get(i + 2) == Some(&'য') {
+            let skip = if w.get(i + 3) == Some(&'া') { 3 } else { 2 };
+            c = if c == 'অ' { AE_A } else { AE_E };
+            i += skip;
+        }
         if indep(c).is_some() {
             i += 1;
             let mut mods = Vec::new();
@@ -506,5 +531,15 @@ mod tests {
         assert_eq!(skeleton("bhalObasi"), "blbs");
         assert_eq!(romanize("কর্ম", 1)[0].1, "kormo");
         assert_eq!(romanize("এবং", 1)[0].1, "ebong");
+    }
+    #[test]
+    fn ya_phala_on_a_is_one_vowel() {
+        let r: Vec<String> = romanize("অ্যাপ", 8).into_iter().map(|x| x.1).collect();
+        assert!(r.contains(&"ap".to_string()), "{r:?}");
+        assert!(r.contains(&"oZap".to_string()), "{r:?}");
+        let r: Vec<String> = romanize("অ্যাসিড", 8).into_iter().map(|x| x.1).collect();
+        assert!(r.iter().any(|x| skeleton(x) == skeleton("asid")), "{r:?}");
+        let r: Vec<String> = romanize("এ্যাসিড", 8).into_iter().map(|x| x.1).collect();
+        assert!(r.iter().any(|x| skeleton(x) == skeleton("asid")), "{r:?}");
     }
 }

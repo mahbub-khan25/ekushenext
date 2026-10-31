@@ -1490,4 +1490,52 @@ mod tests {
         assert!(layout_id_for("আমার লেআউট").starts_with("layout-"));
         let _ = std::fs::remove_dir_all(&dir);
     }
+
+    /// অ + য-ফলা + া gives অ্যা (অ্যাপ) on every built-in layout that has those keys
+    #[test]
+    fn ya_phala_on_a_gives_a_ya_aa() {
+        let auto = LayoutAutomation::default();
+        let mut checked = 0;
+        for id in [
+            LayoutId::Probhat,
+            LayoutId::NationalJatiya,
+            LayoutId::Bornona,
+            LayoutId::MunirOptima,
+        ] {
+            let l = FixedLayout::builtin(id).unwrap();
+            let key = |want: &str| {
+                l.normal
+                    .iter()
+                    .find(|(_, v)| v.as_str() == want)
+                    .map(|(k, _)| (*k, false))
+                    .or_else(|| {
+                        l.altgr
+                            .iter()
+                            .find(|(_, v)| v.as_str() == want)
+                            .map(|(k, _)| (*k, true))
+                    })
+            };
+            let (Some(a), Some(aa)) = (key("অ"), key("া")) else {
+                continue;
+            };
+            let ya: Vec<(char, bool)> = match key("্য") {
+                Some(k) => vec![k],
+                None => match (key("্"), key("য")) {
+                    (Some(h), Some(y)) => vec![h, y],
+                    _ => continue,
+                },
+            };
+            let mut buf = String::new();
+            let mut pending = None;
+            for (k, alt) in std::iter::once(a).chain(ya).chain(std::iter::once(aa)) {
+                l.apply_key(&mut buf, &mut pending, k, alt, &auto);
+            }
+            assert_eq!(buf, "অ্যা", "{id:?}");
+            checked += 1;
+        }
+        assert!(
+            checked >= 3,
+            "only {checked} layouts have অ, য-ফলা and া keys"
+        );
+    }
 }
