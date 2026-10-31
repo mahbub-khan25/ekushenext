@@ -1501,6 +1501,7 @@ mod tests {
             LayoutId::NationalJatiya,
             LayoutId::Bornona,
             LayoutId::MunirOptima,
+            LayoutId::UniJoy,
         ] {
             let l = FixedLayout::builtin(id).unwrap();
             let key = |want: &str| {
@@ -1525,12 +1526,11 @@ mod tests {
                     _ => continue,
                 },
             };
-            let mut buf = String::new();
-            let mut pending = None;
+            let mut st = FixedState::default();
             for (k, alt) in std::iter::once(a).chain(ya).chain(std::iter::once(aa)) {
-                l.apply_key(&mut buf, &mut pending, k, alt, &auto);
+                l.apply_key(&mut st, k, alt, &auto);
             }
-            assert_eq!(buf, "অ্যা", "{id:?}");
+            assert_eq!(st.take(), "অ্যা", "{id:?}");
             checked += 1;
         }
         assert!(
