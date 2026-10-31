@@ -22,6 +22,8 @@ copy Cargo.toml Cargo.lock LICENSE README.md THIRD_PARTY_NOTICES.md .github/rele
      platform/linux/Makefile platform/linux/ekushe_ffi.h platform/linux/ibus platform/linux/studio platform/linux/packaging/ekushe-studio.desktop
 # Newer Studio pieces (older release tags, rebuilt with this script, don't have them)
 for f in crates/ekushe-tray/src/studio_layouts.rs; do if [ -f "$f" ]; then copy "$f"; fi; done
+# The Fcitx 5 addon (releases before it existed are still rebuilt with today's packaging)
+[ -d platform/linux/fcitx5 ] && copy platform/linux/fcitx5/ekushe-fcitx5.cpp platform/linux/fcitx5/ekushe-addon.conf.in platform/linux/fcitx5/ekushe-im.conf
 rm -rf "$WORK"/crates/*/target
 
 # A workspace of just the three Linux crates. Cargo drops the other members' libraries from
