@@ -21,7 +21,7 @@ copy Cargo.toml Cargo.lock LICENSE README.md THIRD_PARTY_NOTICES.md .github/rele
      data/dictionary/ekushe.dict.z data/dictionary/LICENSE.md data/dictionary/CC-BY-SA-4.0.txt \
      platform/linux/Makefile platform/linux/ekushe_ffi.h platform/linux/ibus platform/linux/studio platform/linux/packaging/ekushe-studio.desktop
 # Newer Studio pieces (older release tags, rebuilt with this script, don't have them)
-for f in crates/ekushe-tray/src/studio_layouts.rs; do [ -f "$f" ] && copy "$f"; done
+for f in crates/ekushe-tray/src/studio_layouts.rs; do if [ -f "$f" ]; then copy "$f"; fi; done
 rm -rf "$WORK"/crates/*/target
 
 # A workspace of just the three Linux crates. Cargo drops the other members' libraries from
