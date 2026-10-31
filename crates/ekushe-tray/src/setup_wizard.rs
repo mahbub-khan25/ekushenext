@@ -270,6 +270,61 @@ pub fn install_log(step: &str) {
 }
 
 /// Performs a complete, zero-command installation of Ekushe onto the user's Windows PC.
+/// The settings file an office roll-out installs with (see [`preset_from_args`]).
+static PRESET: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
+
+/// The name of a settings file that, placed next to the installer, is used automatically.
+pub const PRESET_FILE_NAME: &str = "ekushe-settings.json";
+
+/// The settings file to install with: `--settings <file>` (or `--settings=<file>`, `/settings=<file>`),
+/// otherwise `ekushe-settings.json` next to the installer. The file is a backup made in Studio on a
+/// computer already set up the way the office wants (settings, shortcuts, keyboard layouts), or a
+/// plain `config.toml`.
+pub fn preset_from_args(args: &[String]) -> Option<PathBuf> {
+    let mut given = None;
+    for (i, a) in args.iter().enumerate() {
+        let lower = a.to_ascii_lowercase();
+        if lower == "--settings" || lower == "/settings" {
+            given = args.get(i + 1).map(PathBuf::from);
+        } else if let Some(v) = ["--settings=", "/settings="]
+            .iter()
+            .find_map(|p| lower.starts_with(p).then(|| &a[p.len()..]))
+        {
+            given = Some(PathBuf::from(v.trim_matches('"')));
+        }
+    }
+    given.or_else(|| {
+        let beside = env::current_exe().ok()?.parent()?.join(PRESET_FILE_NAME);
+        beside.is_file().then_some(beside)
+    })
+}
+
+/// Use this settings file for the install (call before installing).
+pub fn set_preset(path: PathBuf) {
+    let _ = PRESET.set(path);
+}
+
+/// The settings file's contents as a backup to restore: a Studio backup as it is, a `config.toml`
+/// wrapped as one.
+pub fn preset_as_backup(text: &str) -> String {
+    let text = text.trim_start_matches('\u{feff}');
+    if text.trim_start().starts_with('{') {
+        text.to_string()
+    } else {
+        serde_json::json!({ "ekushe_backup": 1, "files": { "config.toml": text } }).to_string()
+    }
+}
+
+fn apply_preset(path: &Path) -> Result<(), String> {
+    let text = fs::read_to_string(path)
+        .map_err(|e| format!("could not read the settings file {}: {e}", path.display()))?;
+    let dir = Config::default_dir();
+    let _ = fs::create_dir_all(&dir);
+    ekushe_core::backup::restore(&dir, &preset_as_backup(&text))
+        .map(|_| ())
+        .map_err(|e| format!("the settings file {} was not used: {e}", path.display()))
+}
+
 pub fn perform_full_install(
     create_desktop_shortcut: bool,
     enable_startup: bool,
@@ -303,6 +358,12 @@ pub fn perform_full_install(
         install_log("copying ekushe.exe");
         copy_checked(&current_exe, &target_exe)?;
     }
+    // An office's settings, put in place while no Ekushe is running to write its own over them
+    if let Some(preset) = PRESET.get() {
+        install_log(&format!("settings from {}", preset.display()));
+        apply_preset(preset)?;
+    }
+
     // Older versions kept a second copy as the uninstaller
     let _ = fs::remove_file(root.join("Uninstall-Ekushe.exe"));
 
@@ -1876,4 +1937,28 @@ unsafe fn delete_hkcu_reg_tree(subkey: &str) -> Result<(), u32> {
         return Err(status);
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod preset_tests {
+    use super::*;
+
+    #[test]
+    fn an_office_settings_file_is_found_and_read_in_either_form() {
+        let a = |v: &[&str]| v.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+        assert_eq!(
+            preset_from_args(&a(&["/S", "--settings", r"\\server\share\ekushe.json"])),
+            Some(PathBuf::from(r"\\server\share\ekushe.json"))
+        );
+        assert_eq!(
+            preset_from_args(&a(&["/SETTINGS=\"C:\\it\\ekushe.json\""])),
+            Some(PathBuf::from(r"C:\it\ekushe.json"))
+        );
+        // A Studio backup is used as it is; a config.toml is wrapped as one
+        let backup = r#"{"ekushe_backup":1,"files":{}}"#;
+        assert_eq!(preset_as_backup(backup), backup);
+        let wrapped = preset_as_backup("\u{feff}active_layout = \"UniJoy\"\n");
+        let v: serde_json::Value = serde_json::from_str(&wrapped).unwrap();
+        assert_eq!(v["files"]["config.toml"], "active_layout = \"UniJoy\"\n");
+    }
 }

@@ -15,6 +15,13 @@ Ekushe Next dictionary, CC BY-SA 4.0. Derived from Bangla Wikipedia (CC BY-SA 3.
 (ODC-By 1.0), Sangraha by AI4Bharat (CC BY 4.0) and wordfreq (CC BY-SA 4.0). See
 [`data/dictionary/LICENSE.md`](data/dictionary/LICENSE.md).
 
+## Keyboard layouts (`crates/ekushe-core/src/layout.rs`)
+
+- **UniJoy**: the key map follows the UniJoy layout by the Ekushey project, as published in the
+  m17n database (`bn-unijoy.mim`, Copyright (C) 2005, 2008 National Institute of Advanced
+  Industrial Science and Technology (AIST), GNU Lesser General Public License 2.1 or later).
+  Ekushe's typing logic (link key, kar ordering, Backspace) is its own code.
+
 ## Bijoy (SutonnyMJ) glyph tables (`crates/ekushe-core/src/bijoy.rs`)
 
 The glyph-to-letter tables of the Bijoy ⇄ Unicode converter come from bijoy_helper

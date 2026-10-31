@@ -2,11 +2,13 @@
 //! `ekushe`: Windows System Tray IME, Global Phonetic/Fixed-Layout Hook,
 //! Floating Candidate + Sign/Conjunct Hints Overlay, and Ekushe Studio Server.
 
+mod conflicts;
 mod glass_popup;
 mod secure_field;
 mod selection;
 mod setup_wizard;
 mod studio_http;
+mod studio_layouts;
 mod studio_ui;
 mod update_check;
 
@@ -96,14 +98,13 @@ const CMD_HOTKEY_DBL_SHIFT: usize = 1010;
 const CMD_HOTKEY_CTRL_SPACE: usize = 1011;
 const CMD_HOTKEY_F12: usize = 1012;
 const CMD_HOTKEY_CTRL_ALT_B: usize = 1013;
+const CMD_STUDIO_KEYMAP: usize = 1014;
 const CMD_MODE_PHONETIC_FIRST: usize = 1020;
 const CMD_MODE_SMART: usize = 1021;
 const CMD_MODE_PHONETIC_ONLY: usize = 1022;
-const CMD_LAYOUT_AVRO: usize = 1030;
-const CMD_LAYOUT_PROBHAT: usize = 1031;
-const CMD_LAYOUT_JATIYA: usize = 1032;
-const CMD_LAYOUT_BORNONA: usize = 1033;
-const CMD_LAYOUT_MUNIR: usize = 1034;
+/// Layouts in the tray menu: the built-in ones, then the imported ones (up to 60 in all)
+const CMD_LAYOUT_FIRST: usize = 1030;
+const CMD_LAYOUT_LAST: usize = 1089;
 const CMD_CHECK_UPDATE: usize = 1096;
 const CMD_UPDATE_DOWNLOAD: usize = 1097;
 const CMD_REPORT: usize = 1098;
@@ -206,6 +207,27 @@ static mut MOUSE_HOOK: HHOOK = ptr::null_mut();
 /// Set by the mouse hook when the user clicks outside the candidate popup: the caret may have moved,
 /// so the half-typed word must be forgotten (never backspaced at the new position).
 static COMPOSITION_STALE: AtomicBool = AtomicBool::new(false);
+/// The app in front gets Bijoy (SutonnyMJ) text: everything Ekushe types there is converted
+static BIJOY_OUT: AtomicBool = AtomicBool::new(false);
+/// Text read for a smart paste, waiting for the tray thread to type it
+static PASTE_TEXT: Mutex<Option<String>> = Mutex::new(None);
+/// Smart paste: read the clipboard (after the hotkey is released), then type it
+const WM_EKUSHE_SMART_PASTE: u32 = WM_APP + 9;
+const WM_EKUSHE_PASTE_READY: u32 = WM_APP + 10;
+
+/// Text as the app in front needs it: Bijoy in a Bijoy-output app, otherwise as it is
+fn app_text(s: &str) -> String {
+    if BIJOY_OUT.load(Ordering::SeqCst) {
+        ekushe_core::convert::unicode_to_bijoy(s)
+    } else {
+        s.to_string()
+    }
+}
+
+/// How many UTF-16 units `s` takes in the app in front (what Backspace has to delete later)
+fn app_len(s: &str) -> usize {
+    app_text(s).encode_utf16().count()
+}
 static OVERLAY_HWND: AtomicIsize = AtomicIsize::new(0);
 static TRAY_HWND: AtomicIsize = AtomicIsize::new(0);
 const WM_EKUSHE_FORGET: u32 = WM_APP + 2;
@@ -234,6 +256,10 @@ const TIMER_SAVE_LEARNED: usize = 102;
 const TIMER_REHOOK: usize = 103;
 /// Retries adding the tray icon when Windows refused it at start
 const TIMER_TRAY_RETRY: usize = 104;
+/// Looks for another Bangla keyboard program running (first soon after start, then every minute)
+const TIMER_CONFLICTS: usize = 105;
+/// The other keyboards already pointed out, so each is mentioned once while it keeps running
+static CONFLICTS_SHOWN: parking_lot::Mutex<Vec<&'static str>> = parking_lot::Mutex::new(Vec::new());
 static TRAY_RETRIES: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 /// The message Explorer broadcasts when the taskbar is (re)created; tray icons must be added again
 static TASKBAR_CREATED: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
@@ -299,9 +325,26 @@ fn main() {
             return;
         }
 
-        if args.iter().any(|a| a == "--auto-install") {
-            let launch = !args.iter().any(|a| a == "--no-launch");
-            if let Err(e) = setup_wizard::perform_full_install(true, true, launch) {
+        if let Some(preset) = setup_wizard::preset_from_args(&args) {
+            setup_wizard::set_preset(preset);
+        }
+        // `/S`, `/silent`, `/quiet` too: the switches IT tools (Intune, SCCM, a login script) use
+        let has = |names: &[&str]| {
+            args.iter()
+                .any(|a| names.iter().any(|n| a.eq_ignore_ascii_case(n)))
+        };
+        if has(&[
+            "--auto-install",
+            "--silent",
+            "/S",
+            "/silent",
+            "/quiet",
+            "/qn",
+        ]) {
+            let launch = !has(&["--no-launch"]);
+            let shortcut = !has(&["--no-desktop-shortcut"]);
+            let startup = !has(&["--no-startup"]);
+            if let Err(e) = setup_wizard::perform_full_install(shortcut, startup, launch) {
                 eprintln!("Ekushe install failed: {e}");
                 std::process::exit(1);
             }
@@ -464,6 +507,7 @@ fn main() {
         // Save learned words every 15 s when something new was learned (and again on exit)
         SetTimer(tray_hwnd, TIMER_SAVE_LEARNED, 15_000, None);
         SetTimer(tray_hwnd, TIMER_REHOOK, REHOOK_INTERVAL_MS, None);
+        SetTimer(tray_hwnd, TIMER_CONFLICTS, 8_000, None);
         // Watches for password boxes in browsers and Store apps
         secure_field::start();
 
@@ -817,8 +861,17 @@ unsafe fn add_or_update_tray_icon(hwnd: HWND, is_add: bool) {
         st.icon_english as HICON
     };
     let hotkey_str = st.ekushe.config().switch_hotkey.display_name();
-    let tip = if is_bangla {
-        format!("একুশে নেক্সট বাংলা সক্রিয় (বাং) — Switch: {hotkey_str}")
+    let fixed_name = (st.ekushe.config().active_layout != LayoutId::AvroPhonetic)
+        .then(|| studio_layouts::active_names(st.ekushe.config()).0);
+    let ansi = if BIJOY_OUT.load(Ordering::SeqCst) {
+        " · বিজয় (SutonnyMJ)"
+    } else {
+        ""
+    };
+    let tip = if let (true, Some(name)) = (is_bangla, fixed_name) {
+        format!("একুশে নেক্সট: {name} (বাং){ansi} — Switch: {hotkey_str}")
+    } else if is_bangla {
+        format!("একুশে নেক্সট বাংলা সক্রিয় (বাং){ansi} — Switch: {hotkey_str}")
     } else {
         format!("Ekushe Next: Normal Keyboard (EN) — Switch: {hotkey_str}")
     };
@@ -861,6 +914,24 @@ unsafe fn add_or_update_tray_icon(hwnd: HWND, is_add: bool) {
         // The icon is gone (Explorer restarted): put it back
         Shell_NotifyIconW(NIM_ADD, &nid);
     }
+}
+
+/// A note from the tray icon (the icon must already be there)
+unsafe fn show_tray_balloon(hwnd: HWND, title: &str, body: &str) {
+    let mut nid: NOTIFYICONDATAW = zeroed();
+    nid.cbSize = size_of::<NOTIFYICONDATAW>() as u32;
+    nid.hWnd = hwnd;
+    nid.uID = 1;
+    nid.uFlags = NIF_INFO;
+    for (i, &c) in wide_null(title).iter().take(63).enumerate() {
+        nid.szInfoTitle[i] = c;
+    }
+    for (i, &c) in wide_null(body).iter().take(255).enumerate() {
+        nid.szInfo[i] = c;
+    }
+    nid.szInfoTitle[63] = 0;
+    nid.szInfo[255] = 0;
+    Shell_NotifyIconW(NIM_MODIFY, &nid);
 }
 
 /// The tray icon again, without the welcome balloon (Explorer restarted, or a retry). True when
@@ -1298,11 +1369,24 @@ unsafe fn keyboard_hook_inner(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRES
             if let Some(exe) = exe_name_of(fg) {
                 let before = st.ekushe.language();
                 let after = st.ekushe.on_app_focus(&exe);
-                if after != before {
+                let bijoy = st.ekushe.bijoy_output_active();
+                let bijoy_changed = BIJOY_OUT.swap(bijoy, Ordering::SeqCst) != bijoy;
+                if after != before || bijoy_changed {
                     forget_composition(&mut st);
+                    if bijoy_changed {
+                        // Nothing typed in the other encoding may be taken back here
+                        st.ekushe.forget_undo();
+                    }
+                    let tray = st.tray_hwnd as HWND;
+                    if bijoy_changed && bijoy {
+                        st.badge_banner = Some("বাং · এই অ্যাপে বিজয় (SutonnyMJ) লেখা হবে".to_string());
+                    }
                     drop(st);
                     request_tray_icon_update();
                     request_overlay_refresh();
+                    if bijoy_changed && bijoy {
+                        PostMessageW(tray, WM_EKUSHE_SHOW_BADGE, 0, 0);
+                    }
                     st = STATE.lock();
                 }
             }
@@ -1379,12 +1463,27 @@ unsafe fn keyboard_hook_inner(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRES
             return 1;
         }
 
+        // Smart paste (Ctrl+Alt+V): the clipboard as this app needs it, in either language
+        let paste_hotkey = selection::Hotkey::parse(&st.ekushe.config().smart_paste_hotkey);
+        if paste_hotkey.is_some_and(|hk| hk.matches(vk, ctrl_down, alt_down, shift_down, win_down))
+        {
+            if st.injected_utf16_len > 0 || !st.last_output.preedit.is_empty() {
+                forget_composition(&mut st);
+            }
+            let tray = st.tray_hwnd as HWND;
+            drop(st);
+            request_overlay_refresh();
+            PostMessageW(tray, WM_EKUSHE_SMART_PASTE, 0, 0);
+            return 1;
+        }
+
         // Ctrl+Backspace in Bangla mode: Flip the last committed word between Bangla ⇄ English!
         if st.ekushe.language() == InputLanguage::Bangla
             && ctrl_down
             && !alt_down
             && vk == VK_BACK
             && st.injected_utf16_len == 0
+            && !BIJOY_OUT.load(Ordering::SeqCst)
         {
             if let Some((del_len, replacement)) = st.ekushe.flip_last_committed_word() {
                 drop(st);
@@ -1450,7 +1549,7 @@ unsafe fn keyboard_hook_inner(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRES
             let cand_text = st.last_output.candidates[next_idx].text.clone();
             let prev_len = st.injected_utf16_len;
             let live = st.ekushe.config().type_while_composing;
-            st.injected_utf16_len = cand_text.encode_utf16().count();
+            st.injected_utf16_len = app_len(&cand_text);
             drop(st);
             show_word(live, prev_len, &cand_text);
             request_overlay_refresh();
@@ -1463,12 +1562,15 @@ unsafe fn keyboard_hook_inner(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRES
             // Right after a word was committed with a space: reopen it as the word being typed, with
             // its suggestions (another Bangla word, or the English as typed), so a wrong word can be
             // fixed without typing it again. Backspace again deletes a letter.
-            if prev_len == 0 && st.ekushe.config().backspace_undo {
+            if prev_len == 0
+                && st.ekushe.config().backspace_undo
+                && !BIJOY_OUT.load(Ordering::SeqCst)
+            {
                 if let Some(out) = st.ekushe.reopen_last_word() {
                     let preedit = out.preedit.clone();
                     let delete = out.delete_before;
                     let live = st.ekushe.config().type_while_composing;
-                    st.injected_utf16_len = preedit.encode_utf16().count();
+                    st.injected_utf16_len = app_len(&preedit);
                     st.last_output = out;
                     drop(st);
                     // the word and its space leave the app; it is now the word being typed
@@ -1481,7 +1583,7 @@ unsafe fn keyboard_hook_inner(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRES
                 let out = st.ekushe.backspace();
                 let new_text = out.preedit.clone();
                 let live = st.ekushe.config().type_while_composing;
-                st.injected_utf16_len = new_text.encode_utf16().count();
+                st.injected_utf16_len = app_len(&new_text);
                 st.last_output = out;
                 drop(st);
                 show_word(live, prev_len, &new_text);
@@ -1530,7 +1632,7 @@ unsafe fn keyboard_hook_inner(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRES
                     return 1;
                 } else {
                     let preedit = out.preedit.clone();
-                    st.injected_utf16_len = preedit.encode_utf16().count();
+                    st.injected_utf16_len = app_len(&preedit);
                     st.last_output = out;
                     drop(st);
                     show_word(live, prev_len, &preedit);
@@ -1619,6 +1721,9 @@ static LAST_TYPED: Mutex<String> = Mutex::new(String::new());
 /// deleting six letters and typing ten. Fewer keys reach the app, and fewer Backspaces land inside a
 /// conjunct, where apps differ in how much one Backspace deletes.
 unsafe fn replace_active_text(backspaces: usize, new_text: &str) {
+    // In a Bijoy-output app the text goes in as Bijoy; `backspaces` already counts Bijoy text
+    let converted = app_text(new_text);
+    let new_text = converted.as_str();
     let (backspaces, new_text) = {
         let mut last = LAST_TYPED.lock();
         let old = std::mem::replace(&mut *last, new_text.to_string());
@@ -1719,6 +1824,26 @@ unsafe extern "system" fn tray_wnd_proc(
             }
             0
         }
+        WM_TIMER if wparam == TIMER_CONFLICTS => {
+            SetTimer(hwnd, TIMER_CONFLICTS, 60_000, None);
+            let found = conflicts::running();
+            let new: Vec<&'static str> = {
+                let mut shown = CONFLICTS_SHOWN.lock();
+                // A program that was closed may be mentioned again if it comes back
+                shown.retain(|n| found.contains(n));
+                let new: Vec<_> = found
+                    .iter()
+                    .copied()
+                    .filter(|n| !shown.contains(n))
+                    .collect();
+                shown.extend(new.iter().copied());
+                new
+            };
+            if !new.is_empty() {
+                show_tray_balloon(hwnd, "অন্য বাংলা কীবোর্ড চালু আছে", &conflicts::message(&new));
+            }
+            0
+        }
         WM_TIMER if wparam == TIMER_SAVE_LEARNED => {
             save_learned_words_if_changed();
             0
@@ -1769,6 +1894,33 @@ unsafe extern "system" fn tray_wnd_proc(
         }
         WM_EKUSHE_SELECTION_DONE => {
             show_mode_badge(selection_badge(wparam));
+            0
+        }
+        WM_EKUSHE_SMART_PASTE => {
+            let tray = hwnd as isize;
+            selection::start_paste(move |text| {
+                *PASTE_TEXT.lock() = text;
+                unsafe { PostMessageW(tray as HWND, WM_EKUSHE_PASTE_READY, 0, 0) };
+            });
+            0
+        }
+        WM_EKUSHE_PASTE_READY => {
+            match PASTE_TEXT.lock().take() {
+                Some(text) => {
+                    // Old Bijoy text on the clipboard is read as Bangla first; then it is typed the
+                    // way this app needs it (Bijoy in a Bijoy-output app, Unicode everywhere else)
+                    let unicode = match ekushe_core::convert::detect_selection(&text) {
+                        Some(ekushe_core::convert::SelectionKind::BijoyToUnicode) => {
+                            ekushe_core::convert::bijoy_to_unicode(&text)
+                        }
+                        _ => text,
+                    };
+                    STATE.lock().ekushe.forget_undo();
+                    LAST_TYPED.lock().clear();
+                    replace_active_text(0, &unicode);
+                }
+                None => show_mode_badge("বাং · ক্লিপবোর্ডে লেখা নেই (nothing to paste)"),
+            }
             0
         }
         WM_EKUSHE_FORGET => {
@@ -1889,6 +2041,14 @@ unsafe fn show_tray_context_menu(hwnd: HWND) {
         CMD_STUDIO_SETTINGS,
         wide_null("⚙️ সেটিংস, ফন্ট ও স্বচ্ছতা (Settings, Fonts & Opacity)").as_ptr(),
     );
+    if cfg.active_layout != LayoutId::AvroPhonetic {
+        AppendMenuW(
+            menu,
+            MF_STRING,
+            CMD_STUDIO_KEYMAP,
+            wide_null("⌨️ কী-ম্যাপ দেখুন (Key map of this layout)").as_ptr(),
+        );
+    }
     AppendMenuW(menu, MF_SEPARATOR, 0, ptr::null());
 
     // 2. Language Toggle (Bangla <-> English)
@@ -1911,15 +2071,10 @@ unsafe fn show_tray_context_menu(hwnd: HWND) {
     );
     AppendMenuW(menu, MF_SEPARATOR, 0, ptr::null());
 
-    // 3. Keyboard Layouts
-    for (id, cmd_id) in [
-        (LayoutId::AvroPhonetic, CMD_LAYOUT_AVRO),
-        (LayoutId::Probhat, CMD_LAYOUT_PROBHAT),
-        (LayoutId::NationalJatiya, CMD_LAYOUT_JATIYA),
-        (LayoutId::Bornona, CMD_LAYOUT_BORNONA),
-        (LayoutId::MunirOptima, CMD_LAYOUT_MUNIR),
-    ] {
-        let flag = if cfg.active_layout == id {
+    // 3. Keyboard Layouts (built-in, then the user's imported layout files)
+    let active = studio_layouts::setting_value(&cfg);
+    for (i, (value, name)) in menu_layouts().into_iter().enumerate() {
+        let flag = if value == active {
             MF_CHECKED
         } else {
             MF_UNCHECKED
@@ -1927,8 +2082,8 @@ unsafe fn show_tray_context_menu(hwnd: HWND) {
         AppendMenuW(
             menu,
             MF_STRING | flag,
-            cmd_id,
-            wide_null(&format!("লেআউট: {}", id.display_name())).as_ptr(),
+            CMD_LAYOUT_FIRST + i,
+            wide_null(&format!("লেআউট: {name}")).as_ptr(),
         );
     }
     AppendMenuW(menu, MF_SEPARATOR, 0, ptr::null());
@@ -2070,6 +2225,10 @@ unsafe fn handle_tray_command(hwnd: HWND, cmd: usize) {
             let port = STATE.lock().studio_port;
             open_studio_window_tab(port, Some("settings"));
         }
+        CMD_STUDIO_KEYMAP => {
+            let port = STATE.lock().studio_port;
+            open_studio_window_tab(port, Some("keymap"));
+        }
         CMD_STUDIO_FIX => {
             let port = STATE.lock().studio_port;
             open_studio_window_tab(port, Some("fix"));
@@ -2105,22 +2264,21 @@ unsafe fn handle_tray_command(hwnd: HWND, cmd: usize) {
             drop(st);
             show_mode_badge(&format!("টাইপিং মোড: {label}"));
         }
-        CMD_LAYOUT_AVRO | CMD_LAYOUT_PROBHAT | CMD_LAYOUT_JATIYA | CMD_LAYOUT_BORNONA
-        | CMD_LAYOUT_MUNIR => {
-            let lay = match cmd {
-                CMD_LAYOUT_PROBHAT => LayoutId::Probhat,
-                CMD_LAYOUT_JATIYA => LayoutId::NationalJatiya,
-                CMD_LAYOUT_BORNONA => LayoutId::Bornona,
-                CMD_LAYOUT_MUNIR => LayoutId::MunirOptima,
-                _ => LayoutId::AvroPhonetic,
+        CMD_LAYOUT_FIRST..=CMD_LAYOUT_LAST => {
+            let Some((value, lay_name)) = menu_layouts().into_iter().nth(cmd - CMD_LAYOUT_FIRST)
+            else {
+                return;
             };
-            let lay_name = lay.display_name().to_string();
             let mut st = STATE.lock();
             let mut cfg = st.ekushe.config().clone();
-            cfg.active_layout = lay;
+            studio_layouts::apply_setting(&mut cfg, &value);
             let _ = cfg.save_to(&Config::default_config_path());
             st.ekushe.set_config(cfg);
+            let tray_hwnd = st.tray_hwnd;
             drop(st);
+            if tray_hwnd != 0 {
+                add_or_update_tray_icon(tray_hwnd as HWND, false);
+            }
             show_mode_badge(&format!("কীবোর্ড লেআউট: {lay_name}"));
         }
         CMD_CHECK_UPDATE => update_check::check_now_and_tell(),
@@ -2251,7 +2409,7 @@ unsafe extern "system" fn overlay_wnd_proc(
                 }
                 let preedit = last_out.preedit.clone();
                 let live = st.ekushe.config().type_while_composing;
-                st.injected_utf16_len = preedit.encode_utf16().count();
+                st.injected_utf16_len = app_len(&preedit);
                 st.last_output = last_out;
                 drop(st);
                 show_word(live, prev_len, &preedit);
@@ -2435,6 +2593,8 @@ fn handle_http_client(mut stream: TcpStream, req: &str) -> std::io::Result<()> {
     }
 
     if method == "GET" && clean_path == "/api/state" {
+        // Looked up before taking the lock the keyboard hook also needs
+        let conflicts_note = conflicts::message(&conflicts::running());
         let st = STATE.lock();
         let cfg = st.ekushe.config();
         let lang = match st.ekushe.language() {
@@ -2449,7 +2609,7 @@ fn handle_http_client(mut stream: TcpStream, req: &str) -> std::io::Result<()> {
             SwitchHotkey::Custom(_) => "DoubleTapShift",
         };
         let mode_str = format!("{:?}", cfg.typing_mode);
-        let lay_str = format!("{:?}", cfg.active_layout);
+        let lay_str = studio_layouts::setting_value(cfg);
         // Studio expects a list of [trigger, expansion] pairs
         let mut snippet_pairs: Vec<(&String, &String)> =
             st.ekushe.suggestions_engine().snippets().iter().collect();
@@ -2460,10 +2620,17 @@ fn handle_http_client(mut stream: TcpStream, req: &str) -> std::io::Result<()> {
             "hotkey_display": cfg.switch_hotkey.display_name(),
             "typing_mode": mode_str,
             "active_layout": lay_str,
+            "layout_name": studio_layouts::active_names(cfg).0,
+            "conflicts": conflicts_note,
             "font_family": cfg.candidate_font_family,
             "popup_opacity": st.popup_opacity_pct,
             "compact_popup": cfg.compact_popup,
             "auto_english_in_terminals": cfg.auto_english_in_terminals,
+            "fixed_spelling_hint": cfg.fixed_spelling_hint,
+            "welcome_done": cfg.welcome_done,
+            "fixed_word_suggestions": cfg.fixed_word_suggestions,
+            "bijoy_output": cfg.bijoy_output,
+            "bijoy_output_apps": cfg.bijoy_output_apps.join(", "),
             "check_for_updates": cfg.check_for_updates,
             "start_bangla": cfg.start_language == InputLanguage::Bangla,
             "app_version": update_check::current_version(),
@@ -2629,6 +2796,22 @@ fn handle_http_client(mut stream: TcpStream, req: &str) -> std::io::Result<()> {
         );
     }
 
+    // Keyboard layouts: list, import, remove, export (shared with Studio on macOS and Linux)
+    if clean_path.starts_with("/api/layouts") {
+        let reply = {
+            let mut st = STATE.lock();
+            let mut cfg = st.ekushe.config().clone();
+            let reply = studio_layouts::handle(method, path, body, &mut cfg);
+            if reply.as_ref().is_some_and(|r| r.config_changed) {
+                st.ekushe.set_config(cfg);
+            }
+            reply
+        };
+        if let Some(r) = reply {
+            return write_http_response(&mut stream, r.status, r.content_type, r.body.as_bytes());
+        }
+    }
+
     if method == "GET" && clean_path == "/api/backup" {
         // Settings, snippets, learned and reported words in one file the user can keep or move
         save_learned_words_if_changed();
@@ -2705,6 +2888,16 @@ fn handle_http_client(mut stream: TcpStream, req: &str) -> std::io::Result<()> {
             .and_then(|v| v.as_bool());
         let update_opt = parsed.get("check_for_updates").and_then(|v| v.as_bool());
         let start_bn_opt = parsed.get("start_bangla").and_then(|v| v.as_bool());
+        let spell_hint_opt = parsed.get("fixed_spelling_hint").and_then(|v| v.as_bool());
+        let word_sugg_opt = parsed
+            .get("fixed_word_suggestions")
+            .and_then(|v| v.as_bool());
+        let bijoy_opt = parsed.get("bijoy_output").and_then(|v| v.as_bool());
+        let welcome_opt = parsed.get("welcome_done").and_then(|v| v.as_bool());
+        let bijoy_apps_opt = parsed
+            .get("bijoy_output_apps")
+            .and_then(|v| v.as_str())
+            .map(parse_app_list);
         // `snippet_key` / `snippet_value` are accepted too (older Studio pages sent those names)
         let field = |a: &str, b: &str| {
             parsed
@@ -2735,19 +2928,28 @@ fn handle_http_client(mut stream: TcpStream, req: &str) -> std::io::Result<()> {
                 "PhoneticOnly" => TypingMode::PhoneticOnly,
                 _ => TypingMode::Smart,
             };
-            cfg.active_layout = match lay_str {
-                "Probhat" => LayoutId::Probhat,
-                "NationalJatiya" => LayoutId::NationalJatiya,
-                "Bornona" => LayoutId::Bornona,
-                "MunirOptima" => LayoutId::MunirOptima,
-                _ => LayoutId::AvroPhonetic,
-            };
+            studio_layouts::apply_setting(&mut cfg, lay_str);
             cfg.candidate_font_family = font_str.to_string();
             if let Some(cp) = compact_opt {
                 cfg.compact_popup = cp;
             }
             if let Some(tm) = term_opt {
                 cfg.auto_english_in_terminals = tm;
+            }
+            if let Some(b) = spell_hint_opt {
+                cfg.fixed_spelling_hint = b;
+            }
+            if let Some(b) = word_sugg_opt {
+                cfg.fixed_word_suggestions = b;
+            }
+            if let Some(b) = bijoy_opt {
+                cfg.bijoy_output = b;
+            }
+            if let Some(b) = welcome_opt {
+                cfg.welcome_done = b;
+            }
+            if let Some(apps) = bijoy_apps_opt {
+                cfg.bijoy_output_apps = apps;
             }
             if let Some(u) = update_opt {
                 cfg.check_for_updates = u;
@@ -2765,6 +2967,7 @@ fn handle_http_client(mut stream: TcpStream, req: &str) -> std::io::Result<()> {
             }
             let _ = cfg.save_to(&Config::default_config_path());
             st.ekushe.set_config(cfg);
+            BIJOY_OUT.store(st.ekushe.bijoy_output_active(), Ordering::SeqCst);
             (st.tray_hwnd, st.overlay_hwnd, st.popup_opacity_pct)
         };
         unsafe {
@@ -2778,6 +2981,39 @@ fn handle_http_client(mut stream: TcpStream, req: &str) -> std::io::Result<()> {
     }
 
     write_http_response(&mut stream, "404 Not Found", "text/plain", b"Not Found")
+}
+
+/// A comma- or line-separated list of program names, cleaned (`Photoshop.exe, indesign` →
+/// `photoshop.exe`, `indesign.exe`)
+fn parse_app_list(s: &str) -> Vec<String> {
+    let mut v: Vec<String> = s
+        .split([',', '\n', ';'])
+        .map(|a| a.trim().to_lowercase())
+        .filter(|a| !a.is_empty() && a.len() <= 80)
+        .map(|a| {
+            if a.contains('.') {
+                a
+            } else {
+                format!("{a}.exe")
+            }
+        })
+        .collect();
+    v.dedup();
+    v.truncate(50);
+    v
+}
+
+/// The layouts the tray menu offers, as (setting value, name)
+fn menu_layouts() -> Vec<(String, String)> {
+    let mut v: Vec<(String, String)> = studio_layouts::BUILT_IN
+        .iter()
+        .map(|l| (format!("{l:?}"), l.display_name().to_string()))
+        .collect();
+    for c in ekushe_core::layout::list_custom_layouts() {
+        v.push((format!("Custom:{}", c.id), c.name));
+    }
+    v.truncate(CMD_LAYOUT_LAST - CMD_LAYOUT_FIRST + 1);
+    v
 }
 
 fn write_http_response(

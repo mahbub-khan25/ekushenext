@@ -78,6 +78,13 @@ object Engine {
     }
 
     fun key(c: Char) = Output.parse(nativeKey(c.code))
+    /** A key typed with AltGr (right Alt, or a long-press): a fixed layout's third layer */
+    fun keyAltGr(c: Char) = Output.parse(nativeKeyAltGr(c.code))
+    /** The fixed layout in use as a layout file (its keys); empty for phonetic typing */
+    fun layoutFile(): String = runCatching { nativeLayoutFile() }.getOrDefault("")
+    /** Import a layout file: {"name","value"} or {"error"} */
+    fun importLayout(text: String): JSONObject = runCatching { JSONObject(nativeImportLayout(text)) }.getOrDefault(JSONObject().put("error", "?"))
+    fun removeLayout(id: String) = nativeRemoveLayout(id)
     fun backspace() = Output.parse(nativeBackspace())
     fun select(i: Int, trailing: Char? = null) = Output.parse(nativeSelect(i, trailing?.code ?: 0))
     fun commit(trailing: Char? = null) = Output.parse(nativeCommit(trailing?.code ?: 0))
@@ -95,6 +102,10 @@ object Engine {
 
     private external fun nativeInit(dict: ByteArray, dir: String): Int
     private external fun nativeKey(cp: Int): String?
+    private external fun nativeKeyAltGr(cp: Int): String?
+    private external fun nativeLayoutFile(): String
+    private external fun nativeImportLayout(text: String): String
+    private external fun nativeRemoveLayout(id: String): Boolean
     private external fun nativeBackspace(): String?
     private external fun nativeSelect(index: Int, trailing: Int): String?
     private external fun nativeCommit(trailing: Int): String?

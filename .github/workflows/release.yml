@@ -3,12 +3,28 @@ name: Release
 # To publish a release, change .github/release/VERSION (e.g. v0.1.0-beta.5) and push to main
 # (or push a tag v*). Versions with a dash (beta, rc) are marked as pre-releases. A version that is
 # already released is skipped.
+#
+# Release candidates (Actions → Release → Run workflow):
+# - mode "candidate", run on any branch: builds everything exactly like a release and saves it as a
+#   DRAFT release. Drafts are invisible to the website, the apps' update check and the Linux
+#   repositories, so only the owner and testers see it. Running it again replaces the draft.
+#   Windows files are signed when the branch is named `candidate` (the Azure sign-in trusts that
+#   branch, see docs/CODE_SIGNING.md); on other branches they are unsigned.
+# - mode "promote", run on main after the work is merged: publishes the tested draft as it is (the
+#   very files that were tested) and sends it to Fedora COPR and the Ubuntu PPA.
+# While a draft exists for a version, pushing that VERSION to main builds nothing (promote instead).
 on:
   push:
     branches: [main]
     paths: ['.github/release/VERSION']
     tags: ['v*']
   workflow_dispatch:
+    inputs:
+      mode:
+        description: 'release = publish now; candidate = build a draft to test; promote = publish the tested draft'
+        type: choice
+        options: [release, candidate, promote]
+        default: release
 
 # Read-only by default; each job gets only what it needs (signing and publishing below)
 permissions:
@@ -17,18 +33,35 @@ permissions:
 jobs:
   version:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # removes an older draft of the same candidate
     outputs:
       tag: ${{ steps.ver.outputs.tag }}
       exists: ${{ steps.ver.outputs.exists }}
+      mode: ${{ steps.ver.outputs.mode }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - id: ver
         env:
           GH_TOKEN: ${{ github.token }}
+          MODE: ${{ inputs.mode || 'release' }}
         run: |
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then v="$GITHUB_REF_NAME"; else v="$(tr -d '[:space:]' < .github/release/VERSION)"; fi
           echo "tag=$v" >> "$GITHUB_OUTPUT"
-          if gh release view "$v" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then echo "exists=true" >> "$GITHUB_OUTPUT"; else echo "exists=false" >> "$GITHUB_OUTPUT"; fi
+          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+          draft=$(gh release view "$v" --repo "$GITHUB_REPOSITORY" --json isDraft -q .isDraft 2>/dev/null || echo none)
+          echo "release $v: draft=$draft, mode=$MODE"
+          if [ "$MODE" = candidate ]; then
+            if [ "$draft" = false ]; then echo "::error::$v is already published; bump .github/release/VERSION for a new candidate"; exit 1; fi
+            if [ "$draft" = true ]; then gh release delete "$v" --repo "$GITHUB_REPOSITORY" --yes; echo "replaced the older draft of $v"; fi
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          elif [ "$MODE" = promote ]; then
+            if [ "$draft" != true ]; then echo "::error::there is no draft of $v to promote"; exit 1; fi
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            # A published release is skipped; a draft waits to be promoted
+            if [ "$draft" = none ]; then echo "exists=false" >> "$GITHUB_OUTPUT"; else echo "exists=true" >> "$GITHUB_OUTPUT"; fi
+          fi
 
   windows:
     name: Windows x64
@@ -51,14 +84,14 @@ jobs:
       # Code signing with Azure Artifact Signing. Runs once the repository has the settings from
       # docs/CODE_SIGNING.md; until then releases are published unsigned.
       - name: Azure sign-in (code signing)
-        if: vars.SIGNING_ACCOUNT != ''
+        if: vars.SIGNING_ACCOUNT != '' && (needs.version.outputs.mode != 'candidate' || github.ref == 'refs/heads/candidate')
         uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       - name: Sign ekushe.exe, ekushe_tsf.dll, ekushe-cli.exe
-        if: vars.SIGNING_ACCOUNT != ''
+        if: vars.SIGNING_ACCOUNT != '' && (needs.version.outputs.mode != 'candidate' || github.ref == 'refs/heads/candidate')
         uses: azure/artifact-signing-action@c7ab2a863ab5f9a846ddb8265964877ef296ee82 # v2
         with:
           endpoint: ${{ vars.SIGNING_ENDPOINT }}
@@ -81,7 +114,7 @@ jobs:
           exclude-azure-developer-cli-credential: true
           exclude-interactive-browser-credential: true
       - name: Check signatures
-        if: vars.SIGNING_ACCOUNT != ''
+        if: vars.SIGNING_ACCOUNT != '' && (needs.version.outputs.mode != 'candidate' || github.ref == 'refs/heads/candidate')
         shell: pwsh
         run: |
           foreach ($f in 'ekushe.exe','ekushe_tsf.dll','ekushe-cli.exe') {
@@ -147,10 +180,10 @@ jobs:
           toolchain: stable
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
       - name: Build tools
-        run: sudo apt-get update -q && sudo apt-get install -y -q libibus-1.0-dev libwebkit2gtk-4.1-dev ibus python3-gi gir1.2-ibus-1.0 dbus libfuse2
+        run: sudo apt-get update -q && sudo apt-get install -y -q libibus-1.0-dev libfcitx5core-dev libwebkit2gtk-4.1-dev ibus fcitx5 python3-gi python3-dbus gir1.2-ibus-1.0 dbus libfuse2
       - name: Engine and Studio tests
         run: cargo test -p ekushe-core -p ekushe-ffi -p ekushe-studio --features "ekushe-ffi/studio ekushe-ffi/embedded-dict"
-      - name: Build packages and type into a real IBus
+      - name: Build packages and type into a real IBus and Fcitx 5
         run: platform/linux/build.sh "$VERSION" --test
         env:
           VERSION: ${{ needs.version.outputs.tag }}
@@ -159,6 +192,7 @@ jobs:
           sudo apt-get install -y -q ./build/linux/ekushe_*_amd64.deb
           rm -rf ~/.config/ibus/bus
           dbus-run-session -- bash -c 'ibus-daemon --xim=false --panel=disable --emoji-extension=disable --cache=none --config=disable & for i in $(seq 1 50); do F=$(ls ~/.config/ibus/bus/* 2>/dev/null | head -1); [ -n "$F" ] && break; sleep 0.2; done; export $(grep "^IBUS_ADDRESS=" "$F"); python3 platform/linux/ibus/test_engine.py'
+          platform/linux/fcitx5/run-test.sh --installed
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: release-linux
@@ -179,11 +213,14 @@ jobs:
           name: release-linux
           path: pkgs
       - name: Install
-        run: dnf install -y ./pkgs/*.rpm python3-gobject dbus-daemon dbus-tools
+        run: dnf install -y ./pkgs/*.rpm ibus python3-gobject python3-dbus dbus-daemon dbus-tools fcitx5
       - name: Engine loads on Fedora
         run: |
           ldd /usr/libexec/ekushe/ibus-engine-ekushe | grep -i "not found" && exit 1 || true
           /usr/libexec/ekushe/ibus-engine-ekushe --version
+          ldd /usr/lib64/fcitx5/libekushe.so | grep -i "not found" && exit 1 || true
+      - name: Type into Fcitx 5
+        run: platform/linux/fcitx5/run-test.sh --installed
       - name: Type into IBus
         run: |
           rm -rf ~/.config/ibus/bus
@@ -238,6 +275,7 @@ jobs:
 
   publish:
     needs: [version, windows, macos, linux, fedora, android]
+    if: needs.version.outputs.exists == 'false'
     runs-on: ubuntu-latest
     permissions:
       contents: write   # creates the GitHub release
@@ -256,11 +294,31 @@ jobs:
           name: Ekushe Next ${{ needs.version.outputs.tag }}
           body_path: .github/release/notes.md
           prerelease: ${{ contains(needs.version.outputs.tag, '-') }}
+          draft: ${{ needs.version.outputs.mode == 'candidate' }}
           files: dist/*
+
+  # Publishes a tested candidate (the draft) exactly as it was built
+  promote:
+    needs: version
+    if: needs.version.outputs.mode == 'promote'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Publish the draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.version.outputs.tag }}
+        run: |
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --title "Ekushe Next $TAG"
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json tagName,isDraft,isPrerelease,url
 
   # Fedora COPR and Ubuntu PPA: built from source there, so dnf/apt users get updates
   linux-repos:
-    needs: [version, publish]
+    needs: [version, publish, promote]
+    if: >-
+      always() && needs.version.outputs.mode != 'candidate' &&
+      (needs.publish.result == 'success' || needs.promote.result == 'success')
     permissions:
       contents: write   # attaches the Linux source tarball to the release
     uses: ./.github/workflows/linux-repos.yml

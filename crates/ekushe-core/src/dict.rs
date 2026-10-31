@@ -300,6 +300,59 @@ impl Dictionary {
         None
     }
 
+    /// The id at position `i` of the sorted table
+    fn sorted_id(&self, i: usize) -> u32 {
+        rd_u32(self.b(), self.sorted.off + i * 4)
+    }
+
+    /// Position in the sorted table of the first word not before `s`
+    fn lower_bound(&self, s: &str) -> usize {
+        let (mut lo, mut hi) = (0usize, self.n_words);
+        while lo < hi {
+            let mid = (lo + hi) / 2;
+            if self.word(self.sorted_id(mid)) < s {
+                lo = mid + 1;
+            } else {
+                hi = mid;
+            }
+        }
+        lo
+    }
+
+    /// Whether some word starts with `prefix` (so a word being typed may still become a real one).
+    pub fn has_prefix(&self, prefix: &str) -> bool {
+        let i = self.lower_bound(prefix);
+        i < self.n_words && self.word(self.sorted_id(i)).starts_with(prefix)
+    }
+
+    /// Up to `n` everyday words that start with `prefix` and are longer than it, most common first
+    /// (no typos or vulgar words). Looks at the first few thousand words in order, so it stays fast.
+    pub fn completions(&self, prefix: &str, n: usize) -> Vec<String> {
+        let mut found: Vec<(f32, u32)> = Vec::new();
+        let start = self.lower_bound(prefix);
+        for i in start..self.n_words.min(start + 4000) {
+            let id = self.sorted_id(i);
+            let w = self.word(id);
+            if !w.starts_with(prefix) {
+                break;
+            }
+            if w.len() == prefix.len() {
+                continue;
+            }
+            let info = self.info(id);
+            if matches!(info.class, WordClass::Typo | WordClass::Vulgar) {
+                continue;
+            }
+            found.push((info.log_ppm, id));
+        }
+        found.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
+        found
+            .into_iter()
+            .take(n)
+            .map(|(_, id)| self.word(id).to_string())
+            .collect()
+    }
+
     pub fn lookup(&self, word: &str) -> Option<WordInfo> {
         self.id_of(word).map(|id| self.info(id))
     }

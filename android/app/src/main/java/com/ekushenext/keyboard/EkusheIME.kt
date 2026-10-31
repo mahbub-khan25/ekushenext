@@ -187,6 +187,12 @@ class EkusheIME : InputMethodService(), KeyboardListener {
         super.onStartInputView(info, restarting)
         val v = view ?: return
         v.refreshTheme()
+        // The layout may have been changed in the app's settings: the keys follow
+        val fixed = FixedKeys.parse(Engine.layoutFile())
+        if (fixed?.keys != Layouts.fixed?.keys || (fixed == null) != (Layouts.fixed == null)) {
+            Layouts.fixed = fixed
+            v.reloadLayout()
+        }
         val cls = info.inputType and InputType.TYPE_MASK_CLASS
         val password = classify(info)
         // The window opening in the middle of a word typed on a physical keyboard (it was hidden):
@@ -344,6 +350,8 @@ class EkusheIME : InputMethodService(), KeyboardListener {
             if (en.isEmpty()) updateAutoShift()
             return
         }
+        // A long-press on a fixed layout's key: its AltGr letter
+        if (text.length == 2 && text[0] == Layouts.ALTGR) { apply(Engine.keyAltGr(text[1])); return }
         for (ch in text) {
             if (ch.code > 0x7f) {
                 // Not a Roman letter or mark (৳, €, ©): close the word and type it as it is
@@ -647,6 +655,16 @@ class EkusheIME : InputMethodService(), KeyboardListener {
         if (keyCode == KeyEvent.KEYCODE_LANGUAGE_SWITCH || (keyCode == KeyEvent.KEYCODE_SPACE && event.isCtrlPressed)) {
             if (event.repeatCount == 0) toggleLanguage(handOver = false)
             return true
+        }
+        // A fixed layout's third layer: right Alt (AltGr) + a key, as on a computer
+        if (Layouts.fixed != null && typingBangla() && !event.isCtrlPressed && !event.isMetaPressed
+            && (event.metaState and KeyEvent.META_ALT_RIGHT_ON) != 0) {
+            val base = usKeys.get(keyCode, event.metaState and (KeyEvent.META_SHIFT_MASK or KeyEvent.META_CAPS_LOCK_ON))
+            if (base in 0x21..0x7e) {
+                if (!hardTyping) { hardTyping = true; updateStripOnly() }
+                apply(Engine.keyAltGr(base.toChar()))
+                return true
+            }
         }
         // shortcuts (Ctrl+C, Alt+Tab …) are the app's; the word being typed stays as shown
         if (event.isCtrlPressed || event.isAltPressed || event.isMetaPressed) { finishWord(); return false }

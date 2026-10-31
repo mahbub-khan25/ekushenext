@@ -85,7 +85,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::config::{Config, InputLanguage, TypingMode};
 use crate::conjuncts::SignHint;
-use crate::layout::{FixedLayout, LayoutId};
+use crate::layout::{FixedLayout, FixedState};
 use crate::phonetic::PhoneticEngine;
 use crate::suggest::{Candidate, CandidateKind, SuggestionEngine};
 
@@ -124,14 +124,17 @@ pub struct Ekushe {
     fixed_layout: Option<FixedLayout>,
     /// Raw Roman characters in Phonetic mode
     roman_buf: String,
-    /// Composed Bangla buffer in Fixed Layout mode
-    fixed_buf: String,
-    /// Pending pre-base kar (`ি`, `ে`, `ৈ`) in Fixed Layout mode
-    pending_prebase_kar: Option<char>,
+    /// The word being typed in a fixed layout (with each key's state, for Backspace)
+    fixed: FixedState,
     /// Currently highlighted candidate index
     selected_idx: usize,
     /// Last committed `(roman_input, committed_bangla)` for one-key Backspace Undo Conversion
     last_commit_undo: Option<(String, String)>,
+    /// Fixed layouts: the word just committed with a space, which Backspace reopens
+    last_fixed_commit: Option<String>,
+    /// Fixed layouts: the word being typed was reopened (show its alternatives; taking it as it
+    /// is teaches the spell checker that the word is right)
+    fixed_reopened: bool,
     /// Last Shift key release timestamp (ms) for Double-Tap Shift detection
     last_shift_tap_ms: Option<u64>,
     /// Whether any non-Shift key was pressed since the last Shift tap
@@ -202,7 +205,7 @@ impl Ekushe {
     pub fn new(config: Config) -> Self {
         let phonetic =
             PhoneticEngine::with_overrides(config.phonetic_overrides.clone(), config.bangla_digits);
-        let fixed_layout = FixedLayout::builtin(config.active_layout);
+        let fixed_layout = FixedLayout::for_config(&config);
         let mut suggestions = SuggestionEngine::new();
         for (trig, exp) in &config.custom_snippets {
             suggestions.set_snippet(trig.clone(), exp.clone());
@@ -214,10 +217,11 @@ impl Ekushe {
             suggestions,
             fixed_layout,
             roman_buf: String::new(),
-            fixed_buf: String::new(),
-            pending_prebase_kar: None,
+            fixed: FixedState::default(),
             selected_idx: 0,
             last_commit_undo: None,
+            last_fixed_commit: None,
+            fixed_reopened: false,
             last_shift_tap_ms: None,
             intervening_key_since_shift: false,
             prev_word: None,
@@ -236,7 +240,8 @@ impl Ekushe {
     pub fn set_config(&mut self, config: Config) {
         self.phonetic =
             PhoneticEngine::with_overrides(config.phonetic_overrides.clone(), config.bangla_digits);
-        self.fixed_layout = FixedLayout::builtin(config.active_layout);
+        self.fixed_layout = FixedLayout::for_config(&config);
+        self.fixed.clear();
         for (trig, exp) in &config.custom_snippets {
             self.suggestions.set_snippet(trig.clone(), exp.clone());
         }
@@ -279,6 +284,18 @@ impl Ekushe {
         self.last_shift_tap_ms = Some(now_ms);
         self.intervening_key_since_shift = false;
         None
+    }
+
+    /// The app in front gets Bijoy (SutonnyMJ) text instead of Unicode (Bijoy output is on and the
+    /// app is in its list). Hosts convert what they type with [`convert::unicode_to_bijoy`].
+    pub fn bijoy_output_active(&self) -> bool {
+        self.config.bijoy_output
+            && self.current_app.as_deref().is_some_and(|app| {
+                self.config
+                    .bijoy_output_apps
+                    .iter()
+                    .any(|a| a.trim().eq_ignore_ascii_case(app))
+            })
     }
 
     /// Call when the focused application changes. Remembers the language used in the app being left,
@@ -328,6 +345,7 @@ impl Ekushe {
     pub fn push_char(&mut self, ch: char, altgr: bool) -> SessionOutput {
         self.intervening_key_since_shift = true;
         self.last_commit_undo = None;
+        self.last_fixed_commit = None;
 
         // If in English passthrough mode, pass character straight through
         if self.language == InputLanguage::English {
@@ -343,40 +361,176 @@ impl Ekushe {
             return self.commit_default(Some(ch));
         }
 
-        match self.config.active_layout {
-            LayoutId::AvroPhonetic => {
+        match &self.fixed_layout {
+            None => {
                 self.roman_buf.push(ch);
                 self.selected_idx = 0;
                 self.build_phonetic_output(None)
             }
-            _ => {
-                if let Some(layout) = &self.fixed_layout {
-                    layout.apply_key(
-                        &mut self.fixed_buf,
-                        &mut self.pending_prebase_kar,
-                        ch,
-                        altgr,
-                        &self.config.layout_automation,
-                    );
+            Some(layout) => {
+                layout.apply_key(&mut self.fixed, ch, altgr, &self.config.layout_automation);
+                self.fixed_output()
+            }
+        }
+    }
+
+    /// The output while a word is being typed in a fixed layout.
+    fn fixed_output(&self) -> SessionOutput {
+        let sign_hints = if self.config.show_sign_and_conjunct_hints && !self.fixed.raw {
+            conjuncts::contextual_sign_hints("", &self.fixed.buf)
+        } else {
+            Vec::new()
+        };
+        SessionOutput {
+            language: self.language,
+            preedit: self.fixed.preedit(),
+            candidates: self.fixed_candidates(),
+            selected_index: 0,
+            sign_hints,
+            ..Default::default()
+        }
+    }
+
+    /// Choices for the word being typed in a fixed layout. Empty unless there is something worth
+    /// offering, and the word as typed always comes first, so Space never changes what was written:
+    /// - a snippet or date shortcut (`;aj`) comes first instead, since that is what it is for
+    /// - the standard (প্রমিত) spelling of a non-standard word
+    /// - spelling fixes for a word that isn't in the dictionary (and can't become one by typing on)
+    /// - with word suggestions on, common words starting with what is typed
+    fn fixed_candidates(&self) -> Vec<Candidate> {
+        let word = &self.fixed.buf;
+        if self.private_field
+            || self.config.typing_mode == TypingMode::PhoneticOnly
+            || self.fixed.link
+            || self.fixed.pending_kar.is_some()
+            || word.is_empty()
+        {
+            return Vec::new();
+        }
+        let typed = || Candidate {
+            text: word.clone(),
+            kind: CandidateKind::Phonetic,
+            annotation: Some("যেমন লিখেছেন".into()),
+        };
+        if self.fixed.raw {
+            let (cands, _) = self.suggestions.suggest(
+                word,
+                &self.phonetic,
+                true,
+                false,
+                self.config.max_candidates,
+            );
+            let mut out: Vec<Candidate> = cands
+                .into_iter()
+                .filter(|c| c.kind == CandidateKind::Snippet)
+                .collect();
+            if !out.is_empty() {
+                out.push(typed());
+            }
+            return out;
+        }
+        if word.chars().count() < 2
+            || !word
+                .chars()
+                .any(|c| ('ক'..='হ').contains(&c) || ('অ'..='ঔ').contains(&c))
+        {
+            return Vec::new();
+        }
+        let dict = self.suggestions.dictionary();
+        let spell = self.suggestions.spell_checker();
+        let mut extra: Vec<Candidate> = Vec::new();
+        let add =
+            |text: String, kind: CandidateKind, note: Option<&str>, extra: &mut Vec<Candidate>| {
+                if text != *word && !extra.iter().any(|c| c.text == text) {
+                    extra.push(Candidate {
+                        text,
+                        kind,
+                        annotation: note.map(str::to_string),
+                    });
                 }
-                let sign_hints = if self.config.show_sign_and_conjunct_hints {
-                    conjuncts::contextual_sign_hints("", &self.fixed_buf)
-                } else {
-                    Vec::new()
-                };
-                SessionOutput {
-                    language: self.language,
-                    preedit: self.fixed_buf.clone(),
-                    roman_buffer: String::new(),
-                    candidates: Vec::new(),
-                    selected_index: 0,
-                    sign_hints,
-                    next_word_predictions: Vec::new(),
-                    committed: None,
-                    delete_before: 0,
+            };
+        if self.config.fixed_spelling_hint {
+            if let Some(d) = dict {
+                if let Some(id) = d.id_of(word) {
+                    let info = d.info(id);
+                    if info.class != crate::dict::WordClass::Standard {
+                        if let Some(p) = info.preferred {
+                            add(
+                                d.word(p).to_string(),
+                                CandidateKind::SpellCorrection,
+                                Some("প্রমিত বানান"),
+                                &mut extra,
+                            );
+                        }
+                    }
+                }
+            }
+            let may_grow = dict.is_some_and(|d| d.has_prefix(word));
+            if extra.is_empty() && (self.fixed_reopened || (!spell.is_correct(word) && !may_grow)) {
+                for fix in spell.suggest(word, 3) {
+                    add(fix, CandidateKind::SpellCorrection, Some("বানান"), &mut extra);
                 }
             }
         }
+        if self.config.fixed_word_suggestions {
+            if let Some(d) = dict {
+                for w in d.completions(word, 4) {
+                    add(w, CandidateKind::Dictionary, None, &mut extra);
+                }
+            }
+        }
+        if extra.is_empty() {
+            return Vec::new();
+        }
+        let mut out = vec![typed()];
+        out.extend(extra);
+        out.truncate(self.config.max_candidates.clamp(2, 9));
+        out
+    }
+
+    /// Commit the fixed-layout word: `choice` (a picked suggestion) or the word as typed.
+    fn commit_fixed(&mut self, choice: Option<String>, trailing: Option<char>) -> SessionOutput {
+        let typed = self.fixed.take();
+        let reopened = std::mem::take(&mut self.fixed_reopened);
+        let word = match choice {
+            Some(c) => c,
+            None => {
+                // A reopened word kept as it is: the writer says it is right, so stop flagging it
+                if reopened && !self.private_field && !typed.starts_with(';') {
+                    self.suggestions
+                        .spell_checker_mut()
+                        .add_user_word(typed.clone());
+                }
+                typed
+            }
+        };
+        self.last_fixed_commit = (trailing == Some(' ')
+            && !self.private_field
+            && word.chars().any(|c| ('\u{0980}'..='\u{09FF}').contains(&c)))
+        .then(|| word.clone());
+        let mut committed = word;
+        if let Some(tr) = trailing {
+            committed.push(tr);
+        }
+        SessionOutput {
+            language: self.language,
+            committed: Some(committed),
+            ..Default::default()
+        }
+    }
+
+    /// Fixed layouts: Backspace right after a word reopens it, with its alternatives.
+    fn reopen_fixed(&mut self) -> Option<SessionOutput> {
+        if self.is_composing() {
+            return None;
+        }
+        let word = self.last_fixed_commit.take()?;
+        self.fixed.clear();
+        self.fixed.buf = word.clone();
+        self.fixed_reopened = true;
+        let mut out = self.fixed_output();
+        out.delete_before = word.encode_utf16().count() + 1;
+        Some(out)
     }
 
     /// Handle Backspace:
@@ -391,13 +545,18 @@ impl Ekushe {
             return self.build_phonetic_output(None);
         }
 
-        if !self.fixed_buf.is_empty() {
-            self.fixed_buf.pop();
-            return SessionOutput {
-                language: self.language,
-                preedit: self.fixed_buf.clone(),
-                ..Default::default()
-            };
+        if !self.fixed.is_empty() {
+            // Takes back exactly the last key (a held ে, a link, a whole conjunct sign)
+            self.fixed.backspace();
+            if self.fixed.is_empty() {
+                self.fixed_reopened = false;
+            }
+            return self.fixed_output();
+        }
+        if self.fixed_layout.is_some() {
+            if let Some(out) = self.reopen_fixed() {
+                return out;
+            }
         }
 
         // Undo conversion: Backspace right after a word was committed with a space replaces that word
@@ -429,8 +588,9 @@ impl Ekushe {
         self.intervening_key_since_shift = true;
         // Fixed layouts compose into their own buffer; committing must take that text, not the
         // (empty) phonetic buffer, or the word is lost (ক + Space used to commit only " ").
-        if self.config.active_layout != LayoutId::AvroPhonetic {
-            return self.commit_default(trailing);
+        if self.fixed_layout.is_some() {
+            let choice = self.fixed_candidates().get(index).map(|c| c.text.clone());
+            return self.commit_fixed(choice, trailing);
         }
         let (cands, _) = self.phonetic_candidates();
 
@@ -533,19 +693,15 @@ impl Ekushe {
 
     /// Commit the currently highlighted candidate (or fixed-layout buffer).
     pub fn commit_default(&mut self, trailing: Option<char>) -> SessionOutput {
-        if self.config.active_layout != LayoutId::AvroPhonetic {
-            if let Some(pk) = self.pending_prebase_kar.take() {
-                self.fixed_buf.push(pk);
-            }
-            let mut committed = std::mem::take(&mut self.fixed_buf);
-            if let Some(tr) = trailing {
-                committed.push(tr);
-            }
-            return SessionOutput {
-                language: self.language,
-                committed: Some(committed),
-                ..Default::default()
-            };
+        if self.fixed_layout.is_some() {
+            // The first choice: a snippet when one is offered, otherwise the word as typed
+            let choice = self
+                .fixed_candidates()
+                .into_iter()
+                .next()
+                .filter(|c| c.kind == CandidateKind::Snippet)
+                .map(|c| c.text);
+            return self.commit_fixed(choice, trailing);
         }
 
         let idx = self.selected_idx;
@@ -592,7 +748,7 @@ impl Ekushe {
 
     /// True while Backspace would undo the last conversion (a word was just committed with a space).
     pub fn has_undo(&self) -> bool {
-        self.last_commit_undo.is_some()
+        self.last_commit_undo.is_some() || self.last_fixed_commit.is_some()
     }
 
     /// Backspace right after a word was committed with a space: take the word and its space back
@@ -604,6 +760,9 @@ impl Ekushe {
     /// space), then shows the output like any other word being typed. `None` when there is nothing
     /// to undo (or a word is being typed already).
     pub fn reopen_last_word(&mut self) -> Option<SessionOutput> {
+        if self.fixed_layout.is_some() {
+            return self.reopen_fixed();
+        }
         if self.is_composing() || self.last_commit_undo.is_none() {
             return None;
         }
@@ -624,12 +783,13 @@ impl Ekushe {
     /// arrows, Delete, a click): after those, the word is no longer right before the cursor.
     pub fn forget_undo(&mut self) {
         self.last_commit_undo = None;
+        self.last_fixed_commit = None;
         self.prev_word_before_commit = None;
     }
 
     /// True while a word is being typed (Roman or fixed-layout buffer not empty).
     pub fn is_composing(&self) -> bool {
-        !self.roman_buf.is_empty() || !self.fixed_buf.is_empty()
+        !self.roman_buf.is_empty() || !self.fixed.is_empty()
     }
 
     /// Tell the engine the focused field is private (password, PIN, a field marked private) or not.
@@ -654,8 +814,9 @@ impl Ekushe {
         self.last_commit_undo = None;
         self.prev_word_before_commit = None;
         self.roman_buf.clear();
-        self.fixed_buf.clear();
-        self.pending_prebase_kar = None;
+        self.fixed.clear();
+        self.last_fixed_commit = None;
+        self.fixed_reopened = false;
         self.selected_idx = 0;
     }
 
@@ -880,6 +1041,7 @@ fn split_trailing_punctuation(roman: &str) -> (&str, &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::layout::LayoutId;
 
     #[test]
     fn banglish_is_told_apart_from_english_typos() {
@@ -1131,6 +1293,161 @@ mod tests {
                     "{layout:?} lost its text on commit"
                 );
             }
+        }
+    }
+
+    /// Type UniJoy keys and return the last output
+    fn unijoy_type(ek: &mut Ekushe, keys: &str) -> SessionOutput {
+        let mut out = SessionOutput::default();
+        for k in keys.chars() {
+            out = ek.push_char(k, false);
+        }
+        out
+    }
+
+    fn unijoy() -> Ekushe {
+        Ekushe::new(Config {
+            active_layout: LayoutId::UniJoy,
+            ..Config::default()
+        })
+    }
+
+    #[test]
+    fn fixed_layouts_offer_the_standard_spelling_quietly() {
+        if crate::dict::Dictionary::global().is_none() {
+            return;
+        }
+        let mut ek = unijoy();
+        // সরকারী (n v j f v D): the standard সরকারি is offered after the word as typed
+        let out = unijoy_type(&mut ek, "nvjfvD");
+        assert_eq!(out.preedit, "সরকারী");
+        assert_eq!(out.candidates[0].text, "সরকারী");
+        assert_eq!(out.candidates[1].text, "সরকারি");
+        assert_eq!(out.candidates[1].annotation.as_deref(), Some("প্রমিত বানান"));
+        // Space keeps what was written
+        assert_eq!(
+            ek.commit_default(Some(' ')).committed.as_deref(),
+            Some("সরকারী ")
+        );
+        // Picking the hint takes it
+        unijoy_type(&mut ek, "nvjfvD");
+        assert_eq!(
+            ek.select_candidate(1, Some(' ')).committed.as_deref(),
+            Some("সরকারি ")
+        );
+
+        // A word still being typed (বাং, on its way to বাংলা) gets no hint
+        assert!(unijoy_type(&mut ek, "hfQ").candidates.is_empty());
+        ek.commit_default(Some(' '));
+        // A misspelling that can't become a word is offered fixes
+        let out = unijoy_type(&mut ek, "hfQVflnd");
+        assert!(
+            out.candidates.iter().any(|c| c.text == "বাংলাদেশ"),
+            "{:?}",
+            out.candidates
+        );
+        ek.commit_default(Some(' '));
+        // A correct word: nothing
+        assert!(unijoy_type(&mut ek, "hfQVf").candidates.is_empty());
+        ek.commit_default(Some(' '));
+
+        // In a private field: nothing at all
+        ek.set_private_field(true);
+        assert!(unijoy_type(&mut ek, "nvjfvD").candidates.is_empty());
+    }
+
+    #[test]
+    fn fixed_layouts_reopen_the_last_word_with_backspace() {
+        if crate::dict::Dictionary::global().is_none() {
+            return;
+        }
+        let mut ek = unijoy();
+        unijoy_type(&mut ek, "hfQVf");
+        assert_eq!(
+            ek.commit_default(Some(' ')).committed.as_deref(),
+            Some("বাংলা ")
+        );
+        assert!(ek.has_undo());
+        let out = ek.backspace();
+        assert_eq!(out.delete_before, "বাংলা".encode_utf16().count() + 1);
+        assert_eq!(out.preedit, "বাংলা");
+        assert!(ek.is_composing());
+        // Backspace again removes one letter of the reopened word
+        assert_eq!(ek.backspace().preedit, "বাংল");
+        ek.reset_composition();
+
+        // The host's own reopen call works the same
+        unijoy_type(&mut ek, "nvjfvD");
+        ek.commit_default(Some(' '));
+        let out = ek.reopen_last_word().unwrap();
+        assert_eq!(out.preedit, "সরকারী");
+        assert_eq!(out.candidates[1].text, "সরকারি");
+        // Kept as it is: the writer says it is right, and it is no longer flagged as a misspelling
+        unijoy_type(&mut ek, "");
+        ek.commit_default(Some(' '));
+
+        // Typing on, or a commit without a space, leaves nothing to reopen
+        unijoy_type(&mut ek, "hfQVf");
+        ek.commit_default(Some('.'));
+        assert!(!ek.has_undo());
+        assert!(ek.reopen_last_word().is_none());
+    }
+
+    #[test]
+    fn fixed_layouts_learn_a_reopened_word_kept_as_it_is() {
+        if crate::dict::Dictionary::global().is_none() {
+            return;
+        }
+        let mut ek = unijoy();
+        // A name the dictionary doesn't know: fixes are offered when it is reopened
+        let name = unijoy_type(&mut ek, "jWfmvfnf").preedit;
+        ek.commit_default(Some(' '));
+        ek.backspace();
+        ek.commit_default(Some(' '));
+        assert!(ek.suggestions_engine().spell_checker().is_correct(&name));
+        assert!(unijoy_type(&mut ek, "jWfmvfnf").candidates.is_empty());
+    }
+
+    #[test]
+    fn fixed_layouts_expand_snippets_and_suggest_words_when_asked() {
+        let mut ek = unijoy();
+        ek.suggestions_engine_mut()
+            .set_snippet(";slm", "আসসালামু আলাইকুম");
+        let out = unijoy_type(&mut ek, ";slm");
+        assert_eq!(out.preedit, ";slm");
+        assert_eq!(out.candidates[0].text, "আসসালামু আলাইকুম");
+        assert_eq!(
+            ek.commit_default(Some(' ')).committed.as_deref(),
+            Some("আসসালামু আলাইকুম ")
+        );
+        // A date shortcut
+        let out = unijoy_type(&mut ek, ";aj");
+        assert_eq!(out.candidates[0].kind, CandidateKind::Snippet);
+        assert!(ek
+            .commit_default(Some(' '))
+            .committed
+            .unwrap()
+            .contains('২'));
+        // No snippet: the text stays as typed
+        unijoy_type(&mut ek, ";xyz");
+        assert_eq!(
+            ek.commit_default(Some(' ')).committed.as_deref(),
+            Some(";xyz ")
+        );
+
+        if crate::dict::Dictionary::global().is_some() {
+            let mut ek = Ekushe::new(Config {
+                active_layout: LayoutId::UniJoy,
+                fixed_word_suggestions: true,
+                ..Config::default()
+            });
+            let out = unijoy_type(&mut ek, "hfQ");
+            assert_eq!(out.candidates[0].text, "বাং");
+            assert!(
+                out.candidates.iter().any(|c| c.text == "বাংলা"),
+                "{:?}",
+                out.candidates
+            );
         }
     }
 

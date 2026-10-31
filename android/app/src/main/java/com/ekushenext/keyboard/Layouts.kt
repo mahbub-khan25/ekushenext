@@ -18,9 +18,69 @@ data class Key(
     val shiftAlts: List<Alt>? = null,
     /** Letters follow Shift; symbols do not */
     val letter: Boolean = false,
+    /** A fixed layout's key: what it shows with Shift (its plain label is `label`) */
+    val shiftLabel: String? = null,
 )
 
+/** A fixed layout's keys (UniJoy, National, an imported layout), read from the engine */
+class FixedKeys(val name: String, val keys: Map<Char, String>, val altgr: Map<Char, String>, val link: Char?) {
+    companion object {
+        /** From the engine's layout file; null for phonetic typing */
+        fun parse(json: String): FixedKeys? = runCatching {
+            if (json.isBlank()) return null
+            val o = org.json.JSONObject(json)
+            fun map(name: String): Map<Char, String> {
+                val m = o.optJSONObject(name) ?: return emptyMap()
+                return m.keys().asSequence().filter { it.length == 1 }.associate { it[0] to m.getString(it) }
+            }
+            FixedKeys(o.optString("name"), map("keys"), map("altgr"), o.optString("link_key").firstOrNull())
+        }.getOrNull()
+    }
+}
+
 object Layouts {
+    /** Marks a long-press choice typed with AltGr (the text after it is the key) */
+    const val ALTGR = '\u0001'
+
+    /** The fixed layout in use, or null for phonetic typing (the IME keeps this up to date) */
+    var fixed: FixedKeys? = null
+
+    /** A sign that sits on a letter, shown on a dotted circle (◌ি); joiners by name */
+    private fun shown(s: String?): String? = when {
+        s == null -> null
+        s == "\u200C" -> "ZWNJ"
+        s == "\u200D" -> "ZWJ"
+        s.isNotEmpty() && (s[0].code in 0x0981..0x0983 || s[0].code in 0x09BC..0x09CD || s[0].code == 0x09D7) -> "◌$s"
+        else -> s
+    }
+
+    /** The on-screen keys of a fixed layout: each key shows its Bangla (Shift's small in the corner),
+     *  sends its English key to the engine like a physical keyboard, and a long-press offers AltGr */
+    fun fixedLetters(f: FixedKeys, numberRow: Boolean): List<List<Key>> {
+        fun key(c: Char): Key {
+            val up = c.uppercaseChar()
+            val label = if (c == f.link) "লিংক" else shown(f.keys[c]) ?: c.toString()
+            val shiftLabel = shown(f.keys[up]) ?: label
+            fun alts(k: Char) = listOfNotNull(f.altgr[k]?.let { Alt(shown(it) ?: it, "$ALTGR$k", "AltGr") })
+            return Key(KeyType.CHAR, label, c.toString(), hint = shiftLabel, hintShift = label,
+                alts = alts(c), shiftAlts = alts(up), letter = true, shiftLabel = shiftLabel)
+        }
+        val digits = "1234567890".map { d -> Key(KeyType.CHAR, f.keys[d] ?: d.toString(), d.toString(), hint = null) }
+        // The layout's other signs (ঁ ৎ ঃ ৳ joiners ...) on the comma key's long-press
+        val extra = f.keys.filterKeys { !it.isLetterOrDigit() && it != ',' && it != '.' }
+            .map { (k, v) -> Alt(shown(v) ?: v, k.toString()) }
+        val bottom = bottomRow(KeyType.SYMBOLS, "?১২৩").map { k ->
+            if (k.label == "," && extra.isNotEmpty()) k.copy(alts = extra) else k
+        }
+        return listOfNotNull(
+            if (numberRow) digits else null,
+            "qwertyuiop".map(::key),
+            "asdfghjkl".map(::key),
+            listOf(Key(KeyType.SHIFT, "⇧", width = 1.5f)) + "zxcvbnm".map(::key) + listOf(Key(KeyType.DELETE, "⌫", width = 1.5f)),
+            bottom,
+        )
+    }
+
     private fun ch(c: Char, hint: String?, hintShift: String? = null, alts: List<Alt> = emptyList()) =
         Key(KeyType.CHAR, c.toString(), c.toString(), hint = hint, hintShift = hintShift ?: hint, alts = alts, letter = true)
 

@@ -22,3 +22,4 @@ ekushe-promo/node_modules/
 ekushe-promo/out/
 tools/dict-builder/work/
 __pycache__/
+*.pyc

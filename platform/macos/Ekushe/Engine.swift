@@ -31,6 +31,14 @@ enum Engine {
         ek_use_start_language() // English at login unless the user chose Bangla
     }
     static func key(_ scalar: UInt32) -> EngineOutput { decode(ek_key(scalar)) }
+    /// A key typed with Option held: the third layer of a fixed layout (UniJoy: ঈ ঊ ঐ ঔ ...)
+    static func keyAltGr(_ scalar: UInt32) -> EngineOutput { decode(ek_key_altgr(scalar)) }
+    /// A fixed layout (UniJoy, National, an imported layout ...) is in use rather than phonetic typing
+    static var isFixedLayout: Bool { ek_fixed_layout() }
+    static var layoutName: String { take(ek_layout_name()) ?? "" }
+    /// The app in front gets Bijoy (SutonnyMJ) text instead of Unicode
+    static var bijoyOutput: Bool { ek_bijoy_output() }
+    static func toBijoy(_ text: String) -> String { text.withCString { take(ek_to_bijoy($0)) } ?? text }
     static func backspace() -> EngineOutput { decode(ek_backspace()) }
     /// Backspace right after a word: the word reopened as the word being typed, with its
     /// suggestions (`delete_before` is the word and its space). nil when there is nothing to reopen.

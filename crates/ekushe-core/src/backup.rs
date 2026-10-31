@@ -1,6 +1,7 @@
 //! Backup and restore of the user's own Ekushe files: settings and snippets (`config.toml`), learned
-//! words (`learned.tsv`) and reported wrong words (`wrong-words.tsv`), as one JSON file that can be
-//! moved to another computer, on any system.
+//! words (`learned.tsv`), reported wrong words (`wrong-words.tsv`) and keyboard layouts the user
+//! added (`layouts/<id>.json`), as one JSON file that can be moved to another computer, on any
+//! system.
 //!
 //! Restoring never throws anything away: settings are taken from the backup, but snippets, learned
 //! words and reported words are added to what is already there (the backup wins where both have one).
@@ -22,6 +23,7 @@ pub struct Restored {
     pub snippets: usize,
     pub learned_words: usize,
     pub wrong_words: usize,
+    pub layouts: usize,
 }
 
 /// The backup of the files in `dir`, as JSON. `created` is shown in the file (e.g. "2026-10-24").
@@ -32,11 +34,20 @@ pub fn create(dir: &Path, created: &str) -> String {
             files.insert(name.to_string(), text);
         }
     }
+    // Layouts the user added (only ones Ekushe can read, so a backup always restores)
+    let mut layouts = BTreeMap::new();
+    let layouts_dir = dir.join("layouts");
+    for info in crate::layout::list_custom_layouts_in(&layouts_dir) {
+        if let Ok(text) = std::fs::read_to_string(layouts_dir.join(format!("{}.json", info.id))) {
+            layouts.insert(info.id, text);
+        }
+    }
     serde_json::to_string_pretty(&serde_json::json!({
         "ekushe_backup": 1,
         "app_version": include_str!("../../../.github/release/VERSION").trim(),
         "created": created,
         "files": files,
+        "layouts": layouts,
     }))
     .unwrap_or_default()
 }
@@ -85,6 +96,23 @@ pub fn restore(dir: &Path, backup: &str) -> Result<Restored, String> {
         ),
         None => None,
     };
+    let mut layouts = Vec::new();
+    if let Some(map) = v.get("layouts").and_then(|l| l.as_object()) {
+        for text in map.values() {
+            let text = text
+                .as_str()
+                .ok_or("a keyboard layout in the backup is damaged")?;
+            crate::layout::FixedLayout::from_file_text(text)
+                .map_err(|_| "a keyboard layout in the backup is damaged".to_string())?;
+            layouts.push(text);
+        }
+    }
+
+    // Layouts first, so settings that use one find it
+    for text in layouts {
+        crate::layout::import_layout_into(&dir.join("layouts"), text)?;
+        done.layouts += 1;
+    }
 
     let cfg_path = dir.join("config.toml");
     if let Some(mut cfg) = new_cfg {
@@ -160,6 +188,12 @@ mod tests {
         crate::suggest::write_atomic(&a.join("learned.tsv"), "ase\tআছে\t4\nvalo\tভালো\t2\n")
             .unwrap();
         crate::suggest::write_atomic(&a.join("wrong-words.tsv"), "ase\tআসে\tআছে\tকেমন\n").unwrap();
+        // A keyboard layout the user added (UniJoy's keys under another name)
+        let mut mine =
+            crate::layout::FixedLayout::builtin(crate::layout::LayoutId::UniJoy).unwrap();
+        mine.name = "My office keys".into();
+        crate::layout::import_layout_into(&a.join("layouts"), &mine.to_file_text("Khan", ""))
+            .unwrap();
         let backup = create(&a, "2026-10-24");
         assert!(backup.contains("\"ekushe_backup\": 1"));
 
@@ -177,7 +211,8 @@ mod tests {
                 settings: true,
                 snippets: 1,
                 learned_words: 2,
-                wrong_words: 1
+                wrong_words: 1,
+                layouts: 1,
             }
         );
         let got = Config::load_from(&b.join("config.toml")).unwrap();
@@ -187,6 +222,9 @@ mod tests {
             std::fs::read_to_string(b.join("learned.tsv")).unwrap(),
             "ase\tআছে\t9\nkhub\tখুব\t1\nvalo\tভালো\t2\n"
         );
+        let restored = crate::layout::list_custom_layouts_in(&b.join("layouts"));
+        assert_eq!(restored.len(), 1);
+        assert_eq!(restored[0].name, "My office keys");
         // Restoring twice changes nothing more
         assert_eq!(restore(&b, &backup).unwrap().wrong_words, 0);
 
@@ -196,6 +234,11 @@ mod tests {
         assert!(restore(
             &b,
             r#"{"ekushe_backup":1,"files":{"config.toml":"max_candidates = \"x\""}}"#
+        )
+        .is_err());
+        assert!(restore(
+            &b,
+            r#"{"ekushe_backup":1,"files":{},"layouts":{"x":"{\"format\":\"nope\"}"}}"#
         )
         .is_err());
         let _ = std::fs::remove_dir_all(&base);

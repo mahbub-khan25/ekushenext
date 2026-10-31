@@ -114,9 +114,10 @@ The Windows installer, for your user account only (no administrator rights):
   and learned words are kept)
 
 The macOS `.pkg` puts Ekushe in `/Library/Input Methods`; the Linux packages install the IBus engine,
-Ekushe Studio and an applications-menu entry. Removing the package removes them. On Linux, Studio's
-**কিবোর্ড যোগ করুন** button (or `ekushe-studio --add-keyboard`) adds Ekushe to your desktop's own
-keyboard list; **কিবোর্ড বাদ দিন** (or `ekushe-studio --remove-keyboard`) takes it out again and puts
+the Fcitx 5 addon, Ekushe Studio and an applications-menu entry. Removing the package removes them. On
+Linux, Studio's **কিবোর্ড যোগ করুন** button (or `ekushe-studio --add-keyboard`) adds Ekushe to your
+desktop's own keyboard list, or to Fcitx's input methods when Fcitx 5 is what your desktop uses (then
+Ctrl+Space switches between Ekushe and English); **কিবোর্ড বাদ দিন** (or `ekushe-studio --remove-keyboard`) takes it out again and puts
 back the input-method setting it changed, so run that before removing the package.
 
 ## License

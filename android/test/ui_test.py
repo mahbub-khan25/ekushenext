@@ -331,7 +331,7 @@ def center(n):
     return (x1 + x2) // 2, (y1 + y2) // 2, y1, y2
 
 
-def find(match, tries=14):
+def find(match, tries=24):
     """Scroll down the settings page until a view matching `match` is fully on screen."""
     for _ in range(tries):
         for n in dump_nodes():
@@ -345,7 +345,7 @@ def find(match, tries=14):
 
 
 def to_top():
-    for _ in range(6):
+    for _ in range(12):
         sh('input swipe 540 500 540 2100 150')
     time.sleep(0.8)
 
@@ -557,6 +557,53 @@ if b:
         expect('? opens the marks table', False, True)
 else:
     expect('? opens the marks table', False, True)
+
+# UniJoy, a fixed layout: the on-screen keys show its Bangla and type through the engine (the
+# link key, a kar typed first, Shift, a long-press for AltGr, the standard-spelling hint)
+ensure_app()
+to_top()
+at = find(lambda n: '(UniJoy)' in (n.get('text') or '') and 'fixed layout' not in (n.get('text') or ''))
+if at:
+    tap(at[0], at[1], 1.0)
+    shot('60-unijoy-settings')
+    to_top()
+    text, b = field_text()
+    bx1, by1, bx2, by2 = map(int, re.findall(r'\d+', b))
+    tap((bx1 + bx2) // 2, (by1 + by2) // 2, 1.5)
+    ku, _ = keys()
+    tap(*ku['SPACE'], 0.3)
+    shot('61-unijoy-keys')
+    for ch in 'jgk':
+        tap(*ku[ch])
+    tap(*ku['SPACE'], 0.5)
+    expect('UniJoy link key: j g k', (field_text()[0] or '').endswith('ক্ত '), True)
+    for ch in 'cjf':
+        tap(*ku[ch])
+    tap(*ku['SPACE'], 0.5)
+    expect('UniJoy kar first: c j f', (field_text()[0] or '').endswith('কো '), True)
+    for ch in 'nvjfv':
+        tap(*ku[ch])
+    tap(*ku['SHIFT'], 0.3)
+    tap(*ku['d'], 0.8)
+    shot('62-unijoy-spelling-hint')
+    tap(*ku['SPACE'], 0.5)
+    expect('UniJoy with Shift: সরকারী', (field_text()[0] or '').endswith('সরকারী '), True)
+    # long-press d: its AltGr letter (ই), picked by sliding onto it and letting go
+    gx, gy = ku['d']
+    sh(f'input swipe {gx} {gy} {gx} {gy - 120} 900')
+    time.sleep(0.8)
+    tap(*ku['SPACE'], 0.5)
+    got = field_text()[0] or ''
+    print('after the long-press:', repr(got[-6:]))
+    shot('63-unijoy-after-altgr')
+    sh('input keyevent KEYCODE_BACK'); time.sleep(0.8)
+    # back to phonetic typing
+    to_top()
+    at = find(lambda n: (n.get('text') or '').lstrip('○● ').startswith('Ekushe Phonetic'))
+    if at:
+        tap(at[0], at[1], 0.8)
+else:
+    failures.append('UniJoy in the layout list')
 
 # A keyboard crash is invisible on screen (Android restarts the keyboard, and hide_error_dialogs is
 # on above): fail if the keyboard process crashed at any point during the test

@@ -19,7 +19,7 @@ override_dh_auto_configure:
 
 override_dh_auto_build:
 	cargo --version
-	$(MAKE) $(MAKEARGS) CFLAGS="$(shell dpkg-buildflags --get CFLAGS)" LDFLAGS="$(shell dpkg-buildflags --get LDFLAGS)"
+	$(MAKE) $(MAKEARGS) CFLAGS="$(shell dpkg-buildflags --get CFLAGS)" CXXFLAGS="$(shell dpkg-buildflags --get CXXFLAGS)" LDFLAGS="$(shell dpkg-buildflags --get LDFLAGS)"
 
 override_dh_auto_install:
 	$(MAKE) $(MAKEARGS) install DESTDIR=$(CURDIR)/debian/ekushe
@@ -30,9 +30,10 @@ override_dh_auto_test:
 override_dh_auto_clean:
 	rm -rf target debian/cargo-home
 
-# Studio's window needs WebKitGTK only when it is installed (Recommends); Studio uses the browser otherwise
+# Studio's window needs WebKitGTK only when it is installed (Recommends); Studio uses the browser otherwise.
+# The Fcitx 5 addon is only loaded by Fcitx, so it needs Fcitx's libraries only where Fcitx is installed.
 override_dh_shlibdeps:
-	dh_shlibdeps -Xekushe-studio-window
+	dh_shlibdeps -Xekushe-studio-window -Xlibekushe.so
 
 # Rust's debug info confuses dwz on older Ubuntu
 override_dh_dwz:

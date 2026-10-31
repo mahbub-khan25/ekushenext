@@ -97,6 +97,10 @@ pub extern "system" fn Java_com_ekushenext_keyboard_Engine_nativeInit(
     guard(0, move || {
         // Everything slow happens before taking the lock, so typing never waits for the dictionary
         let dir = dir.map(PathBuf::from);
+        // Imported keyboard layouts live in the app's private folder too
+        if let Some(d) = &dir {
+            ekushe_core::layout::set_custom_layouts_dir(d.join("layouts"));
+        }
         let cfg = dir
             .as_ref()
             .and_then(|d| Config::load_from(&d.join("config.toml")).ok())
@@ -147,6 +151,92 @@ pub extern "system" fn Java_com_ekushenext_keyboard_Engine_nativeKey(
         Some(o) => out_json(&mut env, &o),
         None => std::ptr::null_mut(),
     }
+}
+
+/// A key typed with AltGr (the right Alt of a physical keyboard, or a long-press on the on-screen
+/// keys): a fixed layout's third layer (UniJoy: ঈ ঊ ঐ ঔ ...).
+#[no_mangle]
+pub extern "system" fn Java_com_ekushenext_keyboard_Engine_nativeKeyAltGr(
+    mut env: JNIEnv,
+    _c: JClass,
+    cp: jint,
+) -> jstring {
+    let out = guard(None, || {
+        let ch = char::from_u32(cp as u32)?;
+        let mut st = STATE.lock();
+        st.keep_bangla();
+        Some(st.ekushe.push_char(ch, true))
+    });
+    match out {
+        Some(o) => out_json(&mut env, &o),
+        None => std::ptr::null_mut(),
+    }
+}
+
+/// The fixed layout in use as a layout file (its keys, for the on-screen keyboard); empty for
+/// phonetic typing.
+#[no_mangle]
+pub extern "system" fn Java_com_ekushenext_keyboard_Engine_nativeLayoutFile(
+    mut env: JNIEnv,
+    _c: JClass,
+) -> jstring {
+    let s = guard(String::new(), || {
+        let st = STATE.lock();
+        ekushe_core::layout::FixedLayout::for_config(st.ekushe.config())
+            .map(|l| l.to_file_text("", ""))
+            .unwrap_or_default()
+    });
+    text(&mut env, &s)
+}
+
+/// Import a layout file's text. JSON: `{"name", "value"}`, or `{"error"}` saying what is wrong.
+#[no_mangle]
+pub extern "system" fn Java_com_ekushenext_keyboard_Engine_nativeImportLayout(
+    mut env: JNIEnv,
+    _c: JClass,
+    file: JString,
+) -> jstring {
+    let raw: String = env.get_string(&file).map(Into::into).unwrap_or_default();
+    let s = guard(String::new(), move || {
+        match ekushe_core::layout::import_layout(&raw) {
+            Ok(info) => {
+                // Re-importing the layout in use takes effect at once
+                let mut st = STATE.lock();
+                let c = st.ekushe.config().clone();
+                st.ekushe.set_config(c);
+                serde_json::json!({ "name": info.name, "value": format!("Custom:{}", info.id) })
+            }
+            Err(e) => serde_json::json!({ "error": e }),
+        }
+        .to_string()
+    });
+    text(&mut env, &s)
+}
+
+/// Remove an imported layout (the layout in use falls back to phonetic typing).
+#[no_mangle]
+pub extern "system" fn Java_com_ekushenext_keyboard_Engine_nativeRemoveLayout(
+    mut env: JNIEnv,
+    _c: JClass,
+    id: JString,
+) -> jboolean {
+    let id: String = env.get_string(&id).map(Into::into).unwrap_or_default();
+    guard(0, move || {
+        if ekushe_core::layout::remove_custom_layout(&id).is_err() {
+            return 0;
+        }
+        let mut st = STATE.lock();
+        let mut c = st.ekushe.config().clone();
+        if c.custom_layout.as_deref() == Some(id.as_str()) {
+            c.active_layout = ekushe_core::layout::LayoutId::AvroPhonetic;
+            c.custom_layout = None;
+            if let Some(path) = st.config_path() {
+                let _ = c.save_to(&path);
+            }
+        }
+        st.ekushe.set_config(c);
+        1
+    })
 }
 
 /// A Bangla word written in English letters? (English typing leaves those alone.)
@@ -248,6 +338,13 @@ pub extern "system" fn Java_com_ekushenext_keyboard_Engine_nativeGetConfig(
             "hints": c.show_sign_and_conjunct_hints,
             "backspace_undo": c.backspace_undo,
             "snippets": snippets,
+            "layout": ekushe_core::layout::setting_value(c),
+            "layouts": ekushe_core::layout::all_layouts()
+                .into_iter()
+                .map(|(value, name, custom)| serde_json::json!({ "value": value, "name": name, "custom": custom }))
+                .collect::<Vec<_>>(),
+            "spell_hint": c.fixed_spelling_hint,
+            "word_suggestions": c.fixed_word_suggestions,
         })
         .to_string()
     });
@@ -290,6 +387,15 @@ pub extern "system" fn Java_com_ekushenext_keyboard_Engine_nativeSetConfig(
         }
         if let Some(b) = flag("backspace_undo") {
             c.backspace_undo = b;
+        }
+        if let Some(l) = p["layout"].as_str() {
+            ekushe_core::layout::apply_setting(&mut c, l);
+        }
+        if let Some(b) = flag("spell_hint") {
+            c.fixed_spelling_hint = b;
+        }
+        if let Some(b) = flag("word_suggestions") {
+            c.fixed_word_suggestions = b;
         }
         if let Some(add) = p["add_snippet"].as_array() {
             if let (Some(k), Some(v)) = (
