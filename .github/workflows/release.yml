@@ -180,10 +180,10 @@ jobs:
           toolchain: stable
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
       - name: Build tools
-        run: sudo apt-get update -q && sudo apt-get install -y -q libibus-1.0-dev libwebkit2gtk-4.1-dev ibus python3-gi gir1.2-ibus-1.0 dbus libfuse2
+        run: sudo apt-get update -q && sudo apt-get install -y -q libibus-1.0-dev libfcitx5core-dev libwebkit2gtk-4.1-dev ibus fcitx5 python3-gi python3-dbus gir1.2-ibus-1.0 dbus libfuse2
       - name: Engine and Studio tests
         run: cargo test -p ekushe-core -p ekushe-ffi -p ekushe-studio --features "ekushe-ffi/studio ekushe-ffi/embedded-dict"
-      - name: Build packages and type into a real IBus
+      - name: Build packages and type into a real IBus and Fcitx 5
         run: platform/linux/build.sh "$VERSION" --test
         env:
           VERSION: ${{ needs.version.outputs.tag }}
@@ -192,6 +192,7 @@ jobs:
           sudo apt-get install -y -q ./build/linux/ekushe_*_amd64.deb
           rm -rf ~/.config/ibus/bus
           dbus-run-session -- bash -c 'ibus-daemon --xim=false --panel=disable --emoji-extension=disable --cache=none --config=disable & for i in $(seq 1 50); do F=$(ls ~/.config/ibus/bus/* 2>/dev/null | head -1); [ -n "$F" ] && break; sleep 0.2; done; export $(grep "^IBUS_ADDRESS=" "$F"); python3 platform/linux/ibus/test_engine.py'
+          platform/linux/fcitx5/run-test.sh --installed
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: release-linux
@@ -212,11 +213,14 @@ jobs:
           name: release-linux
           path: pkgs
       - name: Install
-        run: dnf install -y ./pkgs/*.rpm python3-gobject dbus-daemon dbus-tools
+        run: dnf install -y ./pkgs/*.rpm ibus python3-gobject python3-dbus dbus-daemon dbus-tools fcitx5
       - name: Engine loads on Fedora
         run: |
           ldd /usr/libexec/ekushe/ibus-engine-ekushe | grep -i "not found" && exit 1 || true
           /usr/libexec/ekushe/ibus-engine-ekushe --version
+          ldd /usr/lib64/fcitx5/libekushe.so | grep -i "not found" && exit 1 || true
+      - name: Type into Fcitx 5
+        run: platform/linux/fcitx5/run-test.sh --installed
       - name: Type into IBus
         run: |
           rm -rf ~/.config/ibus/bus
