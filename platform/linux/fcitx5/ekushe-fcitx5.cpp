@@ -7,7 +7,7 @@
  * cycles suggestions, Escape keeps the text as shown, Backspace edits the word and, right after a
  * commit, reopens it (when the application reports the text around the cursor). Ctrl+Backspace
  * flips the last word between Bangla and Roman. Double-tap Shift switches to English and back.
- * The status menu opens Studio, the conjunct guide, Settings and the problem report.
+ * The status menu opens Studio, the conjunct guide, Settings, the layout's key map and the problem report.
  *
  * Installed as <libdir>/fcitx5/libekushe.so with /usr/share/fcitx5/addon/ekushe.conf and
  * /usr/share/fcitx5/inputmethod/ekushe.conf.
@@ -135,6 +135,7 @@ public:
         add(studio_, "ekushe-studio", "Open Ekushe Studio", "accessories-text-editor", [](fcitx::InputContext *) { open_studio(nullptr); });
         add(marks_, "ekushe-marks", "Marks & conjuncts guide (+  ,,  ^ …)", "help-contents", [](fcitx::InputContext *) { open_studio("signs"); });
         add(settings_, "ekushe-settings", "Settings", "preferences-system", [](fcitx::InputContext *) { open_studio("settings"); });
+        add(keymap_, "ekushe-keymap", "Key map of the layout", "input-keyboard", [](fcitx::InputContext *) { open_studio("keymap"); });
         add(language_, "ekushe-language", "Bangla / English (double-tap Right Shift)", "input-keyboard", [this](fcitx::InputContext *ic) {
             if (ic)
                 finish(ic);
@@ -158,7 +159,7 @@ public:
         auto *ic = event.inputContext();
         ek_reload_config();
         syncFieldRules(ic);
-        for (auto *a : {&studio_, &marks_, &settings_, &language_, &report_})
+        for (auto *a : {&studio_, &marks_, &settings_, &keymap_, &language_, &report_})
             ic->statusArea().addAction(fcitx::StatusGroup::InputMethod, a);
     }
 
@@ -373,7 +374,7 @@ private:
 
     friend class EkusheCandidate;
     fcitx::Instance *instance_;
-    fcitx::SimpleAction studio_, marks_, settings_, language_, report_;
+    fcitx::SimpleAction studio_, marks_, settings_, keymap_, language_, report_;
     std::vector<std::string> candidates_;
     unsigned count_ = 0, selected_ = 0;
     std::string lastCommitted_;
@@ -480,7 +481,11 @@ void EkusheEngine::keyEvent(const fcitx::InputMethodEntry &, fcitx::KeyEvent &ev
             finish(ic);
         return;
     }
-    ekushe_string_free(ek_key(ch));
+    /* AltGr (Mod5) types a fixed layout's third layer (UniJoy: ঈ ঊ ঐ ঔ ...) */
+    if ((states & fcitx::KeyState::Mod5) && ek_fixed_layout())
+        ekushe_string_free(ek_key_altgr(ch));
+    else
+        ekushe_string_free(ek_key(ch));
     render(ic);
     event.filterAndAccept();
 }
