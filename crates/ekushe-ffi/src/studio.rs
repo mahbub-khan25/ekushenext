@@ -316,6 +316,7 @@ fn handle(mut s: TcpStream, req: &str, port: u16) -> std::io::Result<()> {
                         _ => "DoubleTapShift",
                     },
                     "hotkey_display": cfg.switch_hotkey.display_name(),
+                    "app_version": include_str!("../../../.github/release/VERSION").trim(),
                     "typing_mode": format!("{:?}", cfg.typing_mode),
                     "active_layout": studio_layouts::setting_value(cfg),
                     "layout_name": studio_layouts::active_names(cfg).0,

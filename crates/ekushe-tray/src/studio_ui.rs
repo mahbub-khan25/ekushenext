@@ -173,11 +173,11 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
   .nav-btn.active svg { color: var(--accent); }
   .rail-foot { margin-top: auto; padding: 12px 8px 2px; border-top: 1px solid var(--line); font-size: 0.8rem; color: var(--ink-faint); }
   .rail-foot b { color: var(--ink-soft); font-weight: 600; }
-  .about-card { display: flex; gap: 10px; align-items: center; width: 100%; margin-top: 12px; padding: 10px 8px; border: 0; border-top: 1px solid var(--line); background: none; color: var(--ink-faint); font: inherit; font-size: 0.76rem; line-height: 1.45; text-align: left; cursor: pointer; border-radius: 0 0 12px 12px; }
+  .about-card { display: flex; gap: 8px; align-items: center; width: 100%; margin-top: 12px; padding: 10px 4px; border: 0; border-top: 1px solid var(--line); background: none; color: var(--ink-faint); font: inherit; font-size: 0.72rem; line-height: 1.45; text-align: left; cursor: pointer; border-radius: 0 0 12px 12px; }
   .about-card:hover, .about-card:focus-visible { background: var(--accent-soft); outline: none; }
-  .about-card img { width: 30px; height: 30px; border-radius: 9px; flex: none; }
+  .about-card img { width: 26px; height: 26px; border-radius: 9px; flex: none; }
   .about-card b { color: var(--ink-soft); font-weight: 600; font-size: 0.82rem; }
-  .about-card > span { min-width: 0; overflow-wrap: anywhere; }
+  .about-card > span { min-width: 0; white-space: nowrap; }
   .about-dlg { margin: auto; position: fixed; inset: 0; height: fit-content; width: min(420px, 92vw); border: 1px solid var(--line); border-radius: 18px; padding: 26px 24px 20px; background: var(--page); color: var(--ink); font: inherit; text-align: center; line-height: 1.7; }
   .about-dlg::backdrop { background: rgba(0, 0, 0, .35); }
   .about-dlg img { width: 72px; height: 72px; border-radius: 18px; }
@@ -467,16 +467,17 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
     <div class="rail-foot">বাংলা ⇄ English বদলাতে<br><b id="hotkeyBadge">Double-Tap Shift</b>
       <button class="about-card" onclick="document.getElementById('aboutDlg').showModal()" title="একুশে নেক্সট সম্পর্কে (About)">
         <img src="/logo.png" alt="">
-        <span><b>একুশে নেক্সট</b> <span class="aboutVer"></span><br>Mahbub Afzal Khan<br>support@ekushenext.com</span>
+        <span><b>একুশে নেক্সট</b><br>সংস্করণ <span class="aboutVer">—</span><br>মাহ্‌বুব আফজাল খান<br>Mahbub Afzal Khan<br>support@ekushenext.com</span>
       </button>
     </div>
   </nav>
   <dialog class="about-dlg" id="aboutDlg" aria-labelledby="aboutTitle">
     <img src="/logo.png" alt="">
     <h3 id="aboutTitle">একুশে নেক্সট</h3>
-    <div class="ver">Ekushe Next <span class="aboutVer"></span></div>
+    <div class="ver">Ekushe Next</div>
     <dl>
-      <dt>তৈরি করেছেন<br><small>Developed by</small></dt><dd>Mahbub Afzal Khan</dd>
+      <dt>সংস্করণ<br><small>Version</small></dt><dd class="aboutVer">—</dd>
+      <dt>তৈরি করেছেন<br><small>Developed by</small></dt><dd>মাহ্‌বুব আফজাল খান<br>Mahbub Afzal Khan</dd>
       <dt>যোগাযোগ<br><small>Contact</small></dt><dd><a href="mailto:support@ekushenext.com">support@ekushenext.com</a></dd>
       <dt>ওয়েবসাইট<br><small>Website</small></dt><dd><a href="https://ekushenext.com" target="_blank" rel="noopener">ekushenext.com</a></dd>
       <dt>লাইসেন্স<br><small>License</small></dt><dd>ওপেন সোর্স, MPL-2.0</dd>
