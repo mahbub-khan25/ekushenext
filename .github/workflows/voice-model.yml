@@ -1,0 +1,81 @@
+# Voice typing model: builds the whisper.cpp model file from Bengali.AI's Bangla speech model and
+# puts it on a draft release (e.g. voice-model-1), which is published by hand. Ekushe Next downloads
+# the file from there once (Studio → Settings → voice typing). Run by hand: Actions → this workflow.
+name: Voice typing model
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag for the model (e.g. voice-model-1)
+        required: true
+        default: voice-model-1
+
+permissions:
+  contents: read
+
+jobs:
+  model:
+    name: Build the Bangla voice model
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    env:
+      HF_MODEL: bengaliAI/tugstugi_bengaliai-asr_whisper-medium
+      HF_REVISION: main
+      WHISPER_CPP: 482279b    # whisper.cpp version used for conversion and quantization
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Tools
+        run: |
+          sudo apt-get install -y -q cmake
+          python3 -m pip install --quiet --break-system-packages "torch==2.5.1" --index-url https://download.pytorch.org/whl/cpu
+          python3 -m pip install --quiet --break-system-packages "transformers==4.57.1" numpy huggingface_hub safetensors
+          git clone --quiet https://github.com/ggml-org/whisper.cpp && git -C whisper.cpp checkout --quiet "$WHISPER_CPP"
+          git clone --quiet --depth 1 https://github.com/openai/whisper openai-whisper
+          cmake -S whisper.cpp -B whisper.cpp/build -DCMAKE_BUILD_TYPE=Release -DWHISPER_BUILD_TESTS=OFF >/dev/null
+          cmake --build whisper.cpp/build -j"$(nproc)" --target whisper-quantize >/dev/null
+      - name: Convert and quantize
+        run: |
+          python3 -c "from huggingface_hub import snapshot_download; snapshot_download('$HF_MODEL', revision='$HF_REVISION', local_dir='hf')"
+          mkdir -p out
+          python3 whisper.cpp/models/convert-h5-to-ggml.py hf openai-whisper out
+          whisper.cpp/build/bin/whisper-quantize out/ggml-model.bin bn-medium-q5_0.bin q5_0
+          sha256sum bn-medium-q5_0.bin | tee SHA256SUMS.txt
+          ls -l bn-medium-q5_0.bin
+      - name: Notice
+        run: |
+          cat > NOTICE.txt <<'TXT'
+          Ekushe Next voice typing model
+
+          bn-medium-q5_0.bin is the Bengali.AI Bangla speech recognition model
+          "bengaliAI/tugstugi_bengaliai-asr_whisper-medium" (https://huggingface.co/bengaliAI/tugstugi_bengaliai-asr_whisper-medium),
+          licensed under the Apache License, Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0).
+          It is a fine-tune of OpenAI Whisper medium (https://github.com/openai/whisper, MIT License).
+
+          Changes made for Ekushe Next: converted to the whisper.cpp (ggml) format with whisper.cpp's
+          convert-h5-to-ggml.py and quantized to q5_0 with whisper-quantize (https://github.com/ggml-org/whisper.cpp,
+          MIT License). The weights were not otherwise changed.
+
+          Ekushe Next downloads this file once and runs it entirely on your own computer; nothing you say is sent anywhere.
+          TXT
+          sed -i 's/^          //' NOTICE.txt
+      - name: Draft release with the model
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          cat > notes.md <<'MD'
+          **Voice typing model for Ekushe Next (not an app release).**
+
+          Ekushe Next's voice typing downloads `bn-medium-q5_0.bin` from here once (Studio → Settings → ভয়েস টাইপিং) and then runs it entirely on your computer. You don't need to download anything from this page yourself.
+
+          - Model: Bengali.AI's Bangla speech recognition model ([tugstugi_bengaliai-asr_whisper-medium](https://huggingface.co/bengaliAI/tugstugi_bengaliai-asr_whisper-medium), Apache-2.0), a fine-tune of OpenAI Whisper medium (MIT).
+          - Converted to the whisper.cpp format and quantized to q5_0 (539 MB). See `NOTICE.txt`.
+          - Checksum: `SHA256SUMS.txt`.
+          MD
+          sed -i 's/^          //' notes.md
+          gh release create "$TAG" bn-medium-q5_0.bin NOTICE.txt SHA256SUMS.txt \
+            --draft --prerelease --latest=false --target "$GITHUB_SHA" \
+            --title "Voice typing model 1 (Bangla)" --notes-file notes.md
