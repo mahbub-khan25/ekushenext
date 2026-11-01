@@ -9,6 +9,7 @@ mod selection;
 mod setup_wizard;
 mod studio_http;
 mod studio_layouts;
+mod studio_ocr;
 mod studio_ui;
 mod update_check;
 
@@ -2568,6 +2569,31 @@ fn handle_http_client(mut stream: TcpStream, req: &str) -> std::io::Result<()> {
             "200 OK",
             "text/html; charset=utf-8",
             html.as_bytes(),
+        );
+    }
+
+    // Picture to text: the OCR files, and the dictionary clean-up of what it read
+    if method == "GET" && clean_path.starts_with("/ocr/") {
+        if let Some((ct, bytes)) = studio_ocr::asset(clean_path) {
+            return write_http_response(&mut stream, "200 OK", ct, bytes);
+        }
+    }
+    if method == "POST"
+        && matches!(
+            clean_path,
+            "/api/ocr/correct" | "/api/ocr/textlayer" | "/api/ocr/sample"
+        )
+    {
+        let json = match clean_path {
+            "/api/ocr/correct" => studio_ocr::correct(body),
+            "/api/ocr/sample" => studio_ocr::save_sample(body),
+            _ => studio_ocr::text_layer(body),
+        };
+        return write_http_response(
+            &mut stream,
+            "200 OK",
+            "application/json; charset=utf-8",
+            json.as_bytes(),
         );
     }
 

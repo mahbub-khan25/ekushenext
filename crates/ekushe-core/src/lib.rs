@@ -74,6 +74,7 @@ pub mod dates;
 pub mod dict;
 pub mod layout;
 pub mod marks;
+pub mod ocr;
 pub mod phonetic;
 pub mod roman;
 pub mod spell;

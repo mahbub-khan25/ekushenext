@@ -173,6 +173,20 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
   .nav-btn.active svg { color: var(--accent); }
   .rail-foot { margin-top: auto; padding: 12px 8px 2px; border-top: 1px solid var(--line); font-size: 0.8rem; color: var(--ink-faint); }
   .rail-foot b { color: var(--ink-soft); font-weight: 600; }
+  .about-card { display: flex; gap: 8px; align-items: center; width: 100%; margin-top: 12px; padding: 10px 4px; border: 0; border-top: 1px solid var(--line); background: none; color: var(--ink-faint); font: inherit; font-size: 0.72rem; line-height: 1.45; text-align: left; cursor: pointer; border-radius: 0 0 12px 12px; }
+  .about-card:hover, .about-card:focus-visible { background: var(--accent-soft); outline: none; }
+  .about-card img { width: 26px; height: 26px; border-radius: 9px; flex: none; }
+  .about-card b { color: var(--ink-soft); font-weight: 600; font-size: 0.82rem; }
+  .about-card > span { min-width: 0; white-space: nowrap; }
+  .about-dlg { margin: auto; position: fixed; inset: 0; height: fit-content; width: min(420px, 92vw); border: 1px solid var(--line); border-radius: 18px; padding: 26px 24px 20px; background: var(--page); color: var(--ink); font: inherit; text-align: center; line-height: 1.7; }
+  .about-dlg::backdrop { background: rgba(0, 0, 0, .35); }
+  .about-dlg img { width: 72px; height: 72px; border-radius: 18px; }
+  .about-dlg h3 { margin: 10px 0 0; font-size: 1.35rem; }
+  .about-dlg .ver { color: var(--ink-faint); font-size: .85rem; }
+  .about-dlg dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 18px 0 8px; text-align: left; }
+  .about-dlg dt { color: var(--ink-faint); }
+  .about-dlg dd { margin: 0; }
+  .about-dlg a { color: var(--accent); }
 
   /* ── Main sheet ── */
   .sheet { border-radius: 30px; padding: 22px 28px 30px; min-width: 0; }
@@ -372,11 +386,23 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
     .composer { padding: 12px; }
   }
   /* Key map of a fixed layout (and its printed cheat sheet) */
+  .ocr-drop { text-align: center; padding: 28px 18px; border: 2px dashed var(--line); }
+  .ocr-drop.over { box-shadow: inset 0 0 0 2px var(--accent); }
+  .ocr-ico { width: 34px; height: 34px; color: var(--accent); }
+  .ocr-preview img { max-width: 100%; max-height: 420px; border-radius: 12px; box-shadow: 0 0 0 1px var(--line); }
+  #ocrText { width: 100%; font-size: 1.05rem; line-height: 1.7; }
+  .ocr-fix { display: inline-block; margin: 2px 4px 2px 0; padding: 1px 8px; border-radius: 999px; background: var(--etch-strong); cursor: pointer; border: 0; font: inherit; color: var(--ink); }
+  .ocr-fix s { color: var(--ink-faint); }
   .welcome-choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-top: 12px; }
   .welcome-choice { text-align: left; padding: 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--etch-strong); color: var(--ink); cursor: pointer; font: inherit; display: flex; flex-direction: column; gap: 4px; }
   .welcome-choice:hover, .welcome-choice:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
   .welcome-choice span { font-size: .85rem; color: var(--ink-soft); }
   .welcome-list { margin: 10px 0 0; padding-left: 20px; line-height: 1.9; }
+  .ocr-send { margin: auto; position: fixed; inset: 0; height: fit-content; border: 1px solid var(--line); border-radius: 16px; padding: 20px 22px; max-width: 520px; background: var(--page); color: var(--ink); font: inherit; line-height: 1.7; }
+  .ocr-send::backdrop { background: rgba(0, 0, 0, .35); }
+  .ocr-send h3 { margin: 0 0 8px; }
+  .ocr-send ul { margin: 8px 0; padding-left: 20px; }
+  .ocr-send .warn { color: var(--danger); }
   .link-btn { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; cursor: pointer; text-decoration: underline; }
   .keymap-back { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: grid; place-items: center; z-index: 50; padding: 16px; }
   .keymap { background: var(--page); color: var(--ink); border-radius: 20px; padding: 18px; max-width: 980px; width: 100%; max-height: 92vh; overflow: auto; box-shadow: 0 30px 80px -30px rgba(0,0,0,.6); }
@@ -412,6 +438,7 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
     <symbol id="i-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5V5a2 2 0 0 1 2-2h13v16H6.5A2.5 2.5 0 0 0 4 21.5Z"/><path d="M8 7h7M8 11h5"/></symbol>
     <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h9M4 12h6M4 17h5"/><path d="m14 16 3 3 5-6"/></symbol>
     <symbol id="i-swap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4 3 8l4 4"/><path d="M3 8h13a4 4 0 0 1 4 4"/><path d="m17 20 4-4-4-4"/><path d="M21 16H8a4 4 0 0 1-4-4"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M7 9h6M7 13h10M7 17h4"/></symbol>
     <symbol id="i-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></symbol>
     <symbol id="i-fix" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v4h4"/><path d="m9 12 2 2 4-4"/></symbol>
     <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
@@ -434,10 +461,29 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
     <button class="nav-btn" data-tab="signs"><svg><use href="#i-book"/></svg><span class="lbl"><span class="bn">যুক্তবর্ণ</span><span class="en">Conjunct guide</span></span></button>
     <button class="nav-btn" data-tab="spell"><svg><use href="#i-check"/></svg><span class="lbl"><span class="bn">বানান</span><span class="en">Spell check</span></span></button>
     <button class="nav-btn" data-tab="converter"><svg><use href="#i-swap"/></svg><span class="lbl"><span class="bn">রূপান্তর</span><span class="en">Bijoy ⇄ Unicode</span></span></button>
+    <button class="nav-btn" data-tab="ocr"><svg><use href="#i-image"/></svg><span class="lbl"><span class="bn">ছবি থেকে লেখা</span><span class="en">Picture to text</span></span></button>
     <button class="nav-btn" data-tab="fix" id="navFix" style="display:none"><svg><use href="#i-fix"/></svg><span class="lbl"><span class="bn">ভুল শব্দ</span><span class="en">A word was wrong</span></span></button>
     <button class="nav-btn" data-tab="settings"><svg><use href="#i-gear"/></svg><span class="lbl"><span class="bn">সেটিংস</span><span class="en">Settings</span></span></button>
-    <div class="rail-foot">বাংলা ⇄ English বদলাতে<br><b id="hotkeyBadge">Double-Tap Shift</b></div>
+    <div class="rail-foot">বাংলা ⇄ English বদলাতে<br><b id="hotkeyBadge">Double-Tap Shift</b>
+      <button class="about-card" onclick="document.getElementById('aboutDlg').showModal()" title="একুশে নেক্সট সম্পর্কে (About)">
+        <img src="/logo.png" alt="">
+        <span><b>একুশে নেক্সট</b><br>সংস্করণ <span class="aboutVer">—</span><br>মাহ্‌বুব আফজাল খান<br>Mahbub Afzal Khan<br>support@ekushenext.com</span>
+      </button>
+    </div>
   </nav>
+  <dialog class="about-dlg" id="aboutDlg" aria-labelledby="aboutTitle">
+    <img src="/logo.png" alt="">
+    <h3 id="aboutTitle">একুশে নেক্সট</h3>
+    <div class="ver">Ekushe Next</div>
+    <dl>
+      <dt>সংস্করণ<br><small>Version</small></dt><dd class="aboutVer">—</dd>
+      <dt>তৈরি করেছেন<br><small>Developed by</small></dt><dd>মাহ্‌বুব আফজাল খান<br>Mahbub Afzal Khan</dd>
+      <dt>যোগাযোগ<br><small>Contact</small></dt><dd><a href="mailto:support@ekushenext.com">support@ekushenext.com</a></dd>
+      <dt>ওয়েবসাইট<br><small>Website</small></dt><dd><a href="https://ekushenext.com" target="_blank" rel="noopener">ekushenext.com</a></dd>
+      <dt>লাইসেন্স<br><small>License</small></dt><dd>ওপেন সোর্স, MPL-2.0</dd>
+    </dl>
+    <button class="btn" onclick="document.getElementById('aboutDlg').close()">বন্ধ করুন</button>
+  </dialog>
 
   <main class="sheet glass">
     <div class="topbar">
@@ -653,6 +699,58 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
         <div id="fileConvMsg" role="status" class="hint" style="margin-top:8px"></div>
       </div>
     </section>
+
+    <section class="panel" id="tab-ocr" data-title="ছবি থেকে লেখা" data-sub="ছাপা বাংলা লেখার ছবি বা স্ক্যান দিন, একুশে লেখাটি পড়ে ইউনিকোডে দেবে। ছবি আপনার কম্পিউটারেই থাকে; আপনি নিজে „একুশেকে পাঠান“ না চাপলে কোথাও পাঠানো হয় না।">
+      <div class="etched ocr-drop" id="ocrDrop" tabindex="0">
+        <svg class="ocr-ico"><use href="#i-image"/></svg>
+        <div class="section-title">ছবি এখানে ছেড়ে দিন, বেছে নিন, বা Ctrl+V দিয়ে পেস্ট করুন</div>
+        <div class="hint">স্ক্যান, ফোনে তোলা ছবি, স্ক্রিনশট (PNG, JPG) বা স্ক্যান করা PDF; একসাথে কয়েকটি পাতাও দেওয়া যায়। লেখা যত সোজা আর পরিষ্কার, ফল তত ভালো।</div>
+        <div class="row" style="gap:8px;flex-wrap:wrap;justify-content:center;margin-top:10px">
+          <button class="btn primary" onclick="document.getElementById('ocrFile').click()">ছবি বেছে নিন</button>
+          <label class="hint" style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="ocrEnglish"> লেখায় ইংরেজি শব্দও আছে</label>
+          <label class="hint" style="display:flex;align-items:center;gap:6px" title="ছবি, নকশা, দাগ বা আরবির মতো অন্য লিপি থেকে ভুলভাল অক্ষর আসে; সেগুলো বাদ যায়"><input type="checkbox" id="ocrJunk" checked> ছবি ও নকশার আজেবাজে অক্ষর বাদ দিন</label>
+          <label class="hint" style="display:flex;align-items:center;gap:6px">PDF-এর পাতা <input id="ocrPages" placeholder="সব (যেমন ১-১০, ১৫)" style="width:150px"></label>
+        </div>
+        <input type="file" id="ocrFile" accept="image/*,application/pdf,.pdf" multiple style="display:none" onchange="ocrFiles(this.files); this.value=''">
+      </div>
+      <div class="row" style="gap:10px;align-items:center;margin:10px 2px">
+        <div id="ocrProgress" class="hint" role="status"></div>
+        <button class="btn" id="ocrStop" hidden onclick="ocrStopNow = true">থামান</button>
+      </div>
+      <div class="two-col ocr-out" id="ocrOut" hidden>
+        <div class="ocr-preview"><img id="ocrImg" alt=""></div>
+        <div>
+          <textarea id="ocrText" rows="16" spellcheck="false"></textarea>
+          <div id="ocrFixes" class="hint" style="margin-top:8px"></div>
+          <div id="ocrDropped" class="hint" style="margin-top:6px"></div>
+          <div class="row" style="margin-top:10px;gap:8px;justify-content:flex-end;flex-wrap:wrap">
+            <button class="btn" onclick="ocrJoinLines()" title="ছাপার লাইন ভাঙা বাদ দিয়ে অনুচ্ছেদ হিসেবে">লাইন জোড়া দিন</button>
+            <button class="btn" onclick="ocrToPad()">লেখার প্যাডে নিন</button>
+            <button class="btn" onclick="ocrSave()">.txt হিসেবে রাখুন</button>
+            <button class="btn" id="ocrLearnBtn" hidden onclick="ocrSaveForLearning()" title="লেখা ঠিক করার পর চাপুন: ছবি আর ঠিক করা লেখা আপনার কম্পিউটারে জমা থাকে (কোথাও পাঠানো হয় না), পরে একুশের ছবি পড়া আরও ভালো করতে কাজে লাগে">শেখার জন্য রাখুন</button>
+            <button class="btn" id="ocrSendBtn" hidden onclick="ocrSendAsk()" title="লেখা ঠিক করার পর চাপুন: পাতার ছবি আর ঠিক করা লেখা একুশের কাছে যায়, যাতে ছবি থেকে বাংলা পড়া আরও ভালো করা যায়">একুশেকে পাঠান</button>
+            <button class="btn primary" onclick="copyText(document.getElementById('ocrText').value)"><svg><use href="#i-copy"/></svg>কপি করুন</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <dialog class="ocr-send" id="ocrSendDlg">
+      <h3>পাতাটি একুশেকে পাঠাবেন?</h3>
+      <div>আপনার ঠিক করা লেখা দিয়ে একুশের ছবি পড়া আরও ভালো করা হবে। যা যাবে:</div>
+      <ul>
+        <li>পড়া পাতার ছবি (<span id="ocrSendPages"></span>)</li>
+        <li>আপনার ঠিক করা লেখা, আর একুশে প্রথমে যা পড়েছিল</li>
+        <li>একুশের সংস্করণ আর কম্পিউটারের ধরন (যেমন Windows)</li>
+      </ul>
+      <div>আপনার নাম, ঠিকানা বা অন্য কোনো ফাইল যায় না।</div>
+      <div class="warn">পরিচয়পত্র, চিঠি, ব্যাংক বা অন্য ব্যক্তিগত কাগজের ছবি পাঠাবেন না।</div>
+      <div id="ocrSendSame" class="hint" hidden style="margin-top:6px">লেখাটি এখনও বদলানো হয়নি। ভুলগুলো ঠিক করে পাঠালে সবচেয়ে বেশি কাজে লাগে।</div>
+      <div class="row" style="margin-top:14px;gap:8px;justify-content:flex-end">
+        <button class="btn" onclick="document.getElementById('ocrSendDlg').close()">থাক</button>
+        <button class="btn primary" id="ocrSendGo" onclick="ocrSend()">পাঠান</button>
+      </div>
+    </dialog>
 
     <!-- A word was wrong -->
     <section class="panel" id="tab-fix" data-title="ভুল শব্দ ঠিক করুন" data-sub="একুশে কোনো শব্দ ভুল বসালে এখানে ঠিকটা বেছে দিন। একুশে সঙ্গে সঙ্গে শিখে নেবে, পরের বার ঠিক শব্দটাই আসবে।">
@@ -1031,6 +1129,7 @@ async function refreshState() {
     if (document.activeElement !== appsEl) appsEl.value = st.bijoy_output_apps || '';
   }
   document.getElementById('fixedLayoutOptions').hidden = !st.active_layout || st.active_layout === 'AvroPhonetic';
+  if (st.app_version) { appInfo.app = st.app_version; document.querySelectorAll('.aboutVer').forEach(e => e.textContent = st.app_version); }
   if (typeof st.check_for_updates === 'boolean' && st.app_version) {
     document.getElementById('cfgUpdatesRow').style.display = '';
     document.getElementById('cfgUpdates').checked = st.check_for_updates;
@@ -1768,6 +1867,405 @@ function keyText(t) {
   if (t === undefined) return '';
   return t.replace(/\u200C/g, 'ZWNJ').replace(/\u200D/g, 'ZWJ').replace(/^([\u09BE-\u09CD\u0981-\u0983\u09D7])/, '◌$1');
 }
+// ── Picture to text (Bangla OCR) ──
+// Tesseract (WebAssembly) reads the picture in this page; Ekushe's dictionary then cleans the text.
+let ocrWorker = null, ocrBusy = false, ocrChanges = [], ocrStopNow = false, ocrDroppedAll = [], ocrPageData = [], ocrFirstText = '';
+function ocrStatus(t) { document.getElementById('ocrProgress').textContent = t; }
+function ocrLoadScript(src) {
+  return new Promise((ok, fail) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = fail; document.head.appendChild(s); });
+}
+async function ocrWorkerReady() {
+  if (ocrWorker) return ocrWorker;
+  ocrStatus('বাংলা পড়ার মডেল চালু হচ্ছে…');
+  if (!window.Tesseract) await ocrLoadScript('/ocr/tesseract.min.js');
+  // WebAssembly SIMD makes it about twice as fast where the browser has it
+  const simd = WebAssembly.validate(new Uint8Array([0,97,115,109,1,0,0,0,1,5,1,96,0,1,123,3,2,1,0,10,10,1,8,0,65,0,253,15,253,98,11]));
+  const base = location.origin + '/ocr/';
+  // three Bangla models, each unsure word read with all of them: one trained on real scanned books
+  // (old and new), Ekushe's fine-tune for modern fonts, and Tesseract's own (old books and archive
+  // scans: 25% → 16% words wrong; modern pages a little better too)
+  ocrWorker = await Tesseract.createWorker(['benreal', 'ben', 'benold'], 1, {
+    workerPath: base + 'worker.min.js', workerBlobURL: false,
+    corePath: base + (simd ? 'tesseract-core-simd-lstm.wasm.js' : 'tesseract-core-lstm.wasm.js'),
+    langPath: base.slice(0, -1), gzip: false, cacheMethod: 'none',
+    logger: m => { if (m.status === 'recognizing text') ocrStatus('পড়া হচ্ছে… ' + Math.round(m.progress * 100) + '%'); },
+  });
+  return ocrWorker;
+}
+
+// Picture clean-up before reading: grey, even lighting, letters at a size the model reads best,
+// and straight lines. (Measured on rendered, scanned and photographed pages: a phone photo goes
+// from about 1 wrong word in 3 to about 1 in 10.)
+function ocrGray(img, maxSide) {
+  const f = Math.min(1, maxSide / Math.max(img.naturalWidth || img.width, img.naturalHeight || img.height));
+  const w = Math.round((img.naturalWidth || img.width) * f), h = Math.round((img.naturalHeight || img.height) * f);
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, w, h); x.drawImage(img, 0, 0, w, h);
+  const d = x.getImageData(0, 0, w, h).data, g = new Uint8ClampedArray(w * h);
+  for (let i = 0, j = 0; j < g.length; i += 4, j++) g[j] = (d[i] * 77 + d[i + 1] * 150 + d[i + 2] * 29) >> 8;
+  return { g, w, h };
+}
+function ocrMinMax(src, w, h, r, isMax) {
+  // separable square max/min filter (a grey-level dilation/erosion)
+  const tmp = new Uint8ClampedArray(w * h), out = new Uint8ClampedArray(w * h);
+  const pick = isMax ? Math.max : Math.min;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    let v = src[y * w + x];
+    for (let k = Math.max(0, x - r); k <= Math.min(w - 1, x + r); k++) v = pick(v, src[y * w + k]);
+    tmp[y * w + x] = v;
+  }
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    let v = tmp[y * w + x];
+    for (let k = Math.max(0, y - r); k <= Math.min(h - 1, y + r); k++) v = pick(v, tmp[k * w + x]);
+    out[y * w + x] = v;
+  }
+  return out;
+}
+function ocrOtsu(g) {
+  const hist = new Array(256).fill(0); for (const v of g) hist[v]++;
+  let sum = 0; for (let i = 0; i < 256; i++) sum += i * hist[i];
+  let sb = 0, wb = 0, best = 0, t = 128;
+  for (let i = 0; i < 256; i++) {
+    wb += hist[i]; if (!wb) continue; const wf = g.length - wb; if (!wf) break;
+    sb += i * hist[i]; const mb = sb / wb, mf = (sum - sb) / wf, v = wb * wf * (mb - mf) * (mb - mf);
+    if (v > best) { best = v; t = i; }
+  }
+  return t;
+}
+function ocrLetterHeight(g, w, h, t) {
+  // median height of ink blobs (connected components)
+  const lab = new Int32Array(w * h).fill(-1), hs = [];
+  const stack = [];
+  for (let s = 0; s < w * h; s++) {
+    if (g[s] > t || lab[s] >= 0) continue;
+    let top = h, bot = 0, n = 0; stack.push(s); lab[s] = 1;
+    while (stack.length) {
+      const p = stack.pop(), y = (p / w) | 0, x = p - y * w; n++;
+      if (y < top) top = y; if (y > bot) bot = y;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const yy = y + dy, xx = x + dx; if (yy < 0 || xx < 0 || yy >= h || xx >= w) continue;
+        const q = yy * w + xx; if (g[q] <= t && lab[q] < 0) { lab[q] = 1; stack.push(q); }
+      }
+    }
+    const bh = bot - top + 1; if (bh > 2 && bh < 120 && n > 4) hs.push(bh);
+  }
+  hs.sort((a, b) => a - b); return hs.length ? hs[hs.length >> 1] : 0;
+}
+async function ocrPrepare(img) {
+  // work on a copy at most 2600 px wide for the measurements
+  let { g, w, h } = ocrGray(img, 2600);
+  // even out the lighting: divide by the page background (a closing on a quarter-size copy)
+  const sw = Math.max(1, w >> 2), sh = Math.max(1, h >> 2), sc = document.createElement('canvas');
+  sc.width = sw; sc.height = sh;
+  const small = new Uint8ClampedArray(sw * sh);
+  for (let y = 0; y < sh; y++) for (let x = 0; x < sw; x++) small[y * sw + x] = g[(y * 4) * w + x * 4];
+  const bg = ocrMinMax(ocrMinMax(small, sw, sh, 3, true), sw, sh, 3, false);
+  for (let y = 0; y < h; y++) {
+    // smooth (bilinear) background, so the division leaves no blocks
+    const fy = Math.min(sh - 1, Math.max(0, y / 4 - 0.5)), y0 = Math.floor(fy), y1 = Math.min(sh - 1, y0 + 1), wy = fy - y0;
+    for (let x = 0; x < w; x++) {
+      const fx = Math.min(sw - 1, Math.max(0, x / 4 - 0.5)), x0 = Math.floor(fx), x1 = Math.min(sw - 1, x0 + 1), wx = fx - x0;
+      const b = (bg[y0 * sw + x0] * (1 - wx) + bg[y0 * sw + x1] * wx) * (1 - wy) + (bg[y1 * sw + x0] * (1 - wx) + bg[y1 * sw + x1] * wx) * wy;
+      g[y * w + x] = Math.min(255, (g[y * w + x] * 255) / Math.max(1, b || 255));
+    }
+  }
+  const t = ocrOtsu(g);
+  // letters about 26 px tall read best (as accurate as larger, and twice as fast)
+  const lh = ocrLetterHeight(g, w, h, t);
+  const f = lh ? Math.max(0.5, Math.min(4, 26 / lh)) : 1;
+  // straighten: the angle where text lines line up best
+  let bestA = 0, bestV = -1;
+  const qw = Math.max(1, w >> 2), qh = Math.max(1, h >> 2);
+  for (let a = -5; a <= 5.001; a += 0.25) {
+    const rad = a * Math.PI / 180, cs = Math.cos(rad), sn = Math.sin(rad), rows = new Float64Array(qh * 2);
+    for (let y = 0; y < qh; y += 1) for (let x = 0; x < qw; x += 2) {
+      if (g[(y * 4) * w + x * 4] > t) continue;
+      const ry = Math.round((x - qw / 2) * sn + (y - qh / 2) * cs + qh);
+      if (ry >= 0 && ry < rows.length) rows[ry]++;
+    }
+    let m = 0; for (const v of rows) m += v; m /= rows.length;
+    let v = 0; for (const r of rows) v += (r - m) * (r - m);
+    if (v > bestV) { bestV = v; bestA = a; }
+  }
+  const out = document.createElement('canvas');
+  out.width = Math.round(w * f); out.height = Math.round(h * f);
+  const src = document.createElement('canvas'); src.width = w; src.height = h;
+  const id = src.getContext('2d').createImageData(w, h);
+  for (let i = 0, j = 0; j < g.length; i += 4, j++) { id.data[i] = id.data[i + 1] = id.data[i + 2] = g[j]; id.data[i + 3] = 255; }
+  src.getContext('2d').putImageData(id, 0, 0);
+  const ctx = out.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, out.width, out.height);
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+  ctx.translate(out.width / 2, out.height / 2); ctx.rotate(bestA * Math.PI / 180);
+  ctx.drawImage(src, -out.width / 2, -out.height / 2, out.width, out.height);
+  return out;
+}
+
+// PDFs: a page that carries its own text (typed, including Bijoy/SutonnyMJ PDFs) gives that text;
+// a scanned page is drawn at about 300 dpi with pdf.js and read like a picture. Pages are opened
+// one at a time, so a whole book doesn't fill the memory.
+async function ocrPdfOpen(file) {
+  const pdfjs = await import('/ocr/pdf.min.mjs');
+  pdfjs.GlobalWorkerOptions.workerSrc = '/ocr/pdf.worker.min.mjs';
+  // wasmUrl: the JBIG2 / JPEG 2000 decoders most scanned book PDFs need
+  return pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()), wasmUrl: '/ocr/wasm/' }).promise;
+}
+async function ocrPdfText(page) {
+  // the page's text, with its line breaks
+  // raw text: normalising would drop the soft hyphen, which is ল-ফলা in Bijoy fonts
+  const tc = await page.getTextContent({ disableNormalization: true });
+  let out = '', lastY = null;
+  for (const it of tc.items) {
+    if (!('str' in it)) continue;
+    const y = it.transform ? Math.round(it.transform[5]) : null;
+    if (lastY !== null && y !== null && Math.abs(y - lastY) > 2 && !out.endsWith('\n')) out += '\n';
+    out += it.str; if (it.hasEOL) out += '\n';
+    lastY = y;
+  }
+  return out;
+}
+async function ocrPdfDraw(page) {
+  const v1 = page.getViewport({ scale: 1 });
+  const vp = page.getViewport({ scale: Math.min(4, 2480 / v1.width) });
+  const c = document.createElement('canvas'); c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+  const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
+  await page.render({ canvasContext: x, viewport: vp }).promise;
+  return c;
+}
+// "১-১০, ১৫" or "1-10,15" → page numbers (all pages when empty)
+function ocrPageList(spec, n) {
+  spec = (spec || '').replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d)).replace(/[–—]/g, '-').trim();
+  if (!spec) return Array.from({ length: n }, (_, i) => i + 1);
+  const out = [];
+  for (const part of spec.split(/[,،\s]+/)) {
+    const m = part.match(/^(\d+)(?:-(\d+))?$/); if (!m) continue;
+    const a = Math.max(1, +m[1]), b = Math.min(n, m[2] ? +m[2] : +m[1]);
+    for (let i = a; i <= b; i++) if (!out.includes(i)) out.push(i);
+  }
+  return out.length ? out : Array.from({ length: n }, (_, i) => i + 1);
+}
+function ocrImage(file) {
+  return new Promise((ok, fail) => { const i = new Image(); i.onload = () => ok(i); i.onerror = fail; i.src = URL.createObjectURL(file); });
+}
+// OCR's lines with each word's confidence; null between paragraphs
+function ocrLines(data) {
+  const lines = [];
+  for (const b of data.blocks || []) for (const p of b.paragraphs || []) {
+    if (lines.length) lines.push(null);
+    for (const l of p.lines || []) lines.push((l.words || []).map(w => [w.text, w.confidence]));
+  }
+  return lines;
+}
+async function ocrPost(path, body) {
+  const res = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (!res.ok) throw new Error('Studio ' + res.status);
+  return res.json();
+}
+async function ocrFiles(files) {
+  files = Array.from(files || []).filter(f => f.type.startsWith('image/') || f.type === 'application/pdf' || /\.pdf$/i.test(f.name));
+  if (!files.length || ocrBusy) return;
+  ocrBusy = true; ocrStopNow = false;
+  const stop = document.getElementById('ocrStop'); stop.hidden = false;
+  const texts = []; ocrChanges = []; ocrDroppedAll = []; ocrPageData = [];
+  const english = document.getElementById('ocrEnglish').checked;
+  const junk = document.getElementById('ocrJunk').checked;
+  let typed = 0, read = 0;
+  try {
+    // every page in order: pictures as they are, PDF pages by number (opened when their turn comes)
+    const pages = [];
+    for (const f of files) {
+      if (f.type === 'application/pdf' || /\.pdf$/i.test(f.name)) {
+        ocrStatus('PDF খোলা হচ্ছে…');
+        const doc = await ocrPdfOpen(f);
+        for (const n of ocrPageList(document.getElementById('ocrPages').value, doc.numPages)) pages.push({ doc, n });
+      } else pages.push({ file: f });
+    }
+    let worker = null;
+    for (let k = 0; k < pages.length && !ocrStopNow; k++) {
+      const pg = pages[k], head = pages.length > 1 ? `পাতা ${bnNum(k + 1)}/${bnNum(pages.length)}: ` : '';
+      let text = null;
+      let img;
+      if (pg.doc) {
+        const page = await pg.doc.getPage(pg.n);
+        // typed PDFs: use the page's own text when it is real Bangla (or Bijoy text)
+        const own = await ocrPdfText(page);
+        if (own.replace(/\s/g, '').length >= 20) {
+          const tl = await ocrPost('/api/ocr/textlayer', { text: own });
+          if (tl.use) { text = tl.text; typed++; }
+        }
+        if (text === null) img = await ocrPdfDraw(page);
+        page.cleanup();
+      } else img = await ocrImage(pg.file);
+      if (img) {
+        document.getElementById('ocrImg').src = img.src || img.toDataURL('image/jpeg', 0.7);
+        document.getElementById('ocrOut').hidden = false;
+        if (!worker) {
+          worker = await ocrWorkerReady();
+          // Bangla pages: no Latin letters, so a smudged line is never read as English nonsense
+          // automatic page layout: columns, pictures and captions are found and read apart
+          await worker.setParameters({
+            tessedit_char_blacklist: english ? '' : 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz',
+            tessedit_pageseg_mode: '3',
+          });
+        }
+        ocrStatus(head + 'ছবি পরিষ্কার করা হচ্ছে…');
+        await new Promise(r => setTimeout(r, 30));
+        const canvas = await ocrPrepare(img);
+        const { data } = await worker.recognize(canvas, {}, { text: true, blocks: true });
+        ocrStatus(head + 'অভিধান দিয়ে বানান মেলানো হচ্ছে…');
+        const lines = ocrLines(data);
+        // kept for "save for learning": the picture as read and where each line was
+        const boxes = [];
+        for (const b of data.blocks || []) for (const pa of b.paragraphs || []) for (const l of pa.lines || []) boxes.push({ text: l.text, bbox: l.bbox });
+        ocrPageData.push({ canvas, boxes });
+        const out = await ocrPost('/api/ocr/correct', lines.length ? { lines, junk } : { text: data.text || '' });
+        const offset = texts.reduce((n, t) => n + t.length + 2, 0);
+        for (const c of out.changes || []) ocrChanges.push({ at: c.at + offset, from: c.from, to: c.to });
+        for (const d of out.dropped || []) ocrDroppedAll.push(d);
+        text = out.text || '';
+        read++;
+      } else document.getElementById('ocrOut').hidden = false;
+      texts.push(text.trim());
+      document.getElementById('ocrText').value = texts.join('\n\n');
+    }
+    ocrShowFixes();
+    ocrFirstText = document.getElementById('ocrText').value;
+    document.getElementById('ocrLearnBtn').hidden = !ocrPageData.length;
+    document.getElementById('ocrSendBtn').hidden = !ocrPageData.length;
+    const n = texts.length;
+    let msg = n > 1 ? `${bnNum(n)}টি পাতা পড়া হয়েছে।` : 'পড়া হয়েছে। লেখাটি দেখে নিন, দরকার হলে এখানেই ঠিক করুন।';
+    if (typed) msg += ` ${bnNum(typed)}টি পাতা PDF-এর নিজের লেখা থেকে নেওয়া (ছবি পড়ার দরকার হয়নি)।`;
+    if (ocrStopNow) msg = `থামানো হয়েছে; ${bnNum(n)}টি পাতা পড়া হয়েছে।`;
+    ocrStatus(msg);
+  } catch (e) {
+    ocrStatus('ছবিটি পড়া যায়নি: ' + (e && e.message ? e.message : e));
+  } finally {
+    ocrBusy = false; stop.hidden = true;
+  }
+}
+function bnNum(n) { return String(n).replace(/[0-9]/g, d => '০১২৩৪৫৬৭৮৯'[d]); }
+function ocrShowFixes() {
+  const dbox = document.getElementById('ocrDropped');
+  dbox.innerHTML = '';
+  if (ocrDroppedAll.length) {
+    const d = document.createElement('details');
+    d.innerHTML = `<summary>ছবি, নকশা বা দাগ থেকে আসা ${bnNum(ocrDroppedAll.length)} জায়গার অক্ষর বাদ দেওয়া হয়েছে (দেখুন)</summary><div class="ocr-dropped"></div>`;
+    d.querySelector('.ocr-dropped').textContent = ocrDroppedAll.join('  ‖  ');
+    dbox.appendChild(d);
+  }
+  const box = document.getElementById('ocrFixes');
+  box.innerHTML = '';
+  if (!ocrChanges.length) return;
+  box.append(`অভিধান দিয়ে ${bnNum(ocrChanges.length)}টি শব্দ ঠিক করা হয়েছে (ক্লিক করলে আগের মতো হবে): `);
+  ocrChanges.forEach((c, i) => {
+    const b = document.createElement('button'); b.className = 'ocr-fix';
+    b.innerHTML = `<s></s> → <b></b>`; b.querySelector('s').textContent = c.from; b.querySelector('b').textContent = c.to;
+    b.onclick = () => ocrUndo(i, b);
+    box.appendChild(b);
+  });
+}
+function ocrUndo(i, btn) {
+  const c = ocrChanges[i], ta = document.getElementById('ocrText'), t = ta.value;
+  // find the corrected word near where it was put (the text may have been edited since)
+  let at = t.indexOf(c.to, Math.max(0, c.at - 40));
+  if (at < 0) at = t.indexOf(c.to);
+  if (at < 0) { btn.remove(); return; }
+  ta.value = t.slice(0, at) + c.from + t.slice(at + c.to.length);
+  const d = c.from.length - c.to.length;
+  ocrChanges.forEach(o => { if (o.at > c.at) o.at += d; });
+  btn.remove();
+}
+// The page's line breaks out, paragraphs (blank lines) kept
+function ocrJoinLines() {
+  const ta = document.getElementById('ocrText');
+  ta.value = ta.value.split(/\n\s*\n/).map(p => p.replace(/\s*\n\s*/g, ' ').trim()).filter(Boolean).join('\n\n');
+  ocrChanges = []; document.getElementById('ocrFixes').innerHTML = '';
+}
+function ocrToPad() {
+  const out = document.getElementById('banglaPad');
+  if (out) { out.value = (out.value ? out.value + '\n' : '') + document.getElementById('ocrText').value; if (typeof updateCount === 'function') updateCount(); }
+  showTab('playground');
+}
+// Save the picture(s) as read with the corrected text, on this computer, as material to train the
+// reader on later. Nothing is sent anywhere.
+async function ocrSaveForLearning() {
+  const id = new Date().toISOString().replace(/[-:]/g, '').replace('T', '-').slice(0, 15) + '-' + Math.random().toString(36).slice(2, 6);
+  try {
+    for (let i = 0; i < ocrPageData.length; i++) {
+      const jpg = ocrPageData[i].canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
+      await ocrPost('/api/ocr/sample', { id, page: i + 1, jpg, lines: ocrPageData[i].boxes });
+    }
+    const r = await ocrPost('/api/ocr/sample', { id, corrected: document.getElementById('ocrText').value, original: ocrFirstText });
+    toast('রাখা হয়েছে: ' + (r.dir || ''));
+  } catch (e) {
+    toast('রাখা যায়নি: ' + (e && e.message ? e.message : e));
+  }
+}
+// Send the corrected page(s) to Ekushe (only after the person agrees in the dialog), to train the
+// reader on real pages. Goes to ekushenext.com/api/ocr-sample; nothing is sent otherwise.
+const OCR_SEND_URL = 'https://ekushenext.com/api/ocr-sample';
+let appInfo = { app: '', os: /Windows/.test(navigator.userAgent) ? 'Windows' : /Mac/.test(navigator.userAgent) ? 'macOS' : /Linux/.test(navigator.userAgent) ? 'Linux' : '' };
+function ocrSendAsk() {
+  if (!ocrPageData.length) return;
+  document.getElementById('ocrSendPages').textContent = ocrPageData.length > 10 ? 'প্রথম ১০টি পাতা' : ocrPageData.length > 1 ? `${bnNum(ocrPageData.length)}টি পাতা` : 'একটি পাতা';
+  document.getElementById('ocrSendSame').hidden = document.getElementById('ocrText').value !== ocrFirstText;
+  document.getElementById('ocrSendGo').disabled = false;
+  document.getElementById('ocrSendDlg').showModal();
+}
+// A page picture small enough to send (long side at most 2600 px, under 3.5 MB)
+function ocrJpeg(canvas) {
+  let c = canvas;
+  const long = Math.max(c.width, c.height);
+  if (long > 2600) {
+    const k = 2600 / long, d = document.createElement('canvas');
+    d.width = Math.round(c.width * k); d.height = Math.round(c.height * k);
+    d.getContext('2d').drawImage(c, 0, 0, d.width, d.height); c = d;
+  }
+  for (const q of [0.85, 0.7, 0.55]) {
+    const b = c.toDataURL('image/jpeg', q).split(',')[1];
+    if (b.length * 0.75 < 3.5e6) return { jpg: b, scale: c.width / canvas.width };
+  }
+  return null;
+}
+async function ocrSend() {
+  const go = document.getElementById('ocrSendGo'); go.disabled = true;
+  try {
+    const pages = [];
+    for (const p of ocrPageData.slice(0, 10)) {
+      const j = ocrJpeg(p.canvas);
+      if (!j) continue;
+      const k = j.scale;
+      pages.push({ jpg: j.jpg, lines: p.boxes.map(b => ({ text: b.text, bbox: b.bbox && { x0: b.bbox.x0 * k, y0: b.bbox.y0 * k, x1: b.bbox.x1 * k, y1: b.bbox.y1 * k } })) });
+    }
+    const res = await fetch(OCR_SEND_URL, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ app: appInfo.app, os: appInfo.os, corrected: document.getElementById('ocrText').value, original: ocrFirstText, pages }),
+    });
+    const r = await res.json().catch(() => ({}));
+    document.getElementById('ocrSendDlg').close();
+    if (r.ok) { toast('পাঠানো হয়েছে, ধন্যবাদ! একুশের ছবি পড়া এতে আরও ভালো হবে।'); document.getElementById('ocrSendBtn').hidden = true; }
+    else toast(r.error === 'too_many' ? 'আজ অনেকবার পাঠানো হয়েছে, কাল আবার চেষ্টা করুন।' : 'পাঠানো যায়নি' + (r.error ? ' (' + r.error + ')' : '') + '। পরে আবার চেষ্টা করুন।');
+  } catch (e) {
+    document.getElementById('ocrSendDlg').close();
+    toast('পাঠানো যায়নি: ইন্টারনেট সংযোগ দেখে আবার চেষ্টা করুন।');
+  }
+}
+function ocrSave() {
+  const blob = new Blob(['﻿' + document.getElementById('ocrText').value], { type: 'text/plain;charset=utf-8' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'ekushe-ocr.txt'; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+(function ocrWire() {
+  const drop = document.getElementById('ocrDrop');
+  drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+  drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('over'); ocrFiles(e.dataTransfer.files); });
+  document.addEventListener('paste', e => {
+    if (!document.getElementById('tab-ocr').classList.contains('active')) return;
+    const files = Array.from(e.clipboardData && e.clipboardData.files || []);
+    if (files.length) { e.preventDefault(); ocrFiles(files); }
+  });
+})();
+
 // ── First run: how do you type Bangla? ──
 let welcomeShown = false;
 function welcomeMaybeShow(st) {

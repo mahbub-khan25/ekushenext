@@ -21,7 +21,7 @@ copy Cargo.toml Cargo.lock LICENSE README.md THIRD_PARTY_NOTICES.md .github/rele
      data/dictionary/ekushe.dict.z data/dictionary/LICENSE.md data/dictionary/CC-BY-SA-4.0.txt \
      platform/linux/Makefile platform/linux/ekushe_ffi.h platform/linux/ibus platform/linux/studio platform/linux/packaging/ekushe-studio.desktop
 # Newer Studio pieces (older release tags, rebuilt with this script, don't have them)
-for f in crates/ekushe-tray/src/studio_layouts.rs; do if [ -f "$f" ]; then copy "$f"; fi; done
+for f in crates/ekushe-tray/src/studio_layouts.rs crates/ekushe-tray/src/studio_ocr.rs assets/ocr data/ocr; do if [ -e "$f" ]; then copy "$f"; fi; done
 # The Fcitx 5 addon (releases before it existed are still rebuilt with today's packaging)
 [ -d platform/linux/fcitx5 ] && copy platform/linux/fcitx5/ekushe-fcitx5.cpp platform/linux/fcitx5/ekushe-addon.conf.in platform/linux/fcitx5/ekushe-im.conf
 rm -rf "$WORK"/crates/*/target

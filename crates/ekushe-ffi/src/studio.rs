@@ -11,6 +11,8 @@
 mod studio_http;
 #[path = "../../ekushe-tray/src/studio_layouts.rs"]
 mod studio_layouts;
+#[path = "../../ekushe-tray/src/studio_ocr.rs"]
+mod studio_ocr;
 #[path = "../../ekushe-tray/src/studio_ui.rs"]
 mod studio_ui;
 
@@ -252,6 +254,25 @@ fn handle(mut s: TcpStream, req: &str, port: u16) -> std::io::Result<()> {
         ("GET", "/logo.png") | ("GET", "/favicon.ico") => {
             respond(&mut s, "200 OK", "image/png", LOGO)
         }
+        ("GET", p) if p.starts_with("/ocr/") => match studio_ocr::asset(p) {
+            Some((ct, bytes)) => respond(&mut s, "200 OK", ct, bytes),
+            None => respond(&mut s, "404 Not Found", "text/plain", b"no such file"),
+        },
+        ("POST", "/api/ocr/correct") => {
+            respond(&mut s, "200 OK", ct, studio_ocr::correct(body).as_bytes())
+        }
+        ("POST", "/api/ocr/sample") => respond(
+            &mut s,
+            "200 OK",
+            ct,
+            studio_ocr::save_sample(body).as_bytes(),
+        ),
+        ("POST", "/api/ocr/textlayer") => respond(
+            &mut s,
+            "200 OK",
+            ct,
+            studio_ocr::text_layer(body).as_bytes(),
+        ),
         ("GET", p) if p.starts_with("/fonts/") => {
             let name = &p["/fonts/".len()..];
             match FONTS.iter().find(|(n, _)| *n == name) {
@@ -295,6 +316,7 @@ fn handle(mut s: TcpStream, req: &str, port: u16) -> std::io::Result<()> {
                         _ => "DoubleTapShift",
                     },
                     "hotkey_display": cfg.switch_hotkey.display_name(),
+                    "app_version": include_str!("../../../.github/release/VERSION").trim(),
                     "typing_mode": format!("{:?}", cfg.typing_mode),
                     "active_layout": studio_layouts::setting_value(cfg),
                     "layout_name": studio_layouts::active_names(cfg).0,

@@ -57,6 +57,31 @@ cargo metadata --format-version 1 | jq -r '.packages[] | "\(.name) \(.version) \
 Key ones: `windows-sys` (MIT/Apache-2.0), `serde`/`serde_json` (MIT/Apache-2.0), `miniz_oxide`
 (MIT/Zlib/Apache-2.0), `parking_lot`, `once_cell`, `dirs` (MIT/Apache-2.0).
 
+## Picture to text (`assets/ocr/`)
+
+Studio reads pictures of printed Bangla with these, under the Apache License 2.0 unless noted (full texts
+next to the files):
+
+- **Tesseract OCR** compiled to WebAssembly, from [tesseract.js-core](https://github.com/naptha/tesseract.js-core)
+  7.0.0 (`tesseract-core-*.wasm.js`), and **tesseract.js** 7.0.0 (`tesseract.min.js`, `worker.min.js`;
+  bundles regenerator-runtime (MIT), the browser `buffer` module (MIT), ieee754 (BSD-3-Clause) and
+  zlib.js (MIT)). `LICENSE-tesseract.js.txt`.
+- **The Bangla model** `ben.traineddata` starts from Tesseract's `tessdata_best` Bengali model
+  (Apache-2.0, `LICENSE-tessdata.txt`); Ekushe fine-tuned it on rendered Bangla text and gave it
+  Ekushe's own word list. `benold.traineddata` is the `tessdata_best` Bengali model itself, converted
+  to integer weights (used alongside, for old print).
+  `benreal.traineddata` is that model fine-tuned by Ekushe on real scans: the **Mozhi-Bengali**
+  dataset by CVIT, IIIT Hyderabad (word images from scanned books, CC BY 4.0; M. Mathew, A. Mondal and
+  C. V. Jawahar, "Towards Deployable OCR Models for Indic Languages", ICPR 2022,
+  https://ilocr.iiit.ac.in/dataset/4/) and the British Library's ground truth for historical Bengali
+  printed texts (REID2019, public domain, DOI 10.23636/1168), with rendered Bangla text.
+- **pdf.js** 5.7.284 by Mozilla (`pdf.min.mjs`, `pdf.worker.min.mjs`), for scanned PDFs. `LICENSE-pdf.js.txt`.
+  Its image decoders in `wasm/`: JBIG2 (from PDFium, BSD-3-Clause), OpenJPEG (BSD-2-Clause) and qcms
+  (MIT), with Mozilla's wrappers (Apache-2.0 / BSD-2-Clause); all texts in `wasm/LICENSES.txt`.
+
+The misread tables `data/ocr/rules.tsv` (learned from Ekushe's own test pages) and
+`data/ocr/rules_extra.tsv` are Ekushe's own data.
+
 ## Promo video project (`ekushe-promo/`)
 
 Built with [Remotion](https://www.remotion.dev/), installed from npm (not bundled here). Remotion has its own
