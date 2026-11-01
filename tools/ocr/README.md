@@ -30,4 +30,11 @@ Work in a scratch folder (`OCRWORK`), with `tessdata/` models in `td/` and fonts
 10. `cargo run -p ekushe-core --features embedded-dict --example text_layer FILE`: what Ekushe would
     use from a PDF page's text (`pdftotext -f N -l N file.pdf FILE`).
 
+11. Real data (2026-11-01): `make_real.py OUT` builds training and test lines from
+    **Mozhi-Bengali** (IIIT Hyderabad, CC BY 4.0, word images from scanned books, joined into lines)
+    and the **British Library REID2019** pages (public domain, 1713-1914; cut into lines by
+    `bl_lines.py`); `lstmtraining --continue_from` Tesseract's `ben` model on them plus the rendered
+    pages of step 7; `rt_model.sh CHECKPOINT NAME` makes the int model (`benreal`);
+    `eval_lines.py DIR MODEL [--correct]` scores line images.
+
 Results so far are in the project handbook (log and dictionary pages).

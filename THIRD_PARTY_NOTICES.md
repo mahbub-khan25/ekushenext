@@ -70,6 +70,11 @@ next to the files):
   (Apache-2.0, `LICENSE-tessdata.txt`); Ekushe fine-tuned it on rendered Bangla text and gave it
   Ekushe's own word list. `benold.traineddata` is the `tessdata_best` Bengali model itself, converted
   to integer weights (used alongside, for old print).
+  `benreal.traineddata` is that model fine-tuned by Ekushe on real scans: the **Mozhi-Bengali**
+  dataset by CVIT, IIIT Hyderabad (word images from scanned books, CC BY 4.0; M. Mathew, A. Mondal and
+  C. V. Jawahar, "Towards Deployable OCR Models for Indic Languages", ICPR 2022,
+  https://ilocr.iiit.ac.in/dataset/4/) and the British Library's ground truth for historical Bengali
+  printed texts (REID2019, public domain, DOI 10.23636/1168), with rendered Bangla text.
 - **pdf.js** 5.7.284 by Mozilla (`pdf.min.mjs`, `pdf.worker.min.mjs`), for scanned PDFs. `LICENSE-pdf.js.txt`.
   Its image decoders in `wasm/`: JBIG2 (from PDFium, BSD-3-Clause), OpenJPEG (BSD-2-Clause) and qcms
   (MIT), with Mozilla's wrappers (Apache-2.0 / BSD-2-Clause); all texts in `wasm/LICENSES.txt`.

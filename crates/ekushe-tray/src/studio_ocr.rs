@@ -66,6 +66,13 @@ const FILES: &[(&str, &str, &[u8])] = &[
     ),
     // Tesseract's own Bangla model: reads old print and archive scans better than the fine-tuned
     // one, which reads modern fonts better; Tesseract tries both on each unsure word
+    // Tesseract's model fine-tuned on real scans (Mozhi-Bengali book pages, CC BY 4.0, and the
+    // British Library's 1713-1914 Bengali books, public domain): the main reader for real pages
+    (
+        "benreal.traineddata",
+        "application/octet-stream",
+        include_bytes!("../../../assets/ocr/benreal.traineddata"),
+    ),
     (
         "benold.traineddata",
         "application/octet-stream",

@@ -1824,9 +1824,10 @@ async function ocrWorkerReady() {
   // WebAssembly SIMD makes it about twice as fast where the browser has it
   const simd = WebAssembly.validate(new Uint8Array([0,97,115,109,1,0,0,0,1,5,1,96,0,1,123,3,2,1,0,10,10,1,8,0,65,0,253,15,253,98,11]));
   const base = location.origin + '/ocr/';
-  // two Bangla models: Tesseract's own (old print, archive scans) and Ekushe's fine-tuned one (modern
-  // fonts); each unsure word is read with both (real old books: 22% → 19% words wrong)
-  ocrWorker = await Tesseract.createWorker(['benold', 'ben'], 1, {
+  // three Bangla models, each unsure word read with all of them: one trained on real scanned books
+  // (old and new), Ekushe's fine-tune for modern fonts, and Tesseract's own (old books and archive
+  // scans: 25% → 16% words wrong; modern pages a little better too)
+  ocrWorker = await Tesseract.createWorker(['benreal', 'ben', 'benold'], 1, {
     workerPath: base + 'worker.min.js', workerBlobURL: false,
     corePath: base + (simd ? 'tesseract-core-simd-lstm.wasm.js' : 'tesseract-core-lstm.wasm.js'),
     langPath: base.slice(0, -1), gzip: false, cacheMethod: 'none',
