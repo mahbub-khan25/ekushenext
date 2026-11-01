@@ -44,3 +44,13 @@ Work in a scratch folder (`OCRWORK`), with `tessdata/` models in `td/` and fonts
     split) with `correct.py learn`, Bangla letters only.
 
 Results so far are in the project handbook (log and dictionary pages).
+
+## Pages people send from Studio
+
+Studio's "একুশেকে পাঠান" button (after the person agrees) posts the page pictures, the lines as read
+and the corrected text to `ekushenext.com/api/ocr-sample` (website repo), which keeps them in R2.
+
+- `fetch_samples.py OUT_DIR`: downloads everything new (`EKUSHE_OCR_KEY` = the `OCR_ADMIN_KEY`
+  secret).
+- `user_lines.py SAMPLES_DIR OUT_DIR`: cuts each line out of the page and labels it with the
+  person's correction (matched word by word, kept only when at most 40% of the letters changed).

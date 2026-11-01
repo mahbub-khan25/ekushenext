@@ -384,6 +384,11 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
   .welcome-choice:hover, .welcome-choice:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
   .welcome-choice span { font-size: .85rem; color: var(--ink-soft); }
   .welcome-list { margin: 10px 0 0; padding-left: 20px; line-height: 1.9; }
+  .ocr-send { margin: auto; position: fixed; inset: 0; height: fit-content; border: 1px solid var(--line); border-radius: 16px; padding: 20px 22px; max-width: 520px; background: var(--page); color: var(--ink); font: inherit; line-height: 1.7; }
+  .ocr-send::backdrop { background: rgba(0, 0, 0, .35); }
+  .ocr-send h3 { margin: 0 0 8px; }
+  .ocr-send ul { margin: 8px 0; padding-left: 20px; }
+  .ocr-send .warn { color: var(--danger); }
   .link-btn { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; cursor: pointer; text-decoration: underline; }
   .keymap-back { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: grid; place-items: center; z-index: 50; padding: 16px; }
   .keymap { background: var(--page); color: var(--ink); border-radius: 20px; padding: 18px; max-width: 980px; width: 100%; max-height: 92vh; overflow: auto; box-shadow: 0 30px 80px -30px rgba(0,0,0,.6); }
@@ -691,11 +696,29 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
             <button class="btn" onclick="ocrToPad()">লেখার প্যাডে নিন</button>
             <button class="btn" onclick="ocrSave()">.txt হিসেবে রাখুন</button>
             <button class="btn" id="ocrLearnBtn" hidden onclick="ocrSaveForLearning()" title="লেখা ঠিক করার পর চাপুন: ছবি আর ঠিক করা লেখা আপনার কম্পিউটারে জমা থাকে (কোথাও পাঠানো হয় না), পরে একুশের ছবি পড়া আরও ভালো করতে কাজে লাগে">শেখার জন্য রাখুন</button>
+            <button class="btn" id="ocrSendBtn" hidden onclick="ocrSendAsk()" title="লেখা ঠিক করার পর চাপুন: পাতার ছবি আর ঠিক করা লেখা একুশের কাছে যায়, যাতে ছবি থেকে বাংলা পড়া আরও ভালো করা যায়">একুশেকে পাঠান</button>
             <button class="btn primary" onclick="copyText(document.getElementById('ocrText').value)"><svg><use href="#i-copy"/></svg>কপি করুন</button>
           </div>
         </div>
       </div>
     </section>
+
+    <dialog class="ocr-send" id="ocrSendDlg">
+      <h3>পাতাটি একুশেকে পাঠাবেন?</h3>
+      <div>আপনার ঠিক করা লেখা দিয়ে একুশের ছবি পড়া আরও ভালো করা হবে। যা যাবে:</div>
+      <ul>
+        <li>পড়া পাতার ছবি (<span id="ocrSendPages"></span>)</li>
+        <li>আপনার ঠিক করা লেখা, আর একুশে প্রথমে যা পড়েছিল</li>
+        <li>একুশের সংস্করণ আর কম্পিউটারের ধরন (যেমন Windows)</li>
+      </ul>
+      <div>আপনার নাম, ঠিকানা বা অন্য কোনো ফাইল যায় না।</div>
+      <div class="warn">পরিচয়পত্র, চিঠি, ব্যাংক বা অন্য ব্যক্তিগত কাগজের ছবি পাঠাবেন না।</div>
+      <div id="ocrSendSame" class="hint" hidden style="margin-top:6px">লেখাটি এখনও বদলানো হয়নি। ভুলগুলো ঠিক করে পাঠালে সবচেয়ে বেশি কাজে লাগে।</div>
+      <div class="row" style="margin-top:14px;gap:8px;justify-content:flex-end">
+        <button class="btn" onclick="document.getElementById('ocrSendDlg').close()">থাক</button>
+        <button class="btn primary" id="ocrSendGo" onclick="ocrSend()">পাঠান</button>
+      </div>
+    </dialog>
 
     <!-- A word was wrong -->
     <section class="panel" id="tab-fix" data-title="ভুল শব্দ ঠিক করুন" data-sub="একুশে কোনো শব্দ ভুল বসালে এখানে ঠিকটা বেছে দিন। একুশে সঙ্গে সঙ্গে শিখে নেবে, পরের বার ঠিক শব্দটাই আসবে।">
@@ -1074,6 +1097,7 @@ async function refreshState() {
     if (document.activeElement !== appsEl) appsEl.value = st.bijoy_output_apps || '';
   }
   document.getElementById('fixedLayoutOptions').hidden = !st.active_layout || st.active_layout === 'AvroPhonetic';
+  if (st.app_version) appInfo.app = st.app_version;
   if (typeof st.check_for_updates === 'boolean' && st.app_version) {
     document.getElementById('cfgUpdatesRow').style.display = '';
     document.getElementById('cfgUpdates').checked = st.check_for_updates;
@@ -2074,6 +2098,7 @@ async function ocrFiles(files) {
     ocrShowFixes();
     ocrFirstText = document.getElementById('ocrText').value;
     document.getElementById('ocrLearnBtn').hidden = !ocrPageData.length;
+    document.getElementById('ocrSendBtn').hidden = !ocrPageData.length;
     const n = texts.length;
     let msg = n > 1 ? `${bnNum(n)}টি পাতা পড়া হয়েছে।` : 'পড়া হয়েছে। লেখাটি দেখে নিন, দরকার হলে এখানেই ঠিক করুন।';
     if (typed) msg += ` ${bnNum(typed)}টি পাতা PDF-এর নিজের লেখা থেকে নেওয়া (ছবি পড়ার দরকার হয়নি)।`;
@@ -2141,6 +2166,55 @@ async function ocrSaveForLearning() {
     toast('রাখা হয়েছে: ' + (r.dir || ''));
   } catch (e) {
     toast('রাখা যায়নি: ' + (e && e.message ? e.message : e));
+  }
+}
+// Send the corrected page(s) to Ekushe (only after the person agrees in the dialog), to train the
+// reader on real pages. Goes to ekushenext.com/api/ocr-sample; nothing is sent otherwise.
+const OCR_SEND_URL = 'https://ekushenext.com/api/ocr-sample';
+let appInfo = { app: '', os: /Windows/.test(navigator.userAgent) ? 'Windows' : /Mac/.test(navigator.userAgent) ? 'macOS' : /Linux/.test(navigator.userAgent) ? 'Linux' : '' };
+function ocrSendAsk() {
+  if (!ocrPageData.length) return;
+  document.getElementById('ocrSendPages').textContent = ocrPageData.length > 1 ? `${bnNum(ocrPageData.length)}টি পাতা` : 'একটি পাতা';
+  document.getElementById('ocrSendSame').hidden = document.getElementById('ocrText').value !== ocrFirstText;
+  document.getElementById('ocrSendGo').disabled = false;
+  document.getElementById('ocrSendDlg').showModal();
+}
+// A page picture small enough to send (long side at most 2600 px, under 3.5 MB)
+function ocrJpeg(canvas) {
+  let c = canvas;
+  const long = Math.max(c.width, c.height);
+  if (long > 2600) {
+    const k = 2600 / long, d = document.createElement('canvas');
+    d.width = Math.round(c.width * k); d.height = Math.round(c.height * k);
+    d.getContext('2d').drawImage(c, 0, 0, d.width, d.height); c = d;
+  }
+  for (const q of [0.85, 0.7, 0.55]) {
+    const b = c.toDataURL('image/jpeg', q).split(',')[1];
+    if (b.length * 0.75 < 3.5e6) return { jpg: b, scale: c.width / canvas.width };
+  }
+  return null;
+}
+async function ocrSend() {
+  const go = document.getElementById('ocrSendGo'); go.disabled = true;
+  try {
+    const pages = [];
+    for (const p of ocrPageData.slice(0, 20)) {
+      const j = ocrJpeg(p.canvas);
+      if (!j) continue;
+      const k = j.scale;
+      pages.push({ jpg: j.jpg, lines: p.boxes.map(b => ({ text: b.text, bbox: b.bbox && { x0: b.bbox.x0 * k, y0: b.bbox.y0 * k, x1: b.bbox.x1 * k, y1: b.bbox.y1 * k } })) });
+    }
+    const res = await fetch(OCR_SEND_URL, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ app: appInfo.app, os: appInfo.os, corrected: document.getElementById('ocrText').value, original: ocrFirstText, pages }),
+    });
+    const r = await res.json().catch(() => ({}));
+    document.getElementById('ocrSendDlg').close();
+    if (r.ok) { toast('পাঠানো হয়েছে, ধন্যবাদ! একুশের ছবি পড়া এতে আরও ভালো হবে।'); document.getElementById('ocrSendBtn').hidden = true; }
+    else toast(r.error === 'too_many' ? 'আজ অনেকবার পাঠানো হয়েছে, কাল আবার চেষ্টা করুন।' : 'পাঠানো যায়নি' + (r.error ? ' (' + r.error + ')' : '') + '। পরে আবার চেষ্টা করুন।');
+  } catch (e) {
+    document.getElementById('ocrSendDlg').close();
+    toast('পাঠানো যায়নি: ইন্টারনেট সংযোগ দেখে আবার চেষ্টা করুন।');
   }
 }
 function ocrSave() {
