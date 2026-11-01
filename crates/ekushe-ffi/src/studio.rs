@@ -11,6 +11,8 @@
 mod studio_http;
 #[path = "../../ekushe-tray/src/studio_layouts.rs"]
 mod studio_layouts;
+#[path = "../../ekushe-tray/src/studio_ocr.rs"]
+mod studio_ocr;
 #[path = "../../ekushe-tray/src/studio_ui.rs"]
 mod studio_ui;
 
@@ -252,6 +254,19 @@ fn handle(mut s: TcpStream, req: &str, port: u16) -> std::io::Result<()> {
         ("GET", "/logo.png") | ("GET", "/favicon.ico") => {
             respond(&mut s, "200 OK", "image/png", LOGO)
         }
+        ("GET", p) if p.starts_with("/ocr/") => match studio_ocr::asset(p) {
+            Some((ct, bytes)) => respond(&mut s, "200 OK", ct, bytes),
+            None => respond(&mut s, "404 Not Found", "text/plain", b"no such file"),
+        },
+        ("POST", "/api/ocr/correct") => {
+            respond(&mut s, "200 OK", ct, studio_ocr::correct(body).as_bytes())
+        }
+        ("POST", "/api/ocr/textlayer") => respond(
+            &mut s,
+            "200 OK",
+            ct,
+            studio_ocr::text_layer(body).as_bytes(),
+        ),
         ("GET", p) if p.starts_with("/fonts/") => {
             let name = &p["/fonts/".len()..];
             match FONTS.iter().find(|(n, _)| *n == name) {
