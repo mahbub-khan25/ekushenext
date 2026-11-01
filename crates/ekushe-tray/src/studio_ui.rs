@@ -2174,7 +2174,7 @@ const OCR_SEND_URL = 'https://ekushenext.com/api/ocr-sample';
 let appInfo = { app: '', os: /Windows/.test(navigator.userAgent) ? 'Windows' : /Mac/.test(navigator.userAgent) ? 'macOS' : /Linux/.test(navigator.userAgent) ? 'Linux' : '' };
 function ocrSendAsk() {
   if (!ocrPageData.length) return;
-  document.getElementById('ocrSendPages').textContent = ocrPageData.length > 1 ? `${bnNum(ocrPageData.length)}টি পাতা` : 'একটি পাতা';
+  document.getElementById('ocrSendPages').textContent = ocrPageData.length > 10 ? 'প্রথম ১০টি পাতা' : ocrPageData.length > 1 ? `${bnNum(ocrPageData.length)}টি পাতা` : 'একটি পাতা';
   document.getElementById('ocrSendSame').hidden = document.getElementById('ocrText').value !== ocrFirstText;
   document.getElementById('ocrSendGo').disabled = false;
   document.getElementById('ocrSendDlg').showModal();
@@ -2198,7 +2198,7 @@ async function ocrSend() {
   const go = document.getElementById('ocrSendGo'); go.disabled = true;
   try {
     const pages = [];
-    for (const p of ocrPageData.slice(0, 20)) {
+    for (const p of ocrPageData.slice(0, 10)) {
       const j = ocrJpeg(p.canvas);
       if (!j) continue;
       const k = j.scale;
