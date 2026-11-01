@@ -55,6 +55,9 @@ approved identity and a profile name, e.g. `ekushe-public`. This becomes `SIGNIN
    - Name: `release-main`
    - If you also publish releases by pushing tags, add a second credential with entity type
      **Tag** and tag `v*`.
+   - For signed **release candidates** (Actions → Release → Run workflow → mode `candidate`, run on
+     the branch `candidate`), add one more credential: entity type **Branch**, branch `candidate`,
+     name `release-candidate`. Without it, candidates build fine but their Windows files are unsigned.
 3. Back in the signing account, open the **certificate profile → Access control (IAM) → Add
    role assignment**. Choose **Artifact Signing Certificate Profile Signer** (older name:
    *Trusted Signing Certificate Profile Signer*) and assign it to the app `ekushe-github-signing`.
