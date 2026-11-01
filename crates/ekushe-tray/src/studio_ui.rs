@@ -668,7 +668,7 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
       </div>
     </section>
 
-    <section class="panel" id="tab-ocr" data-title="ছবি থেকে লেখা" data-sub="ছাপা বাংলা লেখার ছবি বা স্ক্যান দিন, একুশে লেখাটি পড়ে ইউনিকোডে দেবে। ছবি আপনার কম্পিউটারেই থাকে, কোথাও পাঠানো হয় না।">
+    <section class="panel" id="tab-ocr" data-title="ছবি থেকে লেখা" data-sub="ছাপা বাংলা লেখার ছবি বা স্ক্যান দিন, একুশে লেখাটি পড়ে ইউনিকোডে দেবে। ছবি আপনার কম্পিউটারেই থাকে; আপনি নিজে „একুশেকে পাঠান“ না চাপলে কোথাও পাঠানো হয় না।">
       <div class="etched ocr-drop" id="ocrDrop" tabindex="0">
         <svg class="ocr-ico"><use href="#i-image"/></svg>
         <div class="section-title">ছবি এখানে ছেড়ে দিন, বেছে নিন, বা Ctrl+V দিয়ে পেস্ট করুন</div>
