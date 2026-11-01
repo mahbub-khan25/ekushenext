@@ -261,6 +261,12 @@ fn handle(mut s: TcpStream, req: &str, port: u16) -> std::io::Result<()> {
         ("POST", "/api/ocr/correct") => {
             respond(&mut s, "200 OK", ct, studio_ocr::correct(body).as_bytes())
         }
+        ("POST", "/api/ocr/sample") => respond(
+            &mut s,
+            "200 OK",
+            ct,
+            studio_ocr::save_sample(body).as_bytes(),
+        ),
         ("POST", "/api/ocr/textlayer") => respond(
             &mut s,
             "200 OK",

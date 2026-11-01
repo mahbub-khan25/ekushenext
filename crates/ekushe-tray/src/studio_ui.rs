@@ -690,6 +690,7 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
             <button class="btn" onclick="ocrJoinLines()" title="ছাপার লাইন ভাঙা বাদ দিয়ে অনুচ্ছেদ হিসেবে">লাইন জোড়া দিন</button>
             <button class="btn" onclick="ocrToPad()">লেখার প্যাডে নিন</button>
             <button class="btn" onclick="ocrSave()">.txt হিসেবে রাখুন</button>
+            <button class="btn" id="ocrLearnBtn" hidden onclick="ocrSaveForLearning()" title="লেখা ঠিক করার পর চাপুন: ছবি আর ঠিক করা লেখা আপনার কম্পিউটারে জমা থাকে (কোথাও পাঠানো হয় না), পরে একুশের ছবি পড়া আরও ভালো করতে কাজে লাগে">শেখার জন্য রাখুন</button>
             <button class="btn primary" onclick="copyText(document.getElementById('ocrText').value)"><svg><use href="#i-copy"/></svg>কপি করুন</button>
           </div>
         </div>
@@ -1812,7 +1813,7 @@ function keyText(t) {
 }
 // ── Picture to text (Bangla OCR) ──
 // Tesseract (WebAssembly) reads the picture in this page; Ekushe's dictionary then cleans the text.
-let ocrWorker = null, ocrBusy = false, ocrChanges = [], ocrStopNow = false, ocrDroppedAll = [];
+let ocrWorker = null, ocrBusy = false, ocrChanges = [], ocrStopNow = false, ocrDroppedAll = [], ocrPageData = [], ocrFirstText = '';
 function ocrStatus(t) { document.getElementById('ocrProgress').textContent = t; }
 function ocrLoadScript(src) {
   return new Promise((ok, fail) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = fail; document.head.appendChild(s); });
@@ -2008,7 +2009,7 @@ async function ocrFiles(files) {
   if (!files.length || ocrBusy) return;
   ocrBusy = true; ocrStopNow = false;
   const stop = document.getElementById('ocrStop'); stop.hidden = false;
-  const texts = []; ocrChanges = []; ocrDroppedAll = [];
+  const texts = []; ocrChanges = []; ocrDroppedAll = []; ocrPageData = [];
   const english = document.getElementById('ocrEnglish').checked;
   const junk = document.getElementById('ocrJunk').checked;
   let typed = 0, read = 0;
@@ -2056,6 +2057,10 @@ async function ocrFiles(files) {
         const { data } = await worker.recognize(canvas, {}, { text: true, blocks: true });
         ocrStatus(head + 'অভিধান দিয়ে বানান মেলানো হচ্ছে…');
         const lines = ocrLines(data);
+        // kept for "save for learning": the picture as read and where each line was
+        const boxes = [];
+        for (const b of data.blocks || []) for (const pa of b.paragraphs || []) for (const l of pa.lines || []) boxes.push({ text: l.text, bbox: l.bbox });
+        ocrPageData.push({ canvas, boxes });
         const out = await ocrPost('/api/ocr/correct', lines.length ? { lines, junk } : { text: data.text || '' });
         const offset = texts.reduce((n, t) => n + t.length + 2, 0);
         for (const c of out.changes || []) ocrChanges.push({ at: c.at + offset, from: c.from, to: c.to });
@@ -2067,6 +2072,8 @@ async function ocrFiles(files) {
       document.getElementById('ocrText').value = texts.join('\n\n');
     }
     ocrShowFixes();
+    ocrFirstText = document.getElementById('ocrText').value;
+    document.getElementById('ocrLearnBtn').hidden = !ocrPageData.length;
     const n = texts.length;
     let msg = n > 1 ? `${bnNum(n)}টি পাতা পড়া হয়েছে।` : 'পড়া হয়েছে। লেখাটি দেখে নিন, দরকার হলে এখানেই ঠিক করুন।';
     if (typed) msg += ` ${bnNum(typed)}টি পাতা PDF-এর নিজের লেখা থেকে নেওয়া (ছবি পড়ার দরকার হয়নি)।`;
@@ -2120,6 +2127,21 @@ function ocrToPad() {
   const out = document.getElementById('banglaPad');
   if (out) { out.value = (out.value ? out.value + '\n' : '') + document.getElementById('ocrText').value; if (typeof updateCount === 'function') updateCount(); }
   showTab('playground');
+}
+// Save the picture(s) as read with the corrected text, on this computer, as material to train the
+// reader on later. Nothing is sent anywhere.
+async function ocrSaveForLearning() {
+  const id = new Date().toISOString().replace(/[-:]/g, '').replace('T', '-').slice(0, 15) + '-' + Math.random().toString(36).slice(2, 6);
+  try {
+    for (let i = 0; i < ocrPageData.length; i++) {
+      const jpg = ocrPageData[i].canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
+      await ocrPost('/api/ocr/sample', { id, page: i + 1, jpg, lines: ocrPageData[i].boxes });
+    }
+    const r = await ocrPost('/api/ocr/sample', { id, corrected: document.getElementById('ocrText').value, original: ocrFirstText });
+    toast('রাখা হয়েছে: ' + (r.dir || ''));
+  } catch (e) {
+    toast('রাখা যায়নি: ' + (e && e.message ? e.message : e));
+  }
 }
 function ocrSave() {
   const blob = new Blob(['﻿' + document.getElementById('ocrText').value], { type: 'text/plain;charset=utf-8' });

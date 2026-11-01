@@ -42,8 +42,11 @@ def lines_from(words, d, prefix, limit):
         k = random.randint(4, 8); img, tx = join(words[i:i + k]); i += k
         write(d, f"{prefix}_{n:05d}", img, tx); n += 1
     return n
-print("mozhi train lines", lines_from(mozhi("train"), f"{OUT}/train", "mz", 10000))
+import os as _os
+LIMIT = int(_os.environ.get("MZ_LIMIT", "10000"))
+print("mozhi train lines", lines_from(mozhi("train"), f"{OUT}/train", "mz", LIMIT))
 print("mozhi eval lines", lines_from(mozhi("test"), f"{OUT}/eval_mozhi", "mzt", 400))
+if _os.environ.get("MZ_VAL"): print("mozhi val lines", lines_from(mozhi("validation" if False else "val"), f"{OUT}/val_mozhi", "mzv", 100000))
 # British Library: hold out whole books (shelfmark before the last _) for testing
 bl = sorted(glob.glob(f"{R}/bl_lines/*.png"))
 books = sorted(set(re.sub(r"_\d+_r\d+_l\d+\.png$", "", os.path.basename(f)) for f in bl))

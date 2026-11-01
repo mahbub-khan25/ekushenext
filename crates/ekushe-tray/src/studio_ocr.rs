@@ -9,6 +9,9 @@
 //!   (scanned PDF pages are drawn in the page, then read)
 //! - `POST /api/ocr/correct`   body `{"lines": [[["word", confidence], ...], null, ...], "junk": true}`
 //!   (OCR's lines, `null` between paragraphs; or `{"text": "..."}`) → `{"text", "changes", "dropped"}`
+//! - `POST /api/ocr/sample`   a page picture as read (`{"id", "page", "jpg": base64, "lines"}`) or the
+//!   corrected text (`{"id", "corrected", "original"}`), saved under `<config dir>/ocr-samples/<id>/`
+//!   on this computer, as material to train the reader on later
 //! - `POST /api/ocr/textlayer` body `{"text": "..."}` (a PDF page's own text) → `{"use": true,
 //!   "text", "kind"}` when it is real Bangla or Bijoy text, so the page needs no OCR
 
@@ -144,5 +147,80 @@ pub fn text_layer(body: &str) -> String {
     match ekushe_core::ocr::text_layer(v["text"].as_str().unwrap_or_default()) {
         Some(t) => serde_json::json!({ "use": true, "text": t.text, "kind": t.kind }).to_string(),
         None => r#"{"use":false}"#.into(),
+    }
+}
+
+fn base64_decode(s: &str) -> Option<Vec<u8>> {
+    const T: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = Vec::with_capacity(s.len() * 3 / 4);
+    let (mut acc, mut bits) = (0u32, 0u32);
+    for c in s.bytes() {
+        if c == b'=' {
+            break;
+        }
+        if c.is_ascii_whitespace() {
+            continue;
+        }
+        let v = T.iter().position(|&t| t == c)? as u32;
+        acc = (acc << 6) | v;
+        bits += 6;
+        if bits >= 8 {
+            bits -= 8;
+            out.push((acc >> bits) as u8);
+        }
+    }
+    Some(out)
+}
+
+/// `POST /api/ocr/sample`: keep a page as read, or its corrected text, for training later.
+pub fn save_sample(body: &str) -> String {
+    let fail = |m: &str| serde_json::json!({ "ok": false, "error": m }).to_string();
+    let v: serde_json::Value = serde_json::from_str(body).unwrap_or_default();
+    let id = v["id"].as_str().unwrap_or_default();
+    if id.is_empty() || id.len() > 40 || !id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
+    {
+        return fail("bad id");
+    }
+    let dir = ekushe_core::config::Config::default_dir()
+        .join("ocr-samples")
+        .join(id);
+    if std::fs::create_dir_all(&dir).is_err() {
+        return fail("can't create the folder");
+    }
+    let write = |name: &str, data: &[u8]| std::fs::write(dir.join(name), data).is_ok();
+    let ok = if let Some(jpg) = v["jpg"].as_str() {
+        let page = v["page"].as_u64().unwrap_or(1).min(9999);
+        match base64_decode(jpg) {
+            Some(bytes) if bytes.starts_with(&[0xFF, 0xD8]) => {
+                write(&format!("page-{page:04}.jpg"), &bytes)
+                    && write(
+                        &format!("page-{page:04}.json"),
+                        v["lines"].to_string().as_bytes(),
+                    )
+            }
+            _ => return fail("not a JPEG picture"),
+        }
+    } else {
+        write(
+            "corrected.txt",
+            v["corrected"].as_str().unwrap_or_default().as_bytes(),
+        ) && write(
+            "original.txt",
+            v["original"].as_str().unwrap_or_default().as_bytes(),
+        )
+    };
+    if !ok {
+        return fail("can't write the files");
+    }
+    serde_json::json!({ "ok": true, "dir": dir.to_string_lossy() }).to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn base64_decodes() {
+        assert_eq!(super::base64_decode("aGVsbG8=").unwrap(), b"hello");
+        assert_eq!(super::base64_decode("/9j/").unwrap(), [0xFF, 0xD8, 0xFF]);
+        assert!(super::base64_decode("a*b").is_none());
     }
 }

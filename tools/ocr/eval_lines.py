@@ -6,6 +6,7 @@ d, model = sys.argv[1], sys.argv[2]
 corr = "--correct" in sys.argv
 def norm(s):
     s = unicodedata.normalize("NFC", s).replace("‌", "").replace("‍", "").replace("ৰ", "র")
+    s = re.sub(r"([।॥,;:?!.\"'()\-—–‘’“”])", r" \1 ", s)   # punctuation apart: spacing before a dari differs by print
     return re.sub(r"\s+", " ", s).strip()
 out = fos.environ.get("OCRWORK", ".") + "/runs/lines_{os.path.basename(d.rstrip('/'))}_{model.replace('+','_')}"
 os.makedirs(out, exist_ok=True)
@@ -25,6 +26,8 @@ for img, o in res:
     gt = norm(open(img[:-4] + ".gt.txt").read())
     p = (o.replace(out, out + "_c") if corr else o) + ".txt"
     hy = norm(open(p).read()) if os.path.exists(p) else ""
-    T[0] += Levenshtein.distance(gt, hy); T[1] += len(gt)
-    T[2] += Levenshtein.distance(gt.split(), hy.split()); T[3] += len(gt.split())
+    T[0] += Levenshtein.distance(gt.replace(" ", ""), hy.replace(" ", "")); T[1] += len(gt.replace(" ", ""))
+    gw = [w for w in gt.split() if re.search(r"\w", w)]; hw = [w for w in hy.split() if re.search(r"\w", w)]
+    T[0] += 0
+    T[2] += Levenshtein.distance(gw, hw); T[3] += len(gw)
 print(f"{os.path.basename(d.rstrip('/')):12s} {model:22s} {'corrected' if corr else 'raw':9s} CER {100*T[0]/T[1]:5.2f}%  WER {100*T[2]/T[3]:5.2f}%  ({len(res)} lines)")

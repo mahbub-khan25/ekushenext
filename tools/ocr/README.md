@@ -37,4 +37,10 @@ Work in a scratch folder (`OCRWORK`), with `tessdata/` models in `td/` and fonts
     pages of step 7; `rt_model.sh CHECKPOINT NAME` makes the int model (`benreal`);
     `eval_lines.py DIR MODEL [--correct]` scores line images.
 
+12. `mine_typed_pdfs.py`: finds typed (not scanned) PDF pages in a collection and cuts them into
+    line images with the PDF's own text (Bijoy text converted with `ekushe-cli bijoy2uni`; lines kept
+    only when the text is real Bangla and a plain OCR pass roughly agrees). Used as a private test set.
+13. `data/ocr/rules_real.tsv`: misreads learned from held-out real scanned lines (Mozhi validation
+    split) with `correct.py learn`, Bangla letters only.
+
 Results so far are in the project handbook (log and dictionary pages).

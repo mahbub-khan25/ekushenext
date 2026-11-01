@@ -2578,12 +2578,16 @@ fn handle_http_client(mut stream: TcpStream, req: &str) -> std::io::Result<()> {
             return write_http_response(&mut stream, "200 OK", ct, bytes);
         }
     }
-    if method == "POST" && (clean_path == "/api/ocr/correct" || clean_path == "/api/ocr/textlayer")
+    if method == "POST"
+        && matches!(
+            clean_path,
+            "/api/ocr/correct" | "/api/ocr/textlayer" | "/api/ocr/sample"
+        )
     {
-        let json = if clean_path == "/api/ocr/correct" {
-            studio_ocr::correct(body)
-        } else {
-            studio_ocr::text_layer(body)
+        let json = match clean_path {
+            "/api/ocr/correct" => studio_ocr::correct(body),
+            "/api/ocr/sample" => studio_ocr::save_sample(body),
+            _ => studio_ocr::text_layer(body),
         };
         return write_http_response(
             &mut stream,

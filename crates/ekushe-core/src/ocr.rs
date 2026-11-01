@@ -75,7 +75,9 @@ fn rules() -> &'static Rules {
         // ন/স, য/ষ, র/ব, the old ৎ): the misreads real pages show more often than rendered ones
         let learned = include_str!("../../../data/ocr/rules.tsv");
         let extra = include_str!("../../../data/ocr/rules_extra.tsv");
-        for line in learned.lines().chain(extra.lines()) {
+        // and the misreads seen on real scanned book pages (Mozhi-Bengali, held-out lines)
+        let real = include_str!("../../../data/ocr/rules_real.tsv");
+        for line in learned.lines().chain(extra.lines()).chain(real.lines()) {
             let f: Vec<&str> = line.split('\t').collect();
             if f.len() < 4 {
                 continue;
