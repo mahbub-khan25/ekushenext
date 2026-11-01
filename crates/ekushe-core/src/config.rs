@@ -85,7 +85,7 @@ pub struct Config {
     pub switch_hotkey: SwitchHotkey,
     /// Hotkey to convert selected Banglish/Bijoy text in any app
     pub convert_selection_hotkey: String,
-    /// Active layout (Phonetic, UniJoy, Probhat, National/Jatiya, Bornona, Munir Optima, or Custom)
+    /// Active layout (Phonetic, Probhat, National/Jatiya, Bornona, Munir Optima, or Custom: a layout file)
     pub active_layout: LayoutId,
     /// The imported layout file used when `active_layout` is `Custom` (its id)
     pub custom_layout: Option<String>,

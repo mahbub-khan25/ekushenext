@@ -31,9 +31,9 @@ enum Engine {
         ek_use_start_language() // English at login unless the user chose Bangla
     }
     static func key(_ scalar: UInt32) -> EngineOutput { decode(ek_key(scalar)) }
-    /// A key typed with Option held: the third layer of a fixed layout (UniJoy: ঈ ঊ ঐ ঔ ...)
+    /// A key typed with Option held: the third layer of a fixed layout (National: ঈ ঊ ঐ ঔ ...)
     static func keyAltGr(_ scalar: UInt32) -> EngineOutput { decode(ek_key_altgr(scalar)) }
-    /// A fixed layout (UniJoy, National, an imported layout ...) is in use rather than phonetic typing
+    /// A fixed layout (National, Probhat, an imported layout file ...) is in use rather than phonetic typing
     static var isFixedLayout: Bool { ek_fixed_layout() }
     static var layoutName: String { take(ek_layout_name()) ?? "" }
     /// The app in front gets Bijoy (SutonnyMJ) text instead of Unicode

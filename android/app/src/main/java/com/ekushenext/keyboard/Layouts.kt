@@ -22,7 +22,7 @@ data class Key(
     val shiftLabel: String? = null,
 )
 
-/** A fixed layout's keys (UniJoy, National, an imported layout), read from the engine */
+/** A fixed layout's keys (National, Probhat, an imported layout file), read from the engine */
 class FixedKeys(val name: String, val keys: Map<Char, String>, val altgr: Map<Char, String>, val link: Char?) {
     companion object {
         /** From the engine's layout file; null for phonetic typing */

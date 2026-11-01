@@ -5,7 +5,7 @@ $setup = "$env:RUNNER_TEMP\Ekushe-Setup.exe"
 Copy-Item target\release\ekushe.exe $setup
 $preset = "$env:RUNNER_TEMP\office-settings.toml"
 Set-Content -Path $preset -Encoding utf8 -Value @'
-active_layout = "UniJoy"
+active_layout = "Probhat"
 start_language = "Bangla"
 welcome_done = true
 '@
@@ -13,7 +13,7 @@ $p = Start-Process -FilePath $setup -ArgumentList '/S', '--no-launch', '--no-des
 Get-Content "$env:TEMP\ekushe-install.log" -Tail 12 -ErrorAction SilentlyContinue
 if ($p.ExitCode -ne 0) { Write-Error "silent install failed ($($p.ExitCode))"; exit 1 }
 $cfg = Get-Content "$env:APPDATA\Ekushe\config.toml" -Raw
-if ($cfg -notmatch 'active_layout = "UniJoy"') { Write-Error "the office's layout was not set:`n$cfg"; exit 1 }
+if ($cfg -notmatch 'active_layout = "Probhat"') { Write-Error "the office's layout was not set:`n$cfg"; exit 1 }
 if ($cfg -notmatch 'welcome_done = true') { Write-Error "the welcome would still be asked:`n$cfg"; exit 1 }
 if (Test-Path "$([Environment]::GetFolderPath('Desktop'))\Ekushe Next Bangla Keyboard.lnk") { Write-Error "--no-desktop-shortcut was ignored"; exit 1 }
 if (-not (Test-Path "$env:LOCALAPPDATA\Programs\Ekushe\ekushe.exe")) { Write-Error "not installed"; exit 1 }

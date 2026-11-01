@@ -481,7 +481,7 @@ void EkusheEngine::keyEvent(const fcitx::InputMethodEntry &, fcitx::KeyEvent &ev
             finish(ic);
         return;
     }
-    /* AltGr (Mod5) types a fixed layout's third layer (UniJoy: ঈ ঊ ঐ ঔ ...) */
+    /* AltGr (Mod5) types a fixed layout's third layer (National: ঈ ঊ ঐ ঔ ...) */
     if ((states & fcitx::KeyState::Mod5) && ek_fixed_layout())
         ekushe_string_free(ek_key_altgr(ch));
     else

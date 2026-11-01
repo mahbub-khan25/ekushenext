@@ -1,10 +1,11 @@
-//! Fixed Keyboard Layout Engine (UniJoy, Probhat, National/Jatiya, Bornona, Munir Optima, and the
+//! Fixed Keyboard Layout Engine (Probhat, National/Jatiya, Bornona, Munir Optima, and the
 //! user's own layout files) with Smart Sign & Connected-Letter Automation. People type the way their
 //! hands learned and the text is always stored as correct Unicode:
-//! - Pre-base kar (`ি`, `ে`, `ৈ`) typed before OR after the consonant
+//! - Pre-base kar (`ি`, `ে`, `ৈ`) typed before OR after the consonant (or, for layouts that say so,
+//!   always before it)
 //! - Compound kar joining (`ে` + `া` -> `ো`, `ে` + `ৗ` -> `ৌ`, `অ` + `া` -> `আ`)
 //! - Chandrabindu (`ঁ`) canonical ordering (`ক` + `ঁ` + `া` -> `কাঁ`)
-//! - A link key (UniJoy's `g`): link + consonant joins a conjunct, link + vowel sign gives the full
+//! - A link key: link + consonant joins a conjunct, link + vowel sign gives the full
 //!   vowel (`g` `f` -> `আ`), link twice shows a visible hasanta
 //! - A vowel sign with no consonant before it becomes the full vowel (`া` -> `আ`)
 //! - Optionally, reph typed after the letter it sits on (`ম` + `র্` -> `র্ম`)
@@ -24,7 +25,6 @@ pub enum LayoutId {
     NationalJatiya,
     Bornona,
     MunirOptima,
-    UniJoy,
     /// A layout file the user imported (`Config::custom_layout` names which one)
     Custom,
 }
@@ -37,7 +37,6 @@ impl LayoutId {
             Self::NationalJatiya => "জাতীয় (National / Jatiya)",
             Self::Bornona => "বর্ণনা (Bornona)",
             Self::MunirOptima => "মুনীর অপটিমা (Munir Optima)",
-            Self::UniJoy => "ইউনিজয় (UniJoy)",
             Self::Custom => "নিজের লেআউট (Custom layout)",
         }
     }
@@ -87,6 +86,9 @@ pub struct FixedLayout {
     pub independent: HashMap<char, String>,
     /// Reph (`র্`) is typed after the letter it sits on, the way the letters look (`ম` `র্` -> `র্ম`)
     pub reph_after: bool,
+    /// `ি` `ে` `ৈ` are always typed before the letter (or conjunct) they belong to, the way they look
+    /// (`ি` `ক` -> `কি`, `শ` `ি` `ক্ত` -> `শক্তি`), never after it
+    pub kar_before: bool,
 }
 
 /// The full vowel for a vowel sign (`া` -> `আ`), or the double danda for a danda.
@@ -214,7 +216,6 @@ impl FixedLayout {
             LayoutId::NationalJatiya => Some(Self::national_jatiya()),
             LayoutId::Bornona => Some(Self::bornona()),
             LayoutId::MunirOptima => Some(Self::munir_optima()),
-            LayoutId::UniJoy => Some(Self::unijoy()),
             LayoutId::Custom => None,
         }
     }
@@ -229,121 +230,6 @@ impl FixedLayout {
                 .and_then(|id| load_custom_layout(id).ok());
         }
         Self::builtin(config.active_layout)
-    }
-
-    /// UniJoy, the Unicode layout from the Ekushey project (key map as published in the m17n
-    /// database, LGPL-2.1+). `g` is the link key.
-    pub fn unijoy() -> Self {
-        let pairs: &[(char, &str)] = &[
-            ('`', "\u{200C}"),
-            ('1', "১"),
-            ('2', "২"),
-            ('3', "৩"),
-            ('4', "৪"),
-            ('5', "৫"),
-            ('6', "৬"),
-            ('7', "৭"),
-            ('8', "৮"),
-            ('9', "৯"),
-            ('0', "০"),
-            ('q', "ঙ"),
-            ('w', "য"),
-            ('e', "ড"),
-            ('r', "প"),
-            ('t', "ট"),
-            ('y', "চ"),
-            ('u', "জ"),
-            ('i', "হ"),
-            ('o', "গ"),
-            ('p', "ড়"),
-            ('\\', "ঃ"),
-            ('a', "ৃ"),
-            ('s', "ু"),
-            ('d', "ি"),
-            ('f', "া"),
-            ('h', "ব"),
-            ('j', "ক"),
-            ('k', "ত"),
-            ('l', "দ"),
-            ('z', "্র"),
-            ('x', "ো"),
-            ('c', "ে"),
-            ('v', "র"),
-            ('b', "ন"),
-            ('n', "স"),
-            ('m', "ম"),
-            ('~', "\u{200D}"),
-            ('$', "৳"),
-            ('^', "÷"),
-            ('&', "ঁ"),
-            ('*', "×"),
-            ('Q', "ং"),
-            ('W', "য়"),
-            ('E', "ঢ"),
-            ('R', "ফ"),
-            ('T', "ঠ"),
-            ('Y', "ছ"),
-            ('U', "ঝ"),
-            ('I', "ঞ"),
-            ('O', "ঘ"),
-            ('P', "ঢ়"),
-            ('|', "ৎ"),
-            ('A', "র্"),
-            ('S', "ূ"),
-            ('D', "ী"),
-            ('F', "অ"),
-            ('G', "।"),
-            ('H', "ভ"),
-            ('J', "খ"),
-            ('K', "থ"),
-            ('L', "ধ"),
-            ('Z', "্য"),
-            ('X', "ৌ"),
-            ('C', "ৈ"),
-            ('V', "ল"),
-            ('B', "ণ"),
-            ('N', "ষ"),
-            ('M', "শ"),
-        ];
-        let altgr: &[(char, &str)] = &[
-            ('=', "≠"),
-            ('e', "ঈ"),
-            ('u', "ঊ"),
-            ('i', "ঐ"),
-            ('o', "ঔ"),
-            ('a', "ঋ"),
-            ('s', "উ"),
-            ('d', "ই"),
-            ('f', "আ"),
-            ('g', "্"),
-            ('h', "ৰ"),
-            ('x', "ও"),
-            ('c', "এ"),
-            ('v', "ৱ"),
-            ('.', "়"),
-            ('!', "৴"),
-            ('@', "৵"),
-            ('#', "৶"),
-            ('$', "৷"),
-            ('%', "৲"),
-            ('&', "৺"),
-            (')', "৸"),
-            ('_', "৹"),
-            ('Q', "ঌ"),
-            ('W', "ৡ"),
-            ('I', "ঽ"),
-            ('Z', "ৢ"),
-            ('X', "ৗ"),
-            ('C', "ৠ"),
-            ('V', "ৣ"),
-            ('B', "ৄ"),
-            ('<', "≤"),
-            ('>', "≥"),
-        ];
-        let mut layout = Self::from_slice("unijoy", "ইউনিজয় (UniJoy)", pairs, altgr);
-        layout.short = "ইউ".into();
-        layout.link_key = Some('g');
-        layout
     }
 
     /// Standard Probhat layout mapping.
@@ -670,6 +556,7 @@ impl FixedLayout {
             link_key: None,
             independent: HashMap::new(),
             reph_after: false,
+            kar_before: false,
         }
     }
 
@@ -761,6 +648,19 @@ impl FixedLayout {
 
         if self.reph_after && piece == "র্" && self.place_reph_after(state) {
             return;
+        }
+
+        // Kar-before layouts: `ি` `ে` `ৈ` wait for the letter they go with, even right after a letter
+        if self.kar_before && automation.auto_prebase_kar_reorder {
+            let mut chars = piece.chars();
+            if let (Some(k), None) = (chars.next(), chars.next()) {
+                if is_prebase_kar(k) {
+                    if let Some(pk) = state.pending_kar.replace(k) {
+                        state.buf.push(pk);
+                    }
+                    return;
+                }
+            }
         }
 
         for out_ch in piece.chars() {
@@ -951,6 +851,9 @@ pub struct LayoutFile {
     /// Reph typed after the letter it sits on
     #[serde(default)]
     pub reph_after: bool,
+    /// `ি` `ে` `ৈ` always typed before their letter (never after it)
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub kar_before: bool,
     /// Key -> text, for the keys with and without Shift (`"j": "ক"`, `"J": "খ"`)
     pub keys: std::collections::BTreeMap<String, String>,
     /// AltGr (right Alt, or Ctrl+Alt) + key -> text
@@ -1084,6 +987,7 @@ impl FixedLayout {
             link_key,
             independent,
             reph_after: file.reph_after,
+            kar_before: file.kar_before,
         };
         Ok((layout, file))
     }
@@ -1104,6 +1008,7 @@ impl FixedLayout {
             description: description.into(),
             link_key: self.link_key.map(|c| c.to_string()),
             reph_after: self.reph_after,
+            kar_before: self.kar_before,
             keys: map(&self.normal),
             altgr: map(&self.altgr),
             after_link: map(&self.independent),
@@ -1160,14 +1065,13 @@ pub fn custom_layouts_dir() -> std::path::PathBuf {
 /// The built-in layouts, in the order settings and menus show them.
 pub const BUILT_IN_LAYOUTS: &[LayoutId] = &[
     LayoutId::AvroPhonetic,
-    LayoutId::UniJoy,
     LayoutId::NationalJatiya,
     LayoutId::Probhat,
     LayoutId::Bornona,
     LayoutId::MunirOptima,
 ];
 
-/// The layout setting as one value: a built-in layout's name (`UniJoy`) or `Custom:<id>`.
+/// The layout setting as one value: a built-in layout's name (`Probhat`) or `Custom:<id>`.
 pub fn setting_value(cfg: &crate::config::Config) -> String {
     match (cfg.active_layout, cfg.custom_layout.as_deref()) {
         (LayoutId::Custom, Some(id)) => format!("Custom:{id}"),
@@ -1273,6 +1177,15 @@ pub fn remove_custom_layout(id: &str) -> Result<(), String> {
         .map_err(|e| format!("Couldn't remove the layout: {e}"))
 }
 
+/// A made-up layout with every feature a layout file can use, on arbitrary keys, for tests (the
+/// keys typed in tests are its keys: see `testdata/test-layout.ekushe-layout`)
+#[cfg(test)]
+pub(crate) fn test_layout() -> FixedLayout {
+    FixedLayout::from_file_text(include_str!("../testdata/test-layout.ekushe-layout"))
+        .unwrap()
+        .0
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1302,7 +1215,7 @@ mod tests {
 
     #[test]
     fn ra_ya_at_the_start_of_a_word_gets_its_zwj_in_fixed_layouts() {
-        let l = FixedLayout::unijoy();
+        let l = test_layout();
         let auto = LayoutAutomation::default();
         let typed = |keys: &str| {
             let mut st = FixedState::default();
@@ -1311,45 +1224,45 @@ mod tests {
             }
             (st.preedit(), st.take())
         };
-        assert_eq!(typed("vZfh"), ("র\u{200D}্যাব".into(), "র\u{200D}্যাব".into()));
+        assert_eq!(typed("qxlZ"), ("র\u{200D}্যাব".into(), "র\u{200D}্যাব".into()));
         // Inside a word it stays a reph + য (কার্য)
-        assert_eq!(typed("jfvZ").1, "কার্য");
+        assert_eq!(typed("mlqx").1, "কার্য");
     }
 
     #[test]
-    fn unijoy_types_words_the_way_hands_know() {
-        let u = FixedLayout::unijoy();
-        assert_eq!(word(&u, "gfmfv"), "আমার"); // link + া = আ
-        assert_eq!(word(&u, "dj"), "কি"); // ি before the consonant
-        assert_eq!(word(&u, "jd"), "কি"); // ... or after
-        assert_eq!(word(&u, "cjfb"), "কোন"); // ে + ক + া = কো
-        assert_eq!(word(&u, "jxb"), "কোন"); // the ো key
-        assert_eq!(word(&u, "jgk"), "ক্ত"); // link joins a conjunct
-        assert_eq!(word(&u, "djgk"), "ক্তি"); // ি typed first goes after the whole conjunct
-        assert_eq!(word(&u, "cjgk"), "ক্তে");
-        assert_eq!(word(&u, "jgkd"), "ক্তি"); // ... and typed after it
-        assert_eq!(word(&u, "ngkzD"), "স্ত্রী"); // র-ফলা and ী
-        assert_eq!(word(&u, "hZhifv"), "ব্যবহার"); // য-ফলা
-        assert_eq!(word(&u, "LAm"), "ধর্ম"); // reph in Unicode order
-        assert_eq!(word(&u, "j&f"), "কাঁ"); // chandrabindu before the kar is put after it
-        assert_eq!(word(&u, "Fv|"), "অরৎ"); // khanda ta
-        assert_eq!(word(&u, "j."), "ক."); // a key the layout doesn't use passes through
-        assert_eq!(word(&u, "G"), "।");
+    fn a_layout_file_types_words_the_way_hands_know() {
+        let u = test_layout();
+        assert_eq!(word(&u, "Olwlq"), "আমার"); // link + া = আ
+        assert_eq!(word(&u, "Sm"), "কি"); // ি before the consonant
+        assert_eq!(word(&u, "mS"), "কি"); // ... or after
+        assert_eq!(word(&u, "RmlG"), "কোন"); // ে + ক + া = কো
+        assert_eq!(word(&u, "mnG"), "কোন"); // the ো key
+        assert_eq!(word(&u, "mOB"), "ক্ত"); // link joins a conjunct
+        assert_eq!(word(&u, "SmOB"), "ক্তি"); // ি typed first goes after the whole conjunct
+        assert_eq!(word(&u, "RmOB"), "ক্তে");
+        assert_eq!(word(&u, "mOBS"), "ক্তি"); // ... and typed after it
+        assert_eq!(word(&u, "gOByf"), "স্ত্রী"); // র-ফলা and ী
+        assert_eq!(word(&u, "ZxZXlq"), "ব্যবহার"); // য-ফলা
+        assert_eq!(word(&u, "vJw"), "ধর্ম"); // reph in Unicode order
+        assert_eq!(word(&u, "m_l"), "কাঁ"); // chandrabindu before the kar is put after it
+        assert_eq!(word(&u, "tq."), "অরৎ"); // khanda ta
+        assert_eq!(word(&u, "m~"), "ক~"); // a key the layout doesn't use passes through
+        assert_eq!(word(&u, "a"), "।");
     }
 
     #[test]
     fn rra_rha_yya_are_stored_in_standard_unicode() {
-        let u = FixedLayout::unijoy();
-        assert_eq!(word(&u, "p"), "ড\u{09BC}");
-        assert_eq!(word(&u, "dp"), "ড\u{09BC}ি"); // ি typed first lands after the nukta
-        assert_eq!(word(&u, "hfpD"), "বাড\u{09BC}ী");
-        assert_eq!(word(&u, "Wf"), "য\u{09BC}া");
-        assert!(!word(&u, "pPW").contains(['\u{09DC}', '\u{09DD}', '\u{09DF}']));
+        let u = test_layout();
+        assert_eq!(word(&u, "F"), "ড\u{09BC}");
+        assert_eq!(word(&u, "SF"), "ড\u{09BC}ি"); // ি typed first lands after the nukta
+        assert_eq!(word(&u, "ZlFf"), "বাড\u{09BC}ী");
+        assert_eq!(word(&u, "il"), "য\u{09BC}া");
+        assert!(!word(&u, "FWi").contains(['\u{09DC}', '\u{09DD}', '\u{09DF}']));
     }
 
     #[test]
     fn a_semicolon_starts_a_snippet_in_plain_letters() {
-        let u = FixedLayout::unijoy();
+        let u = test_layout();
         let st = typ(&u, ";aj");
         assert!(st.raw);
         assert_eq!(st.buf, ";aj");
@@ -1358,40 +1271,40 @@ mod tests {
         st.backspace();
         assert!(!st.raw && st.is_empty());
         // Mid-word, `;` is just punctuation
-        assert_eq!(word(&u, "j;"), "ক;");
+        assert_eq!(word(&u, "m;"), "ক;");
     }
 
     #[test]
     fn a_vowel_sign_without_a_consonant_is_the_full_vowel() {
-        let u = FixedLayout::unijoy();
-        assert_eq!(word(&u, "sbd"), "উনি");
-        assert_eq!(word(&u, "f"), "আ");
-        assert_eq!(word(&u, "gc"), "এ"); // the link way works too
-        assert_eq!(word(&u, "gG"), "॥");
+        let u = test_layout();
+        assert_eq!(word(&u, "zGS"), "উনি");
+        assert_eq!(word(&u, "l"), "আ");
+        assert_eq!(word(&u, "OR"), "এ"); // the link way works too
+        assert_eq!(word(&u, "Oa"), "॥");
         // But a vowel sign after a consonant stays a sign
-        assert_eq!(word(&u, "js"), "কু");
+        assert_eq!(word(&u, "mz"), "কু");
         // And the automation can be turned off
         let auto = LayoutAutomation {
             kar_alone_becomes_vowel: false,
             ..Default::default()
         };
         let mut st = FixedState::default();
-        u.apply_key(&mut st, 'f', false, &auto);
+        u.apply_key(&mut st, 'l', false, &auto);
         assert_eq!(st.take(), "া");
     }
 
     #[test]
     fn link_twice_is_a_visible_hasanta() {
-        let u = FixedLayout::unijoy();
-        assert_eq!(word(&u, "jgg"), "ক্\u{200C}");
+        let u = test_layout();
+        assert_eq!(word(&u, "mOO"), "ক্\u{200C}");
         // A link left at the end of a word is a hasanta
-        assert_eq!(word(&u, "jg"), "ক্");
+        assert_eq!(word(&u, "mO"), "ক্");
     }
 
     #[test]
     fn backspace_takes_back_exactly_one_key() {
-        let u = FixedLayout::unijoy();
-        let mut st = typ(&u, "dj");
+        let u = test_layout();
+        let mut st = typ(&u, "Sm");
         assert_eq!(st.preedit(), "কি");
         assert!(st.backspace());
         // The ি typed first is still waiting, and shown
@@ -1400,7 +1313,7 @@ mod tests {
         assert!(st.is_empty());
         assert!(!st.backspace());
 
-        let mut st = typ(&u, "ngkz");
+        let mut st = typ(&u, "gOBy");
         assert_eq!(st.preedit(), "স্ত্র");
         st.backspace(); // the র-ফলা key, whole
         assert_eq!(st.preedit(), "স্ত");
@@ -1409,7 +1322,7 @@ mod tests {
         st.backspace(); // the link
         assert_eq!(st.preedit(), "স");
 
-        let mut st = typ(&u, "cjf");
+        let mut st = typ(&u, "Rml");
         assert_eq!(st.preedit(), "কো");
         st.backspace();
         assert_eq!(st.preedit(), "কে");
@@ -1417,38 +1330,55 @@ mod tests {
 
     #[test]
     fn a_waiting_kar_is_shown_apart_from_the_last_letter() {
-        let u = FixedLayout::unijoy();
-        let st = typ(&u, "jfc");
+        let u = test_layout();
+        let st = typ(&u, "mlR");
         assert_eq!(st.buf, "কা");
         assert_eq!(st.preedit(), "কা\u{200C}ে");
-        assert_eq!(typ(&u, "jfcm").take(), "কামে");
+        assert_eq!(typ(&u, "mlRw").take(), "কামে");
         // A link shows as a hasanta on the last letter
-        assert_eq!(typ(&u, "jg").preedit(), "ক্");
+        assert_eq!(typ(&u, "mO").preedit(), "ক্");
     }
 
     #[test]
     fn reph_can_be_typed_after_the_letter() {
-        let mut u = FixedLayout::unijoy();
+        let mut u = test_layout();
         u.reph_after = true;
-        assert_eq!(word(&u, "LmA"), "ধর্ম");
-        assert_eq!(word(&u, "jmDA"), "কর্মী");
-        assert_eq!(word(&u, "dmA"), "র্মি"); // ি typed first, then ম, then reph
-        assert_eq!(word(&u, "ngkA"), "র্স্ত"); // in front of the whole conjunct
-        assert_eq!(word(&u, "Am"), "র্ম"); // nothing to sit on yet: typed as it comes
-        assert_eq!(word(&u, "LmAf"), "ধর্মা");
+        assert_eq!(word(&u, "vwJ"), "ধর্ম");
+        assert_eq!(word(&u, "mwfJ"), "কর্মী");
+        assert_eq!(word(&u, "SwJ"), "র্মি"); // ি typed first, then ম, then reph
+        assert_eq!(word(&u, "gOBJ"), "র্স্ত"); // in front of the whole conjunct
+        assert_eq!(word(&u, "Jw"), "র্ম"); // nothing to sit on yet: typed as it comes
+        assert_eq!(word(&u, "vwJl"), "ধর্মা");
+    }
+
+    #[test]
+    fn kar_before_layouts_always_wait_for_the_letter() {
+        let mut u = test_layout();
+        // Either order: right after a letter, ি goes on that letter
+        assert_eq!(word(&u, "YSmOB"), "শিক্ত");
+        u.kar_before = true;
+        // Kar typed first, always: শ ি ক্ত -> শক্তি, ে ক া -> কো
+        assert_eq!(word(&u, "YSmOB"), "শক্তি");
+        assert_eq!(word(&u, "mSZBl"), "কবিতা");
+        assert_eq!(word(&u, "Rml"), "কো");
+        assert_eq!(word(&u, "sm"), "কৈ");
+        let text = u.to_file_text("", "");
+        assert!(text.contains("\"kar_before\": true"));
+        assert!(FixedLayout::from_file_text(&text).unwrap().0.kar_before);
+        assert!(!test_layout().to_file_text("", "").contains("kar_before"));
     }
 
     #[test]
     fn layout_files_round_trip_and_are_checked() {
-        let u = FixedLayout::unijoy();
-        let text = u.to_file_text("Ekushe", "UniJoy as a layout file");
+        let u = test_layout();
+        let text = u.to_file_text("Ekushe", "The test layout as a file");
         let (back, file) = FixedLayout::from_file_text(&text).unwrap();
         assert_eq!(back.normal, u.normal);
         assert_eq!(back.altgr, u.altgr);
-        assert_eq!(back.link_key, Some('g'));
-        assert_eq!(back.short, "ইউ");
+        assert_eq!(back.link_key, Some('O'));
+        assert_eq!(back.short, "পরী");
         assert_eq!(file.author, "Ekushe");
-        assert_eq!(word(&back, "gfmfv"), "আমার");
+        assert_eq!(word(&back, "Olwlq"), "আমার");
 
         let bad = |t: &str| FixedLayout::from_file_text(t).unwrap_err();
         assert!(bad("not json").contains("isn't an Ekushe layout"));
@@ -1463,7 +1393,7 @@ mod tests {
         );
         let control = text.replacen("\"ক\"", "\"ক\\u0007\"", 1);
         assert!(bad(&control).contains("can't type"));
-        let two_keys = text.replacen("\"j\":", "\"jj\":", 1);
+        let two_keys = text.replacen("\"m\":", "\"mm\":", 1);
         assert!(bad(&two_keys).contains("not a single key"));
         assert!(bad(&"x".repeat(MAX_LAYOUT_FILE_BYTES + 1)).contains("too large"));
     }
@@ -1472,7 +1402,7 @@ mod tests {
     fn imported_layouts_are_kept_listed_and_loaded() {
         let dir = std::env::temp_dir().join(format!("ekushe-layouts-test-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
-        let mut mine = FixedLayout::unijoy();
+        let mut mine = test_layout();
         mine.name = "My Office Layout".into();
         mine.short = String::new();
         let info = import_layout_into(&dir, &mine.to_file_text("Rahim", "")).unwrap();
@@ -1482,7 +1412,7 @@ mod tests {
         assert_eq!(listed.len(), 1);
         assert_eq!(listed[0].author, "Rahim");
         let loaded = load_custom_layout_from(&dir, "my-office-layout").unwrap();
-        assert_eq!(word(&loaded, "jgk"), "ক্ত");
+        assert_eq!(word(&loaded, "mOB"), "ক্ত");
         assert!(load_custom_layout_from(&dir, "../etc/passwd").is_err());
         assert!(load_custom_layout_from(&dir, "missing").is_err());
         // Bangla-only names get a stable id
@@ -1501,7 +1431,6 @@ mod tests {
             LayoutId::NationalJatiya,
             LayoutId::Bornona,
             LayoutId::MunirOptima,
-            LayoutId::UniJoy,
         ] {
             let l = FixedLayout::builtin(id).unwrap();
             let key = |want: &str| {

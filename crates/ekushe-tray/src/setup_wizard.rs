@@ -1957,8 +1957,8 @@ mod preset_tests {
         // A Studio backup is used as it is; a config.toml is wrapped as one
         let backup = r#"{"ekushe_backup":1,"files":{}}"#;
         assert_eq!(preset_as_backup(backup), backup);
-        let wrapped = preset_as_backup("\u{feff}active_layout = \"UniJoy\"\n");
+        let wrapped = preset_as_backup("\u{feff}active_layout = \"Probhat\"\n");
         let v: serde_json::Value = serde_json::from_str(&wrapped).unwrap();
-        assert_eq!(v["files"]["config.toml"], "active_layout = \"UniJoy\"\n");
+        assert_eq!(v["files"]["config.toml"], "active_layout = \"Probhat\"\n");
     }
 }

@@ -558,36 +558,36 @@ if b:
 else:
     expect('? opens the marks table', False, True)
 
-# UniJoy, a fixed layout: the on-screen keys show its Bangla and type through the engine (the
-# link key, a kar typed first, Shift, a long-press for AltGr, the standard-spelling hint)
+# National (Jatiya), a fixed layout: the on-screen keys show its Bangla and type through the engine
+# (a conjunct, a kar typed first, Shift, a long-press for AltGr, the standard-spelling hint)
 ensure_app()
 to_top()
-at = find(lambda n: '(UniJoy)' in (n.get('text') or '') and 'fixed layout' not in (n.get('text') or ''))
+at = find(lambda n: '(National / Jatiya)' in (n.get('text') or '') and 'fixed layout' not in (n.get('text') or ''))
 if at:
     tap(at[0], at[1], 1.0)
-    shot('60-unijoy-settings')
+    shot('60-national-settings')
     to_top()
     text, b = field_text()
     bx1, by1, bx2, by2 = map(int, re.findall(r'\d+', b))
     tap((bx1 + bx2) // 2, (by1 + by2) // 2, 1.5)
     ku, _ = keys()
     tap(*ku['SPACE'], 0.3)
-    shot('61-unijoy-keys')
+    shot('61-national-keys')
     for ch in 'jgk':
         tap(*ku[ch])
     tap(*ku['SPACE'], 0.5)
-    expect('UniJoy link key: j g k', (field_text()[0] or '').endswith('ক্ত '), True)
+    expect('National conjunct: j g k', (field_text()[0] or '').endswith('ক্ত '), True)
     for ch in 'cjf':
         tap(*ku[ch])
     tap(*ku['SPACE'], 0.5)
-    expect('UniJoy kar first: c j f', (field_text()[0] or '').endswith('কো '), True)
+    expect('National kar first: c j f', (field_text()[0] or '').endswith('কো '), True)
     for ch in 'nvjfv':
         tap(*ku[ch])
     tap(*ku['SHIFT'], 0.3)
     tap(*ku['d'], 0.8)
-    shot('62-unijoy-spelling-hint')
+    shot('62-national-spelling-hint')
     tap(*ku['SPACE'], 0.5)
-    expect('UniJoy with Shift: সরকারী', (field_text()[0] or '').endswith('সরকারী '), True)
+    expect('National with Shift: সরকারী', (field_text()[0] or '').endswith('সরকারী '), True)
     # long-press d: its AltGr letter (ই), picked by sliding onto it and letting go
     gx, gy = ku['d']
     sh(f'input swipe {gx} {gy} {gx} {gy - 120} 900')
@@ -595,7 +595,7 @@ if at:
     tap(*ku['SPACE'], 0.5)
     got = field_text()[0] or ''
     print('after the long-press:', repr(got[-6:]))
-    shot('63-unijoy-after-altgr')
+    shot('63-national-after-altgr')
     sh('input keyevent KEYCODE_BACK'); time.sleep(0.8)
     # back to phonetic typing
     to_top()
@@ -603,7 +603,7 @@ if at:
     if at:
         tap(at[0], at[1], 0.8)
 else:
-    failures.append('UniJoy in the layout list')
+    failures.append('National in the layout list')
 
 # A keyboard crash is invisible on screen (Android restarts the keyboard, and hide_error_dialogs is
 # on above): fail if the keyboard process crashed at any point during the test

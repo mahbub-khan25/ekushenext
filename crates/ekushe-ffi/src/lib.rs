@@ -251,7 +251,7 @@ pub extern "C" fn ek_key(codepoint: u32) -> *mut c_char {
 }
 
 /// Type a character with AltGr held (Option on a Mac): fixed layouts have a third layer there
-/// (UniJoy: ঈ ঊ ঐ ঔ ...). Returns `SessionOutput` JSON.
+/// (National: ঈ ঊ ঐ ঔ ...). Returns `SessionOutput` JSON.
 #[no_mangle]
 pub extern "C" fn ek_key_altgr(codepoint: u32) -> *mut c_char {
     let Some(ch) = char::from_u32(codepoint) else {
@@ -263,7 +263,7 @@ pub extern "C" fn ek_key_altgr(codepoint: u32) -> *mut c_char {
     })
 }
 
-/// True when a fixed layout (UniJoy, National, an imported layout ...) is in use rather than
+/// True when a fixed layout (National, Probhat, an imported layout file ...) is in use rather than
 /// phonetic typing: hosts then pass AltGr / Option keys to the engine.
 #[no_mangle]
 pub extern "C" fn ek_fixed_layout() -> bool {

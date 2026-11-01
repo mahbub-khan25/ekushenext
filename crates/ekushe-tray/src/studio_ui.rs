@@ -474,17 +474,17 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
           <div class="hint">একটি বেছে নিন, একুশে সেভাবেই সেজে যাবে। পরে সেটিংসে যেকোনো সময় বদলানো যায়।</div>
           <div class="welcome-choices">
             <button class="welcome-choice" onclick="welcomeChoose('phonetic')"><b>ইংরেজি হরফে, উচ্চারণ করে</b><span>amar sonar bangla → আমার সোনার বাংলা (অভ্রের মতো)</span></button>
-            <button class="welcome-choice" onclick="welcomeChoose('fixed')"><b>বিজয়ের মতো কী-বোর্ডে, মুখস্থ হাতে</b><span>ইউনিজয় লেআউট: বিজয়ের প্রায় সব কী একই জায়গায়, লেখা হয় ইউনিকোডে</span></button>
+            <button class="welcome-choice" onclick="welcomeChoose('fixed')"><b>নির্দিষ্ট কী-বোর্ড লেআউটে, মুখস্থ হাতে</b><span>জাতীয় লেআউট, অথবা আপনার নিজের লেআউট ফাইল; লেখা হয় ইউনিকোডে</span></button>
             <button class="welcome-choice" onclick="welcomeChoose('new')"><b>এখনো শিখিনি</b><span>সবচেয়ে সহজ পথ: যেমন বলেন, তেমন লিখুন</span></button>
           </div>
           <div class="row" style="justify-content:flex-end;margin-top:8px"><button class="btn" onclick="welcomeDone()">পরে দেখব</button></div>
         </div>
         <div id="welcomeFixed" hidden>
-          <div class="section-title">ইউনিজয় চালু হয়েছে ✓</div>
+          <div class="section-title"><span id="welcomeLayoutName">জাতীয়</span> লেআউট চালু হয়েছে ✓</div>
           <div class="hint">বাংলা ⇄ English বদলাতে <b id="welcomeHotkey">দুবার Shift</b>। আপনার পুরনো অভ্যাসের জন্য আরও কয়েকটি জিনিস:</div>
           <ul class="welcome-list">
+            <li><button class="link-btn" onclick="welcomeGo('settings', 'layoutFileInput')">নিজের লেআউট ফাইল যোগ করুন</button>: অন্য কোনো লেআউটে অভ্যস্ত হলে তার লেআউট ফাইল (.ekushe-layout) দিন; একুশের সব সুবিধা তাতেও কাজ করবে।</li>
             <li><button class="link-btn" onclick="showKeyMap()">কী-ম্যাপ দেখুন ও প্রিন্ট করুন</button>: কোন কী-তে কোন অক্ষর, এক পাতায়।</li>
-            <li><button class="link-btn" onclick="welcomeGo('settings', 'layoutFileInput')">নিজের লেআউট ফাইল যোগ করুন</button>: অফিসের বা কারও বানানো অন্য সাজানো থাকলে।</li>
             <li><button class="link-btn" onclick="welcomeGo('converter', 'fileConvInput')">পুরনো বিজয় (SutonnyMJ) ফাইল ইউনিকোডে বদলান</button>: Word বা টেক্সট ফাইল, লেখার ধরন ঠিক রেখে।</li>
             <li id="welcomeBijoyOut" hidden><button class="link-btn" onclick="welcomeBijoyOutput()">ডিজাইনের অ্যাপে বিজয় ফন্টে লিখুন</button>: Photoshop, Illustrator, PageMaker-এ SutonnyMJ দিয়ে লিখতে চাইলে চালু করুন; অন্য সব অ্যাপে ইউনিকোডই থাকবে।</li>
             <li>ভুল বানান লিখলে প্রমিত বানানটি পাশে দেখাবে; Space চাপলে আপনার লেখাই বসবে।</li>
@@ -723,7 +723,6 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
             <label for="cfgLayout">কীবোর্ড লেআউট</label>
             <select id="cfgLayout" onchange="saveSettings()">
               <option value="AvroPhonetic">একুশে ফোনেটিক (অভ্র-সামঞ্জস্যপূর্ণ)</option>
-              <option value="UniJoy">ইউনিজয় (UniJoy)</option>
               <option value="NationalJatiya">জাতীয়</option>
               <option value="Probhat">প্রভাত</option>
               <option value="Bornona">বর্ণনা</option>
@@ -1678,7 +1677,7 @@ async function removeKeyboard() {
 
 // ── Keyboard layouts: built-in and the user's own layout files ──
 const BUILT_IN_LAYOUT_NAMES = {
-  AvroPhonetic: 'একুশে ফোনেটিক (অভ্র-সামঞ্জস্যপূর্ণ)', UniJoy: 'ইউনিজয় (UniJoy)', NationalJatiya: 'জাতীয়',
+  AvroPhonetic: 'একুশে ফোনেটিক (অভ্র-সামঞ্জস্যপূর্ণ)', NationalJatiya: 'জাতীয়',
   Probhat: 'প্রভাত', Bornona: 'বর্ণনা', MunirOptima: 'মুনীর অপটিমা',
 };
 async function refreshLayouts() {
@@ -1783,7 +1782,10 @@ async function welcomeDone() {
 async function welcomeChoose(how) {
   await layoutsReady;
   const sel = document.getElementById('cfgLayout');
-  sel.value = how === 'fixed' ? 'UniJoy' : 'AvroPhonetic';
+  // a fixed layout: the person's own layout file if one is added already, otherwise National
+  const own = Array.from(sel.options).find(o => o.value.startsWith('Custom:'));
+  sel.value = how !== 'fixed' ? 'AvroPhonetic' : own ? own.value : 'NationalJatiya';
+  document.getElementById('welcomeLayoutName').textContent = sel.options[sel.selectedIndex]?.textContent || 'জাতীয়';
   await saveSettings({ welcome_done: true });
   await refreshState();
   if (how !== 'fixed') {

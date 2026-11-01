@@ -350,7 +350,7 @@ static gboolean ekushe_process_key_event(IBusEngine *e, guint keyval, guint keyc
             finish(ek);
         return FALSE;
     }
-    /* AltGr (Mod5) types a fixed layout's third layer (UniJoy: ঈ ঊ ঐ ঔ ...) */
+    /* AltGr (Mod5) types a fixed layout's third layer (National: ঈ ঊ ঐ ঔ ...) */
     if ((modifiers & IBUS_MOD5_MASK) && ek_fixed_layout())
         ekushe_string_free(ek_key_altgr(ch));
     else
@@ -515,7 +515,7 @@ static void ekushe_engine_init(EkusheEngine *ek)
         ibus_text_new_from_string("Typing mode, layout, snippets"), TRUE, TRUE, PROP_STATE_UNCHECKED, NULL));
     ibus_prop_list_append(ek->props, ibus_property_new("keymap", PROP_TYPE_NORMAL,
         ibus_text_new_from_string("Key map of the layout"), "input-keyboard",
-        ibus_text_new_from_string("For UniJoy and the other fixed layouts: every key, with Shift and AltGr; printable"),
+        ibus_text_new_from_string("For fixed layouts and layout files: every key, with Shift and AltGr; printable"),
         TRUE, TRUE, PROP_STATE_UNCHECKED, NULL));
     ek->mode_prop = ibus_property_new("InputMode", PROP_TYPE_NORMAL,
         ibus_text_new_from_string("বাংলা"), NULL,

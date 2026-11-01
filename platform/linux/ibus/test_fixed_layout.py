@@ -1,7 +1,7 @@
-"""End-to-end check of a fixed layout in the IBus engine: UniJoy, its link key, a pre-base kar typed
+"""End-to-end check of a fixed layout in the IBus engine: National (Jatiya), a conjunct, a pre-base kar typed
 first, AltGr (Mod5) for the third layer, and the standard-spelling hint.
 
-Run like test_engine.py, with Ekushe's settings choosing UniJoy and Bangla at the start
+Run like test_engine.py, with Ekushe's settings choosing National and Bangla at the start
 (platform/linux/build.sh --test does this in its own settings folder)."""
 import time
 
@@ -82,10 +82,10 @@ preedits.clear()
 commits.clear()
 
 typ("jgk")
-assert preedits[-1] == "ক্ত", f"link key: {preedits[-3:]}"
+assert preedits[-1] == "ক্ত", f"conjunct: {preedits[-3:]}"
 key(IBus.KEY_space)
 assert commits[-1] == "ক্ত ", commits
-print("link key: j g k ->", repr(commits[-1]))
+print("conjunct: j g k ->", repr(commits[-1]))
 
 typ("cjf")  # ে typed first, then ক and া
 key(IBus.KEY_space)

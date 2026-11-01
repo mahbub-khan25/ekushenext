@@ -278,7 +278,7 @@ class MainActivity : AppCompatActivity() {
         layouts(cfg)
     }
 
-    /** Keyboard layout: phonetic, UniJoy and the other fixed layouts, and the user's own files */
+    /** Keyboard layout: phonetic, the fixed layouts, and the user's own layout files */
     private fun layouts(cfg: JSONObject) {
         val card = card()
         val list = cfg.optJSONArray("layouts") ?: JSONArray()
@@ -287,7 +287,7 @@ class MainActivity : AppCompatActivity() {
             o.getString("value") to (o.getString("name") + if (o.optBoolean("custom")) " (নিজের)" else "")
         }
         val current = cfg.optString("layout", "AvroPhonetic")
-        card.addView(choice("কীবোর্ড লেআউট", "Phonetic, or a fixed layout (UniJoy, National …): the keys show its Bangla", options, current) {
+        card.addView(choice("কীবোর্ড লেআউট", "Phonetic, or a fixed layout (National, Probhat … or your own layout file): the keys show its Bangla", options, current) {
             Engine.setConfig(JSONObject().put("layout", it))
         })
         divider(card)

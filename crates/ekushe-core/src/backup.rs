@@ -188,9 +188,8 @@ mod tests {
         crate::suggest::write_atomic(&a.join("learned.tsv"), "ase\tআছে\t4\nvalo\tভালো\t2\n")
             .unwrap();
         crate::suggest::write_atomic(&a.join("wrong-words.tsv"), "ase\tআসে\tআছে\tকেমন\n").unwrap();
-        // A keyboard layout the user added (UniJoy's keys under another name)
-        let mut mine =
-            crate::layout::FixedLayout::builtin(crate::layout::LayoutId::UniJoy).unwrap();
+        // A keyboard layout the user added (the test layout under another name)
+        let mut mine = crate::layout::test_layout();
         mine.name = "My office keys".into();
         crate::layout::import_layout_into(&a.join("layouts"), &mine.to_file_text("Khan", ""))
             .unwrap();

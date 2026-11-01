@@ -154,7 +154,7 @@ pub extern "system" fn Java_com_ekushenext_keyboard_Engine_nativeKey(
 }
 
 /// A key typed with AltGr (the right Alt of a physical keyboard, or a long-press on the on-screen
-/// keys): a fixed layout's third layer (UniJoy: ঈ ঊ ঐ ঔ ...).
+/// keys): a fixed layout's third layer (National: ঈ ঊ ঐ ঔ ...).
 #[no_mangle]
 pub extern "system" fn Java_com_ekushenext_keyboard_Engine_nativeKeyAltGr(
     mut env: JNIEnv,

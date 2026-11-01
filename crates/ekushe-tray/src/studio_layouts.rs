@@ -6,7 +6,7 @@
 //! - `POST /api/layouts/remove`      body: `{"id": "..."}`
 //! - `GET  /api/layouts/export?id=`  a layout as a layout file (a starting point for your own)
 //!
-//! The layout setting itself travels as one value: a built-in layout's name (`UniJoy`) or
+//! The layout setting itself travels as one value: a built-in layout's name (`Probhat`) or
 //! `Custom:<id>` for an imported one.
 
 use ekushe_core::config::Config;
@@ -14,7 +14,7 @@ use ekushe_core::layout::{self, FixedLayout, LayoutId};
 
 /// The built-in layouts, in the order Studio and the menus show them.
 pub use ekushe_core::layout::BUILT_IN_LAYOUTS as BUILT_IN;
-/// The setting's value for a configuration (`UniJoy`, `Custom:my-layout`), and applying one
+/// The setting's value for a configuration (`Probhat`, `Custom:my-layout`), and applying one
 pub use ekushe_core::layout::{apply_setting, setting_value};
 
 /// The name of the layout in use, and its short label (for the tray, menus and panels).

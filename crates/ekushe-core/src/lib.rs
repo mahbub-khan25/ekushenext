@@ -1296,8 +1296,8 @@ mod tests {
         }
     }
 
-    /// Type UniJoy keys and return the last output
-    fn unijoy_type(ek: &mut Ekushe, keys: &str) -> SessionOutput {
+    /// Type keys of the test layout file and return the last output
+    fn fixed_type(ek: &mut Ekushe, keys: &str) -> SessionOutput {
         let mut out = SessionOutput::default();
         for k in keys.chars() {
             out = ek.push_char(k, false);
@@ -1305,11 +1305,19 @@ mod tests {
         out
     }
 
-    fn unijoy() -> Ekushe {
-        Ekushe::new(Config {
-            active_layout: LayoutId::UniJoy,
-            ..Config::default()
-        })
+    /// A session typing with a layout file (the made-up test layout)
+    fn with_layout_file(config: Config) -> Ekushe {
+        let mut ek = Ekushe::new(Config {
+            active_layout: LayoutId::Custom,
+            custom_layout: Some("test".into()),
+            ..config
+        });
+        ek.fixed_layout = Some(crate::layout::test_layout());
+        ek
+    }
+
+    fn fixed() -> Ekushe {
+        with_layout_file(Config::default())
     }
 
     #[test]
@@ -1317,9 +1325,9 @@ mod tests {
         if crate::dict::Dictionary::global().is_none() {
             return;
         }
-        let mut ek = unijoy();
+        let mut ek = fixed();
         // সরকারী (n v j f v D): the standard সরকারি is offered after the word as typed
-        let out = unijoy_type(&mut ek, "nvjfvD");
+        let out = fixed_type(&mut ek, "gqmlqf");
         assert_eq!(out.preedit, "সরকারী");
         assert_eq!(out.candidates[0].text, "সরকারী");
         assert_eq!(out.candidates[1].text, "সরকারি");
@@ -1330,17 +1338,17 @@ mod tests {
             Some("সরকারী ")
         );
         // Picking the hint takes it
-        unijoy_type(&mut ek, "nvjfvD");
+        fixed_type(&mut ek, "gqmlqf");
         assert_eq!(
             ek.select_candidate(1, Some(' ')).committed.as_deref(),
             Some("সরকারি ")
         );
 
         // A word still being typed (বাং, on its way to বাংলা) gets no hint
-        assert!(unijoy_type(&mut ek, "hfQ").candidates.is_empty());
+        assert!(fixed_type(&mut ek, "ZlN").candidates.is_empty());
         ek.commit_default(Some(' '));
         // A misspelling that can't become a word is offered fixes
-        let out = unijoy_type(&mut ek, "hfQVflnd");
+        let out = fixed_type(&mut ek, "ZlNclpgS");
         assert!(
             out.candidates.iter().any(|c| c.text == "বাংলাদেশ"),
             "{:?}",
@@ -1348,12 +1356,12 @@ mod tests {
         );
         ek.commit_default(Some(' '));
         // A correct word: nothing
-        assert!(unijoy_type(&mut ek, "hfQVf").candidates.is_empty());
+        assert!(fixed_type(&mut ek, "ZlNcl").candidates.is_empty());
         ek.commit_default(Some(' '));
 
         // In a private field: nothing at all
         ek.set_private_field(true);
-        assert!(unijoy_type(&mut ek, "nvjfvD").candidates.is_empty());
+        assert!(fixed_type(&mut ek, "gqmlqf").candidates.is_empty());
     }
 
     #[test]
@@ -1361,8 +1369,8 @@ mod tests {
         if crate::dict::Dictionary::global().is_none() {
             return;
         }
-        let mut ek = unijoy();
-        unijoy_type(&mut ek, "hfQVf");
+        let mut ek = fixed();
+        fixed_type(&mut ek, "ZlNcl");
         assert_eq!(
             ek.commit_default(Some(' ')).committed.as_deref(),
             Some("বাংলা ")
@@ -1377,17 +1385,17 @@ mod tests {
         ek.reset_composition();
 
         // The host's own reopen call works the same
-        unijoy_type(&mut ek, "nvjfvD");
+        fixed_type(&mut ek, "gqmlqf");
         ek.commit_default(Some(' '));
         let out = ek.reopen_last_word().unwrap();
         assert_eq!(out.preedit, "সরকারী");
         assert_eq!(out.candidates[1].text, "সরকারি");
         // Kept as it is: the writer says it is right, and it is no longer flagged as a misspelling
-        unijoy_type(&mut ek, "");
+        fixed_type(&mut ek, "");
         ek.commit_default(Some(' '));
 
         // Typing on, or a commit without a space, leaves nothing to reopen
-        unijoy_type(&mut ek, "hfQVf");
+        fixed_type(&mut ek, "ZlNcl");
         ek.commit_default(Some('.'));
         assert!(!ek.has_undo());
         assert!(ek.reopen_last_word().is_none());
@@ -1398,22 +1406,22 @@ mod tests {
         if crate::dict::Dictionary::global().is_none() {
             return;
         }
-        let mut ek = unijoy();
+        let mut ek = fixed();
         // A name the dictionary doesn't know: fixes are offered when it is reopened
-        let name = unijoy_type(&mut ek, "jWfmvfnf").preedit;
+        let name = fixed_type(&mut ek, "milwqlgl").preedit;
         ek.commit_default(Some(' '));
         ek.backspace();
         ek.commit_default(Some(' '));
         assert!(ek.suggestions_engine().spell_checker().is_correct(&name));
-        assert!(unijoy_type(&mut ek, "jWfmvfnf").candidates.is_empty());
+        assert!(fixed_type(&mut ek, "milwqlgl").candidates.is_empty());
     }
 
     #[test]
     fn fixed_layouts_expand_snippets_and_suggest_words_when_asked() {
-        let mut ek = unijoy();
+        let mut ek = fixed();
         ek.suggestions_engine_mut()
             .set_snippet(";slm", "আসসালামু আলাইকুম");
-        let out = unijoy_type(&mut ek, ";slm");
+        let out = fixed_type(&mut ek, ";slm");
         assert_eq!(out.preedit, ";slm");
         assert_eq!(out.candidates[0].text, "আসসালামু আলাইকুম");
         assert_eq!(
@@ -1421,7 +1429,7 @@ mod tests {
             Some("আসসালামু আলাইকুম ")
         );
         // A date shortcut
-        let out = unijoy_type(&mut ek, ";aj");
+        let out = fixed_type(&mut ek, ";aj");
         assert_eq!(out.candidates[0].kind, CandidateKind::Snippet);
         assert!(ek
             .commit_default(Some(' '))
@@ -1429,19 +1437,18 @@ mod tests {
             .unwrap()
             .contains('২'));
         // No snippet: the text stays as typed
-        unijoy_type(&mut ek, ";xyz");
+        fixed_type(&mut ek, ";xyz");
         assert_eq!(
             ek.commit_default(Some(' ')).committed.as_deref(),
             Some(";xyz ")
         );
 
         if crate::dict::Dictionary::global().is_some() {
-            let mut ek = Ekushe::new(Config {
-                active_layout: LayoutId::UniJoy,
+            let mut ek = with_layout_file(Config {
                 fixed_word_suggestions: true,
                 ..Config::default()
             });
-            let out = unijoy_type(&mut ek, "hfQ");
+            let out = fixed_type(&mut ek, "ZlN");
             assert_eq!(out.candidates[0].text, "বাং");
             assert!(
                 out.candidates.iter().any(|c| c.text == "বাংলা"),
