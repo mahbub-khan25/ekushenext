@@ -6,6 +6,15 @@
 void ek_init(void);
 char *ek_key(uint32_t codepoint);
 char *ek_backspace(void);
+/* Fixed layouts: a key typed with AltGr (Option on a Mac), whether a fixed layout is in use, and
+   its name (free with ekushe_string_free). */
+char *ek_key_altgr(uint32_t codepoint);
+bool ek_fixed_layout(void);
+char *ek_layout_name(void);
+/* Bijoy output: true when the app in front gets Bijoy (SutonnyMJ) text; ek_to_bijoy converts
+   (free with ekushe_string_free). */
+bool ek_bijoy_output(void);
+char *ek_to_bijoy(const char *text);
 char *ek_select(uint32_t index, uint32_t trailing);
 void ek_reset(void);
 void ek_set_private(bool is_private);

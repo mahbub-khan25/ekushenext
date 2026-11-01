@@ -227,3 +227,24 @@ searched too, but stronger context (context_w 0.7) made the held-out set worse, 
 Still wrong: colloquial forms not in the dictionary (khaiso খাইছ, korteso করতেছ), `aso`/`bolo` with no
 context, `porbo` (পড়ব vs পর্ব). Next: a real Banglish test set from outside (e.g. BanglaTLit, licence to check)
 and a native-speaker review of `review-spelling.tsv`.
+
+# 2026-10-31 — words with য-ফলা on অ / এ (অ্যাপ, অ্যাকাউন্ট, হোয়াটসঅ্যাপ)
+
+A tester reported that অ্যা never came up. The well-formedness check in `tools/dict-builder/src/norm.rs`
+allowed a hasanta only after a consonant, so every word with অ্যা or এ্যা was thrown away while counting:
+the dictionary had একাউন্ট, এপ, এসিড but not অ্যাকাউন্ট, অ্যাপ, অ্যাসিড (the Bangla Academy spelling for
+the English "æ" sound). The check now accepts য-ফলা on অ and এ, and the older র + ZWNJ + য-ফলা encoding
+(র‌্যাব) is counted as র‍্যাব.
+
+Instead of a full rebuild, only the missing words were added to `lexicon.tsv`: the corpus was re-counted
+with the fixed check on a sample (all of Wikipedia, FineWeb-2 file 000, Sangraha files 0–7; 1.57 billion
+words), scored like `merge_counts.py` (mean per-million over the three sources, same keep rules) and scaled
+to the lexicon's figures (factor 1.005, from 6,002 common words). 3,402 words were added (661 core),
+`rule = data:ya-phala-on-vowel`; the 312 এ্যা spellings are variants pointing to their অ্যা form. They have
+no word-pair (context) counts until the next full rebuild. English spellings for 172 of them were added to
+`roman/english-matches.tsv` with `match_english.py`'s rules (wrong matches such as anyway → অ্যান removed
+by hand), and `curated/chat-words.tsv` sends `app` to অ্যাপ (আপ is more frequent in the corpus).
+
+The engine reads অ্যা / এ্যা as one vowel for lookup (`roman.rs`: a, oZa, ae, e), and phonetic `Z` with no
+consonant before it gives য-ফলা on অ (oZa, Za → অ্যা; eZa → এ্যা; r`Za → র‍্যা) instead of a literal Z.
+Accuracy on all test sets is unchanged (3023/3454); a full rebuild will reproduce these words by itself.

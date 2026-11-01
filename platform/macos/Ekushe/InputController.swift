@@ -56,8 +56,17 @@ final class EkusheInputController: IMKInputController {
         let composing = Engine.isComposing
 
         // Control+Delete flips the last word between Bangla and Roman
-        if mods.contains(.control) && event.keyCode == 51 && !composing {
+        if mods.contains(.control) && event.keyCode == 51 && !composing && !Engine.bijoyOutput {
             return flipLast(client)
+        }
+        // A fixed layout's third layer is typed with Option (AltGr on a PC): Option+key goes to the
+        // engine, by the key's plain character
+        if mods.contains(.option) && !mods.contains(.command) && !mods.contains(.control)
+            && Engine.isBangla && Engine.isFixedLayout,
+           let base = event.charactersIgnoringModifiers, base.unicodeScalars.count == 1,
+           let scalar = base.unicodeScalars.first, (0x21..<0x7F).contains(scalar.value) {
+            apply(Engine.keyAltGr(scalar.value), client)
+            return true
         }
         // Shortcuts and Option characters belong to the application
         if mods.contains(.command) || mods.contains(.control) || mods.contains(.option) {
@@ -75,7 +84,7 @@ final class EkusheInputController: IMKInputController {
             return false
         case 51: // Delete (Backspace)
             if composing { apply(Engine.backspace(), client); return true }
-            if Engine.canUndo { return undo(client) }
+            if Engine.canUndo && !Engine.bijoyOutput { return undo(client) }
             return false
         case 53: // Escape: keep what is shown
             if composing { finish(client); return true }
@@ -121,7 +130,7 @@ final class EkusheInputController: IMKInputController {
 
     private func apply(_ out: EngineOutput, _ client: IMKTextInput) {
         if let committed = out.committed {
-            client.insertText(committed, replacementRange: notFound)
+            client.insertText(forApp(committed), replacementRange: notFound)
             lastCommitted = committed.hasSuffix(" ") ? committed : ""
             output = .empty
             selected = 0
@@ -136,13 +145,14 @@ final class EkusheInputController: IMKInputController {
 
     private func showMarked(_ text: String, _ client: IMKTextInput, replacing: NSRange? = nil) {
         let attrs = mark(forStyle: kTSMHiliteSelectedConvertedText, at: NSRange(location: 0, length: (text as NSString).length))
+        let text = forApp(text)
         let s = NSAttributedString(string: text, attributes: attrs as? [NSAttributedString.Key: Any] ?? [:])
         client.setMarkedText(s, selectionRange: NSRange(location: (text as NSString).length, length: 0), replacementRange: replacing ?? notFound)
     }
 
     private func commit(_ index: Int, trailing: Character?, _ client: IMKTextInput) {
         let out = Engine.select(index, trailing: trailing)
-        let text = out.committed ?? output.preedit + (trailing.map(String.init) ?? "")
+        let text = forApp(out.committed ?? output.preedit + (trailing.map(String.init) ?? ""))
         client.insertText(text, replacementRange: notFound)
         lastCommitted = trailing == " " ? text : ""
         output = .empty
@@ -203,6 +213,12 @@ final class EkusheInputController: IMKInputController {
         return true
     }
 
+    /// Text as the app in front needs it: Bijoy (SutonnyMJ) in a Bijoy-output app (design apps,
+    /// when turned on in Studio), otherwise as it is
+    private func forApp(_ text: String) -> String {
+        Engine.bijoyOutput ? Engine.toBijoy(text) : text
+    }
+
     // MARK: Candidate window
 
     private func showCandidates(_ client: IMKTextInput) {
@@ -239,6 +255,11 @@ final class EkusheInputController: IMKInputController {
         let settings = NSMenuItem(title: "Settings…", action: #selector(openSettings(_:)), keyEquivalent: "")
         settings.target = self
         menu.addItem(settings)
+        if Engine.isFixedLayout {
+            let keymap = NSMenuItem(title: "Key Map: \(Engine.layoutName)…", action: #selector(openKeyMap(_:)), keyEquivalent: "")
+            keymap.target = self
+            menu.addItem(keymap)
+        }
         menu.addItem(.separator())
         let lang = NSMenuItem(title: Engine.isBangla ? "Type English for now (double-tap Shift)" : "Back to Bangla (double-tap Shift)",
                               action: #selector(toggleLanguage(_:)), keyEquivalent: "")
@@ -258,6 +279,11 @@ final class EkusheInputController: IMKInputController {
     /// Studio's conjunct guide, with the marks (+ ,, ` ^ rr …) at the top
     @objc func openMarks(_ sender: Any?) {
         if let url = Engine.studioURL(tab: "signs") { NSWorkspace.shared.open(url) }
+    }
+
+    /// The key map of the layout in use (normal, Shift, Option), printable as a cheat sheet
+    @objc func openKeyMap(_ sender: Any?) {
+        if let url = Engine.studioURL(tab: "keymap") { NSWorkspace.shared.open(url) }
     }
 
     @objc func openSettings(_ sender: Any?) {

@@ -9,6 +9,8 @@
 
 #[path = "../../ekushe-tray/src/studio_http.rs"]
 mod studio_http;
+#[path = "../../ekushe-tray/src/studio_layouts.rs"]
+mod studio_layouts;
 #[path = "../../ekushe-tray/src/studio_ui.rs"]
 mod studio_ui;
 
@@ -19,7 +21,6 @@ use std::sync::atomic::{AtomicU16, AtomicU64, Ordering};
 use ekushe_core::config::{Config, InputLanguage, SwitchHotkey, TypingMode};
 use ekushe_core::conjuncts::search_signs_and_conjuncts;
 use ekushe_core::convert::{banglish_to_bangla, bijoy_to_unicode, unicode_to_bijoy};
-use ekushe_core::layout::LayoutId;
 
 use crate::SHARED;
 
@@ -222,6 +223,22 @@ fn handle(mut s: TcpStream, req: &str, port: u16) -> std::io::Result<()> {
     let ct = "application/json; charset=utf-8";
     let json = |v: serde_json::Value| v.to_string().into_bytes();
 
+    // Keyboard layouts: list, import, remove, export (shared with the Windows app)
+    if clean.starts_with("/api/layouts") {
+        let reply = {
+            let mut sh = SHARED.lock();
+            let mut cfg = sh.ekushe.config().clone();
+            let reply = studio_layouts::handle(method, path, body, &mut cfg);
+            if reply.as_ref().is_some_and(|r| r.config_changed) {
+                sh.ekushe.set_config(cfg);
+            }
+            reply
+        };
+        if let Some(r) = reply {
+            return respond(&mut s, r.status, r.content_type, r.body.as_bytes());
+        }
+    }
+
     match (method, clean) {
         ("GET", "/") | ("GET", "/index.html") => {
             let html = studio_http::studio_page(studio_ui::STUDIO_HTML, path);
@@ -279,11 +296,15 @@ fn handle(mut s: TcpStream, req: &str, port: u16) -> std::io::Result<()> {
                     },
                     "hotkey_display": cfg.switch_hotkey.display_name(),
                     "typing_mode": format!("{:?}", cfg.typing_mode),
-                    "active_layout": format!("{:?}", cfg.active_layout),
+                    "active_layout": studio_layouts::setting_value(cfg),
+                    "layout_name": studio_layouts::active_names(cfg).0,
                     "font_family": cfg.candidate_font_family,
                     "popup_opacity": OPACITY.load(Ordering::Relaxed),
                     "compact_popup": cfg.compact_popup,
                     "auto_english_in_terminals": cfg.auto_english_in_terminals,
+                    "fixed_spelling_hint": cfg.fixed_spelling_hint,
+                    "welcome_done": cfg.welcome_done,
+                    "fixed_word_suggestions": cfg.fixed_word_suggestions,
                     "start_bangla": cfg.start_language == InputLanguage::Bangla,
                     "snippets": snippets,
                     "report_url": ekushe_core::report_url(if cfg!(target_os = "macos") { "macOS" } else { "Linux" }, cfg),
@@ -389,13 +410,7 @@ fn handle(mut s: TcpStream, req: &str, port: u16) -> std::io::Result<()> {
                     };
                 }
                 if let Some(l) = p["active_layout"].as_str() {
-                    cfg.active_layout = match l {
-                        "Probhat" => LayoutId::Probhat,
-                        "NationalJatiya" => LayoutId::NationalJatiya,
-                        "Bornona" => LayoutId::Bornona,
-                        "MunirOptima" => LayoutId::MunirOptima,
-                        _ => LayoutId::AvroPhonetic,
-                    };
+                    studio_layouts::apply_setting(&mut cfg, l);
                 }
                 if let Some(f) = p["font_family"].as_str() {
                     cfg.candidate_font_family = f.to_string();
@@ -405,6 +420,15 @@ fn handle(mut s: TcpStream, req: &str, port: u16) -> std::io::Result<()> {
                 }
                 if let Some(t) = p["auto_english_in_terminals"].as_bool() {
                     cfg.auto_english_in_terminals = t;
+                }
+                if let Some(b) = p["welcome_done"].as_bool() {
+                    cfg.welcome_done = b;
+                }
+                if let Some(b) = p["fixed_spelling_hint"].as_bool() {
+                    cfg.fixed_spelling_hint = b;
+                }
+                if let Some(b) = p["fixed_word_suggestions"].as_bool() {
+                    cfg.fixed_word_suggestions = b;
                 }
                 if let Some(b) = p["start_bangla"].as_bool() {
                     cfg.start_language = if b {

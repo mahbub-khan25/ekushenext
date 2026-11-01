@@ -49,6 +49,8 @@ pub fn normalize_word(raw: &str) -> Option<String> {
     s = s.replace("\u{09A4}\u{09CD}\u{200D}", "\u{09CE}");
     // Keep ZWJ only in র‍্য (ra + ZWJ + hasanta + ya); normalise র্‍য to that form.
     s = s.replace("\u{09B0}\u{09CD}\u{200D}\u{09AF}", "\u{09B0}\u{200D}\u{09CD}\u{09AF}");
+    // The older র + ZWNJ + য-ফলা encoding (র‌্যাব) is the same word: use the ZWJ form
+    s = s.replace("\u{09B0}\u{200C}\u{09CD}\u{09AF}", "\u{09B0}\u{200D}\u{09CD}\u{09AF}");
     let keep_rya = "\u{09B0}\u{200D}\u{09CD}\u{09AF}";
     let marker = '\u{E000}';
     s = s.replace(keep_rya, &marker.to_string());
@@ -92,7 +94,8 @@ pub fn is_well_formed(w: &str) -> bool {
     let mut prev = Prev::Start;
     let mut prev_char = '\0';
     let mut n = 0usize;
-    for c in w.chars() {
+    let chars: Vec<char> = w.chars().collect();
+    for (idx, &c) in chars.iter().enumerate() {
         n += 1;
         if n > 32 {
             return false;
@@ -115,7 +118,12 @@ pub fn is_well_formed(w: &str) -> bool {
             }
             Prev::Sign
         } else if c == HASANTA {
-            if !(prev == Prev::Cons || prev == Prev::Zwj) {
+            // অ্যা / এ্যা: য-ফলা on the vowel অ or এ is how English "æ" is written (অ্যাপ, অ্যাসিড)
+            let ya_on_vowel = prev == Prev::Vowel
+                && matches!(prev_char, 'অ' | 'এ')
+                && chars.get(idx + 1) == Some(&'য')
+                && chars.get(idx + 2) != Some(&NUKTA);
+            if !(prev == Prev::Cons || prev == Prev::Zwj || ya_on_vowel) {
                 return false;
             }
             Prev::Hasanta
@@ -157,6 +165,18 @@ mod tests {
         assert_eq!(normalize_word("\u{09AE}\u{09C7}\u{09DF}\u{09C7}").as_deref(), Some("মেয়ে"));
         assert_eq!(normalize_word("র‍্যাব").as_deref(), Some("র\u{200D}্যাব"));
         assert_eq!(normalize_word("বাংলা\u{200C}").as_deref(), Some("বাংলা"));
+        assert_eq!(normalize_word("র\u{200C}্যাব").as_deref(), Some("র\u{200D}্যাব"));
+    }
+    #[test]
+    fn keeps_ya_phala_on_a_and_e() {
+        assert_eq!(normalize_word("অ্যাপ").as_deref(), Some("অ্যাপ"));
+        assert_eq!(normalize_word("হোয়াটসঅ্যাপ").as_deref(), Some("হোয়াটসঅ্যাপ"));
+        assert_eq!(normalize_word("এ্যাসিড").as_deref(), Some("এ্যাসিড"));
+        // the same with a stray joiner in between
+        assert_eq!(normalize_word("অ\u{200D}্যাপ").as_deref(), Some("অ্যাপ"));
+        for bad in ["অ্", "আ্যা", "অ্ক", "অ্য়"] {
+            assert!(normalize_word(bad).is_none(), "{bad}");
+        }
     }
     #[test]
     fn rejects_malformed() {

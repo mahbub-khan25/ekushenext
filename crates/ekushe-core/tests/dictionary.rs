@@ -116,6 +116,33 @@ fn spell_checker_uses_dictionary() {
     assert!(sc.is_correct("\u{09AE}\u{09C7}\u{09DF}\u{09C7}"));
 }
 
+/// অ্যা (য-ফলা on অ, English "æ"): the words are in the dictionary, standard spelling first, and the
+/// Avro way of typing it (oZa) works
+#[test]
+fn ya_phala_on_a_words() {
+    let Some(d) = dict() else { return };
+    let mut ek = engine(d);
+    assert_eq!(type_words(&mut ek, "oZa"), "অ্যা ");
+    assert_eq!(type_words(&mut ek, "account"), "অ্যাকাউন্ট ");
+    assert_eq!(type_words(&mut ek, "android"), "অ্যান্ড্রয়েড ");
+    assert_eq!(type_words(&mut ek, "ambulance"), "অ্যাম্বুলেন্স ");
+    assert_eq!(type_words(&mut ek, "app"), "অ্যাপ ");
+    assert_eq!(type_words(&mut ek, "whatsapp"), "হোয়াটসঅ্যাপ ");
+    // the older এ্যা spelling is still offered, after the standard one
+    let mut cands = Vec::new();
+    for c in "eZa".chars() {
+        cands = ek.push_char(c, false).candidates;
+    }
+    let texts: Vec<&str> = cands.iter().map(|c| c.text.as_str()).collect();
+    assert_eq!(texts.first(), Some(&"অ্যা"), "{texts:?}");
+    assert!(texts.contains(&"এ্যা"), "{texts:?}");
+    ek.reset_composition();
+    let sc = ek.suggestions_engine().spell_checker();
+    for w in ["অ্যাপ", "অ্যাসিড", "হোয়াটসঅ্যাপ"] {
+        assert!(sc.is_correct(w), "{w}");
+    }
+}
+
 #[test]
 fn bijoy_round_trip_every_dictionary_word() {
     use ekushe_core::convert::{bijoy_to_unicode, normalize_bangla_unicode as n, unicode_to_bijoy};

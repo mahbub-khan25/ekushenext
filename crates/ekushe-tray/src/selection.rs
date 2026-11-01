@@ -288,9 +288,50 @@ unsafe fn restore(owner: HWND, saved: &[(u32, Vec<u8>)], ours: u32) {
     }
 }
 
-unsafe fn run(banglish_word: &dyn Fn(&str) -> String) -> Outcome {
-    // Let go of the hotkey first: the app must see a plain Ctrl+C. An unused key in between keeps a
-    // released Alt from opening the app's menu.
+/// Read the clipboard's text for a paste (`Ctrl+Alt+V`), once the user has let go of the hotkey
+/// (so the app doesn't see Ctrl or Alt held while the text arrives). `None` when there is no text, or
+/// too much of it.
+pub fn start_paste(done: impl FnOnce(Option<String>) + Send + 'static) {
+    if BUSY.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    let _ = std::thread::Builder::new()
+        .name("ekushe-smart-paste".into())
+        .spawn(move || {
+            let text = unsafe {
+                release_hotkey();
+                let class: Vec<u16> = "STATIC\0".encode_utf16().collect();
+                let owner = CreateWindowExW(
+                    0,
+                    class.as_ptr(),
+                    ptr::null(),
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    HWND_MESSAGE,
+                    ptr::null_mut(),
+                    ptr::null_mut(),
+                    ptr::null(),
+                );
+                let text = if owner.is_null() {
+                    None
+                } else {
+                    let t = Clipboard::open(owner).and_then(|_cb| read_text());
+                    DestroyWindow(owner);
+                    t
+                };
+                text.filter(|t| !t.is_empty() && t.chars().count() <= MAX_TEXT_CHARS)
+            };
+            BUSY.store(false, Ordering::SeqCst);
+            done(text);
+        });
+}
+
+/// Wait until the hotkey's keys are up (or lift them), so the app sees no modifier held.
+unsafe fn release_hotkey() {
+    // An unused key in between keeps a released Alt from opening the app's menu.
     send_keys(&[(0xE8, false), (0xE8, true)]);
     let until = Instant::now() + Duration::from_millis(1500);
     let held = [VK_CONTROL, VK_MENU, VK_SHIFT, VK_LWIN, VK_RWIN];
@@ -305,6 +346,11 @@ unsafe fn run(banglish_word: &dyn Fn(&str) -> String) -> Outcome {
     if !still.is_empty() {
         send_keys(&still);
     }
+}
+
+unsafe fn run(banglish_word: &dyn Fn(&str) -> String) -> Outcome {
+    // Let go of the hotkey first: the app must see a plain Ctrl+C
+    release_hotkey();
 
     // A window of this thread owns the clipboard while we use it
     let class: Vec<u16> = "STATIC\0".encode_utf16().collect();

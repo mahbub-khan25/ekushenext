@@ -1,0 +1,9 @@
+[Addon]
+Name=Ekushe Bangla
+Comment=Bangla phonetic keyboard (Ekushe Next)
+Category=InputMethod
+Version=@VERSION@
+Library=libekushe
+Type=SharedLibrary
+OnDemand=True
+Configurable=False

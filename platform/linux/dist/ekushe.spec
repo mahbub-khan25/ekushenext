@@ -8,7 +8,7 @@
 Name:           ekushe
 Version:        @VERSION@
 Release:        1%{?dist}
-Summary:        Bangla phonetic keyboard for IBus, with its own dictionary
+Summary:        Bangla phonetic keyboard for IBus and Fcitx 5, with its own dictionary
 
 # Ekushe's code is MPL-2.0; the dictionary is CC-BY-SA-4.0; Studio embeds fonts under OFL-1.0,
 # OFL-1.1 and GPL-2.0-or-later WITH Font-exception-2.0. The bundled Rust libraries are permissive.
@@ -19,18 +19,23 @@ Source0:        https://github.com/mahbub-khan25/ekushenext/releases/download/@T
 BuildRequires:  cargo >= 1.85
 BuildRequires:  rust >= 1.85
 BuildRequires:  gcc
+BuildRequires:  gcc-c++
 BuildRequires:  make
 BuildRequires:  pkgconfig(ibus-1.0)
+BuildRequires:  pkgconfig(Fcitx5Core)
 BuildRequires:  pkgconfig(gtk+-3.0)
 BuildRequires:  pkgconfig(webkit2gtk-4.1)
 BuildRequires:  desktop-file-utils
 
-Requires:       ibus
+# Either input method framework: IBus (GNOME, most desktops) or Fcitx 5 (often on KDE Plasma)
+Requires:       (ibus or fcitx5)
 Requires:       xdg-utils
 # Studio's own window (GTK + WebKitGTK); without WebKitGTK Studio opens in the browser instead
 Recommends:     webkit2gtk4.1
-%global __requires_exclude_from ^%{_libexecdir}/ekushe/ekushe-studio-window$
+# The Fcitx 5 addon is only loaded by Fcitx, so it needs no Fcitx libraries when Fcitx is not installed
+%global __requires_exclude_from ^(%{_libexecdir}/ekushe/ekushe-studio-window|%{_libdir}/fcitx5/libekushe\\.so)$
 Provides:       ibus-ekushe = %{version}-%{release}
+Provides:       fcitx5-ekushe = %{version}-%{release}
 @BUNDLED@
 
 %description
@@ -38,7 +43,7 @@ Ekushe Next is a Bangla keyboard. Type Bangla the way it sounds in English lette
 (amar sonar bangla → আমার সোনার বাংলা) and Ekushe writes it with Bangla Academy
 standard spellings, using its own dictionary. Suggestions, conjunct hints and
 Backspace undo are built in. Everything runs on your computer; nothing you type
-is sent anywhere.
+is sent anywhere. Works with IBus and with Fcitx 5.
 
 Also includes Ekushe Studio: a writing pad, conjunct guide, spell checker and a
 Bijoy to Unicode converter, in its own window on any desktop (GNOME, KDE Plasma,
@@ -55,6 +60,11 @@ export RUSTFLAGS="%{build_rustflags}"
 %install
 %make_install -f platform/linux/Makefile VERSION=%{version} CARGOFLAGS="--offline --frozen" \
   PREFIX=%{_prefix} LIBEXECDIR=%{_libexecdir} DATADIR=%{_datadir} BINDIR=%{_bindir}
+# The Fcitx 5 addon (absent when rebuilding a release from before it existed)
+: > fcitx5-files
+if [ -f %{buildroot}%{_libdir}/fcitx5/libekushe.so ]; then
+  printf '%%s\n' %{_libdir}/fcitx5/libekushe.so %{_datadir}/fcitx5/addon/ekushe.conf %{_datadir}/fcitx5/inputmethod/ekushe.conf > fcitx5-files
+fi
 
 %check
 desktop-file-validate %{buildroot}%{_datadir}/applications/ekushe-studio.desktop
@@ -72,7 +82,7 @@ if [ "$1" = 0 ]; then
   echo "Ekushe Next: if Ekushe is in your keyboards, run 'ekushe-studio --remove-keyboard' now (before the package is gone), or remove it later from your desktop's keyboard settings." >&2 || :
 fi
 
-%files
+%files -f fcitx5-files
 %license LICENSE THIRD_PARTY_NOTICES.md data/dictionary/LICENSE.md data/dictionary/CC-BY-SA-4.0.txt
 %doc README.md
 %{_libexecdir}/ekushe/
