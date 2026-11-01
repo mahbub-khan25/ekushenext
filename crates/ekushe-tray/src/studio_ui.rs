@@ -173,6 +173,20 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
   .nav-btn.active svg { color: var(--accent); }
   .rail-foot { margin-top: auto; padding: 12px 8px 2px; border-top: 1px solid var(--line); font-size: 0.8rem; color: var(--ink-faint); }
   .rail-foot b { color: var(--ink-soft); font-weight: 600; }
+  .about-card { display: flex; gap: 10px; align-items: center; width: 100%; margin-top: 12px; padding: 10px 8px; border: 0; border-top: 1px solid var(--line); background: none; color: var(--ink-faint); font: inherit; font-size: 0.76rem; line-height: 1.45; text-align: left; cursor: pointer; border-radius: 0 0 12px 12px; }
+  .about-card:hover, .about-card:focus-visible { background: var(--accent-soft); outline: none; }
+  .about-card img { width: 30px; height: 30px; border-radius: 9px; flex: none; }
+  .about-card b { color: var(--ink-soft); font-weight: 600; font-size: 0.82rem; }
+  .about-card > span { min-width: 0; overflow-wrap: anywhere; }
+  .about-dlg { margin: auto; position: fixed; inset: 0; height: fit-content; width: min(420px, 92vw); border: 1px solid var(--line); border-radius: 18px; padding: 26px 24px 20px; background: var(--page); color: var(--ink); font: inherit; text-align: center; line-height: 1.7; }
+  .about-dlg::backdrop { background: rgba(0, 0, 0, .35); }
+  .about-dlg img { width: 72px; height: 72px; border-radius: 18px; }
+  .about-dlg h3 { margin: 10px 0 0; font-size: 1.35rem; }
+  .about-dlg .ver { color: var(--ink-faint); font-size: .85rem; }
+  .about-dlg dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 18px 0 8px; text-align: left; }
+  .about-dlg dt { color: var(--ink-faint); }
+  .about-dlg dd { margin: 0; }
+  .about-dlg a { color: var(--accent); }
 
   /* ── Main sheet ── */
   .sheet { border-radius: 30px; padding: 22px 28px 30px; min-width: 0; }
@@ -450,8 +464,25 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
     <button class="nav-btn" data-tab="ocr"><svg><use href="#i-image"/></svg><span class="lbl"><span class="bn">ছবি থেকে লেখা</span><span class="en">Picture to text</span></span></button>
     <button class="nav-btn" data-tab="fix" id="navFix" style="display:none"><svg><use href="#i-fix"/></svg><span class="lbl"><span class="bn">ভুল শব্দ</span><span class="en">A word was wrong</span></span></button>
     <button class="nav-btn" data-tab="settings"><svg><use href="#i-gear"/></svg><span class="lbl"><span class="bn">সেটিংস</span><span class="en">Settings</span></span></button>
-    <div class="rail-foot">বাংলা ⇄ English বদলাতে<br><b id="hotkeyBadge">Double-Tap Shift</b></div>
+    <div class="rail-foot">বাংলা ⇄ English বদলাতে<br><b id="hotkeyBadge">Double-Tap Shift</b>
+      <button class="about-card" onclick="document.getElementById('aboutDlg').showModal()" title="একুশে নেক্সট সম্পর্কে (About)">
+        <img src="/logo.png" alt="">
+        <span><b>একুশে নেক্সট</b> <span class="aboutVer"></span><br>Mahbub Afzal Khan<br>support@ekushenext.com</span>
+      </button>
+    </div>
   </nav>
+  <dialog class="about-dlg" id="aboutDlg" aria-labelledby="aboutTitle">
+    <img src="/logo.png" alt="">
+    <h3 id="aboutTitle">একুশে নেক্সট</h3>
+    <div class="ver">Ekushe Next <span class="aboutVer"></span></div>
+    <dl>
+      <dt>তৈরি করেছেন<br><small>Developed by</small></dt><dd>Mahbub Afzal Khan</dd>
+      <dt>যোগাযোগ<br><small>Contact</small></dt><dd><a href="mailto:support@ekushenext.com">support@ekushenext.com</a></dd>
+      <dt>ওয়েবসাইট<br><small>Website</small></dt><dd><a href="https://ekushenext.com" target="_blank" rel="noopener">ekushenext.com</a></dd>
+      <dt>লাইসেন্স<br><small>License</small></dt><dd>ওপেন সোর্স, MPL-2.0</dd>
+    </dl>
+    <button class="btn" onclick="document.getElementById('aboutDlg').close()">বন্ধ করুন</button>
+  </dialog>
 
   <main class="sheet glass">
     <div class="topbar">
@@ -1097,7 +1128,7 @@ async function refreshState() {
     if (document.activeElement !== appsEl) appsEl.value = st.bijoy_output_apps || '';
   }
   document.getElementById('fixedLayoutOptions').hidden = !st.active_layout || st.active_layout === 'AvroPhonetic';
-  if (st.app_version) appInfo.app = st.app_version;
+  if (st.app_version) { appInfo.app = st.app_version; document.querySelectorAll('.aboutVer').forEach(e => e.textContent = st.app_version); }
   if (typeof st.check_for_updates === 'boolean' && st.app_version) {
     document.getElementById('cfgUpdatesRow').style.display = '';
     document.getElementById('cfgUpdates').checked = st.check_for_updates;
