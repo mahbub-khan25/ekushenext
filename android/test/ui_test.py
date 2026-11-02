@@ -258,10 +258,16 @@ typed('brb ')
 got = field_text()[0] or ''
 expect(';brb → এখুনি আসছি', 'এখুনি আসছি' in got, True)
 
-# The emoji key next to Space
+# The ; button on the bar (for shortcuts) types a semicolon
+before = field_text()[0] or ''
+tap(*km['SEMICOLON'], 0.6)
+expect('; on the bar', (field_text()[0] or '').endswith(';'), True)
+tap(*km['DELETE'], 0.5)
+
+# The emoji button on the bar
 tap(*km['EMOJI'], 1)
 shot('11-emoji-key')
-tap(int(int(re.search(r'(\d+)x', sh('wm size')).group(1)) / 9 / 2), int(strip + 4 * 54 * (int(re.findall(r'(\d+)', sh('wm density'))[-1]) / 160)), 0.8)  # ABC
+tap(int(int(re.search(r'(\d+)x', sh('wm size')).group(1)) / 9 / 2), int(strip + 4 * 57 * (int(re.findall(r'(\d+)', sh('wm density'))[-1]) / 160)), 0.8)  # ABC
 
 # The number pad, in a number box
 def number_box():
@@ -542,13 +548,12 @@ if b:
     try:
         # the keys, or only the strip (the physical keyboard typed in this field just before)
         try:
-            _, strip_y = keys()
+            kmh, strip_y = keys()
         except SystemExit:
-            _, strip_y = keys('STRIP_ONLY')
+            kmh, strip_y = keys('STRIP_ONLY')
         dens = int(re.findall(r'(\d+)', sh('wm density'))[-1]) / 160
-        width = int(re.findall(r'(\d+)x\d+', sh('wm size'))[-1])
-        # the ? sits fourth from the right: 52 dp buttons, 8 dp from the edge
-        tap(int(width - (8 + 3 * 52 + 26) * dens), strip_y, 2.5)
+        # the ? is on the left of the bar when nothing is typed (second, after ⚙)
+        tap(*kmh.get('TOOL_help', (int((4 + 48 + 24) * dens), strip_y)), 2.5)
         dismiss_anr()
         seen = any((n.get('text') or '').startswith('চিহ্নের নিয়ম') for n in dump_nodes())
         expect('? opens the marks table', seen, True)

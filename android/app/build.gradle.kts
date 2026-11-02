@@ -50,6 +50,14 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             if (secret("storeFile", "EKUSHE_KEYSTORE") != null) signingConfig = signingConfigs.getByName("release")
         }
+        // A test build that installs next to the released app ("Ekushe Next (preview)"), so trying a
+        // change does not mean removing Ekushe and its settings
+        create("preview") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".preview"
+            versionNameSuffix = "-preview"
+            matchingFallbacks += listOf("debug")
+        }
     }
 
     compileOptions {

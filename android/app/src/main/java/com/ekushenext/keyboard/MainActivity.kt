@@ -338,7 +338,7 @@ class MainActivity : AppCompatActivity() {
             "bounce" to "লাফ: কী একটু ছোট হয়ে ফেরে (Bounce)",
         ), prefs.pressEffect) { prefs.pressEffect = it })
         divider(card)
-        card.addView(switch("ইমোজি বোতাম", "An emoji key next to Space, like Gboard", prefs.emojiKey) { prefs.emojiKey = it })
+        card.addView(switch("ইমোজি বোতাম", "An emoji button on the bar above the keys", prefs.emojiKey) { prefs.emojiKey = it })
         divider(card)
         card.addView(choice("উচ্চতা", "Height", listOf("0" to "ছোট (Small)", "1" to "সাধারণ (Normal)", "2" to "বড় (Tall)"), prefs.height.toString()) { prefs.height = it.toInt() })
         divider(card)
