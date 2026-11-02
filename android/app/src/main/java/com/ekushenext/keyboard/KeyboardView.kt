@@ -91,7 +91,7 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
 
     // ── geometry
     private val stripH get() = 46 * dp
-    private val rowH get() = (when (prefs.height) { 0 -> 48; 2 -> 60; else -> 54 }) * dp
+    private val rowH get() = (when (prefs.height) { 0 -> 50; 2 -> 64; else -> 57 }) * dp
     private val gap get() = 3.5f * dp
     private val bottomPad get() = 6 * dp
 
@@ -147,7 +147,6 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
     }
 
     private fun buildKeys() {
-        Layouts.emojiKey = prefs.emojiKey
         rows = when (mode) {
             Mode.LETTERS -> Layouts.fixed?.takeIf { bangla }?.let { Layouts.fixedLetters(it, prefs.numberRow) }
                 ?: Layouts.letters(prefs.numberRow)
@@ -215,10 +214,14 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
         if (logged && loc.contentEquals(loggedAt)) return
         logged = true
         loggedAt = loc
-        val keys = if (stripOnly) "" else placed.joinToString(",") { (k, r) ->
-            val id = if (k.type == KeyType.CHAR) k.text.replace("\\", "\\\\").replace("\"", "\\\"") else k.type.name
-            "{\"k\":\"$id\",\"x\":${(loc[0] + r.centerX()).toInt()},\"y\":${(loc[1] + r.centerY()).toInt()}}"
+        fun entry(id: String, r: RectF) = "{\"k\":\"$id\",\"x\":${(loc[0] + r.centerX()).toInt()},\"y\":${(loc[1] + r.centerY()).toInt()}}"
+        val keyList = if (stripOnly) emptyList() else placed.map { (k, r) ->
+            entry(if (k.type == KeyType.CHAR) k.text.replace("\\", "\\\\").replace("\"", "\\\"") else k.type.name, r)
         }
+        // the bar's buttons: LANG, EMOJI, SEMICOLON on the right; TOOL_help etc. when nothing is typed
+        layoutCluster()
+        val barList = cluster.map { entry(it.id.uppercase(), it.rect) } + tools.map { entry("TOOL_" + it.id, it.rect) }
+        val keys = (keyList + barList).joinToString(",")
         Log.i("EkusheKeys", "{\"mode\":\"${if (stripOnly) "STRIP_ONLY" else mode.name}\",\"strip\":${loc[1] + (stripH / 2).toInt()},\"keys\":[$keys]}")
     }
 
@@ -480,6 +483,7 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
         c.drawRect(0f, 0f, width.toFloat(), stripH, keyPaint)
         val list = ArrayList<Chip>()
         val pad = 8 * dp
+        val chipsRight = layoutCluster()
         var x = pad - stripScroll
         val top = 6 * dp
         val bottom = stripH - 6 * dp
@@ -508,9 +512,9 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
         stripContentW = x + stripScroll
         chips = list
 
-        if (list.isEmpty()) { drawToolbar(c); return }
+        if (list.isEmpty()) { drawToolbar(c); drawCluster(c); return }
         c.save()
-        c.clipRect(0f, 0f, width.toFloat(), stripH)
+        c.clipRect(0f, 0f, chipsRight, stripH)
         for (ch in list) {
             keyPaint.color = when { ch.strong -> p.accent; else -> p.chip }
             c.drawRoundRect(ch.rect, 10 * dp, 10 * dp, keyPaint)
@@ -531,6 +535,66 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
             }
         }
         c.restore()
+        drawCluster(c)
+    }
+
+    // Always on the right of the bar, also while suggestions show: ; (for shortcuts), emoji and the
+    // language switch (long-press: the phone's keyboard list)
+    private var cluster: List<Tool> = emptyList()
+
+    /** Places the right-hand buttons; returns where the suggestions must end */
+    private fun layoutCluster(): Float {
+        val s = stripH
+        var right = width - 4 * dp
+        val list = ArrayList<Tool>()
+        // at most a third of the bar, so the suggestions keep most of it
+        val ids = listOfNotNull(
+            if (!stripOnly) "hide" else null, "lang",
+            if (prefs.emojiKey || stripOnly) "emoji" else null, if (!stripOnly) "semicolon" else null,
+        )
+        val share = mapOf("hide" to 0.8f, "lang" to 1.5f, "emoji" to 1f, "semicolon" to 0.8f)
+        val total = minOf(width / 3f, ids.size * 38 * dp)
+        val unit = total / ids.sumOf { share[it]!!.toDouble() }.toFloat()
+        fun add(id: String, w: Float) { list += Tool(id, RectF(right - w, 0f, right, s)); right -= w }
+        for (id in ids) add(id, share[id]!! * unit)
+        cluster = list
+        return right - 4 * dp
+    }
+
+    private fun drawCluster(c: Canvas) {
+        val p = palette
+        // a thin divider between the suggestions and the buttons
+        cluster.lastOrNull()?.let {
+            keyPaint.color = p.subtext; keyPaint.alpha = 50
+            c.drawRect(it.rect.left - 2 * dp, 12 * dp, it.rect.left - 1 * dp, stripH - 12 * dp, keyPaint)
+            keyPaint.alpha = 255
+        }
+        for (t in cluster) {
+            when (t.id) {
+                "lang" -> {
+                    // one small pill with the language in use: Bangla filled, English outlined
+                    val pill = RectF(t.rect.left + 3 * dp, 10 * dp, t.rect.right - 3 * dp, stripH - 10 * dp)
+                    keyPaint.color = if (bangla) p.accent else p.chip
+                    c.drawRoundRect(pill, pill.height() / 2, pill.height() / 2, keyPaint)
+                    textPaint.typeface = if (bangla) bnFace else Typeface.DEFAULT_BOLD
+                    textPaint.textSize = 13 * dp
+                    textPaint.color = if (bangla) p.onAccent else p.text
+                    c.drawText(if (bangla) "বাং" else "EN", pill.centerX(), pill.centerY() + 4.5f * dp, textPaint)
+                }
+                "emoji" -> {
+                    textPaint.typeface = Typeface.DEFAULT; textPaint.textSize = 18 * dp; textPaint.color = p.subtext
+                    c.drawText(if (stripOnly) "⌨" else "☺", t.rect.centerX(), t.rect.centerY() + 6 * dp, textPaint)
+                }
+                "semicolon" -> {
+                    textPaint.typeface = Typeface.DEFAULT_BOLD; textPaint.textSize = 20 * dp; textPaint.color = p.text
+                    c.drawText(";", t.rect.centerX(), t.rect.centerY() + 6 * dp, textPaint)
+                }
+                "hide" -> {
+                    textPaint.typeface = Typeface.DEFAULT; textPaint.textSize = 18 * dp; textPaint.color = p.subtext
+                    c.drawText("⌄", t.rect.centerX(), t.rect.centerY() + 3 * dp, textPaint)
+                }
+            }
+        }
     }
 
     // Toolbar when nothing is being typed: language, emoji, settings, hide
@@ -540,42 +604,23 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
     private fun drawToolbar(c: Canvas) {
         val p = palette
         val s = stripH
-        val ids = listOf("lang", "emoji", "settings", "hide")
-        val w = 52 * dp
+        val w = 48 * dp
         tools = listOfNotNull(
-            Tool("lang", RectF(8 * dp, 6 * dp, 8 * dp + 96 * dp, s - 6 * dp)),
-            // a note beside the language switch (password box, English only) takes that space
-            if (stripMessage == null) Tool("help", RectF(width - 4 * w - 8 * dp, 0f, width - 3 * w - 8 * dp, s)) else null,
-            Tool("emoji", RectF(width - 3 * w - 8 * dp, 0f, width - 2 * w - 8 * dp, s)),
-            Tool("settings", RectF(width - 2 * w - 8 * dp, 0f, width - w - 8 * dp, s)),
-            Tool("hide", RectF(width - w - 8 * dp, 0f, width - 8 * dp, s)),
+            Tool("settings", RectF(4 * dp, 0f, 4 * dp + w, s)),
+            if (stripMessage == null) Tool("help", RectF(4 * dp + w, 0f, 4 * dp + 2 * w, s)) else null,
         )
-        // the language pill
-        val pill = tools[0].rect
-        keyPaint.color = p.chip
-        c.drawRoundRect(pill, pill.height() / 2, pill.height() / 2, keyPaint)
-        val half = RectF(if (bangla) pill.left else pill.centerX(), pill.top, if (bangla) pill.centerX() else pill.right, pill.bottom)
-        keyPaint.color = p.accent
-        c.drawRoundRect(half, pill.height() / 2, pill.height() / 2, keyPaint)
-        textPaint.typeface = bnFace
-        textPaint.textSize = 14 * dp
-        textPaint.color = if (bangla) p.onAccent else p.subtext
-        c.drawText("বাংলা", pill.left + pill.width() / 4, pill.centerY() + 5 * dp, textPaint)
-        textPaint.typeface = Typeface.DEFAULT_BOLD
-        textPaint.color = if (!bangla) p.onAccent else p.subtext
-        c.drawText("EN", pill.left + pill.width() * 3 / 4, pill.centerY() + 5 * dp, textPaint)
-        stripMessage?.let {
-            textPaint.typeface = bnFaceRegular; textPaint.textSize = 13 * dp; textPaint.color = p.subtext
-            textPaint.textAlign = Paint.Align.LEFT
-            c.drawText(it, pill.right + 12 * dp, pill.centerY() + 5 * dp, textPaint)
-            textPaint.textAlign = Paint.Align.CENTER
-        }
         textPaint.typeface = Typeface.DEFAULT
         textPaint.textSize = 20 * dp
         textPaint.color = p.subtext
-        val glyph = mapOf("help" to "?", "emoji" to if (stripOnly) "⌨" else "☺", "settings" to "⚙", "hide" to "⌄")
-        for (t in tools.drop(1)) c.drawText(glyph[t.id]!!, t.rect.centerX(), t.rect.centerY() + 7 * dp, textPaint)
-        if (ids.isEmpty()) return
+        val glyph = mapOf("help" to "?", "settings" to "⚙")
+        for (t in tools) c.drawText(glyph[t.id]!!, t.rect.centerX(), t.rect.centerY() + 7 * dp, textPaint)
+        // a note (password box, English only) beside the settings button
+        stripMessage?.let {
+            textPaint.typeface = bnFaceRegular; textPaint.textSize = 13 * dp; textPaint.color = p.subtext
+            textPaint.textAlign = Paint.Align.LEFT
+            c.drawText(it, 4 * dp + w + 6 * dp, s / 2 + 5 * dp, textPaint)
+            textPaint.textAlign = Paint.Align.CENTER
+        }
     }
 
     // ── emoji panel
@@ -832,11 +877,13 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
 
     // strip gestures
     private var stripPressed = false
-    private fun stripDown(x: Float) { stripPressed = true; stripDragging = false; stripDownX = x; stripStartScroll = stripScroll }
+    private var stripDownAt = 0L
+    private fun stripDown(x: Float) { stripPressed = true; stripDragging = false; stripDownX = x; stripStartScroll = stripScroll; stripDownAt = android.os.SystemClock.uptimeMillis() }
     private fun stripMove(x: Float) {
         if (abs(x - stripDownX) > 8 * dp) stripDragging = true
-        if (stripDragging && chips.isNotEmpty()) {
-            stripScroll = (stripStartScroll - (x - stripDownX)).coerceIn(0f, max(0f, stripContentW - width + 8 * dp))
+        val area = cluster.minOfOrNull { it.rect.left } ?: width.toFloat()
+        if (stripDragging && chips.isNotEmpty() && stripDownX < area) {
+            stripScroll = (stripStartScroll - (x - stripDownX)).coerceIn(0f, max(0f, stripContentW - area + 8 * dp))
             invalidate()
         }
     }
@@ -844,6 +891,15 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
         stripPressed = false
         if (stripDragging) return
         listener.onKeyFeedback(this, HapticFeedbackConstants.KEYBOARD_TAP)
+        cluster.firstOrNull { it.rect.contains(stripDownX, y) && it.rect.contains(x, y) }?.let {
+            when (it.id) {
+                "lang" -> if (android.os.SystemClock.uptimeMillis() - stripDownAt > 450) listener.onSwitchInputMethod() else listener.onLanguageToggle()
+                "emoji" -> if (stripOnly) listener.onShowKeys() else openEmoji()
+                "semicolon" -> listener.onText(";")
+                "hide" -> listener.onHide()
+            }
+            return
+        }
         if (chips.isNotEmpty()) { chips.firstOrNull { it.rect.contains(x, y) }?.action?.invoke(); return }
         when (tools.firstOrNull { it.rect.contains(x, y) }?.id) {
             "lang" -> listener.onLanguageToggle()

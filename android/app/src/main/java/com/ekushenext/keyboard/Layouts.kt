@@ -135,22 +135,12 @@ object Layouts {
     private val commaAlts = listOf(Alt(",,", ",,", "হসন্ত"), Alt("+", "+", "যুক্ত"), Alt("`", "`", "আলাদা"), Alt(";", ";"), Alt("'", "'"), Alt("\"", "\""), Alt("-", "-"))
     private val periodAlts = listOf(Alt("..", "..", "বিন্দু"), Alt("?", "?"), Alt("!", "!"), Alt(":", ":", "ঃ"), Alt("^", "^", "ঁ"), Alt("/", "/", "English"), Alt("$", "$", "৳"))
 
-    /** An emoji key on the bottom row, like Gboard and Samsung (a setting) */
-    var emojiKey = true
-
-    fun bottomRow(switchType: KeyType, switchLabel: String) = if (emojiKey) listOf(
-        Key(switchType, switchLabel, width = 1.3f),
-        Key(KeyType.LANG, "বাং", width = 1f),
-        Key(KeyType.CHAR, ",", ",", alts = commaAlts),
-        Key(KeyType.EMOJI, "☺", width = 1f),
-        Key(KeyType.SPACE, " ", " ", width = 3.4f),
-        Key(KeyType.CHAR, ".", ".", alts = periodAlts),
-        Key(KeyType.ENTER, "↵", "\n", width = 1.3f),
-    ) else listOf(
+    /** The bottom row: the language switch, emoji and ; live on the bar above the keys, so Space
+     *  gets the room (a narrow Space caused many mistyped words) */
+    fun bottomRow(switchType: KeyType, switchLabel: String) = listOf(
         Key(switchType, switchLabel, width = 1.5f),
-        Key(KeyType.LANG, "বাং", width = 1f),
         Key(KeyType.CHAR, ",", ",", alts = commaAlts),
-        Key(KeyType.SPACE, " ", " ", width = 4.5f),
+        Key(KeyType.SPACE, " ", " ", width = 5f),
         Key(KeyType.CHAR, ".", ".", alts = periodAlts),
         Key(KeyType.ENTER, "↵", "\n", width = 1.5f),
     )

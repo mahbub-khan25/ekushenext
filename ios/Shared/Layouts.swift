@@ -68,7 +68,7 @@ enum Layouts {
     private static let numberRow = "1234567890".map { Key(.char, String($0)) }
 
     /// Phonetic QWERTY, with the Bangla letter of each key shown small
-    static func letters(numberRow: Bool, emojiKey: Bool, globe: Bool) -> [[Key]] {
+    static func letters(numberRow: Bool, globe: Bool) -> [[Key]] {
         var rows: [[Key]] = []
         if numberRow { rows.append(self.numberRow) }
         rows.append([
@@ -83,45 +83,45 @@ enum Layouts {
             ch("z", "য", "্য", alts: altZ), ch("x", "ক্স"), ch("c", "চ", alts: altC), ch("v", "ভ"), ch("b", "ব", alts: altB),
             ch("n", "ন", "ণ", alts: altN), ch("m", "ম"),
         ] + [Key(.delete, "⌫", width: 1.5)])
-        rows.append(bottomRow(.symbols, "?১২৩", emojiKey: emojiKey, globe: globe))
+        rows.append(bottomRow(.symbols, "?১২৩", globe: globe))
         return rows
     }
 
     private static let commaAlts = [Alt(label: ",,", text: ",,", note: "হসন্ত"), Alt(label: "+", text: "+", note: "যুক্ত"), Alt(label: "`", text: "`", note: "আলাদা"), Alt(label: ";", text: ";"), Alt(label: "'", text: "'"), Alt(label: "\"", text: "\""), Alt(label: "-", text: "-")]
     private static let periodAlts = [Alt(label: "..", text: "..", note: "বিন্দু"), Alt(label: "?", text: "?"), Alt(label: "!", text: "!"), Alt(label: ":", text: ":", note: "ঃ"), Alt(label: "^", text: "^", note: "ঁ"), Alt(label: "/", text: "/", note: "English"), Alt(label: "$", text: "$", note: "৳")]
 
-    /// The bottom row: the layout switch, Bangla/English, the globe (when iOS asks for it), comma,
-    /// the emoji key, Space, full stop and Return. Always ten units wide.
-    static func bottomRow(_ switchType: KeyType, _ switchLabel: String, emojiKey: Bool, globe: Bool) -> [Key] {
-        var row: [Key] = [Key(switchType, switchLabel, width: 1.3), Key(.lang, "বাং")]
-        var space: CGFloat = 4.1
+    /// The bottom row: the layout switch, the globe (when iOS asks for it), comma, Space, full stop
+    /// and Return. Bangla/English, emoji and ; are on the bar above the keys, so Space gets the room
+    /// (a narrow Space caused many mistyped words). Always ten units wide.
+    static func bottomRow(_ switchType: KeyType, _ switchLabel: String, globe: Bool) -> [Key] {
+        var row: [Key] = [Key(switchType, switchLabel, width: 1.5)]
+        var space: CGFloat = 5
         if globe { row.append(Key(.globe, "🌐")); space -= 1 }
         row.append(Key(.char, ",", ",", alts: commaAlts))
-        if emojiKey { row.append(Key(.emoji, "☺")); space -= 1 }
-        row.append(Key(.space, " ", " ", width: max(2.4, space + 0.3)))
+        row.append(Key(.space, " ", " ", width: space))
         row.append(Key(.char, ".", ".", alts: periodAlts))
-        row.append(Key(.enter, "↵", "\n", width: 1.3))
+        row.append(Key(.enter, "↵", "\n", width: 1.5))
         return row
     }
 
     /// Digits and the common symbols
-    static func symbols(emojiKey: Bool, globe: Bool) -> [[Key]] {
+    static func symbols(globe: Bool) -> [[Key]] {
         [
             "1234567890".map { Key(.char, String($0)) },
             ["@", "#", "৳", "_", "&", "-", "+", "(", ")", "/"].map {
                 Key(.char, $0, $0, alts: $0 == "৳" ? [Alt(label: "$", text: "$"), Alt(label: "€", text: "€"), Alt(label: "£", text: "£"), Alt(label: "¥", text: "¥"), Alt(label: "₹", text: "₹")] : [])
             },
             [Key(.moreSymbols, "=\\<", width: 1.5)] + ["*", "\"", "'", ":", ";", "!", "?"].map { Key(.char, $0) } + [Key(.delete, "⌫", width: 1.5)],
-            bottomRow(.letters, "ABC", emojiKey: emojiKey, globe: globe),
+            bottomRow(.letters, "ABC", globe: globe),
         ]
     }
 
-    static func moreSymbols(emojiKey: Bool, globe: Bool) -> [[Key]] {
+    static func moreSymbols(globe: Bool) -> [[Key]] {
         [
             ["~", "`", "|", "•", "√", "π", "÷", "×", "¶", "∆"].map { Key(.char, $0) },
             ["£", "€", "¥", "^", "°", "=", "{", "}", "\\", "%"].map { Key(.char, $0) },
             [Key(.symbols, "?১২৩", width: 1.5)] + ["©", "®", "™", "✓", "[", "]", "<"].map { Key(.char, $0) } + [Key(.delete, "⌫", width: 1.5)],
-            bottomRow(.letters, "ABC", emojiKey: emojiKey, globe: globe),
+            bottomRow(.letters, "ABC", globe: globe),
         ]
     }
 

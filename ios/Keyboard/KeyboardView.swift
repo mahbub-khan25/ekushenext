@@ -46,7 +46,7 @@ final class KeyboardView: UIView {
 
     // ── geometry
     let stripH: CGFloat = 46
-    var rowH: CGFloat { [48, 54, 60][max(0, min(2, prefs.height))] }
+    var rowH: CGFloat { [50, 57, 64][max(0, min(2, prefs.height))] }
     private let gap: CGFloat = 5
     private let bottomPad: CGFloat = 4
     var preferredHeight: CGFloat { stripH + CGFloat(prefs.numberRow && mode == .letters ? 5 : 4) * rowH + bottomPad }
@@ -76,9 +76,9 @@ final class KeyboardView: UIView {
 
     private func buildKeys() {
         switch mode {
-        case .letters: rows = Layouts.letters(numberRow: prefs.numberRow, emojiKey: prefs.emojiKey, globe: showsGlobe)
-        case .symbols: rows = Layouts.symbols(emojiKey: prefs.emojiKey, globe: showsGlobe)
-        case .moreSymbols: rows = Layouts.moreSymbols(emojiKey: prefs.emojiKey, globe: showsGlobe)
+        case .letters: rows = Layouts.letters(numberRow: prefs.numberRow, globe: showsGlobe)
+        case .symbols: rows = Layouts.symbols(globe: showsGlobe)
+        case .moreSymbols: rows = Layouts.moreSymbols(globe: showsGlobe)
         case .numbers: rows = Layouts.numbers()
         case .emoji: rows = []
         }
@@ -265,6 +265,7 @@ final class KeyboardView: UIView {
         let p = palette
         p.strip.setFill(); UIRectFill(CGRect(x: 0, y: 0, width: bounds.width, height: stripH))
         var list: [Chip] = []
+        let chipsRight = layoutCluster()
         var x: CGFloat = 8 - stripScroll
         func chip(_ label: String, _ note: String?, strong: Bool, tip: Bool, _ action: @escaping () -> Void) {
             let f = font(17, strong ? .semibold : .regular)
@@ -282,9 +283,9 @@ final class KeyboardView: UIView {
         }
         stripContentW = x + stripScroll
         chips = list
-        if list.isEmpty { drawToolbar(); return }
+        if list.isEmpty { drawToolbar(); drawCluster(); return }
         let ctx = UIGraphicsGetCurrentContext()
-        ctx?.saveGState(); ctx?.clip(to: CGRect(x: 0, y: 0, width: bounds.width, height: stripH))
+        ctx?.saveGState(); ctx?.clip(to: CGRect(x: 0, y: 0, width: chipsRight, height: stripH))
         for ch in list {
             fill(ch.rect, 10, ch.strong ? p.accent : p.chip)
             if ch.tip { p.accent.setStroke(); let b = UIBezierPath(roundedRect: ch.rect, cornerRadius: 10); b.lineWidth = 1.5; b.stroke() }
@@ -293,29 +294,63 @@ final class KeyboardView: UIView {
             if let n = ch.note { draw(n, centre: CGPoint(x: ch.rect.maxX - 10 - noteW / 2 + 4, y: ch.rect.midY), font: font(12, .bold), color: ch.strong ? p.onAccent : p.hint) }
         }
         ctx?.restoreGState()
+        drawCluster()
+    }
+
+    // Always on the right of the bar, also while suggestions show: ; (for shortcuts), emoji and the
+    // Bangla/English switch
+    private var cluster: [Tool] = []
+
+    /// Places the right-hand buttons; returns where the suggestions must end
+    private func layoutCluster() -> CGFloat {
+        var right = bounds.width - 4
+        var list: [Tool] = []
+        // at most a third of the bar, so the suggestions keep most of it
+        let ids = ["hide", "lang"] + (prefs.emojiKey ? ["emoji"] : []) + ["semicolon"]
+        let share: [String: CGFloat] = ["hide": 0.8, "lang": 1.5, "emoji": 1, "semicolon": 0.8]
+        let total = min(bounds.width / 3, CGFloat(ids.count) * 38)
+        let unit = total / ids.reduce(0) { $0 + share[$1]! }
+        func add(_ id: String, _ w: CGFloat) { list.append(Tool(id: id, rect: CGRect(x: right - w, y: 0, width: w, height: stripH))); right -= w }
+        for id in ids { add(id, share[id]! * unit) }
+        cluster = list
+        return right - 4
+    }
+
+    private func drawCluster() {
+        let p = palette
+        if let last = cluster.last {
+            // UIRectFill ignores transparency; a path fill blends
+            p.subtext.withAlphaComponent(0.25).setFill()
+            UIBezierPath(rect: CGRect(x: last.rect.minX - 2, y: 14, width: 1, height: stripH - 28)).fill()
+        }
+        for t in cluster {
+            switch t.id {
+            case "lang":
+                // one small pill with the language in use: Bangla filled, English plain
+                let pill = CGRect(x: t.rect.minX + 3, y: 10, width: t.rect.width - 6, height: stripH - 20)
+                fill(pill, pill.height / 2, bangla ? p.accent : p.chip)
+                draw(bangla ? "বাং" : "EN", centre: CGPoint(x: pill.midX, y: pill.midY), font: font(13, bangla ? .semibold : .bold), color: bangla ? p.onAccent : p.text)
+            case "emoji":
+                draw("☺︎", centre: CGPoint(x: t.rect.midX, y: t.rect.midY), font: font(19), color: p.subtext)
+            case "hide":
+                draw("⌄", centre: CGPoint(x: t.rect.midX, y: t.rect.midY - 5), font: font(19), color: p.subtext)
+            default:
+                draw(";", centre: CGPoint(x: t.rect.midX, y: t.rect.midY), font: font(20, .bold), color: p.text)
+            }
+        }
     }
 
     private func drawToolbar() {
         let p = palette
-        let w: CGFloat = 52
-        tools = [
-            Tool(id: "lang", rect: CGRect(x: 8, y: 6, width: 96, height: stripH - 12)),
-            Tool(id: "emoji", rect: CGRect(x: bounds.width - 3 * w - 8, y: 0, width: w, height: stripH)),
-            Tool(id: "settings", rect: CGRect(x: bounds.width - 2 * w - 8, y: 0, width: w, height: stripH)),
-            Tool(id: "hide", rect: CGRect(x: bounds.width - w - 8, y: 0, width: w, height: stripH)),
-        ]
-        let pill = tools[0].rect
-        fill(pill, pill.height / 2, p.chip)
-        fill(CGRect(x: bangla ? pill.minX : pill.midX, y: pill.minY, width: pill.width / 2, height: pill.height), pill.height / 2, p.accent)
-        draw("বাংলা", centre: CGPoint(x: pill.minX + pill.width / 4, y: pill.midY), font: font(14, .semibold), color: bangla ? p.onAccent : p.subtext)
-        draw("EN", centre: CGPoint(x: pill.minX + pill.width * 3 / 4, y: pill.midY), font: font(14, .bold), color: bangla ? p.subtext : p.onAccent)
+        let w: CGFloat = 48
+        tools = [Tool(id: "settings", rect: CGRect(x: 4, y: 0, width: w, height: stripH))]
         if let m = stripMessage {
             let a: [NSAttributedString.Key: Any] = [.font: font(13), .foregroundColor: p.subtext]
             let s = (m as NSString).size(withAttributes: a)
-            (m as NSString).draw(at: CGPoint(x: pill.maxX + 12, y: pill.midY - s.height / 2), withAttributes: a)
+            (m as NSString).draw(at: CGPoint(x: 4 + w + 6, y: stripH / 2 - s.height / 2), withAttributes: a)
         }
-        let glyph = ["emoji": "☺︎", "settings": "⚙︎", "hide": "⌄"]
-        for t in tools.dropFirst() { draw(glyph[t.id]!, centre: CGPoint(x: t.rect.midX, y: t.rect.midY), font: font(21), color: p.subtext) }
+        let glyph = ["settings": "⚙︎"]
+        for t in tools { draw(glyph[t.id]!, centre: CGPoint(x: t.rect.midX, y: t.rect.midY), font: font(21), color: p.subtext) }
     }
 
     // ── emoji panel
@@ -420,8 +455,9 @@ final class KeyboardView: UIView {
         let pt = t.location(in: self)
         if stripPressed {
             if abs(pt.x - downPoint.x) > 8 { stripDragging = true }
-            if stripDragging && !chips.isEmpty {
-                stripScroll = min(max(0, stripStartScroll - (pt.x - downPoint.x)), max(0, stripContentW - bounds.width + 8))
+            let area = cluster.map { $0.rect.minX }.min() ?? bounds.width
+            if stripDragging && !chips.isEmpty && downPoint.x < area {
+                stripScroll = min(max(0, stripStartScroll - (pt.x - downPoint.x)), max(0, stripContentW - area + 8))
                 setNeedsDisplay()
             }
             return
@@ -541,6 +577,15 @@ final class KeyboardView: UIView {
 
     private func stripTap(_ pt: CGPoint) {
         listener?.onKeyFeedback()
+        if let t = cluster.first(where: { $0.rect.contains(pt) }) {
+            switch t.id {
+            case "lang": listener?.onLanguageToggle()
+            case "emoji": openEmoji()
+            case "hide": listener?.onHide()
+            default: listener?.onText(";")
+            }
+            return
+        }
         if !chips.isEmpty { chips.first(where: { $0.rect.contains(pt) })?.action(); return }
         switch tools.first(where: { $0.rect.contains(pt) })?.id {
         case "lang": listener?.onLanguageToggle()
