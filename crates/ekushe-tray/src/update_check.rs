@@ -266,7 +266,7 @@ fn message(text: &str, flags: u32) -> i32 {
     }
 }
 
-/// The user chose "Check for updates" in the tray menu (runs in the background, answers in a box).
+/// The user chose "check now" in Studio (runs in the background, answers in a box).
 pub fn check_now_and_tell() {
     std::thread::spawn(|| match check() {
         Ok(Some(tag)) => {

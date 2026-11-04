@@ -398,6 +398,19 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
   .welcome-choice:hover, .welcome-choice:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
   .welcome-choice span { font-size: .85rem; color: var(--ink-soft); }
   .welcome-list { margin: 10px 0 0; padding-left: 20px; line-height: 1.9; }
+  .lay-ed { margin: auto; position: fixed; inset: 0; width: min(1100px, 96vw); height: min(860px, 94vh); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; background: var(--page); color: var(--ink); font: inherit; overflow: auto; }
+  .lay-ed::backdrop { background: rgba(0, 0, 0, .4); }
+  .lay-kb { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; user-select: none; }
+  .lay-row { display: flex; gap: 6px; }
+  .lay-key { flex: 0 0 auto; width: 62px; height: 58px; border: 1px solid var(--line, rgba(127,127,127,.3)); border-radius: 9px; background: var(--card, rgba(255,255,255,.6)); color: inherit; cursor: pointer; position: relative; font: inherit; padding: 0; }
+  .lay-key .k { position: absolute; left: 6px; top: 3px; font-size: .72rem; opacity: .6; font-family: ui-monospace, monospace; }
+  .lay-key .n { position: absolute; left: 0; right: 0; bottom: 6px; text-align: center; font-family: var(--font-bn); font-size: 1.25rem; }
+  .lay-key .s { position: absolute; right: 6px; top: 2px; font-family: var(--font-bn); font-size: .85rem; opacity: .75; }
+  .lay-key.sel { outline: 3px solid var(--accent, #0b6b4f); }
+  .lay-key.link { background: rgba(11, 107, 79, .14); }
+  .lay-pal { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
+  .lay-pal button { min-width: 36px; height: 36px; border: 1px solid var(--line, rgba(127,127,127,.3)); border-radius: 8px; background: transparent; color: inherit; font-family: var(--font-bn); font-size: 1.1rem; cursor: pointer; }
+  .lay-pal button:hover { background: rgba(11, 107, 79, .12); }
   .ocr-send { margin: auto; position: fixed; inset: 0; height: fit-content; border: 1px solid var(--line); border-radius: 16px; padding: 20px 22px; max-width: 520px; background: var(--page); color: var(--ink); font: inherit; line-height: 1.7; }
   .ocr-send::backdrop { background: rgba(0, 0, 0, .35); }
   .ocr-send h3 { margin: 0 0 8px; }
@@ -735,6 +748,63 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
       </div>
     </section>
 
+    <dialog class="lay-ed" id="layEd" aria-labelledby="layEdTitle">
+      <div class="row" style="justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <h3 id="layEdTitle" style="margin:0">নিজে লেআউট বানান</h3>
+        <div class="row" style="gap:8px">
+          <button class="btn" onclick="document.getElementById('layEd').close()">বন্ধ</button>
+          <button class="btn primary" onclick="layEdSave()">সংরক্ষণ ও চালু করুন</button>
+        </div>
+      </div>
+      <div class="row" style="gap:10px;flex-wrap:wrap;margin-top:10px;align-items:flex-end">
+        <label>নাম <input type="text" id="layEdName" maxlength="40" placeholder="আমার লেআউট" style="width:200px"></label>
+        <label>শুরু করুন <select id="layEdFrom" onchange="layEdStart(this.value)"></select></label>
+        <span class="hint">একটি কী-তে ক্লিক করুন, তারপর নিচ থেকে অক্ষর বেছে নিন।</span>
+      </div>
+      <div class="row" style="gap:6px;margin-top:10px;flex-wrap:wrap" role="radiogroup" aria-label="স্তর">
+        <button class="btn" data-layer="n" onclick="layEdLayer('n')">সাধারণ</button>
+        <button class="btn" data-layer="s" onclick="layEdLayer('s')">Shift</button>
+        <button class="btn" data-layer="a" onclick="layEdLayer('a')">AltGr (ডান Alt)</button>
+      </div>
+      <div class="lay-kb" id="layEdKb"></div>
+      <div class="row" style="gap:10px;align-items:center;flex-wrap:wrap">
+        <b id="layEdSelKey">কোনো কী বাছা হয়নি</b>
+        <input type="text" id="layEdText" maxlength="8" style="width:120px;font-family:var(--font-bn);font-size:1.1rem" oninput="layEdSetText(this.value)" aria-label="এই কী যা লিখবে">
+        <button class="btn" onclick="layEdSetText('');document.getElementById('layEdText').value=''">খালি করুন</button>
+      </div>
+      <div class="lay-pal" id="layEdPal"></div>
+      <div class="row" style="gap:16px;flex-wrap:wrap;margin-top:8px;align-items:center">
+        <label>যুক্তবর্ণের লিংক কী <select id="layEdLink" onchange="layEdDraw()"></select></label>
+        <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="layEdKarBefore"> ি ে ৈ সবসময় অক্ষরের আগে টাইপ হয়</label>
+        <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="layEdRephAfter"> রেফ অক্ষরের পরে টাইপ হয়</label>
+      </div>
+      <div id="layEdWarn" class="hint" style="margin-top:8px"></div>
+      <div style="margin-top:10px">
+        <b>এখানে টাইপ করে দেখুন</b> <span class="hint">(ইংরেজি কীবোর্ডে; AltGr = ডান Alt)</span>
+        <div tabindex="0" id="layEdTry" onkeydown="layEdKey(event)" style="min-height:64px;margin-top:6px;padding:10px 12px;border:1px solid var(--line, rgba(127,127,127,.3));border-radius:10px;font-family:var(--font-bn);font-size:1.3rem;white-space:pre-wrap;cursor:text"></div>
+        <div class="row" style="gap:8px;margin-top:6px"><button class="btn" onclick="layEdKeys=[];layEdRun()">মুছে আবার দেখুন</button><span class="hint" id="layEdTryMsg"></span></div>
+      </div>
+    </dialog>
+    <dialog class="ocr-send" id="donateDlg">
+      <h3>একুশেকে কণ্ঠ দেবেন?</h3>
+      <div>আপনি যে বাক্যগুলো পড়বেন, তার রেকর্ডিং দিয়ে শুধু একুশের নিজের ভয়েস টাইপিং মডেল শেখানো হবে। রেকর্ডিং কখনো প্রকাশ করা বা অন্য কাউকে দেওয়া হবে না।</div>
+      <ul>
+        <li>যা যাবে: প্রতিটি বাক্যের রেকর্ডিং, বাক্যটি, নিচের ঐচ্ছিক তথ্য, একুশের সংস্করণ আর কম্পিউটারের ধরন।</li>
+        <li>যা যাবে না: আপনার নাম, ইমেইল বা অন্য কোনো ফাইল। আপনার কম্পিউটার একটি এলোমেলো কোড বানাবে।</li>
+        <li>শুধু আপনি „পাঠান“ চাপলে যায়। সেই কোড দিয়ে যেকোনো সময় সব মুছে ফেলা যাবে।</li>
+      </ul>
+      <div class="row" style="gap:8px;flex-wrap:wrap;margin:8px 0">
+        <select id="donateRegion" aria-label="অঞ্চল"><option value="">অঞ্চল (ঐচ্ছিক)</option><option>ঢাকা</option><option>চট্টগ্রাম</option><option>রাজশাহী</option><option>খুলনা</option><option>বরিশাল</option><option>সিলেট</option><option>রংপুর</option><option>ময়মনসিংহ</option><option>পশ্চিমবঙ্গ</option><option>অন্য কোথাও</option></select>
+        <select id="donateAge" aria-label="বয়স"><option value="">বয়স (ঐচ্ছিক)</option><option>১৮–২৯</option><option>৩০–৪৪</option><option>৪৫–৫৯</option><option>৬০+</option></select>
+        <select id="donateMic" aria-label="মাইক"><option value="">মাইক (ঐচ্ছিক)</option><option>হেডসেট</option><option>ল্যাপটপের মাইক</option><option>আলাদা মাইক</option><option>ইয়ারফোন</option></select>
+      </div>
+      <label style="display:flex;gap:8px;align-items:flex-start;margin-top:6px"><input type="checkbox" id="donateAdult"> <span>আমার বয়স ১৮ বছর বা তার বেশি।</span></label>
+      <label style="display:flex;gap:8px;align-items:flex-start;margin-top:4px"><input type="checkbox" id="donateAgree"> <span>আমি রাজি: আমার পাঠানো রেকর্ডিং দিয়ে একুশের ভয়েস টাইপিং শেখানো যাবে।</span></label>
+      <div class="row" style="margin-top:14px;gap:8px;justify-content:flex-end">
+        <button class="btn" onclick="document.getElementById('donateDlg').close()">থাক</button>
+        <button class="btn primary" onclick="donateAgree()">রাজি, শুরু করি</button>
+      </div>
+    </dialog>
     <dialog class="ocr-send" id="ocrSendDlg">
       <h3>পাতাটি একুশেকে পাঠাবেন?</h3>
       <div>আপনার ঠিক করা লেখা দিয়ে একুশের ছবি পড়া আরও ভালো করা হবে। যা যাবে:</div>
@@ -828,11 +898,12 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
             </select>
             <small>ফিক্সড লেআউটে যেভাবে হাতে অভ্যাস সেভাবেই লিখুন: কার আগে বা পরে, যুক্তবর্ণের জন্য লিংক কী। একুশে সবসময় সঠিক ইউনিকোডে রাখে।</small>
           </div>
-          <div class="setting">
+          <div class="setting" id="ownLayoutBox">
             <label>নিজের লেআউট</label>
-            <small>অন্য কোনো লেআউটে অভ্যস্ত? তার একুশে লেআউট ফাইল (.ekushe-layout) যোগ করুন, তালিকায় চলে আসবে। ফাইলে শুধু কোন কী-তে কোন অক্ষর, তা থাকে; একুশে যোগ করার আগে যাচাই করে নেয়।</small>
+            <small>নিজের পছন্দমতো লেআউট বানান, বা অন্য কোনো লেআউটের একুশে লেআউট ফাইল (.ekushe-layout) যোগ করুন, তালিকায় চলে আসবে। ফাইলে শুধু কোন কী-তে কোন অক্ষর, তা থাকে; একুশে যোগ করার আগে যাচাই করে নেয়।</small>
             <div class="row" style="gap:8px;flex-wrap:wrap">
               <button class="btn" onclick="document.getElementById('layoutFileInput').click()">লেআউট ফাইল যোগ করুন</button>
+              <button class="btn primary" onclick="layEdOpen()">নিজে লেআউট বানান</button>
               <button class="btn" onclick="exportLayout()">এই লেআউট ফাইল হিসেবে নিন</button>
               <input type="file" id="layoutFileInput" accept=".ekushe-layout,.json,application/json" style="display:none" onchange="importLayoutFile(this)">
             </div>
@@ -883,6 +954,7 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
             <span><b>নতুন সংস্করণের খবর</b><small>চালু করলে দিনে একবার দেখে নেয় নতুন সংস্করণ এসেছে কি না (শুধু GitHub-কে সংস্করণের নম্বর জিজ্ঞেস করে, আপনার কিছু পাঠায় না)। <span id="appVersion"></span></small></span>
             <span class="switch"><input type="checkbox" id="cfgUpdates" onchange="saveSettings()"><i></i></span>
           </label>
+          <div class="row" id="checkNowRow" style="display:none;gap:8px;margin-top:6px"><button class="btn" onclick="fetch('/api/update/check',{method:'POST'})">নতুন সংস্করণ এখনই দেখুন</button></div>
         </div>
 
         <div class="etched">
@@ -900,7 +972,7 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
       <div class="etched" id="voiceBox" hidden style="margin-top:18px">
         <div class="section-title">🎤 ভয়েস টাইপিং <small class="hint" style="font-weight:400">(পরীক্ষামূলক)</small></div>
         <div class="hint" style="margin:4px 0 8px"><b>পরীক্ষামূলক:</b> ভয়েস টাইপিং এখনো শেখার পথে; কিছু শব্দ ভুল আসবে, তাই লেখা একবার দেখে নিন। কেমন কাজ করছে তা <a href="https://ekushenext.com/report/" target="_blank" rel="noopener">সমস্যা জানান</a> পাতায় জানালে আমরা এটিকে আরও ভালো করতে পারব।</div>
-        <div class="hint">যেকোনো অ্যাপে <b id="voiceHotkey">Ctrl+Alt+Space</b> চাপুন; টুং শব্দ আর “🔴 শুনছি” দেখলে বাংলায় বলুন। একটু থামলেই সেটুকু লেখা হয়ে যায়, আর একুশে শুনতে থাকে; শেষ হলে আবার শর্টকাট চাপুন (<b>Esc</b> চাপলে বাতিল)। সব কাজ আপনার কম্পিউটারেই হয়, কণ্ঠ বা লেখা কোথাও পাঠানো হয় না। “দাঁড়ি”, “কমা”, “নতুন লাইন”, “নতুন অনুচ্ছেদ” বললে চিহ্ন বা নতুন লাইন বসে।</div>
+        <div class="hint">যেকোনো অ্যাপে <b id="voiceHotkey">Ctrl+Alt+Space</b> চাপুন; টুং শব্দ আর “🔴 শুনছি” দেখলে বাংলায় বলুন। একটু থামলেই সেটুকু লেখা হয়ে যায়, আর একুশে শুনতে থাকে; শেষ হলে আবার শর্টকাট চাপুন (<b>Esc</b> চাপলে বাতিল)। সব কাজ আপনার কম্পিউটারেই হয়, কণ্ঠ বা লেখা কোথাও পাঠানো হয় না (আপনি নিজে নিচের „একুশেকে কণ্ঠ দিন“ থেকে না পাঠালে)। “দাঁড়ি”, “কমা”, “নতুন লাইন”, “নতুন অনুচ্ছেদ” বললে চিহ্ন বা নতুন লাইন বসে।</div>
         <div id="voiceModelMsg" class="hint" style="margin-top:10px"></div>
         <div id="voiceModels" style="margin-top:8px"></div>
         <div id="voiceSpeed" class="hint" style="margin-top:6px"></div>
@@ -941,6 +1013,34 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
         <div id="voiceLearnedBox" hidden style="margin-top:10px">
           <div class="hint">একুশে যা শিখেছে (ক্লিক করলে ভুলে যাবে):</div>
           <div class="chip-bar" id="voiceLearned"></div>
+        </div>
+      </div>
+      <div class="etched" id="donateBox" hidden style="margin-top:18px">
+        <div class="section-title">🎙️ একুশেকে কণ্ঠ দিন <small class="hint" style="font-weight:400">(ইচ্ছা হলে)</small></div>
+        <div class="hint">কয়েকটি বাক্য পড়ে রেকর্ড করে পাঠালে একুশের ভয়েস টাইপিং আপনার মতো কণ্ঠ আর মাইকে আরও ভালো বুঝবে। প্রতিটি অংশে ২০টি বাক্য, ৪–৫ মিনিট লাগে। আপনি নিজে „পাঠান“ না চাপলে কিছুই যায় না।</div>
+        <div id="donateStart" style="margin-top:10px"><button class="btn primary" onclick="donateAsk()">শুরু করুন</button></div>
+        <div id="donateMain" hidden style="margin-top:10px">
+          <div class="setting">
+            <label for="donateBatch">কোন অংশ পড়বেন</label>
+            <select id="donateBatch" onchange="donateOpen(+this.value)"></select>
+            <small id="donateNote"></small>
+          </div>
+          <div id="donateSentence" style="font-family:var(--font-bn);font-size:1.45rem;line-height:1.7;padding:14px 16px;margin:8px 0;border:1px solid var(--line, rgba(127,127,127,.25));border-radius:12px"></div>
+          <div class="hint" id="donatePos"></div>
+          <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px">
+            <button class="btn" onclick="donateMove(-1)" title="আগের বাক্য">◀</button>
+            <button class="btn primary" id="donateRec" onclick="donateRecord()">● রেকর্ড</button>
+            <button class="btn" id="donatePlay" onclick="donatePlay()" disabled>▶ শুনুন</button>
+            <button class="btn" onclick="donateMove(1)" title="পরের বাক্য">▶▶</button>
+          </div>
+          <div class="hint" id="donateLevel" style="margin-top:6px"></div>
+          <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center">
+            <button class="btn primary" id="donateSendBtn" onclick="donateSend()" disabled>পাঠান</button>
+            <span class="hint" id="donateCount"></span>
+          </div>
+          <div class="hint" style="margin-top:12px">আপনার কোড: <b id="donateCode"></b> — লিখে রাখুন। পরে যা পাঠিয়েছেন সব মুছে ফেলতে চাইলে এই কোডটি লাগবে।
+            <button class="btn" style="margin-left:6px" onclick="donateDelete()">আমার পাঠানো সব মুছুন</button>
+            <button class="btn" style="margin-left:6px" onclick="donateStop()">বন্ধ করুন</button></div>
         </div>
       </div>
       <div class="etched" id="backupBox" style="margin-top:18px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
@@ -1179,6 +1279,7 @@ async function refreshState() {
   if (st.app_version) { appInfo.app = st.app_version; document.querySelectorAll('.aboutVer').forEach(e => e.textContent = st.app_version); }
   if (typeof st.check_for_updates === 'boolean' && st.app_version) {
     document.getElementById('cfgUpdatesRow').style.display = '';
+    document.getElementById('checkNowRow').style.display = '';
     document.getElementById('cfgUpdates').checked = st.check_for_updates;
     document.getElementById('appVersion').textContent = 'এখন আছে: ' + st.app_version;
   }
@@ -1902,6 +2003,146 @@ async function exportLayout() {
   msg.textContent = 'লেআউট ফাইল ডাউনলোড হয়েছে। এটি বদলে নিজের লেআউট বানাতে পারেন।';
 }
 const layoutsReady = refreshLayouts();
+// ── Layout editor: make a fixed layout by clicking keys (saved as an ordinary layout file) ──
+const LAY_ROWS = ['`1234567890-=', 'qwertyuiop[]\\', "asdfghjkl;'", 'zxcvbnm,./'];
+const LAY_SHIFT = { '`': '~', '1': '!', '2': '@', '3': '#', '4': '$', '5': '%', '6': '^', '7': '&', '8': '*', '9': '(', '0': ')', '-': '_', '=': '+', '[': '{', ']': '}', '\\': '|', ';': ':', "'": '"', ',': '<', '.': '>', '/': '?' };
+const layShift = k => /[a-z]/.test(k) ? k.toUpperCase() : (LAY_SHIFT[k] || k);
+const LAY_PAL = [
+  'অ আ ই ঈ উ ঊ ঋ এ ঐ ও ঔ',
+  'া ি ী ু ূ ৃ ে ৈ ো ৌ ৗ',
+  'ক খ গ ঘ ঙ চ ছ জ ঝ ঞ ট ঠ ড ঢ ণ ত থ দ ধ ন প ফ ব ভ ম য র ল শ ষ স হ ড় ঢ় য় ৎ',
+  'ং ঃ ঁ ্ । ॥ ‘ ’ “ ”',
+  '০ ১ ২ ৩ ৪ ৫ ৬ ৭ ৮ ৯ ৳',
+  'ক্ষ জ্ঞ ্য ্র র্',
+];
+const LAY_NEEDED = 'ক খ গ ঘ ঙ চ ছ জ ঝ ঞ ট ঠ ড ঢ ণ ত থ দ ধ ন প ফ ব ভ ম য র ল শ ষ স হ ড় ঢ় য় া ি ী ু ূ ৃ ে ৈ ো ৌ ং ঃ ঁ'.split(' ');
+let layEd = { keys: {}, altgr: {}, after_link: {}, layer: 'n', sel: null };
+let layEdKeys = [];
+async function layEdOpen() {
+  const from = document.getElementById('layEdFrom');
+  const r = await (await fetch('/api/layouts')).json().catch(() => ({ layouts: [] }));
+  from.innerHTML = '<option value="">খালি থেকে</option>' + (r.layouts || []).filter(l => l.value !== 'AvroPhonetic')
+    .map(l => `<option value="${l.value}">${l.name} থেকে কপি করে</option>`).join('');
+  const link = document.getElementById('layEdLink');
+  link.innerHTML = '<option value="">নেই</option>' + LAY_ROWS.join('').split('').concat(LAY_ROWS.join('').split('').map(layShift))
+    .map(k => `<option value="${k.replace(/"/g, '&quot;')}">${k}</option>`).join('');
+  layEd = { keys: {}, altgr: {}, after_link: {}, layer: 'n', sel: null };
+  document.getElementById('layEdName').value = '';
+  document.getElementById('layEdKarBefore').checked = false;
+  document.getElementById('layEdRephAfter').checked = false;
+  document.getElementById('layEdPal').innerHTML = LAY_PAL.map(row => row.split(' ').map(c =>
+    `<button type="button" onclick="layEdPick('${c}')">${c === '্' ? '◌্' : /^[ািীুূৃেৈোৌৗংঃঁ]$/.test(c) ? '◌' + c : c}</button>`).join('')).join('<span style="flex-basis:100%"></span>');
+  layEdKeys = []; layEdLayer('n'); layEdRun();
+  document.getElementById('layEd').showModal();
+}
+async function layEdStart(value) {
+  layEd.keys = {}; layEd.altgr = {}; layEd.after_link = {};
+  if (value) {
+    const f = await (await fetch('/api/layouts/export?id=' + encodeURIComponent(value))).json().catch(() => null);
+    if (f) {
+      layEd.keys = f.keys || {}; layEd.altgr = f.altgr || {}; layEd.after_link = f.after_link || {};
+      document.getElementById('layEdLink').value = f.link_key || '';
+      document.getElementById('layEdKarBefore').checked = !!f.kar_before;
+      document.getElementById('layEdRephAfter').checked = !!f.reph_after;
+      if (!document.getElementById('layEdName').value) document.getElementById('layEdName').value = value.startsWith('Custom:') ? (f.name || '') : (f.name || '') + ' (আমার)';
+    }
+  }
+  layEdDraw(); layEdRun();
+}
+function layEdLayer(l) {
+  layEd.layer = l;
+  document.querySelectorAll('#layEd [data-layer]').forEach(b => b.classList.toggle('primary', b.dataset.layer === l));
+  layEdDraw();
+}
+// the key as stored: Shift turns q into Q and 1 into !
+function layEdSlot(k) { return layEd.layer === 's' ? layShift(k) : k; }
+function layEdMap() { return layEd.layer === 'a' ? layEd.altgr : layEd.keys; }
+function layEdDraw() {
+  const kb = document.getElementById('layEdKb'), link = document.getElementById('layEdLink').value;
+  const esc = t => String(t || '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  kb.innerHTML = LAY_ROWS.map((row, r) => `<div class="lay-row" style="padding-left:${r * 18}px">` + row.split('').map(k => {
+    const slot = layEdSlot(k), main = layEdMap()[slot];
+    const other = layEd.layer === 'n' ? layEd.keys[layShift(k)] : layEd.layer === 's' ? layEd.keys[k] : '';
+    const cls = ['lay-key', layEd.sel === k ? 'sel' : '', (link && (link === slot)) ? 'link' : ''].join(' ');
+    return `<button type="button" class="${cls}" onclick="layEdSelect('${k.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')"><span class="k">${esc(slot)}</span><span class="s">${esc(other)}</span><span class="n">${esc(main)}</span></button>`;
+  }).join('') + '</div>').join('');
+  if (layEd.sel) {
+    const slot = layEdSlot(layEd.sel);
+    document.getElementById('layEdSelKey').textContent = `কী: ${layEd.layer === 'a' ? 'AltGr + ' : ''}${slot}`;
+    document.getElementById('layEdText').value = layEdMap()[slot] || '';
+  }
+  layEdWarn();
+}
+function layEdSelect(k) { layEd.sel = k; layEdDraw(); document.getElementById('layEdText').focus(); }
+function layEdSetText(t) {
+  if (!layEd.sel) { toast('আগে একটি কী বেছে নিন'); return; }
+  const slot = layEdSlot(layEd.sel), m = layEdMap();
+  if (t) m[slot] = t; else delete m[slot];
+  const v = document.getElementById('layEdText').value;
+  layEdDraw(); document.getElementById('layEdText').value = v;
+  layEdRun();
+}
+function layEdPick(c) {
+  document.getElementById('layEdText').value = c;
+  layEdSetText(c);
+}
+function layEdWarn() {
+  const all = new Set();
+  // by parts: ো is ে + া, য় is য + ়, so a layout typing the parts can type them
+  for (const m of [layEd.keys, layEd.altgr, layEd.after_link]) for (const v of Object.values(m)) for (const c of [...v.normalize('NFD')]) all.add(c);
+  const missing = LAY_NEEDED.filter(c => ![...c.normalize('NFD')].every(x => all.has(x)));
+  const n = Object.values(layEd.keys).filter(v => /[ঀ-৿]/.test(v)).length;
+  const w = [];
+  if (n < 10) w.push(`এখনও ${bnNum(10 - n)}টি বাংলা অক্ষর কম: অন্তত ১০টি কী-তে বাংলা দিন।`);
+  if (missing.length) w.push('যা এখনও কোনো কী দিয়ে লেখা যায় না: ' + missing.map(c => /^[ািীুূৃেৈোৌংঃঁ]$/.test(c) ? '◌' + c : c).join(' '));
+  if (!document.getElementById('layEdLink').value && !all.has('্')) w.push('যুক্তবর্ণের জন্য একটি লিংক কী বা ্ (হসন্ত) দিন।');
+  document.getElementById('layEdWarn').textContent = w.length ? '⚠ ' + w.join(' ') : '✓ সব অক্ষর লেখা যায়।';
+}
+function layEdFile() {
+  return JSON.stringify({
+    format: 'ekushe-layout', version: 1,
+    name: document.getElementById('layEdName').value.trim() || 'আমার লেআউট',
+    link_key: document.getElementById('layEdLink').value || null,
+    reph_after: document.getElementById('layEdRephAfter').checked,
+    kar_before: document.getElementById('layEdKarBefore').checked,
+    keys: layEd.keys, altgr: layEd.altgr, after_link: layEd.after_link,
+  }, null, 2);
+}
+function layEdKey(e) {
+  if (e.ctrlKey && !e.altKey) return;   // Ctrl+C and the like
+  const altgr = e.getModifierState && e.getModifierState('AltGraph') || (e.ctrlKey && e.altKey);
+  let k = null;
+  if (e.key === 'Backspace') k = '\b'; else if (e.key === 'Enter') k = '\n'; else if (e.key === ' ') k = ' ';
+  else if (e.code && /^(Key|Digit)/.test(e.code)) { const b = e.code.slice(-1).toLowerCase(); k = e.shiftKey ? layShift(b) : b; }
+  else if (e.key && e.key.length === 1 && e.key.charCodeAt(0) < 127) k = e.key;
+  if (!k) return;
+  e.preventDefault();
+  layEdKeys.push([k, !!altgr]); layEdRun();
+}
+let layEdTimer = null;
+function layEdRun() {
+  clearTimeout(layEdTimer);
+  layEdTimer = setTimeout(async () => {
+    const box = document.getElementById('layEdTry'), msg = document.getElementById('layEdTryMsg');
+    if (!layEdKeys.length) { box.textContent = ''; msg.textContent = 'বাক্সে ক্লিক করে টাইপ করুন'; return; }
+    const res = await fetch('/api/layouts/try', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ file: layEdFile(), keys: layEdKeys }) });
+    const r = await res.json().catch(() => ({}));
+    if (res.ok) { box.textContent = r.text; msg.textContent = ''; }
+    else msg.textContent = layoutErrorBn(r.error || '');
+  }, 80);
+}
+async function layEdSave() {
+  if (!document.getElementById('layEdName').value.trim()) { toast('লেআউটের একটি নাম দিন'); document.getElementById('layEdName').focus(); return; }
+  const res = await fetch('/api/layouts/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: layEdFile() });
+  const out = await res.json().catch(() => ({}));
+  if (!res.ok) { toast('সংরক্ষণ হয়নি: ' + layoutErrorBn(out.error || '')); return; }
+  await refreshLayouts();
+  document.getElementById('cfgLayout').value = out.value;
+  await saveSettings();
+  document.getElementById('layEd').close();
+  document.getElementById('layoutFileMsg').textContent = `"${out.imported}" সংরক্ষণ হয়েছে ও চালু আছে। „এই লেআউট ফাইল হিসেবে নিন“ দিয়ে অন্য কম্পিউটারে বা ট্যাবলেটে নিতে পারেন।`;
+  toast('লেআউট সংরক্ষণ হয়েছে');
+}
 
 // ── Key map of the layout in use (and a printable cheat sheet) ──
 const KEY_ROWS = [
@@ -2313,6 +2554,148 @@ function ocrSave() {
   });
 })();
 
+// ── একুশেকে কণ্ঠ দিন: read the training sentences aloud and send them (only after agreeing) ──
+// Recordings are used only to train Ekushe's own voice models and are never published.
+const VOICE_SEND_URL = 'https://ekushenext.com/api/voice-sample';
+const DONATE_BATCHES = [{"t":"রোজকার জীবন","note":"","s":["আজ সকালে ঘুম থেকে উঠে প্রথমে এক কাপ চা খেলাম।","বাইরে বেশ ঠান্ডা পড়েছে, গরম কাপড় পরে বের হয়ো।","বাজার থেকে আলু, পেঁয়াজ আর কিছু সবজি আনতে হবে।","ছেলেমেয়েরা স্কুল থেকে ফিরে খেলতে গেছে।","রাতে খাওয়ার পর আমরা সবাই মিলে একটু হাঁটতে বের হই।","আজকে আকাশ মেঘলা, মনে হচ্ছে বিকেলে বৃষ্টি হবে।","ঘরটা পরিষ্কার করতে প্রায় দুই ঘণ্টা লেগে গেল।","ছুটির দিনে আমি সাধারণত বই পড়ে সময় কাটাই।","পাশের বাসার ভদ্রলোক খুব মিশুক মানুষ।","মাছ ভাজার গন্ধে পুরো বাড়ি ভরে গেছে।","আজকে কাজের চাপ কম, তাই তাড়াতাড়ি বাসায় ফিরব।","বাগানের গোলাপ গাছে নতুন ফুল ফুটেছে।","সন্ধ্যায় টিভিতে একটা ভালো নাটক দেখলাম।","মা বললেন আজ রাতে খিচুড়ি রান্না হবে।","বাসের জন্য প্রায় আধা ঘণ্টা দাঁড়িয়ে থাকতে হলো।","শীতের সকালে কুয়াশায় রাস্তা ঠিকমতো দেখা যায় না।","আমার ছোট ভাই এখন বিশ্ববিদ্যালয়ে পড়ে।","বিদ্যুৎ চলে যাওয়ায় মোমবাতি জ্বালিয়ে বসে ছিলাম।","কাল সকালে একটু আগে উঠতে হবে।","আজকের দিনটা বেশ ভালোই কাটল।"]},{"t":"গল্পের বর্ণনা","note":"","s":["সেদিন ভোরবেলা গ্রামের পথ ধরে একা হাঁটছিল রফিক, চারদিকে তখনো কুয়াশার চাদর।","দূরে নদীর ঘাটে কয়েকটা নৌকা বাঁধা, মাঝিরা তখনো ঘুম থেকে ওঠেনি।","বাড়িটা অনেক পুরনো, দেয়ালের গায়ে শ্যাওলা জমে সবুজ হয়ে গেছে।","জানালার পাশে বসে মেয়েটি অনেকক্ষণ বৃষ্টির দিকে তাকিয়ে রইল।","হঠাৎ দরজায় কড়া নাড়ার শব্দে সবাই চমকে উঠল।","বাবার পুরনো ডায়েরিটা খুলতেই একটা হলুদ হয়ে যাওয়া চিঠি বেরিয়ে এল।","সন্ধ্যা নামার আগেই পাখিরা দল বেঁধে নীড়ে ফিরতে শুরু করল।","দাদির মুখে শোনা সেই গল্পটা আজও আমার স্পষ্ট মনে আছে।","ট্রেনটা যখন স্টেশন ছাড়ল, প্ল্যাটফর্মে দাঁড়িয়ে সে শুধু হাত নাড়ছিল।","অনেক বছর পর নিজের স্কুলের সামনে দাঁড়িয়ে তার চোখ ভিজে এল।","চাঁদের আলোয় পুরো মাঠটা যেন রুপালি হয়ে উঠেছিল।","ছোট্ট ছেলেটি মায়ের আঁচল ধরে ভিড়ের মধ্যে হাঁটছিল।","শীতের রাতে আগুন পোহাতে পোহাতে সবাই পুরনো দিনের গল্পে মেতে উঠল।","চিঠিটা পড়ে শেষ করার পর সে অনেকক্ষণ চুপ করে বসে রইল।","বর্ষায় নদীটা ফুলে ফেঁপে উঠে দুই পাড় ভাসিয়ে দিত।","সেই রাতে কেউ ঘুমাতে পারেনি, সবাই ভোরের অপেক্ষায় জেগে ছিল।","বাজারের কোলাহল পেরিয়ে সে একটা নির্জন গলিতে ঢুকে পড়ল।","মাস্টারমশাই চশমাটা নাকের ডগায় নামিয়ে ক্লাসের দিকে তাকালেন।","পুকুরপাড়ের আমগাছটার নিচে ছিল আমাদের ছোটবেলার খেলার জায়গা।","অবশেষে বহু প্রতীক্ষার পর গ্রামে বিদ্যুতের আলো এসে পৌঁছাল।"]},{"t":"কাজ ও অফিস","note":"","s":["আগামীকাল সকাল দশটায় দলের সবার সঙ্গে বৈঠক আছে।","প্রতিবেদনটা আজকের মধ্যে জমা দিতে হবে।","নতুন প্রকল্পের বাজেট এখনও চূড়ান্ত হয়নি।","দয়া করে সংযুক্ত নথিটি দেখে মতামত জানাবেন।","গ্রাহকের অভিযোগটা দ্রুত সমাধান করা দরকার।","এই মাসে আমাদের বিক্রি আগের মাসের চেয়ে বেড়েছে।","ছুটির আবেদনটা ব্যবস্থাপকের কাছে পাঠিয়েছি।","সভার সিদ্ধান্তগুলো সবাইকে জানিয়ে দেওয়া হবে।","আমাদের দলে দুজন নতুন সদস্য যোগ দিয়েছেন।","কাজটা শেষ করতে আরও তিন দিন সময় লাগবে।","চুক্তির শর্তগুলো আরেকবার পড়ে দেখা উচিত।","অফিসের নতুন নিয়ম সোমবার থেকে চালু হবে।","হিসাব বিভাগ থেকে বেতনের তথ্য চেয়ে পাঠানো হয়েছে।","প্রশিক্ষণ কর্মশালাটি দুই দিন ধরে চলবে।","সবাইকে নির্ধারিত সময়ের মধ্যে উপস্থিত থাকতে অনুরোধ করা হলো।","সরবরাহকারীর সঙ্গে দাম নিয়ে আবার আলোচনা করতে হবে।","বছরের শেষে সবার কাজের মূল্যায়ন হবে।","আমি আজ বাসা থেকে কাজ করছি।","প্রস্তাবটা অনুমোদন পেলে আমরা কাজ শুরু করব।","আপনার সহযোগিতার জন্য আন্তরিক ধন্যবাদ।"]},{"t":"সংখ্যা, টাকা, সময় ও তারিখ","note":"সংখ্যাগুলো যেভাবে মুখে বলেন সেভাবে কথায় পড়ুন।","s":["আমার মোবাইল নম্বরের শেষ চারটি অঙ্ক হলো পাঁচ তিন দুই আট।","জিনিসটার দাম পড়েছে বারোশো পঞ্চাশ টাকা।","ট্রেন ছাড়বে বিকেল চারটা পনেরো মিনিটে।","আজ ষোলোই ডিসেম্বর, আমাদের বিজয় দিবস।","ক্লাসে মোট পঁয়তাল্লিশজন ছাত্রছাত্রী আছে।","বাড়ি ভাড়া মাসে আঠারো হাজার টাকা।","মিটিং শুরু হবে সাড়ে এগারোটায়।","তার জন্ম উনিশশো নব্বই সালের মার্চ মাসে।","এক কেজি চালের দাম এখন পঁয়ষট্টি টাকা।","অফিস থেকে বাসার দূরত্ব প্রায় সাত কিলোমিটার।","দুই হাজার পঁচিশ সালে আমরা নতুন বাসায় উঠেছি।","পরীক্ষার ফল বের হবে পয়লা জানুয়ারি।","তিনি একশো দশ নম্বর বাড়িতে থাকেন।","আমাদের গ্রামে প্রায় তিন হাজার মানুষের বাস।","বিলটা আগামী সাতাশ তারিখের মধ্যে দিতে হবে।","গাড়িটা ঘণ্টায় আশি কিলোমিটার বেগে চলছিল।","পাঁচ ভাগের দুই ভাগ কাজ ইতিমধ্যে শেষ হয়েছে।","ব্যাংকে দেড় লাখ টাকা জমা দিয়েছি।","সকাল ছয়টা থেকে রাত দশটা পর্যন্ত দোকান খোলা থাকে।","তাপমাত্রা আজ বত্রিশ ডিগ্রি সেলসিয়াস।"]},{"t":"গল্পের সংলাপ","note":"","s":["রহিম বলল, আমি আর এক মুহূর্তও এখানে থাকতে চাই না।","মা ডেকে বললেন, ভাত ঠান্ডা হয়ে যাচ্ছে, তাড়াতাড়ি খেতে আয়।","মেয়েটি অবাক হয়ে জিজ্ঞেস করল, তুমি এতদিন কোথায় ছিলে?","বুড়ো মাঝি হেসে বলল, নদী কাউকে ফেরায় না, বাবা।","শিক্ষক বললেন, যে প্রশ্ন করে না, সে কিছুই শেখে না।","সে ফিসফিস করে বলল, কাউকে কিছু বোলো না, এটা আমাদের গোপন কথা।","দাদু চোখ বন্ধ করে বললেন, সেই দিনগুলো আর কখনো ফিরে আসবে না।","ছেলেটি কাঁদতে কাঁদতে বলল, আমার বইটা কেউ নিয়ে গেছে।","ডাক্তার শান্ত গলায় বললেন, ভয় পাবেন না, সব ঠিক হয়ে যাবে।","বন্ধুটি কাঁধে হাত রেখে বলল, যা হওয়ার হয়ে গেছে, এবার সামনে তাকাও।","পুলিশ কর্মকর্তা জানতে চাইলেন, ঘটনাটা ঠিক কখন ঘটেছিল?","নানি বললেন, মানুষের আসল পরিচয় তার ব্যবহারে।","সে রেগে গিয়ে বলল, তোমার কথার কোনো দাম নেই আমার কাছে।","অপরিচিত লোকটি নরম গলায় বলল, আমি পথ হারিয়েছি, একটু সাহায্য করবেন?","বাবা বললেন, কষ্ট করে যা পাওয়া যায়, তার মূল্য সবচেয়ে বেশি।","মেয়েটি হাসতে হাসতে বলল, তুমি একদম বদলাওনি।","গ্রামের মোড়ল ঘোষণা দিলেন, কাল সবাই স্কুলমাঠে জড়ো হবে।","সে দীর্ঘশ্বাস ফেলে বলল, জীবনটা যদি আবার শুরু করা যেত।","ছোট বোন জেদ ধরে বলল, আমিও তোমার সঙ্গে মেলায় যাব।","বিদায়ের সময় সে বলল, ভালো থেকো, আবার দেখা হবে।"]},{"t":"জায়গা, নাম ও ভ্রমণ","note":"","s":["আমরা ঈদের ছুটিতে কক্সবাজারে বেড়াতে যাব।","সিলেটের চা বাগানগুলো দেখতে অপূর্ব।","রাজশাহী আমের জন্য বিখ্যাত।","চট্টগ্রাম থেকে বান্দরবান যেতে কয়েক ঘণ্টা লাগে।","সুন্দরবনে রয়েল বেঙ্গল টাইগার দেখা যায়।","ঢাকার গুলশান থেকে উত্তরা যেতে অনেক সময় লাগে।","করিম সাহেব খুলনার একটি স্কুলে শিক্ষকতা করেন।","ফাতেমা আর রহিম গত বছর বিয়ে করেছে।","পদ্মা সেতু পার হয়ে আমরা বরিশাল পৌঁছালাম।","কুমিল্লার রসমালাই সবার প্রিয়।","নাসরিন আপা ময়মনসিংহে থাকেন।","আমার নানাবাড়ি রংপুরের একটি গ্রামে।","কলকাতার বইমেলায় অনেক মানুষের ভিড় হয়।","টরন্টোতে শীতকালে প্রচুর তুষার পড়ে।","মাহমুদ ভাই আগামী মাসে লন্ডন যাচ্ছেন।","সাজেক ভ্যালিতে মেঘের ভেতর দিয়ে হাঁটা যায়।","বগুড়ার দই খুব নামকরা।","তানভীর আর সুমি একই অফিসে কাজ করে।","নারায়ণগঞ্জ থেকে লঞ্চে চাঁদপুর যাওয়া যায়।","শ্রীমঙ্গলে সাত রঙের চা পাওয়া যায়।"]},{"t":"বাংলা কথায় ইংরেজি শব্দ","note":"","s":["আমার ল্যাপটপের ব্যাটারি একদম শেষ।","ইমেইলটা পাঠানোর আগে একবার চেক করে নিও।","অফিসের ওয়াইফাই আজকে খুব স্লো।","প্রেজেন্টেশনের স্লাইডগুলো রেডি করতে হবে।","মোবাইলে নতুন অ্যাপটা ইনস্টল করেছি।","ডাক্তারের অ্যাপয়েন্টমেন্ট নিয়েছি বৃহস্পতিবার।","পাসওয়ার্ড ভুলে গেলে রিসেট করতে হয়।","অনলাইনে অর্ডার দিলে দুই দিনে ডেলিভারি দেয়।","ফেসবুকে একটা ভিডিও শেয়ার করেছি।","মিটিংয়ের লিংকটা হোয়াটসঅ্যাপে পাঠিয়ে দাও।","কম্পিউটারটা রিস্টার্ট দিলে হয়তো ঠিক হয়ে যাবে।","এই সফটওয়্যারের লাইসেন্স কিনতে হবে না, এটা ফ্রি।","ব্যাংকের কার্ড দিয়ে পেমেন্ট করা যাবে।","প্রিন্টারে কাগজ আটকে গেছে।","ডেটাগুলো এক্সেল শিটে রাখা আছে।","ইউটিউবে আমার নতুন চ্যানেলটা দেখো।","ফোনের চার্জার বাসায় ফেলে এসেছি।","নতুন আপডেট আসার পর ফোনটা দ্রুত চলছে।","ক্লাউডে ব্যাকআপ রাখলে ফাইল হারানোর ভয় থাকে না।","কিবোর্ডে বাংলা লিখতে একুশে ব্যবহার করি।"]},{"t":"চিহ্নসহ বলা লেখা","note":"“কমা”, “দাঁড়ি”, “প্রশ্নবোধক চিহ্ন”, “নতুন লাইন” — লেখা শব্দগুলোও বলুন।","s":["প্রিয় রাশেদ কমা নতুন লাইন কেমন আছ প্রশ্নবোধক চিহ্ন","আজ বিকেলে আমাদের সভা হবে দাঁড়ি","আমি বাজারে যাচ্ছি কমা তোমার কিছু লাগবে প্রশ্নবোধক চিহ্ন","সবাইকে অনেক ধন্যবাদ দাঁড়ি নতুন লাইন","মিটিং শুরু হবে দশটায় দাঁড়ি কেউ দেরি করবেন না দাঁড়ি","চাল কমা ডাল কমা তেল আর লবণ আনতে হবে দাঁড়ি","তুমি কি কাল আসতে পারবে প্রশ্নবোধক চিহ্ন","শুভেচ্ছা রইল দাঁড়ি নতুন লাইন ইতি কমা তোমার বন্ধু","কাজটা শেষ হয়েছে দাঁড়ি এখন বাসায় যাচ্ছি দাঁড়ি","কী সুন্দর একটা দিন বিস্ময়সূচক চিহ্ন","বাজারের তালিকা কোলন নতুন লাইন আলু কমা পেঁয়াজ কমা রসুন","আজ এই পর্যন্ত দাঁড়ি নতুন অনুচ্ছেদ","আপনার চিঠি পেয়েছি দাঁড়ি উত্তর দিতে দেরি হলো বলে দুঃখিত দাঁড়ি","সভার বিষয় কোলন নতুন বছরের পরিকল্পনা দাঁড়ি","অভিনন্দন বিস্ময়সূচক চিহ্ন তুমি পরীক্ষায় প্রথম হয়েছ দাঁড়ি","তুমি কখন ফিরবে কমা আমাকে জানিও দাঁড়ি","প্রথমত কমা কাজটা সময়মতো শেষ করতে হবে দাঁড়ি","ঠিক আছে কমা আমি রাজি দাঁড়ি","নতুন অনুচ্ছেদ আগামীকাল অফিস বন্ধ থাকবে দাঁড়ি","আর কিছু জানার থাকলে প্রশ্ন করুন দাঁড়ি নতুন লাইন ধন্যবাদ দাঁড়ি"]},{"t":"স্বাস্থ্য, খাবার ও ঘর","note":"","s":["প্রতিদিন অন্তত আধা ঘণ্টা হাঁটা স্বাস্থ্যের জন্য ভালো।","বেশি করে পানি খেলে শরীর ভালো থাকে।","ডাক্তার বলেছেন তিন বেলা খাওয়ার পর ওষুধ খেতে।","আজ দুপুরে ভাত, ডাল আর ইলিশ মাছ রান্না হয়েছে।","মাথা ব্যথা করছে, একটু বিশ্রাম নেব।","রান্নাঘরের কল দিয়ে পানি পড়ছে, মিস্ত্রি ডাকতে হবে।","বাচ্চাদের টিকা দেওয়ার তারিখ মনে রাখতে হবে।","সকালে নাশতায় রুটি আর ডিম ভাজি খাই।","ফ্রিজে দুধ শেষ হয়ে গেছে।","বেশি রাত জাগলে পরদিন শরীর খারাপ লাগে।","শীতে ঠোঁট ফাটলে নারকেল তেল দিতে পারো।","ঘরের বাতিগুলো বদলে নতুন এলইডি লাগিয়েছি।","মায়ের হাতের পিঠা আমার খুব প্রিয়।","জ্বর থাকলে বেশি করে তরল খাবার খেতে হয়।","বারান্দার গাছগুলোতে প্রতিদিন পানি দিই।","বাসায় মেহমান আসবে, পোলাও আর মাংস রান্না হবে।","চোখ ভালো রাখতে মোবাইল কম দেখা উচিত।","ধুলাবালিতে আমার হাঁচি শুরু হয়।","কাপড়গুলো ছাদে শুকাতে দিয়েছি।","রাতে হালকা খাবার খেলে ভালো ঘুম হয়।"]},{"t":"লম্বা বাক্য","note":"","s":["আমরা ঠিক করেছি আগামী মাসের শুরুতে পুরো পরিবার নিয়ে কয়েক দিনের জন্য গ্রামের বাড়িতে বেড়াতে যাব।","প্রযুক্তি যত এগিয়ে যাচ্ছে, মানুষের কাজের ধরনও তত দ্রুত বদলে যাচ্ছে।","বাংলা ভাষায় কম্পিউটারে লেখা এখন আগের চেয়ে অনেক সহজ হয়ে গেছে।","ছোটবেলায় বৃষ্টির দিনে আমরা উঠানে কাগজের নৌকা ভাসিয়ে খেলতাম।","পরীক্ষার আগের রাতে বেশি না পড়ে ভালো করে ঘুমানো বুদ্ধিমানের কাজ।","শহরের রাস্তায় যানজট কমাতে হলে গণপরিবহন ব্যবস্থা আরও উন্নত করতে হবে।","নতুন কিছু শিখতে চাইলে প্রতিদিন অল্প অল্প করে চর্চা করাই সবচেয়ে ভালো উপায়।","তিনি সারা জীবন গ্রামের গরিব ছেলেমেয়েদের লেখাপড়ার জন্য কাজ করে গেছেন।","বইমেলায় গিয়ে আমি পছন্দের লেখকদের কয়েকটি নতুন বই কিনে এনেছি।","বিদেশে থাকলেও দেশের মানুষ আর খাবারের কথা সবসময় মনে পড়ে।","সকালে বৃষ্টি হওয়ায় রাস্তায় পানি জমে গিয়েছিল, তাই অফিসে পৌঁছাতে দেরি হলো।","একটা ভালো অভ্যাস গড়ে তুলতে সময় লাগে, কিন্তু ভেঙে ফেলতে এক মুহূর্তও লাগে না।","আমাদের পাড়ার লাইব্রেরিতে প্রতি শুক্রবার শিশুদের জন্য গল্প পড়ার আসর বসে।","নদীর পাড়ে বসে সূর্যাস্ত দেখার মতো শান্তির মুহূর্ত খুব কমই আছে।","অনলাইনে কেনাকাটা করার সময় বিক্রেতার পরিচয় ভালো করে যাচাই করে নেওয়া উচিত।","কৃষকেরা সারা বছর কঠোর পরিশ্রম করেন বলেই আমরা প্রতিদিন খেতে পাই।","মোবাইল ফোন আমাদের জীবন সহজ করেছে, তবে এর অতিরিক্ত ব্যবহার ক্ষতিকর।","আগামী সপ্তাহে স্কুলে বার্ষিক ক্রীড়া প্রতিযোগিতা আর পুরস্কার বিতরণী অনুষ্ঠান হবে।","পুরনো ছবিগুলো দেখলে ফেলে আসা দিনের কত কথা মনে পড়ে যায়।","ভালো মানুষ হওয়ার জন্য অনেক টাকা লাগে না, দরকার একটা সুন্দর মন।"]},{"t":"খবর ও আনুষ্ঠানিক বাংলা","note":"","s":["দেশের উত্তরাঞ্চলে শৈত্যপ্রবাহ অব্যাহত রয়েছে।","আবহাওয়া অধিদপ্তর আগামী তিন দিন বৃষ্টির সম্ভাবনার কথা জানিয়েছে।","চলতি অর্থবছরে রপ্তানি আয় উল্লেখযোগ্য হারে বেড়েছে।","সড়ক দুর্ঘটনা রোধে নতুন আইন কার্যকর করা হয়েছে।","বিশ্ববিদ্যালয়ে ভর্তি পরীক্ষার ফল প্রকাশিত হয়েছে।","বন্যাকবলিত এলাকায় ত্রাণ বিতরণ শুরু হয়েছে।","জাতীয় ক্রিকেট দল আগামী সপ্তাহে সফরে যাচ্ছে।","নগরীর বিভিন্ন স্থানে মশক নিধন অভিযান চালানো হচ্ছে।","কৃষকদের জন্য নতুন ঋণ সুবিধা ঘোষণা করা হয়েছে।","অনুষ্ঠানে প্রধান অতিথি হিসেবে উপস্থিত ছিলেন জেলা প্রশাসক।","গবেষকেরা ধানের একটি নতুন জাত উদ্ভাবন করেছেন।","শিল্পকলা একাডেমিতে সপ্তাহব্যাপী নাট্যোৎসব শুরু হয়েছে।","বিদ্যুৎ সাশ্রয়ে সবাইকে সচেতন হওয়ার আহ্বান জানানো হয়েছে।","মহাসড়কে যান চলাচল স্বাভাবিক রয়েছে।","ডেঙ্গু প্রতিরোধে বাড়ির আশপাশ পরিষ্কার রাখার পরামর্শ দেওয়া হয়েছে।","আন্তর্জাতিক মাতৃভাষা দিবস উপলক্ষে শহীদ মিনারে শ্রদ্ধা জানানো হয়।","মেট্রোরেল রাজধানীর যাতায়াত অনেক সহজ করেছে।","পরিবেশ রক্ষায় বেশি করে গাছ লাগানোর উদ্যোগ নেওয়া হয়েছে।","বাজারে নিত্যপ্রয়োজনীয় পণ্যের দাম কিছুটা কমেছে।","সংবাদ সম্মেলনে প্রতিষ্ঠানটির ভবিষ্যৎ পরিকল্পনা তুলে ধরা হয়।"]},{"t":"প্রবন্ধ ও নিবন্ধ","note":"","s":["ভাষা শুধু ভাব প্রকাশের মাধ্যম নয়, এটি একটি জাতির ইতিহাস আর সংস্কৃতির ধারক।","বায়ান্নর ভাষা আন্দোলন আমাদের আত্মপরিচয়ের পথে প্রথম বড় পদক্ষেপ ছিল।","বই পড়ার অভ্যাস মানুষের কল্পনাশক্তি আর চিন্তার গভীরতা বাড়িয়ে দেয়।","গ্রামীণ জীবনের সরলতা আজও অনেক লেখকের লেখায় বারবার ফিরে আসে।","জলবায়ু পরিবর্তনের প্রভাবে উপকূলীয় এলাকার মানুষ নতুন নতুন সংকটের মুখোমুখি হচ্ছে।","একটি ভালো গল্পের শুরুতেই পাঠকের মনোযোগ ধরে রাখার মতো কিছু থাকা দরকার।","শিশুর মানসিক বিকাশে পরিবারের ভূমিকা সবচেয়ে গুরুত্বপূর্ণ।","নগরায়ণের ফলে আমাদের চারপাশ থেকে খোলা মাঠ আর জলাশয় দ্রুত হারিয়ে যাচ্ছে।","সাহিত্য আমাদের অন্যের জীবনকে নিজের চোখে দেখতে শেখায়।","প্রযুক্তির সঠিক ব্যবহার শিক্ষাকে আরও সহজ আর আনন্দময় করে তুলতে পারে।","লোকসংগীত আমাদের মাটি আর মানুষের সুখ দুঃখের কথা বলে।","উপন্যাসের চরিত্রগুলো যত বাস্তব হয়, পাঠক তত সহজে তাদের সঙ্গে একাত্ম হয়।","সুস্থ সমাজ গড়তে হলে প্রত্যেক নাগরিককে নিজের দায়িত্ব সম্পর্কে সচেতন হতে হবে।","নদীমাতৃক এই দেশের মানুষের জীবন আর জীবিকা নদীর সঙ্গে গভীরভাবে জড়িয়ে আছে।","লেখালেখির জন্য প্রতিভার পাশাপাশি নিয়মিত চর্চা আর ধৈর্য প্রয়োজন।","পহেলা বৈশাখ বাঙালির সবচেয়ে বড় সর্বজনীন উৎসব।","ইতিহাস থেকে শিক্ষা না নিলে একই ভুল বারবার ফিরে আসে।","প্রবন্ধের প্রতিটি অনুচ্ছেদে একটি মূল ভাবনা স্পষ্টভাবে তুলে ধরা উচিত।","মানুষের প্রতি ভালোবাসা আর সহমর্মিতাই একটি সমাজকে সত্যিকারের মানবিক করে তোলে।","লেখা শেষ করার পর একবার জোরে পড়ে দেখলে অনেক ভুল সহজেই চোখে পড়ে।"]}];
+let donate = { batch: 0, i: 0, takes: {}, rec: null, stream: null, timer: null, audio: null };
+const donateStore = {
+  get() { try { return JSON.parse(localStorage.getItem('ekushe-voice-donor') || 'null'); } catch (e) { return null; } },
+  set(v) { try { localStorage.setItem('ekushe-voice-donor', JSON.stringify(v)); } catch (e) {} },
+};
+function donateInit() {
+  if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder)) return;
+  document.getElementById('donateBox').hidden = false;
+  const sel = document.getElementById('donateBatch');
+  sel.innerHTML = DONATE_BATCHES.map((b, k) => `<option value="${k}">${bnNum(k + 1)}. ${b.t}</option>`).join('');
+  const d = donateStore.get();
+  if (d && d.agreed) donateShow(d);
+}
+function donateAsk() { document.getElementById('donateDlg').showModal(); }
+function donateAgree() {
+  if (!document.getElementById('donateAdult').checked || !document.getElementById('donateAgree').checked) {
+    toast('শুরু করতে দুটি ঘরেই টিক দিন'); return;
+  }
+  const r = new Uint8Array(12); crypto.getRandomValues(r);
+  const d = Object.assign(donateStore.get() || {}, {
+    agreed: new Date().toISOString(),
+    code: (donateStore.get() || {}).code || [...r].map(x => x.toString(16).padStart(2, '0')).join(''),
+    region: document.getElementById('donateRegion').value, age: document.getElementById('donateAge').value,
+    mic: document.getElementById('donateMic').value, sent: (donateStore.get() || {}).sent || {},
+  });
+  donateStore.set(d);
+  document.getElementById('donateDlg').close();
+  donateShow(d);
+}
+function donateShow(d) {
+  document.getElementById('donateStart').hidden = true;
+  document.getElementById('donateMain').hidden = false;
+  document.getElementById('donateCode').textContent = d.code;
+  // the first part not fully sent yet
+  const first = DONATE_BATCHES.findIndex((b, k) => b.s.some((_, i) => !(d.sent || {})[`${k + 1}-${i + 1}`]));
+  donateOpen(first < 0 ? 0 : first);
+}
+function donateOpen(k) {
+  donate.batch = k; donate.i = 0;
+  document.getElementById('donateBatch').value = String(k);
+  document.getElementById('donateNote').textContent = DONATE_BATCHES[k].note || 'স্বাভাবিকভাবে, যেভাবে বলে লেখেন সেভাবে পড়ুন। ভুল হলে আবার রেকর্ড করুন।';
+  donateDraw();
+}
+function donateKey(k, i) { return `${k + 1}-${i + 1}`; }
+function donateDraw() {
+  const b = DONATE_BATCHES[donate.batch], key = donateKey(donate.batch, donate.i);
+  const sent = ((donateStore.get() || {}).sent || {})[key];
+  document.getElementById('donateSentence').textContent = b.s[donate.i];
+  document.getElementById('donatePos').textContent = `বাক্য ${bnNum(donate.i + 1)} / ${bnNum(b.s.length)}` + (sent ? ' · ✓ আগেই পাঠানো হয়েছে' : donate.takes[key] ? ' · ✓ রেকর্ড হয়েছে' : '');
+  document.getElementById('donatePlay').disabled = !donate.takes[key];
+  document.getElementById('donateRec').textContent = donate.rec ? '■ থামান' : donate.takes[key] ? '● আবার রেকর্ড' : '● রেকর্ড';
+  const n = Object.keys(donate.takes).length;
+  document.getElementById('donateCount').textContent = n ? `${bnNum(n)}টি রেকর্ডিং পাঠানোর জন্য তৈরি (আপনার কম্পিউটারেই আছে)` : '';
+  document.getElementById('donateSendBtn').disabled = !n || !!donate.rec;
+}
+function donateMove(step) {
+  if (donate.rec) return;
+  const len = DONATE_BATCHES[donate.batch].s.length;
+  donate.i = Math.max(0, Math.min(len - 1, donate.i + step));
+  donateDraw();
+}
+async function donateRecord() {
+  if (donate.rec) { donate.rec.stop(); return; }
+  try {
+    // the raw microphone, like voice typing hears it (no browser clean-up)
+    donate.stream = donate.stream || await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 } });
+  } catch (e) { toast('মাইক চালু করা গেল না। মাইকের অনুমতি দিন।'); return; }
+  const type = ['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/webm'].find(t => MediaRecorder.isTypeSupported(t)) || '';
+  const rec = new MediaRecorder(donate.stream, type ? { mimeType: type, audioBitsPerSecond: 48000 } : {});
+  const chunks = [], key = donateKey(donate.batch, donate.i), started = performance.now();
+  rec.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+  rec.onstop = () => {
+    clearInterval(donate.timer); donate.rec = null;
+    const secs = (performance.now() - started) / 1000;
+    document.getElementById('donateLevel').textContent = '';
+    if (secs < 1) { toast('খুব ছোট রেকর্ডিং, আবার চেষ্টা করুন'); donateDraw(); return; }
+    donate.takes[key] = { blob: new Blob(chunks, { type: rec.mimeType || 'audio/webm' }), secs };
+    const len = DONATE_BATCHES[donate.batch].s.length;
+    if (donate.i < len - 1) donate.i++;   // straight on to the next sentence
+    donateDraw();
+  };
+  donate.rec = rec; rec.start();
+  donate.timer = setInterval(() => {
+    const t = (performance.now() - started) / 1000;
+    document.getElementById('donateLevel').textContent = `🔴 রেকর্ড হচ্ছে… ${bnNum(Math.floor(t))} সেকেন্ড (পড়া শেষ হলে „থামান“)`;
+    if (t > 55) rec.stop();
+  }, 250);
+  donateDraw();
+}
+function donatePlay() {
+  const t = donate.takes[donateKey(donate.batch, donate.i)];
+  if (!t) return;
+  if (donate.audio) donate.audio.pause();
+  donate.audio = new Audio(URL.createObjectURL(t.blob)); donate.audio.play();
+}
+function donateB64(blob) {
+  return new Promise((ok, bad) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = bad; r.readAsDataURL(blob); });
+}
+async function donateSend() {
+  const d = donateStore.get(); if (!d) return;
+  const keys = Object.keys(donate.takes);
+  const btn = document.getElementById('donateSendBtn'); btn.disabled = true;
+  let ok = 0, err = '';
+  for (const key of keys) {
+    const [b, n] = key.split('-').map(Number), t = donate.takes[key];
+    document.getElementById('donateCount').textContent = `পাঠানো হচ্ছে… ${bnNum(ok + 1)} / ${bnNum(keys.length)}`;
+    try {
+      const res = await fetch(VOICE_SEND_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+        contributor: d.code, batch: b, n, text: DONATE_BATCHES[b - 1].s[n - 1], audio: await donateB64(t.blob), seconds: Math.round(t.secs * 10) / 10,
+        region: d.region, age: d.age, mic: d.mic, app: appInfo.app, os: appInfo.os }) });
+      const r = await res.json().catch(() => ({}));
+      if (!r.ok) { err = r.error || String(res.status); break; }
+      ok++; delete donate.takes[key];
+      d.sent = d.sent || {}; d.sent[key] = 1; donateStore.set(d);
+    } catch (e) { err = 'net'; break; }
+  }
+  if (!err) toast(`${bnNum(ok)}টি রেকর্ডিং পাঠানো হয়েছে, ধন্যবাদ!`);
+  else toast(err === 'too_many' ? 'আজ অনেক পাঠানো হয়েছে, কাল আবার চেষ্টা করুন।' : err === 'net' ? 'পাঠানো যায়নি: ইন্টারনেট সংযোগ দেখে আবার চেষ্টা করুন।' : `পাঠানো যায়নি (${err})। পরে আবার চেষ্টা করুন।`);
+  donateDraw();
+}
+async function donateDelete() {
+  const d = donateStore.get(); if (!d) return;
+  if (!confirm('আপনার এই কোডে পাঠানো সব রেকর্ডিং মুছে ফেলবেন?')) return;
+  try {
+    const r = await (await fetch(VOICE_SEND_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ delete: d.code }) })).json();
+    if (r.ok) { d.sent = {}; donateStore.set(d); toast(`মুছে ফেলা হয়েছে (${bnNum(r.deleted || 0)}টি ফাইল)`); donateDraw(); }
+    else toast('মোছা যায়নি, পরে আবার চেষ্টা করুন।');
+  } catch (e) { toast('মোছা যায়নি: ইন্টারনেট সংযোগ দেখে আবার চেষ্টা করুন।'); }
+}
+function donateStop() {
+  if (donate.rec) donate.rec.stop();
+  if (donate.stream) { donate.stream.getTracks().forEach(t => t.stop()); donate.stream = null; }
+  document.getElementById('donateMain').hidden = true;
+  document.getElementById('donateStart').hidden = false;
+  const d = donateStore.get(); if (d) { d.agreed = null; donateStore.set(d); }
+}
+donateInit();
+
 // ── First run: how do you type Bangla? ──
 let welcomeShown = false;
 function welcomeMaybeShow(st) {
@@ -2582,6 +2965,11 @@ if (initialTab === 'keymap') {
   // Opened from the menu's "key map": the settings tab with the key map on top
   showTab('settings');
   layoutsReady.then(showKeyMap);
+} else if (initialTab === 'layouts' || initialTab === 'voice') {
+  // From the tray menu: the settings tab, scrolled to that card (the voice card shows once the state is in)
+  showTab('settings');
+  const id = initialTab === 'layouts' ? 'ownLayoutBox' : 'voiceBox';
+  setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 700);
 } else {
   showTab(initialTab && document.getElementById('tab-' + initialTab) ? initialTab : 'playground');
 }

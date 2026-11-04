@@ -122,6 +122,30 @@ pub fn handle(method: &str, path: &str, body: &str, cfg: &mut Config) -> Option<
                 Err(e) => error(&e),
             }
         }),
+        // The layout editor's test box: what keys type with a layout not saved yet
+        // ({"file": <layout file text>, "keys": [["k", false], ...]}); nothing is saved
+        ("POST", "/api/layouts/try") => Some({
+            let v: serde_json::Value = serde_json::from_str(body).unwrap_or_default();
+            let keys: Vec<(char, bool)> = v["keys"]
+                .as_array()
+                .map(|a| {
+                    a.iter()
+                        .take(2000)
+                        .filter_map(|k| {
+                            let c = k[0].as_str()?.chars().next()?;
+                            Some((c, k[1].as_bool().unwrap_or(false)))
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
+            match FixedLayout::from_file_text(v["file"].as_str().unwrap_or("")) {
+                Ok((l, _)) => ok_json(
+                    serde_json::json!({ "text": l.type_keys(&keys) }).to_string(),
+                    false,
+                ),
+                Err(e) => error(&e),
+            }
+        }),
         ("GET", "/api/layouts/export") => Some({
             let value = query
                 .split('&')

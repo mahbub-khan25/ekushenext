@@ -287,18 +287,21 @@ class MainActivity : AppCompatActivity() {
             o.getString("value") to (o.getString("name") + if (o.optBoolean("custom")) " (নিজের)" else "")
         }
         val current = cfg.optString("layout", "AvroPhonetic")
-        card.addView(choice("কীবোর্ড লেআউট", "Phonetic, or a fixed layout (National, Probhat … or your own layout file): the keys show its Bangla", options, current) {
+        card.addView(choice("কীবোর্ড লেআউট", "Phonetic, or a fixed layout (National, Probhat …): the keys show its Bangla", options, current) {
             Engine.setConfig(JSONObject().put("layout", it))
         })
-        divider(card)
-        val add = MaterialButton(this).apply {
-            text = "লেআউট ফাইল যোগ করুন"
-            typeface = bnBold
-            tint(this)
-            setOnClickListener { pickLayout.launch(arrayOf("application/json", "application/octet-stream", "*/*")) }
+        // Layout files are added on tablets only (Khan, 2026-11-03); a layout added before keeps working
+        if (resources.configuration.smallestScreenWidthDp >= 600) {
+            divider(card)
+            val add = MaterialButton(this).apply {
+                text = "লেআউট ফাইল যোগ করুন"
+                typeface = bnBold
+                tint(this)
+                setOnClickListener { pickLayout.launch(arrayOf("application/json", "application/octet-stream", "*/*")) }
+            }
+            card.addView(add)
+            card.addView(text("অন্য লেআউটে অভ্যস্ত? তার একুশে লেআউট ফাইল (.ekushe-layout) যোগ করুন। ফাইলে শুধু কোন কী-তে কোন অক্ষর থাকে; একুশে যোগ করার আগে যাচাই করে।", 12.5f, bn, subColor))
         }
-        card.addView(add)
-        card.addView(text("অন্য লেআউটে অভ্যস্ত? তার একুশে লেআউট ফাইল (.ekushe-layout) যোগ করুন। ফাইলে শুধু কোন কী-তে কোন অক্ষর থাকে; একুশে যোগ করার আগে যাচাই করে।", 12.5f, bn, subColor))
         (0 until list.length()).map { list.getJSONObject(it) }.filter { it.optBoolean("custom") }.forEach { o ->
             val id = o.getString("value").removePrefix("Custom:")
             card.addView(TextView(this).apply {

@@ -992,6 +992,30 @@ impl FixedLayout {
         Ok((layout, file))
     }
 
+    /// What a row of keys types with this layout (Studio's layout editor test box). Each key is
+    /// `(key, altgr)`; a space or new line ends the word, `\u{8}` is Backspace.
+    pub fn type_keys(&self, keys: &[(char, bool)]) -> String {
+        let auto = LayoutAutomation::default();
+        let mut st = FixedState::default();
+        let mut out = String::new();
+        for &(k, altgr) in keys {
+            match k {
+                ' ' | '\n' => {
+                    out.push_str(&st.take());
+                    out.push(k);
+                }
+                '\u{8}' => {
+                    if !st.backspace() {
+                        out.pop();
+                    }
+                }
+                _ => self.apply_key(&mut st, k, altgr, &auto),
+            }
+        }
+        out.push_str(&st.preedit());
+        out
+    }
+
     /// This layout as a layout file (a starting point for someone's own layout).
     pub fn to_file_text(&self, author: &str, description: &str) -> String {
         let map = |m: &HashMap<char, String>| {
@@ -1299,6 +1323,23 @@ mod tests {
         assert_eq!(word(&u, "mOO"), "ক্\u{200C}");
         // A link left at the end of a word is a hasanta
         assert_eq!(word(&u, "mO"), "ক্");
+    }
+
+    #[test]
+    fn type_keys_for_the_editor_test_box() {
+        let l = FixedLayout::national_jatiya();
+        assert_eq!(
+            l.type_keys(&[('d', false), ('j', false), (' ', false), ('j', false)]),
+            "কি ক"
+        );
+        assert_eq!(
+            l.type_keys(&[('j', false), ('\u{8}', false), ('j', false)]),
+            "ক"
+        );
+        assert_eq!(
+            l.type_keys(&[('j', false), (' ', false), ('\u{8}', false)]),
+            "ক"
+        );
     }
 
     #[test]
