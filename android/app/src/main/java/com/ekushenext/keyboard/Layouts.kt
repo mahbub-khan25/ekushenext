@@ -134,16 +134,65 @@ object Layouts {
         bottomRow(KeyType.SYMBOLS, "?১২৩"),
     )
 
+    // ── English: digits on the top row's long-press (shown small, as on other keyboards), accents on the vowels
+    private val accents = mapOf(
+        'e' to "éèêëēę", 'y' to "ýÿ", 'u' to "úùûüū", 'i' to "íìîïī", 'o' to "óòôöõøœō",
+        'a' to "áàâäãåæā", 's' to "ßśš", 'd' to "ð", 'l' to "ł", 'z' to "žźż", 'c' to "çćč", 'n' to "ñń", 'g' to "ğ",
+    )
+
+    /** English QWERTY: no Bangla, long-press for a digit (top row) and accented letters */
+    fun englishLetters(numberRow: Boolean, address: Address = Address.NONE): List<List<Key>> {
+        fun en(c: Char, digit: Char? = null): Key {
+            val acc = accents[c].orEmpty()
+            val alts = (if (digit != null && !numberRow) listOf(Alt(digit.toString(), digit.toString())) else emptyList()) +
+                acc.map { Alt(it.toString(), it.toString()) }
+            val up = (if (digit != null && !numberRow) listOf(Alt(digit.toString(), digit.toString())) else emptyList()) +
+                acc.map { Alt(it.uppercase(), it.uppercase()) }
+            return Key(KeyType.CHAR, c.toString(), c.toString(), hint = if (numberRow) null else digit?.toString(),
+                alts = alts, shiftAlts = up, letter = true)
+        }
+        return listOfNotNull(
+            if (numberRow) this.numberRow else null,
+            "qwertyuiop".mapIndexed { i, c -> en(c, "1234567890"[i]) },
+            "asdfghjkl".map { en(it) },
+            listOf(Key(KeyType.SHIFT, "⇧", width = 1.5f)) + "zxcvbnm".map { en(it) } + listOf(Key(KeyType.DELETE, "⌫", width = 1.5f)),
+            when (address) {
+                Address.NONE -> bottomRow(KeyType.SYMBOLS, "?১২৩", english = true)
+                else -> addressRow(address)
+            },
+        )
+    }
+
+    /** An email or web address field */
+    enum class Address { NONE, EMAIL, WEB }
+
+    private val domains = listOf(".com", ".net", ".org", ".bd", ".com.bd", ".edu", ".io", ".ca", ".co.uk", ".info")
+        .map { Alt(it, it) }
+
+    /** In an address field: @ (email) or / (web) and .com where the comma was, a smaller Space */
+    private fun addressRow(a: Address) = listOf(
+        Key(KeyType.SYMBOLS, "?১২৩", width = 1.5f),
+        if (a == Address.EMAIL) Key(KeyType.CHAR, "@", "@", alts = listOf(Alt("_", "_"), Alt("-", "-"), Alt("+", "+")))
+        else Key(KeyType.CHAR, "/", "/", alts = listOf(Alt(":", ":"), Alt("-", "-"), Alt("_", "_"), Alt("?", "?"), Alt("=", "="), Alt("&", "&"), Alt("#", "#"))),
+        Key(KeyType.SPACE, " ", " ", width = 3.5f),
+        Key(KeyType.CHAR, ".com", ".com", width = 1.5f, alts = domains),
+        Key(KeyType.CHAR, ".", ".", alts = listOf(Alt("-", "-"), Alt("_", "_"), Alt("@", "@"), Alt("/", "/"))),
+        Key(KeyType.ENTER, "↵", "\n", width = 1.5f),
+    )
+
+    private val enCommaAlts = listOf(Alt(";", ";"), Alt("'", "'"), Alt("\"", "\""), Alt("-", "-"), Alt(":", ":"), Alt("(", "("), Alt(")", ")"))
+    private val enPeriodAlts = listOf(Alt("?", "?"), Alt("!", "!"), Alt(",", ","), Alt("'", "'"), Alt("\"", "\""), Alt("…", "…"), Alt("@", "@"), Alt("/", "/"))
+
     private val commaAlts = listOf(Alt(",,", ",,", "হসন্ত"), Alt("+", "+", "যুক্ত"), Alt("`", "`", "আলাদা"), Alt(";", ";"), Alt("'", "'"), Alt("\"", "\""), Alt("-", "-"))
     private val periodAlts = listOf(Alt("..", "..", "বিন্দু"), Alt("?", "?"), Alt("!", "!"), Alt(":", ":", "ঃ"), Alt("^", "^", "ঁ"), Alt("/", "/", "English"), Alt("$", "$", "৳"))
 
     /** The bottom row: the language switch, emoji and ; live on the bar above the keys, so Space
      *  gets the room (a narrow Space caused many mistyped words) */
-    fun bottomRow(switchType: KeyType, switchLabel: String) = listOf(
+    fun bottomRow(switchType: KeyType, switchLabel: String, english: Boolean = false) = listOf(
         Key(switchType, switchLabel, width = 1.5f),
-        Key(KeyType.CHAR, ",", ",", alts = commaAlts),
+        Key(KeyType.CHAR, ",", ",", alts = if (english) enCommaAlts else commaAlts),
         Key(KeyType.SPACE, " ", " ", width = 5f),
-        Key(KeyType.CHAR, ".", ".", alts = periodAlts),
+        Key(KeyType.CHAR, ".", ".", alts = if (english) enPeriodAlts else periodAlts),
         Key(KeyType.ENTER, "↵", "\n", width = 1.5f),
     )
 

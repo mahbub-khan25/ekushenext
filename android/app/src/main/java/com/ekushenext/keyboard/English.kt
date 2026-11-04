@@ -25,6 +25,9 @@ object English {
     private val learned = HashMap<String, Int>()
     private val pairs = HashMap<String, Int>()
     private val ready = AtomicBoolean(false)
+    /** For corrections: the 40,000 most common words (plain form), by length */
+    private var byLength: Array<Array<String>> = emptyArray()
+    private var lettersByLength: Array<IntArray> = emptyArray()
     private var dir: File? = null
     private var dirty = false
 
@@ -41,10 +44,7 @@ object English {
         val app = context.applicationContext
         thread(name = "ekushe-english") {
             runCatching {
-                val list = app.assets.open("en/words.txt").bufferedReader().readLines().filter { it.isNotBlank() }.toTypedArray()
-                list.forEachIndexed { i, w -> rankOf.putIfAbsent(plain(w), i); exact += w }
-                words = list
-                sorted = rankOf.keys.toTypedArray().also { it.sort() }
+                loadWords(app.assets.open("en/words.txt").bufferedReader().readLines())
                 app.assets.open("en/next.tsv").bufferedReader().forEachLine { line ->
                     if (line.startsWith("#") || line.isBlank()) return@forEachLine
                     val parts = line.split('\t')
@@ -70,6 +70,21 @@ object English {
             ready.set(true)
         }
     }
+
+    /** The word list, most common first (also how the tests load it) */
+    internal fun loadWords(lines: List<String>) {
+        val list = lines.filter { it.isNotBlank() }.toTypedArray()
+        list.forEachIndexed { i, w -> rankOf.putIfAbsent(plain(w), i); exact += w }
+        words = list
+        sorted = rankOf.keys.toTypedArray().also { it.sort() }
+        val buckets = Array(32) { ArrayList<String>() }
+        for ((k, r) in rankOf) if (r < 40_000 && k.length in 1..31 && k.all { it in 'a'..'z' }) buckets[k.length] += k
+        byLength = Array(32) { buckets[it].toTypedArray() }
+        lettersByLength = Array(32) { l -> IntArray(byLength[l].size) { Spatial.letters(byLength[l][it]) } }
+    }
+
+    /** Tests: the word list alone, ready to use */
+    internal fun loadForTest(lines: List<String>) { loadWords(lines); ready.set(true) }
 
     fun isReady() = ready.get()
 
@@ -137,25 +152,84 @@ object English {
         return found.sortedByDescending { it.second }.map { spell(typed, it.first) }.distinct().take(max)
     }
 
-    /** Known words one letter away from a typo (a letter wrong, missing, extra or swapped), best first */
-    fun corrections(typed: String, max: Int = 3): List<String> {
+    /** A guess at what was meant, with how far it is from what was typed */
+    class Guess(val word: String, val cost: Float, val score: Double)
+
+    /**
+     * Known words close to a typo, best first. `taps` are where each letter was tapped (key units,
+     * see Spatial; null for a key from a physical keyboard). `extra` are other guesses to weigh the
+     * same way (the phone's spell checker's).
+     */
+    fun guesses(typed: String, taps: List<FloatArray?> = emptyList(), extra: List<String> = emptyList(), max: Int = 3): List<Guess> {
         if (!ready.get() || typed.length < 2 || known(typed)) return emptyList()
-        val p = plain(typed)
-        val letters = "abcdefghijklmnopqrstuvwxyz"
-        val cand = HashSet<String>()
-        for (i in 0..p.length) {
-            if (i < p.length) cand += p.removeRange(i, i + 1)
-            if (i < p.length - 1) cand += p.substring(0, i) + p[i + 1] + p[i] + p.substring(i + 2)
-            for (c in letters) {
-                if (i < p.length) cand += p.substring(0, i) + c + p.substring(i + 1)
-                cand += p.substring(0, i) + c + p.substring(i)
+        // the same word is asked about more than once per key (the strip, then Space's choice)
+        val memoKey = Triple(typed, taps.map { it?.toList() }, extra)
+        if (memoKey == memoAsk) return memoAnswer.take(max)
+        val all = guessesNow(typed, taps, extra)
+        memoAsk = memoKey; memoAnswer = all
+        return all.take(max)
+    }
+    private var memoAsk: Any? = null
+    private var memoAnswer: List<Guess> = emptyList()
+
+    private fun guessesNow(typed: String, taps: List<FloatArray?>, extra: List<String>): List<Guess> {
+        // letters only, each with its tap
+        val t = StringBuilder()
+        val tp = ArrayList<FloatArray?>()
+        typed.forEachIndexed { i, c -> if (c.isLetter()) { t.append(c.lowercaseChar()); tp += taps.getOrNull(i) } }
+        val p = t.toString()
+        if (p.isEmpty() || p.any { it !in 'a'..'z' }) return emptyList()
+        val limit = Spatial.limit(p.length)
+        val reach = if (p.length >= 6) 2 else 1
+        val found = HashMap<String, Guess>()
+        fun weigh(key: String) {
+            if (key in found) return
+            val c = Spatial.cost(p, tp, key, limit)
+            if (c > limit) return
+            val r = rankOf[key] ?: 60_000
+            val shown = words.getOrNull(rankOf[key] ?: -1) ?: key
+            if (shown in quiet) return
+            // a name (Dan, Eth) for a word typed in small letters is a less likely guess
+            val name = shown.first().isUpperCase() && typed.first().isLowerCase()
+            found[key] = Guess(shown, c, Spatial.score(r, learned[shown] ?: learned[key] ?: 0, c) - if (name) 2.0 else 0.0)
+        }
+        // a word sharing too few of the typed letters can't be close: skip it before the full comparison
+        val mine = Spatial.letters(p)
+        val need = Integer.bitCount(mine) - (if (p.length >= 6) 3 else 2)
+        for (len in (p.length - reach)..(p.length + reach)) {
+            if (len < 1 || len >= byLength.size) continue
+            val list = byLength[len]; val masks = lettersByLength[len]
+            for (i in list.indices) {
+                if (Integer.bitCount(masks[i] and mine) < need) continue
+                val w = list[i]
+                if (Spatial.startsLike(p, tp.firstOrNull(), w)) weigh(w)
             }
         }
-        return cand.mapNotNull { k -> rankOf[k]?.let { r -> words[r] } }
-            .filter { it !in quiet && (rankOf[plain(it)] ?: Int.MAX_VALUE) < 20_000 }
-            .sortedByDescending { score(it) }
-            .map { spell(typed, it) }.distinct().take(max)
+        // the person's own words (names, places) count too
+        for (w in learned.keys) {
+            val k = plain(w)
+            if (k.length >= 2 && kotlin.math.abs(k.length - p.length) <= reach && k.all { it in 'a'..'z' } && Spatial.startsLike(p, tp.firstOrNull(), k)) {
+                if (k !in found) {
+                    val c = Spatial.cost(p, tp, k, limit)
+                    if (c <= limit) found[k] = Guess(w, c, Spatial.score(rankOf[k] ?: 60_000, learned[w] ?: 0, c))
+                }
+            }
+        }
+        for (e in extra) { val k = plain(e); if (k.isNotEmpty() && k.all { it in 'a'..'z' }) weigh(k) }
+        // two words run together (alot, ofthe, inthe): both common
+        if (p.length in 3..14) for (i in 1 until p.length) {
+            val a = p.substring(0, i); val b = p.substring(i)
+            val ra = rankOf[a] ?: continue; val rb = rankOf[b] ?: continue
+            if ((a.length == 1 && a != "a" && a != "i") || ra > 3000 || rb > 3000) continue
+            val both = "${words[ra]} ${words[rb]}"
+            found[both] = Guess(both, 0.5f, Spatial.score(maxOf(ra, rb) * 2, 0, 0.5f))
+        }
+        return found.values.sortedByDescending { it.score }.take(8)
     }
+
+    /** Known words close to a typo, best first, in the case the person typed */
+    fun corrections(typed: String, max: Int = 3, taps: List<FloatArray?> = emptyList()): List<String> =
+        guesses(typed, taps, emptyList(), max).map { spell(typed, it.word) }.distinct()
 
     /** The most likely of some guesses: the most common word (words not in the list come last, in order) */
     fun best(guesses: List<String>): String? = guesses.withIndex().maxByOrNull { (i, w) -> score(w) - i * 1e-9 }?.value

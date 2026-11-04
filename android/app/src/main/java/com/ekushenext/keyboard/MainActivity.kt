@@ -128,6 +128,18 @@ class MainActivity : AppCompatActivity() {
         build()
     }
 
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 7) {
+            val ok = grantResults.firstOrNull() == android.content.pm.PackageManager.PERMISSION_GRANTED
+            android.widget.Toast.makeText(this,
+                if (ok) "ভয়েস টাইপিং চালু। যেখানে লিখছিলেন সেখানে ফিরে 🎤 চাপুন · Voice typing is on: go back and tap the mic"
+                else "মাইক্রোফোন ছাড়া ভয়েস টাইপিং হবে না · voice typing needs the microphone", android.widget.Toast.LENGTH_LONG).show()
+            if (ok) moveTaskToBack(true)
+            build()
+        }
+    }
+
     // Opened again from the keyboard (⚙, ?) while already running: take the new request
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
@@ -138,6 +150,12 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         build()
         val open = intent?.getStringExtra("open")
+        if (open == "mic") {
+            intent.removeExtra("open")
+            // the keyboard's 🎤: Android asks here, then you go back to where you were typing
+            if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED)
+                requestPermissions(arrayOf(android.Manifest.permission.RECORD_AUDIO), 7)
+        }
         if (open == "settings" || open == "marks") {
             intent.removeExtra("open")
             val at = if (open == "marks") marksAnchor else settingsAnchor
@@ -372,6 +390,8 @@ class MainActivity : AppCompatActivity() {
         card.addView(switch("ইংরেজি অটোকারেক্ট", "Space fixes a clear typo (teh → the, dont → don't). ⌫ right after puts back what you typed.", prefs.enAutocorrect) { prefs.enAutocorrect = it })
         divider(card)
         card.addView(switch("ইংরেজিতে পরের শব্দ", "Suggest the next word in English", prefs.nextWordEnglish) { prefs.nextWordEnglish = it })
+        divider(card)
+        card.addView(switch("ভয়েস টাইপিং বোতাম (পরীক্ষামূলক)", "The 🎤 on the bar: speak Bangla or English, in the language you're typing. It uses your phone's speech service (Google on most phones): if that language is downloaded for offline use it stays on the phone, otherwise your voice goes to that service. Ekushe itself sends nothing.", prefs.voiceKey) { prefs.voiceKey = it })
         if (Build.VERSION.SDK_INT >= 31) {
             val tsm = getSystemService(TEXT_SERVICES_MANAGER_SERVICE) as android.view.textservice.TextServicesManager
             if (!tsm.isSpellCheckerEnabled) {

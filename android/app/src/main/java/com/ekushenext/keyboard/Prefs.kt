@@ -78,4 +78,8 @@ class Prefs(context: Context) {
     var seenTour: Boolean
         get() = p.getBoolean("seen_tour", false)
         set(v) = p.edit().putBoolean("seen_tour", v).apply()
+    /** The microphone button on the bar: voice typing with the phone's speech service */
+    var voiceKey: Boolean
+        get() = p.getBoolean("voice_key", true)
+        set(v) = p.edit().putBoolean("voice_key", v).apply()
 }

@@ -28,7 +28,7 @@ import android.view.inputmethod.InputMethodManager
  * Ctrl+Space) switches Bangla ⇄ English as on a computer, Tab moves through the suggestions, and only
  * the suggestion strip is shown, not the keys.
  */
-class EkusheIME : InputMethodService(), KeyboardListener {
+class EkusheIME : InputMethodService(), KeyboardListener, Voice.Events {
     private lateinit var prefs: Prefs
     private var view: KeyboardView? = null
     private var last = Output()
@@ -53,7 +53,28 @@ class EkusheIME : InputMethodService(), KeyboardListener {
     private var enUndo: Pair<String, String>? = null
     /** A word the person took back from a correction: leave it as typed */
     private var enKeep: String? = null
+    /** Where each letter of `en` was tapped (key units; null for a physical key or a long-press) */
+    private val enTaps = ArrayList<FloatArray?>()
+    /** The tap the keys reported for the letter about to arrive */
+    private var pendingTap: FloatArray? = null
+    /** The space before the cursor was put there by Ekushe after a word (Space, a suggestion):
+     *  a . , ? ! typed next goes before it ("word. "), and a second Space isn't doubled */
+    private var autoSpace = false
+        set(v) { field = v; autoSpaceText = if (v) currentInputConnection?.getTextBeforeCursor(40, 0)?.toString() else null }
+    /** The text before the cursor when Ekushe added that space: if it differs now, the cursor moved */
+    private var autoSpaceText: String? = null
+    private fun autoSpaceHere(ic: android.view.inputmethod.InputConnection) =
+        autoSpace && autoSpaceText != null && ic.getTextBeforeCursor(40, 0)?.toString() == autoSpaceText
     private var spell: EnglishSpell? = null
+    /** Where the cursor was when Backspace started sliding (deleting whole words) */
+    private var slideAnchor = -1
+    private var selStart = -1
+    private var selEnd = -1
+    /** Email or web address field (its own bottom row) */
+    private var addressKind = Layouts.Address.NONE
+    private var voice: Voice? = null
+    /** The words heard so far in this sentence, shown in the app as they come (composing text) */
+    private var heard = ""
 
     // ── a physical keyboard
     /** A key came from a physical keyboard in this field */
@@ -80,6 +101,7 @@ class EkusheIME : InputMethodService(), KeyboardListener {
     }
 
     override fun onDestroy() {
+        voice?.stop(notify = false)
         spell?.close()
         English.save()
         super.onDestroy()
@@ -162,7 +184,7 @@ class EkusheIME : InputMethodService(), KeyboardListener {
         Engine.reset()
         last = Output()
         lastCommitted = null
-        en.clear(); enUndo = null; enKeep = null
+        clearEn(); enUndo = null; enKeep = null
         hardTyping = false; keysWanted = false; hardSel = 0
     }
 
@@ -177,6 +199,12 @@ class EkusheIME : InputMethodService(), KeyboardListener {
             InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS, InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS, InputType.TYPE_TEXT_VARIATION_URI,
         )
         val noLearning = (info.imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING) != 0
+        addressKind = when {
+            cls != InputType.TYPE_CLASS_TEXT -> Layouts.Address.NONE
+            variation == InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS || variation == InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS -> Layouts.Address.EMAIL
+            variation == InputType.TYPE_TEXT_VARIATION_URI -> Layouts.Address.WEB
+            else -> Layouts.Address.NONE
+        }
         privateField = password || noLearning
         plainField = password || address || cls == InputType.TYPE_CLASS_NUMBER || cls == InputType.TYPE_CLASS_PHONE || cls == InputType.TYPE_CLASS_DATETIME
         Engine.setPrivate(privateField)
@@ -205,7 +233,7 @@ class EkusheIME : InputMethodService(), KeyboardListener {
             Engine.reset()
             last = Output()
             lastCommitted = null
-            en.clear(); enUndo = null; enKeep = null
+            clearEn(); enUndo = null; enKeep = null
             if (!hardTyping) { keysWanted = false; hardSel = 0 }
         }
         v.mode = when (cls) {
@@ -214,6 +242,7 @@ class EkusheIME : InputMethodService(), KeyboardListener {
             else -> Mode.LETTERS
         }
         v.bangla = typingBangla()
+        v.address = addressKind
         v.enterLabel = enterGlyph(info)
         v.shift = Shift.OFF
         updateAutoShift()
@@ -226,6 +255,7 @@ class EkusheIME : InputMethodService(), KeyboardListener {
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
+        stopVoice()
         finishWord()
         Engine.save()
         English.save()
@@ -279,11 +309,13 @@ class EkusheIME : InputMethodService(), KeyboardListener {
         )
     }
 
+    private fun clearEn() { en.clear(); enTaps.clear() }
+
     /** Close the word being typed, keeping what is shown */
     private fun finishWord() {
         if (en.isNotEmpty()) {
             currentInputConnection?.finishComposingText()
-            en.clear()
+            clearEn()
             view?.showSuggestions(emptyList(), emptyList(), emptyList())
         }
         if (last.composing) {
@@ -296,6 +328,7 @@ class EkusheIME : InputMethodService(), KeyboardListener {
 
     override fun onUpdateSelection(oldSelStart: Int, oldSelEnd: Int, newSelStart: Int, newSelEnd: Int, candidatesStart: Int, candidatesEnd: Int) {
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
+        selStart = newSelStart; selEnd = newSelEnd
         if (editing) return
         // Apps report cursor changes late: with fast typing (a physical keyboard) the report for the
         // word just placed can arrive after the next word was started. Before treating a report as
@@ -305,7 +338,7 @@ class EkusheIME : InputMethodService(), KeyboardListener {
             currentInputConnection?.getTextBeforeCursor(shown.length, 0)?.toString() == shown
         if (en.isNotEmpty() && (candidatesStart == -1 || newSelEnd != candidatesEnd || newSelStart != newSelEnd) && !stillAtWord(en.toString())) {
             currentInputConnection?.finishComposingText()
-            en.clear(); enUndo = null
+            clearEn(); enUndo = null
             view?.showSuggestions(emptyList(), emptyList(), emptyList())
         }
         // The cursor moved away from the word being typed (a tap in the text): the word stays as shown
@@ -332,6 +365,7 @@ class EkusheIME : InputMethodService(), KeyboardListener {
     // ───────────────────────── keys ─────────────────────────
 
     override fun onText(text: String) {
+        if (voice?.active == true) stopVoice()
         val ic = currentInputConnection ?: return
         if (text.length == 2 && text[0] == Layouts.LITERAL) {
             // a mark typed exactly as it is ("$" on the ৳ key while typing Bangla)
@@ -342,19 +376,23 @@ class EkusheIME : InputMethodService(), KeyboardListener {
             return
         }
         if (!typingBangla()) {
-            if (!englishHelp()) { ic.commitText(text, 1); updateAutoShift(); return }
+            if (!englishHelp()) { ic.commitText(text, 1); pendingTap = null; updateAutoShift(); return }
             for (ch in text) {
                 if ((ch.isLetter() && ch.code < 0x250) || (ch == '\'' && en.isNotEmpty())) {
-                    en.append(ch); enUndo = null
+                    en.append(ch); enTaps += if (text.length == 1) pendingTap else null; enUndo = null
+                    autoSpace = false
                     showEnglish()
+                } else if (ch in ".,?!;:" && en.isEmpty() && autoSpaceHere(ic) && swapSpace(ic, ch)) {
+                    enUndo = null
                 } else {
                     // a mark or digit ends the word, as typed (makhan.aumi@gmail stays exactly that)
                     if (en.isNotEmpty()) placeEnglish(correct = false)
                     ic.commitText(ch.toString(), 1)
-                    enUndo = null
+                    enUndo = null; autoSpace = false
                     view?.showSuggestions(emptyList(), emptyList(), emptyList())
                 }
             }
+            pendingTap = null
             if (en.isEmpty()) updateAutoShift()
             return
         }
@@ -373,7 +411,25 @@ class EkusheIME : InputMethodService(), KeyboardListener {
         }
     }
 
+    /** "word ." → "word. ": the mark goes where the space was, and the space after it */
+    private fun swapSpace(ic: android.view.inputmethod.InputConnection, ch: Char): Boolean {
+        val before = ic.getTextBeforeCursor(2, 0)?.toString() ?: return false
+        if (before.length < 2 || before[1] != ' ' || !before[0].isLetterOrDigit()) return false
+        editing = true
+        ic.beginBatchEdit()
+        ic.deleteSurroundingText(1, 0)
+        ic.commitText("$ch ", 1)
+        ic.endBatchEdit()
+        editing = false
+        autoSpace = true
+        lastSpaceAt = 0
+        view?.showSuggestions(emptyList(), emptyList(), emptyList())
+        updateAutoShift()
+        return true
+    }
+
     override fun onSpace() {
+        if (voice?.active == true) stopVoice()
         val ic = currentInputConnection ?: return
         val now = System.currentTimeMillis()
         if (typingBangla()) {
@@ -400,11 +456,18 @@ class EkusheIME : InputMethodService(), KeyboardListener {
             placeEnglish(correct = true)
             ic.commitText(" ", 1)
             lastSpaceAt = now
+            autoSpace = true
             showNextEnglish()
             updateAutoShift()
             return
         }
         enUndo = null
+        // "word. " then Space: the space is already there
+        if (autoSpaceHere(ic) && now - lastSpaceAt > 450 && ic.getTextBeforeCursor(2, 0)?.toString()?.let { it.length == 2 && it[1] == ' ' && it[0] in ".,?!;:" } == true) {
+            autoSpace = false
+            return
+        }
+        autoSpace = false
         if (now - lastSpaceAt < 450) {
             val before = ic.getTextBeforeCursor(2, 0)?.toString() ?: ""
             if (before.length == 2 && before[1] == ' ' && before[0].isLetterOrDigit()) {
@@ -421,6 +484,7 @@ class EkusheIME : InputMethodService(), KeyboardListener {
     }
 
     override fun onDelete() {
+        if (voice?.active == true) stopVoice()
         val ic = currentInputConnection ?: return
         if (typingBangla() && last.composing) { apply(Engine.backspace()); return }
         // Right after a word: bring its Roman letters back (once)
@@ -451,8 +515,10 @@ class EkusheIME : InputMethodService(), KeyboardListener {
                 lastCommitted = null
             }
         }
+        autoSpace = false
         if (!typingBangla() && en.isNotEmpty()) {
             en.deleteCharAt(en.length - 1)
+            if (enTaps.isNotEmpty()) enTaps.removeAt(enTaps.size - 1)
             if (en.isEmpty()) {
                 editing = true; ic.commitText("", 1); editing = false
                 view?.showSuggestions(emptyList(), emptyList(), emptyList())
@@ -466,6 +532,7 @@ class EkusheIME : InputMethodService(), KeyboardListener {
             if (!typingBangla() && ic.getTextBeforeCursor(placed.length + 1, 0)?.toString() == "$placed ") {
                 editing = true; ic.deleteSurroundingText(placed.length + 1, 0); editing = false
                 en.append(typed); enKeep = typed
+                repeat(typed.length) { enTaps += null }
                 showEnglish()
                 return
             }
@@ -480,6 +547,7 @@ class EkusheIME : InputMethodService(), KeyboardListener {
     }
 
     override fun onEnter() {
+        if (voice?.active == true) stopVoice()
         val ic = currentInputConnection ?: return
         if (last.composing) apply(Engine.commit())
         if (en.isNotEmpty()) { placeEnglish(correct = false); view?.showSuggestions(emptyList(), emptyList(), emptyList()) }
@@ -502,8 +570,9 @@ class EkusheIME : InputMethodService(), KeyboardListener {
             val ic = currentInputConnection ?: return
             learnEnglish(word)
             editing = true; ic.commitText(word, 1); ic.commitText(" ", 1); editing = false
-            en.clear(); enUndo = null; enKeep = null
+            clearEn(); enUndo = null; enKeep = null
             lastSpaceAt = System.currentTimeMillis()
+            autoSpace = true
             showNextEnglish(); updateAutoShift()
             return
         }
@@ -519,6 +588,7 @@ class EkusheIME : InputMethodService(), KeyboardListener {
             val w = if (view?.shift == Shift.ON) word.replaceFirstChar { it.uppercase() } else word
             learnEnglish(w)
             ic.commitText("$w ", 1)
+            autoSpace = true
             showNextEnglish(); updateAutoShift()
             return
         }
@@ -548,10 +618,10 @@ class EkusheIME : InputMethodService(), KeyboardListener {
         if (typed.drop(1).any { it.isUpperCase() }) return null // names, acronyms
         // a capital letter in the middle of a sentence is most likely a name (Rahim, Sylhet)
         if (typed.first().isUpperCase() && !sentenceStart(typed.length)) return null
-        // the phone's guesses and the word list's, the most common word wins (teh → the, not tech)
-        val guesses = (spell?.answer(typed)?.takeIf { it.typo }?.suggestions?.take(3).orEmpty().map { English.spell(typed, it) } +
-            English.corrections(typed, 3)).distinct()
-        return English.best(guesses)
+        // the word list's guesses and the phone's, weighed by how common each word is and how close
+        // it is on the keys to where the fingers landed (thw → the, teh → the, not tech)
+        val phone = spell?.answer(typed)?.takeIf { it.typo }?.suggestions?.take(3).orEmpty()
+        return English.guesses(typed, enTaps, phone, 1).firstOrNull()?.let { English.spell(typed, it.word) }
     }
 
     private fun showEnglish(ask: Boolean = true) {
@@ -563,7 +633,7 @@ class EkusheIME : InputMethodService(), KeyboardListener {
         if (fix != null) { list += fix; list += typed } else list += typed
         spell?.answer(typed)?.let { a -> if (a.typo) list += a.suggestions.take(2).map { English.spell(typed, it) } }
         list += English.complete(typed, 3)
-        if (!English.known(typed)) list += English.corrections(typed, 2)
+        if (!English.known(typed)) list += English.corrections(typed, 3, enTaps)
         enShown = list.filter { it.isNotEmpty() }.distinct().take(6)
         view?.showSuggestions(enShown.map { Candidate(it, "") }, emptyList(), emptyList())
         // Never in a private field: the phone's spell checker is another app's service
@@ -594,7 +664,7 @@ class EkusheIME : InputMethodService(), KeyboardListener {
         editing = true; ic.commitText(word, 1); editing = false
         enUndo = if (word != typed) typed to word else null
         if (typed != enKeep) enKeep = null
-        en.clear()
+        clearEn()
     }
 
     /** Learn a word, and what it followed. While it is still being typed, it is the last word before
@@ -619,6 +689,129 @@ class EkusheIME : InputMethodService(), KeyboardListener {
         if (!prefs.nextWordEnglish) { view?.showSuggestions(emptyList(), emptyList(), emptyList()); return }
         val (a, b) = previousWords()
         view?.showSuggestions(emptyList(), emptyList(), English.nextWords(a, b))
+    }
+
+    // ───────────────────────── taps, deleting words ─────────────────────────
+
+    override fun onLetterTap(gx: Float, gy: Float) { pendingTap = floatArrayOf(gx, gy) }
+
+    /** Backspace slid left: mark `n` words before the cursor (Android shows them selected) */
+    override fun onDeleteWords(n: Int) {
+        val ic = currentInputConnection ?: return
+        if (slideAnchor < 0) {
+            finishWord()
+            if (selStart < 0 || selStart != selEnd) return
+            slideAnchor = selStart
+            slideText = ic.getTextBeforeCursor(400, 0)?.toString().orEmpty()
+        }
+        val len = wordsBack(slideText, n)
+        editing = true
+        ic.setSelection(slideAnchor - len, slideAnchor)
+        editing = false
+    }
+
+    /** The text before the cursor when the slide started */
+    private var slideText = ""
+
+    override fun onDeleteWordsDone(n: Int) {
+        val ic = currentInputConnection ?: return
+        val anchor = slideAnchor
+        slideAnchor = -1
+        if (anchor < 0) return
+        if (n > 0 && !ic.getSelectedText(0).isNullOrEmpty()) ic.commitText("", 1)
+        else { editing = true; ic.setSelection(anchor, anchor); editing = false }
+        if (!typingBangla()) updateAutoShift()
+    }
+
+    /** How many characters `n` words take at the end of `text` (with the spaces after each) */
+    private fun wordsBack(text: String, n: Int): Int {
+        var i = text.length
+        repeat(n) {
+            while (i > 0 && text[i - 1].isWhitespace()) i--
+            if (i > 0 && !text[i - 1].isLetterOrDigit() && text[i - 1] != '\'') { i--; return@repeat }
+            while (i > 0 && (text[i - 1].isLetterOrDigit() || text[i - 1] == '\'' || Character.getType(text[i - 1]) == Character.NON_SPACING_MARK.toInt() || Character.getType(text[i - 1]) == Character.COMBINING_SPACING_MARK.toInt())) i--
+        }
+        return text.length - i
+    }
+
+    // ───────────────────────── voice typing ─────────────────────────
+
+    override fun onMic() {
+        if (voice?.active == true) { stopVoice(); return }
+        if (!Voice.available(this)) {
+            view?.stripMessage = "এই ফোনে ভয়েস সেবা নেই · no speech service on this phone"
+            view?.invalidate(); return
+        }
+        if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            // a keyboard can't ask for the microphone itself: the app asks, then you come back
+            openApp("mic")
+            return
+        }
+        finishWord()
+        heard = ""
+        val v = view ?: return
+        v.listeningNote = if (typingBangla()) "শুনছি… বলুন" else "Listening… speak"
+        v.listening = true
+        (voice ?: Voice(this, this).also { voice = it }).start(typingBangla())
+    }
+
+    private fun stopVoice() {
+        voice?.stop()
+    }
+
+    /** For the sentence being heard: a space before it, and a capital (English), decided as it starts */
+    private var sentenceSpace = false
+    private var sentenceCapital = false
+
+    private fun startSentence() {
+        val before = currentInputConnection?.getTextBeforeCursor(2, 0)?.toString().orEmpty()
+        sentenceSpace = before.isNotEmpty() && !before.last().isWhitespace()
+        val head = before.trimEnd()
+        sentenceCapital = !typingBangla() && (head.isEmpty() || head.last() in ".!?\n")
+    }
+
+    private fun shaped(text: String): String {
+        val t = if (sentenceCapital) text.replaceFirstChar { it.uppercaseChar() } else text
+        return if (sentenceSpace) " $t" else t
+    }
+
+    override fun onHeard(partial: String) {
+        val ic = currentInputConnection ?: return
+        if (heard.isEmpty()) startSentence()
+        heard = partial
+        editing = true; ic.setComposingText(shaped(partial), 1); editing = false
+        view?.listeningNote = partial
+    }
+
+    override fun onSentence(text: String) {
+        val ic = currentInputConnection ?: return
+        if (heard.isEmpty()) startSentence()
+        editing = true
+        ic.commitText(shaped(text), 1)
+        editing = false
+        heard = ""
+        view?.listeningNote = if (typingBangla()) "শুনছি…" else "Listening…"
+    }
+
+    override fun onLevel(level: Float) { view?.voiceLevel = level }
+
+    override fun onStopped(problem: String?) {
+        val ic = currentInputConnection
+        // words heard but not made final: keep them
+        if (heard.isNotEmpty()) { ic?.finishComposingText(); heard = "" }
+        view?.listening = false
+        view?.voiceLevel = 0f
+        view?.showSuggestions(emptyList(), emptyList(), emptyList())
+        view?.stripMessage = when (problem) {
+            null -> null
+            "permission" -> "মাইক্রোফোনের অনুমতি নেই · microphone not allowed"
+            "language" -> if (typingBangla()) "ফোনের ভয়েস সেবায় বাংলা নেই · Bangla isn't available" else "English isn't available on this phone"
+            "network" -> "ইন্টারনেট লাগবে, বা ভাষাটি অফলাইনে নামান · needs internet, or download the language for offline use"
+            "busy" -> "ভয়েস সেবা ব্যস্ত, আবার চেষ্টা করুন · busy, try again"
+            else -> "ভয়েস টাইপিং চালু হলো না · voice typing couldn't start"
+        }
+        view?.invalidate()
+        if (!typingBangla()) updateAutoShift()
     }
 
     // ───────────────────────── a physical keyboard ─────────────────────────
