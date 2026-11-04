@@ -2,6 +2,8 @@
 
 Type Bangla the way it sounds, in English letters (`amar sonar bangla` → আমার সোনার বাংলা), and Ekushe writes it with the spelling you meant.
 
+**New in beta.14: lending your voice, all inside Studio.** In **একুশেকে কণ্ঠ দিন** you now choose the microphone you dictate with, watch a level bar while you read, and see your progress: how many of the 240 sentences you have sent, how far each part is, and a row of boxes for the sentences of the part (sent, recorded but not sent, or still to read; click one to go to it). A recording with almost no sound is caught at once, Space starts and stops recording, the arrow keys move between sentences and P plays back. Your progress is kept on your computer, so you can continue another day, and Studio reminds you before closing if recordings are not sent yet. As before, nothing is sent until you press পাঠান, and the recordings are used only to train Ekushe's own voice typing.
+
 **New in beta.13: make your own keyboard layout.** Studio → Settings → Keyboard layout → **নিজে লেআউট বানান** shows a keyboard: click a key and pick what it types, on its own, with Shift and with AltGr (right Alt). Choose the link key for conjuncts, whether vowel signs are typed first and whether the reph comes after, start from nothing or from a copy of a layout, and try it in the box below as you go; Ekushe tells you if a letter can't be typed yet. **সংরক্ষণ ও চালু করুন** saves it and turns it on, and it can be saved as a layout file for another computer or an Android tablet. On Android, layout files are now added on tablets only.
 
 **Also new in beta.13:**
