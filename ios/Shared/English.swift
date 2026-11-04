@@ -66,18 +66,19 @@ final class English {
                 buckets[k.utf8.count].append(Array(k.utf8))
             }
             let masks = buckets.map { $0.map { Spatial.letters($0) } }
-            DispatchQueue.main.async {
+            let sortedKeys = rank.keys.sorted()
+            let install = {
                 self.words = list; self.rankOf = rank; self.exact = exact
                 self.byLength = buckets; self.lettersByLength = masks
-                self.sorted = rank.keys.sorted(); self.next = next
+                self.sorted = sortedKeys; self.next = next
                 self.learned = learned; self.pairs = pairs
                 self.ready = true
             }
+            // tests load on the main thread and use it at once; the keyboard hands it over to the main thread
+            if sync { install() } else { DispatchQueue.main.async(execute: install) }
         }
         if sync {
             work()
-            // the main queue runs the hand-over at once in tests
-            RunLoop.main.run(until: Date().addingTimeInterval(0.05))
         } else {
             DispatchQueue.global(qos: .userInitiated).async(execute: work)
         }
