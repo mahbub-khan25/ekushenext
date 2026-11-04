@@ -411,6 +411,16 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
   .lay-pal { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
   .lay-pal button { min-width: 36px; height: 36px; border: 1px solid var(--line, rgba(127,127,127,.3)); border-radius: 8px; background: transparent; color: inherit; font-family: var(--font-bn); font-size: 1.1rem; cursor: pointer; }
   .lay-pal button:hover { background: rgba(11, 107, 79, .12); }
+  .don-prog { margin: 4px 0 10px; }
+  .don-bar, .don-meter { height: 8px; border-radius: 6px; background: rgba(127,127,127,.18); overflow: hidden; margin-top: 6px; }
+  .don-bar i, .don-meter i { display: block; height: 100%; width: 0; background: var(--accent, #0b6b4f); transition: width .2s; }
+  .don-meter i { transition: width .06s; }
+  .don-meter i.loud { background: #d97706; }
+  .don-grid { display: flex; flex-wrap: wrap; gap: 5px; margin: 8px 0 2px; }
+  .don-grid button { width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--line, rgba(127,127,127,.35)); background: transparent; color: inherit; font: inherit; font-size: .8rem; cursor: pointer; }
+  .don-grid button.rec { background: rgba(37, 99, 235, .18); border-color: rgba(37, 99, 235, .55); }
+  .don-grid button.sent { background: var(--accent, #0b6b4f); color: #fff; border-color: transparent; }
+  .don-grid button.cur { outline: 2px solid var(--accent, #0b6b4f); outline-offset: 1px; }
   .ocr-send { margin: auto; position: fixed; inset: 0; height: fit-content; border: 1px solid var(--line); border-radius: 16px; padding: 20px 22px; max-width: 520px; background: var(--page); color: var(--ink); font: inherit; line-height: 1.7; }
   .ocr-send::backdrop { background: rgba(0, 0, 0, .35); }
   .ocr-send h3 { margin: 0 0 8px; }
@@ -1020,6 +1030,12 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
         <div class="hint">কয়েকটি বাক্য পড়ে রেকর্ড করে পাঠালে একুশের ভয়েস টাইপিং আপনার মতো কণ্ঠ আর মাইকে আরও ভালো বুঝবে। প্রতিটি অংশে ২০টি বাক্য, ৪–৫ মিনিট লাগে। আপনি নিজে „পাঠান“ না চাপলে কিছুই যায় না।</div>
         <div id="donateStart" style="margin-top:10px"><button class="btn primary" onclick="donateAsk()">শুরু করুন</button></div>
         <div id="donateMain" hidden style="margin-top:10px">
+          <div class="don-prog"><div class="row" style="justify-content:space-between;gap:8px"><b>আপনার অবদান</b><span class="hint" id="donateTotal"></span></div><div class="don-bar"><i id="donateTotalBar"></i></div></div>
+          <div class="setting">
+            <label for="donateMicSel">মাইক</label>
+            <select id="donateMicSel" onchange="donateSetMic(this.value)"><option value="">কম্পিউটারের ঠিক করা মাইক</option></select>
+            <small>যে মাইকে সাধারণত ভয়েস টাইপিং করেন সেটি বাছুন।</small>
+          </div>
           <div class="setting">
             <label for="donateBatch">কোন অংশ পড়বেন</label>
             <select id="donateBatch" onchange="donateOpen(+this.value)"></select>
@@ -1027,13 +1043,15 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
           </div>
           <div id="donateSentence" style="font-family:var(--font-bn);font-size:1.45rem;line-height:1.7;padding:14px 16px;margin:8px 0;border:1px solid var(--line, rgba(127,127,127,.25));border-radius:12px"></div>
           <div class="hint" id="donatePos"></div>
+          <div class="don-grid" id="donateGrid" aria-label="এই অংশের বাক্যগুলো"></div>
+          <div class="don-meter" aria-hidden="true"><i id="donateMeter"></i></div>
           <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px">
             <button class="btn" onclick="donateMove(-1)" title="আগের বাক্য">◀</button>
             <button class="btn primary" id="donateRec" onclick="donateRecord()">● রেকর্ড</button>
             <button class="btn" id="donatePlay" onclick="donatePlay()" disabled>▶ শুনুন</button>
             <button class="btn" onclick="donateMove(1)" title="পরের বাক্য">▶▶</button>
           </div>
-          <div class="hint" id="donateLevel" style="margin-top:6px"></div>
+          <div class="hint" id="donateLevel" style="margin-top:6px">Space = রেকর্ড শুরু/থামান · ← → আগের/পরের বাক্য · P = শুনুন</div>
           <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center">
             <button class="btn primary" id="donateSendBtn" onclick="donateSend()" disabled>পাঠান</button>
             <span class="hint" id="donateCount"></span>
@@ -2558,7 +2576,7 @@ function ocrSave() {
 // Recordings are used only to train Ekushe's own voice models and are never published.
 const VOICE_SEND_URL = 'https://ekushenext.com/api/voice-sample';
 const DONATE_BATCHES = [{"t":"রোজকার জীবন","note":"","s":["আজ সকালে ঘুম থেকে উঠে প্রথমে এক কাপ চা খেলাম।","বাইরে বেশ ঠান্ডা পড়েছে, গরম কাপড় পরে বের হয়ো।","বাজার থেকে আলু, পেঁয়াজ আর কিছু সবজি আনতে হবে।","ছেলেমেয়েরা স্কুল থেকে ফিরে খেলতে গেছে।","রাতে খাওয়ার পর আমরা সবাই মিলে একটু হাঁটতে বের হই।","আজকে আকাশ মেঘলা, মনে হচ্ছে বিকেলে বৃষ্টি হবে।","ঘরটা পরিষ্কার করতে প্রায় দুই ঘণ্টা লেগে গেল।","ছুটির দিনে আমি সাধারণত বই পড়ে সময় কাটাই।","পাশের বাসার ভদ্রলোক খুব মিশুক মানুষ।","মাছ ভাজার গন্ধে পুরো বাড়ি ভরে গেছে।","আজকে কাজের চাপ কম, তাই তাড়াতাড়ি বাসায় ফিরব।","বাগানের গোলাপ গাছে নতুন ফুল ফুটেছে।","সন্ধ্যায় টিভিতে একটা ভালো নাটক দেখলাম।","মা বললেন আজ রাতে খিচুড়ি রান্না হবে।","বাসের জন্য প্রায় আধা ঘণ্টা দাঁড়িয়ে থাকতে হলো।","শীতের সকালে কুয়াশায় রাস্তা ঠিকমতো দেখা যায় না।","আমার ছোট ভাই এখন বিশ্ববিদ্যালয়ে পড়ে।","বিদ্যুৎ চলে যাওয়ায় মোমবাতি জ্বালিয়ে বসে ছিলাম।","কাল সকালে একটু আগে উঠতে হবে।","আজকের দিনটা বেশ ভালোই কাটল।"]},{"t":"গল্পের বর্ণনা","note":"","s":["সেদিন ভোরবেলা গ্রামের পথ ধরে একা হাঁটছিল রফিক, চারদিকে তখনো কুয়াশার চাদর।","দূরে নদীর ঘাটে কয়েকটা নৌকা বাঁধা, মাঝিরা তখনো ঘুম থেকে ওঠেনি।","বাড়িটা অনেক পুরনো, দেয়ালের গায়ে শ্যাওলা জমে সবুজ হয়ে গেছে।","জানালার পাশে বসে মেয়েটি অনেকক্ষণ বৃষ্টির দিকে তাকিয়ে রইল।","হঠাৎ দরজায় কড়া নাড়ার শব্দে সবাই চমকে উঠল।","বাবার পুরনো ডায়েরিটা খুলতেই একটা হলুদ হয়ে যাওয়া চিঠি বেরিয়ে এল।","সন্ধ্যা নামার আগেই পাখিরা দল বেঁধে নীড়ে ফিরতে শুরু করল।","দাদির মুখে শোনা সেই গল্পটা আজও আমার স্পষ্ট মনে আছে।","ট্রেনটা যখন স্টেশন ছাড়ল, প্ল্যাটফর্মে দাঁড়িয়ে সে শুধু হাত নাড়ছিল।","অনেক বছর পর নিজের স্কুলের সামনে দাঁড়িয়ে তার চোখ ভিজে এল।","চাঁদের আলোয় পুরো মাঠটা যেন রুপালি হয়ে উঠেছিল।","ছোট্ট ছেলেটি মায়ের আঁচল ধরে ভিড়ের মধ্যে হাঁটছিল।","শীতের রাতে আগুন পোহাতে পোহাতে সবাই পুরনো দিনের গল্পে মেতে উঠল।","চিঠিটা পড়ে শেষ করার পর সে অনেকক্ষণ চুপ করে বসে রইল।","বর্ষায় নদীটা ফুলে ফেঁপে উঠে দুই পাড় ভাসিয়ে দিত।","সেই রাতে কেউ ঘুমাতে পারেনি, সবাই ভোরের অপেক্ষায় জেগে ছিল।","বাজারের কোলাহল পেরিয়ে সে একটা নির্জন গলিতে ঢুকে পড়ল।","মাস্টারমশাই চশমাটা নাকের ডগায় নামিয়ে ক্লাসের দিকে তাকালেন।","পুকুরপাড়ের আমগাছটার নিচে ছিল আমাদের ছোটবেলার খেলার জায়গা।","অবশেষে বহু প্রতীক্ষার পর গ্রামে বিদ্যুতের আলো এসে পৌঁছাল।"]},{"t":"কাজ ও অফিস","note":"","s":["আগামীকাল সকাল দশটায় দলের সবার সঙ্গে বৈঠক আছে।","প্রতিবেদনটা আজকের মধ্যে জমা দিতে হবে।","নতুন প্রকল্পের বাজেট এখনও চূড়ান্ত হয়নি।","দয়া করে সংযুক্ত নথিটি দেখে মতামত জানাবেন।","গ্রাহকের অভিযোগটা দ্রুত সমাধান করা দরকার।","এই মাসে আমাদের বিক্রি আগের মাসের চেয়ে বেড়েছে।","ছুটির আবেদনটা ব্যবস্থাপকের কাছে পাঠিয়েছি।","সভার সিদ্ধান্তগুলো সবাইকে জানিয়ে দেওয়া হবে।","আমাদের দলে দুজন নতুন সদস্য যোগ দিয়েছেন।","কাজটা শেষ করতে আরও তিন দিন সময় লাগবে।","চুক্তির শর্তগুলো আরেকবার পড়ে দেখা উচিত।","অফিসের নতুন নিয়ম সোমবার থেকে চালু হবে।","হিসাব বিভাগ থেকে বেতনের তথ্য চেয়ে পাঠানো হয়েছে।","প্রশিক্ষণ কর্মশালাটি দুই দিন ধরে চলবে।","সবাইকে নির্ধারিত সময়ের মধ্যে উপস্থিত থাকতে অনুরোধ করা হলো।","সরবরাহকারীর সঙ্গে দাম নিয়ে আবার আলোচনা করতে হবে।","বছরের শেষে সবার কাজের মূল্যায়ন হবে।","আমি আজ বাসা থেকে কাজ করছি।","প্রস্তাবটা অনুমোদন পেলে আমরা কাজ শুরু করব।","আপনার সহযোগিতার জন্য আন্তরিক ধন্যবাদ।"]},{"t":"সংখ্যা, টাকা, সময় ও তারিখ","note":"সংখ্যাগুলো যেভাবে মুখে বলেন সেভাবে কথায় পড়ুন।","s":["আমার মোবাইল নম্বরের শেষ চারটি অঙ্ক হলো পাঁচ তিন দুই আট।","জিনিসটার দাম পড়েছে বারোশো পঞ্চাশ টাকা।","ট্রেন ছাড়বে বিকেল চারটা পনেরো মিনিটে।","আজ ষোলোই ডিসেম্বর, আমাদের বিজয় দিবস।","ক্লাসে মোট পঁয়তাল্লিশজন ছাত্রছাত্রী আছে।","বাড়ি ভাড়া মাসে আঠারো হাজার টাকা।","মিটিং শুরু হবে সাড়ে এগারোটায়।","তার জন্ম উনিশশো নব্বই সালের মার্চ মাসে।","এক কেজি চালের দাম এখন পঁয়ষট্টি টাকা।","অফিস থেকে বাসার দূরত্ব প্রায় সাত কিলোমিটার।","দুই হাজার পঁচিশ সালে আমরা নতুন বাসায় উঠেছি।","পরীক্ষার ফল বের হবে পয়লা জানুয়ারি।","তিনি একশো দশ নম্বর বাড়িতে থাকেন।","আমাদের গ্রামে প্রায় তিন হাজার মানুষের বাস।","বিলটা আগামী সাতাশ তারিখের মধ্যে দিতে হবে।","গাড়িটা ঘণ্টায় আশি কিলোমিটার বেগে চলছিল।","পাঁচ ভাগের দুই ভাগ কাজ ইতিমধ্যে শেষ হয়েছে।","ব্যাংকে দেড় লাখ টাকা জমা দিয়েছি।","সকাল ছয়টা থেকে রাত দশটা পর্যন্ত দোকান খোলা থাকে।","তাপমাত্রা আজ বত্রিশ ডিগ্রি সেলসিয়াস।"]},{"t":"গল্পের সংলাপ","note":"","s":["রহিম বলল, আমি আর এক মুহূর্তও এখানে থাকতে চাই না।","মা ডেকে বললেন, ভাত ঠান্ডা হয়ে যাচ্ছে, তাড়াতাড়ি খেতে আয়।","মেয়েটি অবাক হয়ে জিজ্ঞেস করল, তুমি এতদিন কোথায় ছিলে?","বুড়ো মাঝি হেসে বলল, নদী কাউকে ফেরায় না, বাবা।","শিক্ষক বললেন, যে প্রশ্ন করে না, সে কিছুই শেখে না।","সে ফিসফিস করে বলল, কাউকে কিছু বোলো না, এটা আমাদের গোপন কথা।","দাদু চোখ বন্ধ করে বললেন, সেই দিনগুলো আর কখনো ফিরে আসবে না।","ছেলেটি কাঁদতে কাঁদতে বলল, আমার বইটা কেউ নিয়ে গেছে।","ডাক্তার শান্ত গলায় বললেন, ভয় পাবেন না, সব ঠিক হয়ে যাবে।","বন্ধুটি কাঁধে হাত রেখে বলল, যা হওয়ার হয়ে গেছে, এবার সামনে তাকাও।","পুলিশ কর্মকর্তা জানতে চাইলেন, ঘটনাটা ঠিক কখন ঘটেছিল?","নানি বললেন, মানুষের আসল পরিচয় তার ব্যবহারে।","সে রেগে গিয়ে বলল, তোমার কথার কোনো দাম নেই আমার কাছে।","অপরিচিত লোকটি নরম গলায় বলল, আমি পথ হারিয়েছি, একটু সাহায্য করবেন?","বাবা বললেন, কষ্ট করে যা পাওয়া যায়, তার মূল্য সবচেয়ে বেশি।","মেয়েটি হাসতে হাসতে বলল, তুমি একদম বদলাওনি।","গ্রামের মোড়ল ঘোষণা দিলেন, কাল সবাই স্কুলমাঠে জড়ো হবে।","সে দীর্ঘশ্বাস ফেলে বলল, জীবনটা যদি আবার শুরু করা যেত।","ছোট বোন জেদ ধরে বলল, আমিও তোমার সঙ্গে মেলায় যাব।","বিদায়ের সময় সে বলল, ভালো থেকো, আবার দেখা হবে।"]},{"t":"জায়গা, নাম ও ভ্রমণ","note":"","s":["আমরা ঈদের ছুটিতে কক্সবাজারে বেড়াতে যাব।","সিলেটের চা বাগানগুলো দেখতে অপূর্ব।","রাজশাহী আমের জন্য বিখ্যাত।","চট্টগ্রাম থেকে বান্দরবান যেতে কয়েক ঘণ্টা লাগে।","সুন্দরবনে রয়েল বেঙ্গল টাইগার দেখা যায়।","ঢাকার গুলশান থেকে উত্তরা যেতে অনেক সময় লাগে।","করিম সাহেব খুলনার একটি স্কুলে শিক্ষকতা করেন।","ফাতেমা আর রহিম গত বছর বিয়ে করেছে।","পদ্মা সেতু পার হয়ে আমরা বরিশাল পৌঁছালাম।","কুমিল্লার রসমালাই সবার প্রিয়।","নাসরিন আপা ময়মনসিংহে থাকেন।","আমার নানাবাড়ি রংপুরের একটি গ্রামে।","কলকাতার বইমেলায় অনেক মানুষের ভিড় হয়।","টরন্টোতে শীতকালে প্রচুর তুষার পড়ে।","মাহমুদ ভাই আগামী মাসে লন্ডন যাচ্ছেন।","সাজেক ভ্যালিতে মেঘের ভেতর দিয়ে হাঁটা যায়।","বগুড়ার দই খুব নামকরা।","তানভীর আর সুমি একই অফিসে কাজ করে।","নারায়ণগঞ্জ থেকে লঞ্চে চাঁদপুর যাওয়া যায়।","শ্রীমঙ্গলে সাত রঙের চা পাওয়া যায়।"]},{"t":"বাংলা কথায় ইংরেজি শব্দ","note":"","s":["আমার ল্যাপটপের ব্যাটারি একদম শেষ।","ইমেইলটা পাঠানোর আগে একবার চেক করে নিও।","অফিসের ওয়াইফাই আজকে খুব স্লো।","প্রেজেন্টেশনের স্লাইডগুলো রেডি করতে হবে।","মোবাইলে নতুন অ্যাপটা ইনস্টল করেছি।","ডাক্তারের অ্যাপয়েন্টমেন্ট নিয়েছি বৃহস্পতিবার।","পাসওয়ার্ড ভুলে গেলে রিসেট করতে হয়।","অনলাইনে অর্ডার দিলে দুই দিনে ডেলিভারি দেয়।","ফেসবুকে একটা ভিডিও শেয়ার করেছি।","মিটিংয়ের লিংকটা হোয়াটসঅ্যাপে পাঠিয়ে দাও।","কম্পিউটারটা রিস্টার্ট দিলে হয়তো ঠিক হয়ে যাবে।","এই সফটওয়্যারের লাইসেন্স কিনতে হবে না, এটা ফ্রি।","ব্যাংকের কার্ড দিয়ে পেমেন্ট করা যাবে।","প্রিন্টারে কাগজ আটকে গেছে।","ডেটাগুলো এক্সেল শিটে রাখা আছে।","ইউটিউবে আমার নতুন চ্যানেলটা দেখো।","ফোনের চার্জার বাসায় ফেলে এসেছি।","নতুন আপডেট আসার পর ফোনটা দ্রুত চলছে।","ক্লাউডে ব্যাকআপ রাখলে ফাইল হারানোর ভয় থাকে না।","কিবোর্ডে বাংলা লিখতে একুশে ব্যবহার করি।"]},{"t":"চিহ্নসহ বলা লেখা","note":"“কমা”, “দাঁড়ি”, “প্রশ্নবোধক চিহ্ন”, “নতুন লাইন” — লেখা শব্দগুলোও বলুন।","s":["প্রিয় রাশেদ কমা নতুন লাইন কেমন আছ প্রশ্নবোধক চিহ্ন","আজ বিকেলে আমাদের সভা হবে দাঁড়ি","আমি বাজারে যাচ্ছি কমা তোমার কিছু লাগবে প্রশ্নবোধক চিহ্ন","সবাইকে অনেক ধন্যবাদ দাঁড়ি নতুন লাইন","মিটিং শুরু হবে দশটায় দাঁড়ি কেউ দেরি করবেন না দাঁড়ি","চাল কমা ডাল কমা তেল আর লবণ আনতে হবে দাঁড়ি","তুমি কি কাল আসতে পারবে প্রশ্নবোধক চিহ্ন","শুভেচ্ছা রইল দাঁড়ি নতুন লাইন ইতি কমা তোমার বন্ধু","কাজটা শেষ হয়েছে দাঁড়ি এখন বাসায় যাচ্ছি দাঁড়ি","কী সুন্দর একটা দিন বিস্ময়সূচক চিহ্ন","বাজারের তালিকা কোলন নতুন লাইন আলু কমা পেঁয়াজ কমা রসুন","আজ এই পর্যন্ত দাঁড়ি নতুন অনুচ্ছেদ","আপনার চিঠি পেয়েছি দাঁড়ি উত্তর দিতে দেরি হলো বলে দুঃখিত দাঁড়ি","সভার বিষয় কোলন নতুন বছরের পরিকল্পনা দাঁড়ি","অভিনন্দন বিস্ময়সূচক চিহ্ন তুমি পরীক্ষায় প্রথম হয়েছ দাঁড়ি","তুমি কখন ফিরবে কমা আমাকে জানিও দাঁড়ি","প্রথমত কমা কাজটা সময়মতো শেষ করতে হবে দাঁড়ি","ঠিক আছে কমা আমি রাজি দাঁড়ি","নতুন অনুচ্ছেদ আগামীকাল অফিস বন্ধ থাকবে দাঁড়ি","আর কিছু জানার থাকলে প্রশ্ন করুন দাঁড়ি নতুন লাইন ধন্যবাদ দাঁড়ি"]},{"t":"স্বাস্থ্য, খাবার ও ঘর","note":"","s":["প্রতিদিন অন্তত আধা ঘণ্টা হাঁটা স্বাস্থ্যের জন্য ভালো।","বেশি করে পানি খেলে শরীর ভালো থাকে।","ডাক্তার বলেছেন তিন বেলা খাওয়ার পর ওষুধ খেতে।","আজ দুপুরে ভাত, ডাল আর ইলিশ মাছ রান্না হয়েছে।","মাথা ব্যথা করছে, একটু বিশ্রাম নেব।","রান্নাঘরের কল দিয়ে পানি পড়ছে, মিস্ত্রি ডাকতে হবে।","বাচ্চাদের টিকা দেওয়ার তারিখ মনে রাখতে হবে।","সকালে নাশতায় রুটি আর ডিম ভাজি খাই।","ফ্রিজে দুধ শেষ হয়ে গেছে।","বেশি রাত জাগলে পরদিন শরীর খারাপ লাগে।","শীতে ঠোঁট ফাটলে নারকেল তেল দিতে পারো।","ঘরের বাতিগুলো বদলে নতুন এলইডি লাগিয়েছি।","মায়ের হাতের পিঠা আমার খুব প্রিয়।","জ্বর থাকলে বেশি করে তরল খাবার খেতে হয়।","বারান্দার গাছগুলোতে প্রতিদিন পানি দিই।","বাসায় মেহমান আসবে, পোলাও আর মাংস রান্না হবে।","চোখ ভালো রাখতে মোবাইল কম দেখা উচিত।","ধুলাবালিতে আমার হাঁচি শুরু হয়।","কাপড়গুলো ছাদে শুকাতে দিয়েছি।","রাতে হালকা খাবার খেলে ভালো ঘুম হয়।"]},{"t":"লম্বা বাক্য","note":"","s":["আমরা ঠিক করেছি আগামী মাসের শুরুতে পুরো পরিবার নিয়ে কয়েক দিনের জন্য গ্রামের বাড়িতে বেড়াতে যাব।","প্রযুক্তি যত এগিয়ে যাচ্ছে, মানুষের কাজের ধরনও তত দ্রুত বদলে যাচ্ছে।","বাংলা ভাষায় কম্পিউটারে লেখা এখন আগের চেয়ে অনেক সহজ হয়ে গেছে।","ছোটবেলায় বৃষ্টির দিনে আমরা উঠানে কাগজের নৌকা ভাসিয়ে খেলতাম।","পরীক্ষার আগের রাতে বেশি না পড়ে ভালো করে ঘুমানো বুদ্ধিমানের কাজ।","শহরের রাস্তায় যানজট কমাতে হলে গণপরিবহন ব্যবস্থা আরও উন্নত করতে হবে।","নতুন কিছু শিখতে চাইলে প্রতিদিন অল্প অল্প করে চর্চা করাই সবচেয়ে ভালো উপায়।","তিনি সারা জীবন গ্রামের গরিব ছেলেমেয়েদের লেখাপড়ার জন্য কাজ করে গেছেন।","বইমেলায় গিয়ে আমি পছন্দের লেখকদের কয়েকটি নতুন বই কিনে এনেছি।","বিদেশে থাকলেও দেশের মানুষ আর খাবারের কথা সবসময় মনে পড়ে।","সকালে বৃষ্টি হওয়ায় রাস্তায় পানি জমে গিয়েছিল, তাই অফিসে পৌঁছাতে দেরি হলো।","একটা ভালো অভ্যাস গড়ে তুলতে সময় লাগে, কিন্তু ভেঙে ফেলতে এক মুহূর্তও লাগে না।","আমাদের পাড়ার লাইব্রেরিতে প্রতি শুক্রবার শিশুদের জন্য গল্প পড়ার আসর বসে।","নদীর পাড়ে বসে সূর্যাস্ত দেখার মতো শান্তির মুহূর্ত খুব কমই আছে।","অনলাইনে কেনাকাটা করার সময় বিক্রেতার পরিচয় ভালো করে যাচাই করে নেওয়া উচিত।","কৃষকেরা সারা বছর কঠোর পরিশ্রম করেন বলেই আমরা প্রতিদিন খেতে পাই।","মোবাইল ফোন আমাদের জীবন সহজ করেছে, তবে এর অতিরিক্ত ব্যবহার ক্ষতিকর।","আগামী সপ্তাহে স্কুলে বার্ষিক ক্রীড়া প্রতিযোগিতা আর পুরস্কার বিতরণী অনুষ্ঠান হবে।","পুরনো ছবিগুলো দেখলে ফেলে আসা দিনের কত কথা মনে পড়ে যায়।","ভালো মানুষ হওয়ার জন্য অনেক টাকা লাগে না, দরকার একটা সুন্দর মন।"]},{"t":"খবর ও আনুষ্ঠানিক বাংলা","note":"","s":["দেশের উত্তরাঞ্চলে শৈত্যপ্রবাহ অব্যাহত রয়েছে।","আবহাওয়া অধিদপ্তর আগামী তিন দিন বৃষ্টির সম্ভাবনার কথা জানিয়েছে।","চলতি অর্থবছরে রপ্তানি আয় উল্লেখযোগ্য হারে বেড়েছে।","সড়ক দুর্ঘটনা রোধে নতুন আইন কার্যকর করা হয়েছে।","বিশ্ববিদ্যালয়ে ভর্তি পরীক্ষার ফল প্রকাশিত হয়েছে।","বন্যাকবলিত এলাকায় ত্রাণ বিতরণ শুরু হয়েছে।","জাতীয় ক্রিকেট দল আগামী সপ্তাহে সফরে যাচ্ছে।","নগরীর বিভিন্ন স্থানে মশক নিধন অভিযান চালানো হচ্ছে।","কৃষকদের জন্য নতুন ঋণ সুবিধা ঘোষণা করা হয়েছে।","অনুষ্ঠানে প্রধান অতিথি হিসেবে উপস্থিত ছিলেন জেলা প্রশাসক।","গবেষকেরা ধানের একটি নতুন জাত উদ্ভাবন করেছেন।","শিল্পকলা একাডেমিতে সপ্তাহব্যাপী নাট্যোৎসব শুরু হয়েছে।","বিদ্যুৎ সাশ্রয়ে সবাইকে সচেতন হওয়ার আহ্বান জানানো হয়েছে।","মহাসড়কে যান চলাচল স্বাভাবিক রয়েছে।","ডেঙ্গু প্রতিরোধে বাড়ির আশপাশ পরিষ্কার রাখার পরামর্শ দেওয়া হয়েছে।","আন্তর্জাতিক মাতৃভাষা দিবস উপলক্ষে শহীদ মিনারে শ্রদ্ধা জানানো হয়।","মেট্রোরেল রাজধানীর যাতায়াত অনেক সহজ করেছে।","পরিবেশ রক্ষায় বেশি করে গাছ লাগানোর উদ্যোগ নেওয়া হয়েছে।","বাজারে নিত্যপ্রয়োজনীয় পণ্যের দাম কিছুটা কমেছে।","সংবাদ সম্মেলনে প্রতিষ্ঠানটির ভবিষ্যৎ পরিকল্পনা তুলে ধরা হয়।"]},{"t":"প্রবন্ধ ও নিবন্ধ","note":"","s":["ভাষা শুধু ভাব প্রকাশের মাধ্যম নয়, এটি একটি জাতির ইতিহাস আর সংস্কৃতির ধারক।","বায়ান্নর ভাষা আন্দোলন আমাদের আত্মপরিচয়ের পথে প্রথম বড় পদক্ষেপ ছিল।","বই পড়ার অভ্যাস মানুষের কল্পনাশক্তি আর চিন্তার গভীরতা বাড়িয়ে দেয়।","গ্রামীণ জীবনের সরলতা আজও অনেক লেখকের লেখায় বারবার ফিরে আসে।","জলবায়ু পরিবর্তনের প্রভাবে উপকূলীয় এলাকার মানুষ নতুন নতুন সংকটের মুখোমুখি হচ্ছে।","একটি ভালো গল্পের শুরুতেই পাঠকের মনোযোগ ধরে রাখার মতো কিছু থাকা দরকার।","শিশুর মানসিক বিকাশে পরিবারের ভূমিকা সবচেয়ে গুরুত্বপূর্ণ।","নগরায়ণের ফলে আমাদের চারপাশ থেকে খোলা মাঠ আর জলাশয় দ্রুত হারিয়ে যাচ্ছে।","সাহিত্য আমাদের অন্যের জীবনকে নিজের চোখে দেখতে শেখায়।","প্রযুক্তির সঠিক ব্যবহার শিক্ষাকে আরও সহজ আর আনন্দময় করে তুলতে পারে।","লোকসংগীত আমাদের মাটি আর মানুষের সুখ দুঃখের কথা বলে।","উপন্যাসের চরিত্রগুলো যত বাস্তব হয়, পাঠক তত সহজে তাদের সঙ্গে একাত্ম হয়।","সুস্থ সমাজ গড়তে হলে প্রত্যেক নাগরিককে নিজের দায়িত্ব সম্পর্কে সচেতন হতে হবে।","নদীমাতৃক এই দেশের মানুষের জীবন আর জীবিকা নদীর সঙ্গে গভীরভাবে জড়িয়ে আছে।","লেখালেখির জন্য প্রতিভার পাশাপাশি নিয়মিত চর্চা আর ধৈর্য প্রয়োজন।","পহেলা বৈশাখ বাঙালির সবচেয়ে বড় সর্বজনীন উৎসব।","ইতিহাস থেকে শিক্ষা না নিলে একই ভুল বারবার ফিরে আসে।","প্রবন্ধের প্রতিটি অনুচ্ছেদে একটি মূল ভাবনা স্পষ্টভাবে তুলে ধরা উচিত।","মানুষের প্রতি ভালোবাসা আর সহমর্মিতাই একটি সমাজকে সত্যিকারের মানবিক করে তোলে।","লেখা শেষ করার পর একবার জোরে পড়ে দেখলে অনেক ভুল সহজেই চোখে পড়ে।"]}];
-let donate = { batch: 0, i: 0, takes: {}, rec: null, stream: null, timer: null, audio: null };
+let donate = { batch: 0, i: 0, takes: {}, rec: null, stream: null, timer: null, audio: null, mic: '', ctx: null, analyser: null, peak: 0 };
 const donateStore = {
   get() { try { return JSON.parse(localStorage.getItem('ekushe-voice-donor') || 'null'); } catch (e) { return null; } },
   set(v) { try { localStorage.setItem('ekushe-voice-donor', JSON.stringify(v)); } catch (e) {} },
@@ -2587,9 +2605,44 @@ function donateAgree() {
   document.getElementById('donateDlg').close();
   donateShow(d);
 }
+async function donateMics() {
+  try {
+    const sel = document.getElementById('donateMicSel'), keep = sel.value;
+    const list = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'audioinput' && d.deviceId && d.deviceId !== 'default');
+    sel.innerHTML = '<option value="">কম্পিউটারের ঠিক করা মাইক</option>' + list.map((d, k) => `<option value="${d.deviceId}">${(d.label || 'মাইক ' + bnNum(k + 1)).replace(/</g, '&lt;')}</option>`).join('');
+    sel.value = keep || (donateStore.get() || {}).micId || '';
+  } catch (e) {}
+}
+function donateSetMic(id) {
+  if (donate.stream) { donate.stream.getTracks().forEach(t => t.stop()); donate.stream = null; }
+  const d = donateStore.get() || {}; d.micId = id; donateStore.set(d);
+}
+// The microphone, raw like voice typing hears it, with a level meter while recording
+async function donateOpenMic() {
+  if (donate.stream) return donate.stream;
+  const id = document.getElementById('donateMicSel').value;
+  const audio = { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 };
+  if (id) audio.deviceId = { exact: id };
+  donate.stream = await navigator.mediaDevices.getUserMedia({ audio });
+  try {
+    donate.ctx = donate.ctx || new (window.AudioContext || window.webkitAudioContext)();
+    const src = donate.ctx.createMediaStreamSource(donate.stream);
+    donate.analyser = donate.ctx.createAnalyser(); donate.analyser.fftSize = 1024;
+    src.connect(donate.analyser);
+  } catch (e) { donate.analyser = null; }
+  donateMics();   // device names show once the microphone is allowed
+  return donate.stream;
+}
+function donateLevel() {
+  if (!donate.analyser) return 0;
+  const a = new Float32Array(donate.analyser.fftSize); donate.analyser.getFloatTimeDomainData(a);
+  let m = 0; for (const x of a) m = Math.max(m, Math.abs(x));
+  return m;
+}
 function donateShow(d) {
   document.getElementById('donateStart').hidden = true;
   document.getElementById('donateMain').hidden = false;
+  donateMics();
   document.getElementById('donateCode').textContent = d.code;
   // the first part not fully sent yet
   const first = DONATE_BATCHES.findIndex((b, k) => b.s.some((_, i) => !(d.sent || {})[`${k + 1}-${i + 1}`]));
@@ -2604,7 +2657,22 @@ function donateOpen(k) {
 function donateKey(k, i) { return `${k + 1}-${i + 1}`; }
 function donateDraw() {
   const b = DONATE_BATCHES[donate.batch], key = donateKey(donate.batch, donate.i);
-  const sent = ((donateStore.get() || {}).sent || {})[key];
+  const sentAll = (donateStore.get() || {}).sent || {};
+  const sent = sentAll[key];
+  // overall and per-part progress
+  const total = DONATE_BATCHES.reduce((n, x) => n + x.s.length, 0), done = Object.keys(sentAll).length;
+  document.getElementById('donateTotal').textContent = `${bnNum(done)} / ${bnNum(total)} বাক্য পাঠানো` + (done >= total ? ' · সব শেষ, অনেক ধন্যবাদ!' : '');
+  document.getElementById('donateTotalBar').style.width = (100 * done / total) + '%';
+  const sel = document.getElementById('donateBatch');
+  DONATE_BATCHES.forEach((x, k) => {
+    const n = x.s.filter((_, i) => sentAll[donateKey(k, i)]).length;
+    if (sel.options[k]) sel.options[k].textContent = `${bnNum(k + 1)}. ${x.t} — ${bnNum(n)}/${bnNum(x.s.length)}${n === x.s.length ? ' ✓' : ''}`;
+  });
+  document.getElementById('donateGrid').innerHTML = b.s.map((_, i) => {
+    const k2 = donateKey(donate.batch, i);
+    const cls = [sentAll[k2] ? 'sent' : donate.takes[k2] ? 'rec' : '', i === donate.i ? 'cur' : ''].join(' ');
+    return `<button type="button" class="${cls}" onclick="donateGo(${i})" title="${sentAll[k2] ? 'পাঠানো হয়েছে' : donate.takes[k2] ? 'রেকর্ড হয়েছে, পাঠানো বাকি' : 'এখনও রেকর্ড হয়নি'}">${bnNum(i + 1)}</button>`;
+  }).join('');
   document.getElementById('donateSentence').textContent = b.s[donate.i];
   document.getElementById('donatePos').textContent = `বাক্য ${bnNum(donate.i + 1)} / ${bnNum(b.s.length)}` + (sent ? ' · ✓ আগেই পাঠানো হয়েছে' : donate.takes[key] ? ' · ✓ রেকর্ড হয়েছে' : '');
   document.getElementById('donatePlay').disabled = !donate.takes[key];
@@ -2613,6 +2681,7 @@ function donateDraw() {
   document.getElementById('donateCount').textContent = n ? `${bnNum(n)}টি রেকর্ডিং পাঠানোর জন্য তৈরি (আপনার কম্পিউটারেই আছে)` : '';
   document.getElementById('donateSendBtn').disabled = !n || !!donate.rec;
 }
+function donateGo(i) { if (donate.rec) return; donate.i = i; donateDraw(); }
 function donateMove(step) {
   if (donate.rec) return;
   const len = DONATE_BATCHES[donate.batch].s.length;
@@ -2621,10 +2690,10 @@ function donateMove(step) {
 }
 async function donateRecord() {
   if (donate.rec) { donate.rec.stop(); return; }
-  try {
-    // the raw microphone, like voice typing hears it (no browser clean-up)
-    donate.stream = donate.stream || await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 } });
-  } catch (e) { toast('মাইক চালু করা গেল না। মাইকের অনুমতি দিন।'); return; }
+  try { await donateOpenMic(); }
+  catch (e) { toast('মাইক চালু করা গেল না। মাইকের অনুমতি দিন, বা অন্য মাইক বাছুন।'); donate.stream = null; return; }
+  if (donate.ctx && donate.ctx.state === 'suspended') donate.ctx.resume();
+  donate.peak = 0;
   const type = ['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/webm'].find(t => MediaRecorder.isTypeSupported(t)) || '';
   const rec = new MediaRecorder(donate.stream, type ? { mimeType: type, audioBitsPerSecond: 48000 } : {});
   const chunks = [], key = donateKey(donate.batch, donate.i), started = performance.now();
@@ -2632,19 +2701,26 @@ async function donateRecord() {
   rec.onstop = () => {
     clearInterval(donate.timer); donate.rec = null;
     const secs = (performance.now() - started) / 1000;
-    document.getElementById('donateLevel').textContent = '';
+    document.getElementById('donateMeter').style.width = '0';
+    document.getElementById('donateLevel').textContent = 'Space = রেকর্ড শুরু/থামান · ← → আগের/পরের বাক্য · P = শুনুন';
     if (secs < 1) { toast('খুব ছোট রেকর্ডিং, আবার চেষ্টা করুন'); donateDraw(); return; }
+    if (donate.analyser && donate.peak < 0.02) { toast('প্রায় কিছুই শোনা যায়নি। মাইক ঠিক আছে কি না দেখে আবার রেকর্ড করুন।'); donateDraw(); return; }
+    if (donate.peak > 0.98) toast('আওয়াজ খুব জোরে, কেটে যেতে পারে। মাইক একটু দূরে রেখে আবার রেকর্ড করতে পারেন।');
     donate.takes[key] = { blob: new Blob(chunks, { type: rec.mimeType || 'audio/webm' }), secs };
     const len = DONATE_BATCHES[donate.batch].s.length;
     if (donate.i < len - 1) donate.i++;   // straight on to the next sentence
+    else toast('এই অংশ শেষ! „পাঠান“ চাপলে রেকর্ডিংগুলো যাবে।');
     donateDraw();
   };
   donate.rec = rec; rec.start();
   donate.timer = setInterval(() => {
-    const t = (performance.now() - started) / 1000;
+    const t = (performance.now() - started) / 1000, lv = donateLevel();
+    donate.peak = Math.max(donate.peak, lv);
+    const bar = document.getElementById('donateMeter');
+    bar.style.width = Math.min(100, Math.round(Math.sqrt(lv) * 110)) + '%'; bar.classList.toggle('loud', lv > 0.95);
     document.getElementById('donateLevel').textContent = `🔴 রেকর্ড হচ্ছে… ${bnNum(Math.floor(t))} সেকেন্ড (পড়া শেষ হলে „থামান“)`;
     if (t > 55) rec.stop();
-  }, 250);
+  }, 60);
   donateDraw();
 }
 function donatePlay() {
@@ -2694,6 +2770,20 @@ function donateStop() {
   document.getElementById('donateStart').hidden = false;
   const d = donateStore.get(); if (d) { d.agreed = null; donateStore.set(d); }
 }
+// Space to record or stop, arrows to move, P to listen, while the card is on screen
+document.addEventListener('keydown', e => {
+  const main = document.getElementById('donateMain');
+  if (!main || main.hidden || !document.getElementById('tab-settings').classList.contains('active')) return;
+  if (e.target.closest && e.target.closest('input, textarea, select, button, dialog')) return;
+  const r = main.getBoundingClientRect();
+  if (r.bottom < 0 || r.top > innerHeight) return;
+  if (e.code === 'Space') { e.preventDefault(); donateRecord(); }
+  else if (e.key === 'ArrowRight') { e.preventDefault(); donateMove(1); }
+  else if (e.key === 'ArrowLeft') { e.preventDefault(); donateMove(-1); }
+  else if (e.key === 'p' || e.key === 'P') donatePlay();
+});
+// recordings not sent yet live only in this window
+addEventListener('beforeunload', e => { if (Object.keys(donate.takes).length) { e.preventDefault(); e.returnValue = ''; } });
 donateInit();
 
 // ── First run: how do you type Bangla? ──
