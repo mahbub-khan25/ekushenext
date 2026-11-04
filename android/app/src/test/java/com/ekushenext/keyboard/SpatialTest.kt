@@ -68,6 +68,13 @@ class SpatialTest {
         assertEquals("and", fix("adn"))
     }
 
+    @Test fun aWordHeldDownIsNotSuggestedAgain() {
+        English.block("beautiful")
+        assertTrue(English.complete("beau", 5).none { it == "beautiful" })
+        English.addWord("beautiful")
+        assertTrue(English.complete("beau", 5).contains("beautiful"))
+    }
+
     @Test fun knownWordsAndNonsenseAreLeftAlone() {
         assertTrue(English.guesses("form").isEmpty())
         assertTrue(English.guesses("zqxwv").isEmpty())

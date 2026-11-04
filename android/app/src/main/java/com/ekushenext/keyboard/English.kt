@@ -26,6 +26,8 @@ object English {
     /** How often you chose each word, and which word you wrote after which */
     private val learned = HashMap<String, Int>()
     private val pairs = HashMap<String, Int>()
+    /** Words the person asked never to be suggested (long-press on a suggestion) */
+    private val blocked = HashSet<String>()
     private val ready = AtomicBoolean(false)
     /** For corrections: the 40,000 most common words (plain form), by length */
     private var byLength: Array<Array<String>> = emptyArray()
@@ -59,6 +61,7 @@ object English {
                     val p = line.split('\t')
                     if (p.size == 3 && p[0] == "w") learned[p[1]] = p[2].toIntOrNull() ?: 0
                     if (p.size == 3 && p[0] == "p") pairs[p[1]] = p[2].toIntOrNull() ?: 0
+                    if (p.size >= 2 && p[0] == "b") blocked += p[1]
                 }
             }
             // Words the person saved in the phone's personal dictionary (names, places)
@@ -163,7 +166,7 @@ object English {
             }
             i++; scanned++
         }
-        return found.sortedByDescending { it.second }.map { spell(typed, it.first) }.distinct().take(max)
+        return found.filter { it.first.lowercase() !in blocked }.sortedByDescending { it.second }.map { spell(typed, it.first) }.distinct().take(max)
     }
 
     /** A guess at what was meant, with how far it is from what was typed */
@@ -202,7 +205,7 @@ object English {
             if (c > limit) return
             val r = rankOf[key] ?: 60_000
             val shown = words.getOrNull(rankOf[key] ?: -1) ?: key
-            if (shown in quiet) return
+            if (shown in quiet || shown.lowercase() in blocked) return
             // a name (Dan, Eth) for a word typed in small letters is a less likely guess
             val name = shown.first().isUpperCase() && typed.first().isLowerCase()
             found[key] = Guess(shown, c, Spatial.score(r, learned[shown] ?: learned[key] ?: 0, c) - if (name) 2.0 else 0.0)
@@ -259,7 +262,7 @@ object English {
             val line = Glide.wordLine(key) ?: return
             if (line.size < 2 || !Glide.lengthFits(pathLen, Glide.length(line))) return
             if (!Glide.covers(key, dense, 1.25f)) return
-            if (shown in quiet) return
+            if (shown in quiet || shown.lowercase() in blocked) return
             // names (Hugo, Sufi) only when you have written them yourself
             val name = shown.first().isUpperCase() && learnedN == 0
             // a likely next word after the one before it counts a little more
@@ -294,7 +297,7 @@ object English {
         pairs.entries.filter { it.key.startsWith("$a ") }.sortedByDescending { it.value }.forEach { out += it.key.substringAfter(' ') }
         prev2?.let { next["${it.lowercase()} $a"]?.let { l -> out += l } }
         next[a]?.let { out += it }
-        return out.map { if (it == "i" || it.startsWith("i'")) "I" + it.substring(1) else it }.distinct().take(max)
+        return out.filter { it.lowercase() !in blocked }.map { if (it == "i" || it.startsWith("i'")) "I" + it.substring(1) else it }.distinct().take(max)
     }
 
     /** Remember a word that was written (not in private fields) */
@@ -317,6 +320,7 @@ object English {
                 // keep the file small: the words used most
                 learned.entries.sortedByDescending { it.value }.take(5000).forEach { append("w\t${it.key}\t${it.value}\n") }
                 pairs.entries.sortedByDescending { it.value }.take(5000).forEach { append("p\t${it.key}\t${it.value}\n") }
+                blocked.forEach { append("b\t$it\n") }
             }
             val tmp = File(d, "en_learned.tsv.new")
             tmp.writeText(text)
@@ -324,8 +328,26 @@ object English {
         }
     }
 
+    /** Never suggest this word again (it can still be typed) */
+    fun block(word: String) {
+        val k = word.lowercase()
+        blocked += k
+        learned.remove(word); learned.remove(k)
+        pairs.keys.removeAll { it.endsWith(" $k") }
+        dirty = true
+    }
+
+    /** One of your words: never corrected, and suggested like a common word */
+    fun addWord(word: String) {
+        blocked.remove(word.lowercase())
+        learned[word] = (learned[word] ?: 0) + 20
+        dirty = true
+    }
+
+    fun isBlocked(word: String) = word.lowercase() in blocked
+
     fun forget() {
-        learned.clear(); pairs.clear(); dirty = false
+        learned.clear(); pairs.clear(); blocked.clear(); dirty = false
         dir?.let { File(it, "en_learned.tsv").delete() }
     }
 

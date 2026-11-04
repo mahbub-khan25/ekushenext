@@ -70,6 +70,70 @@ class EkusheIME : InputMethodService(), KeyboardListener, Voice.Events {
     private var slideAnchor = -1
     private var selStart = -1
     private var selEnd = -1
+    // ── the clipboard: text copied a moment ago is offered on the bar
+    private var clipText: String? = null
+    private var clipAt = 0L
+    private val clipboard by lazy { getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager }
+    private val onClip = android.content.ClipboardManager.OnPrimaryClipChangedListener {
+        runCatching {
+            val clip = clipboard.primaryClip ?: return@runCatching
+            // passwords and the like copied from a password manager are marked sensitive: never shown
+            val sensitive = Build.VERSION.SDK_INT >= 24 && clip.description?.extras?.getBoolean("android.content.extra.IS_SENSITIVE") == true
+            val t = clip.getItemAt(0)?.text?.toString()?.trim()
+            clipText = if (sensitive || t.isNullOrEmpty() || t.length > 2000) null else t
+            clipAt = System.currentTimeMillis()
+            showClip()
+        }
+    }
+
+    /** The bar offers the copied text for 3 minutes, not in private fields, until it is pasted */
+    private fun showClip() {
+        val fresh = System.currentTimeMillis() - clipAt < 3 * 60_000
+        view?.clip = if (fresh && !privateField) clipText else null
+    }
+
+    // ───────────────────────── your words ─────────────────────────
+
+    /** A suggestion held down (English): the word as typed becomes one of your words; any other
+     *  word is never suggested again */
+    override fun onCandidateHold(index: Int) {
+        if (typingBangla() || en.isEmpty()) return
+        val word = enShown.getOrNull(index) ?: return
+        if (!word.first().isLetter()) return
+        val typed = en.toString()
+        if (word == typed) {
+            English.addWord(word); enKeep = word
+            showEnglish()
+            view?.stripMessage = null
+            view?.showSuggestions(enShown.map { Candidate(it, "") }, emptyList(), emptyList())
+            toast("“$word” আপনার শব্দে যোগ হলো · added to your words")
+        } else {
+            English.block(word)
+            showEnglish()
+            toast("“$word” আর দেখানো হবে না · won't be suggested again")
+        }
+        English.save()
+    }
+
+    override fun onPredictionHold(word: String) {
+        if (typingBangla()) return
+        English.block(word)
+        English.save()
+        showNextEnglish()
+        toast("“$word” আর দেখানো হবে না · won't be suggested again")
+    }
+
+    private fun toast(t: String) = android.widget.Toast.makeText(this, t, android.widget.Toast.LENGTH_SHORT).show()
+
+    override fun onPasteClip() {
+        val t = clipText ?: return
+        finishWord()
+        currentInputConnection?.commitText(t, 1)
+        clipText = null
+        view?.clip = null
+        if (!typingBangla()) updateAutoShift()
+    }
+
     /** The word glide typing just placed: (the space put before it, the word, the other guesses) */
     private var glided: Triple<String, String, List<String>>? = null
 
@@ -101,10 +165,12 @@ class EkusheIME : InputMethodService(), KeyboardListener, Voice.Events {
         Engine.start(this)
         English.start(this)
         spell = EnglishSpell(this) { word -> if (en.toString() == word) showEnglish(ask = false) }
+        runCatching { clipboard.addPrimaryClipChangedListener(onClip) }
     }
 
     override fun onDestroy() {
         voice?.stop(notify = false)
+        runCatching { clipboard.removePrimaryClipChangedListener(onClip) }
         spell?.close()
         English.save()
         super.onDestroy()
@@ -252,6 +318,7 @@ class EkusheIME : InputMethodService(), KeyboardListener, Voice.Events {
         if (midWord && last.composing) v.showSuggestions(last.candidates, last.tips, emptyList())
         else v.showSuggestions(emptyList(), emptyList(), emptyList())
         v.stripMessage = if (password) "পাসওয়ার্ড: সাধারণ অক্ষর · plain text" else null
+        showClip()
         updateStripOnly()
         // the window's insets are ready once it is laid out
         v.post { view?.under = if (hardKeyboard()) taskbarCover().toFloat() else 0f }
