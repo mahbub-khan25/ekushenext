@@ -19,11 +19,14 @@ protocol KeyboardListener: AnyObject {
     func onLetterTap(_ x: Float, _ y: Float)
     /// Backspace slid left and let go: delete this many words before the cursor
     func onDeleteWords(_ n: Int)
+    /// A line drawn across the English letters (glide typing), in key units
+    func onGlide(_ path: [(Float, Float)])
 }
 
 extension KeyboardListener {
     func onLetterTap(_ x: Float, _ y: Float) {}
     func onDeleteWords(_ n: Int) {}
+    func onGlide(_ path: [(Float, Float)]) {}
 }
 
 enum Mode { case letters, symbols, moreSymbols, numbers, emoji }
@@ -152,8 +155,9 @@ final class KeyboardView: UIView {
         drawStrip()
         if mode == .emoji { drawEmoji(); return }
         for pl in placed { drawKey(pl.key, pl.rect, pressed: pressedKey == pl.key && pressedRect == pl.rect) }
-        if let k = pressedKey, let r = pressedRect, k.type == .char, alts == nil, mode != .numbers { drawPreview(k, r) }
+        if !gliding, let k = pressedKey, let r = pressedRect, k.type == .char, alts == nil, mode != .numbers { drawPreview(k, r) }
         if let a = alts { drawAlts(a) }
+        if glideTrail.count > 1 { drawTrail() }
     }
 
     private func isFunction(_ k: Key) -> Bool { k.type != .char && k.type != .space }
@@ -227,6 +231,19 @@ final class KeyboardView: UIView {
             if k.type == .delete && deleteSliding && pressed {
                 draw(deleteWords == 0 ? "↩" : "−\(deleteWords)", centre: CGPoint(x: r.midX, y: r.minY + 10), font: font(12, .bold), color: p.text)
             }
+        }
+    }
+
+    /// The line the finger is drawing, thinner and fainter towards its start
+    private func drawTrail() {
+        let pts = Array(glideTrail.suffix(48))
+        for i in 1..<pts.count {
+            let t = CGFloat(i) / CGFloat(pts.count)
+            palette.accent.withAlphaComponent(0.25 + 0.6 * t).setStroke()
+            let b = UIBezierPath()
+            b.move(to: pts[i - 1]); b.addLine(to: pts[i])
+            b.lineWidth = 2.5 + 4 * t; b.lineCapStyle = .round
+            b.stroke()
         }
     }
 
@@ -450,6 +467,16 @@ final class KeyboardView: UIView {
     private var emojiStartScroll: CGFloat = 0
     private var lastShiftTap = Date.distantPast
     private var lastPoint = CGPoint.zero
+    /// Glide typing: the line being drawn, in key units (for the word) and on screen (the trail)
+    private var glidePath: [(Float, Float)]?
+    private var glideTrail: [CGPoint] = []
+    private var gliding = false
+
+    /// A point on the keys in key units (q's centre is 0.5, 0.5), from the q key's place and size
+    private func toUnits(_ pt: CGPoint) -> (Float, Float)? {
+        guard let q = placed.first(where: { $0.key.type == .char && $0.key.text == "q" })?.rect else { return nil }
+        return (0.5 + Float((pt.x - q.midX) / (q.width + gap)), 0.5 + Float((pt.y - q.midY) / (q.height + gap)))
+    }
     /// Backspace sliding left: whole words are counted, and deleted when the finger lifts
     private var deleteSliding = false
     private var deleteWords = 0
@@ -492,6 +519,13 @@ final class KeyboardView: UIView {
         }
         guard let k = pressedKey else { return }
         lastPoint = pt
+        // glide typing: once the finger has travelled most of a key, it draws a word
+        if glidePath != nil && alts == nil {
+            if let u = toUnits(pt) { glidePath!.append(u) }
+            glideTrail.append(pt)
+            if !gliding && Glide.isGlide(glidePath!) { gliding = true; longTimer?.invalidate() }
+            if gliding { setNeedsDisplay(); return }
+        }
         if var a = alts {
             let i = min(max(0, Int((pt.x - a.rect.minX) / a.cell)), a.items.count - 1)
             if i != a.selected { a.selected = i; alts = a; setNeedsDisplay() }
@@ -547,6 +581,9 @@ final class KeyboardView: UIView {
         pressedKey = k; pressedRect = hit.rect
         longFired = false; spaceDragging = false; spaceAnchorX = pt.x; repeatCount = 0
         lastPoint = pt; deleteSliding = false; deleteWords = 0
+        gliding = false; glideTrail = []
+        glidePath = (k.type == .char && k.letter && !bangla && mode == .letters && prefs.glide) ? toUnits(pt).map { [$0] } : nil
+        if glidePath != nil { glideTrail = [pt] }
         listener?.onKeyFeedback()
         switch k.type {
         case .delete:
@@ -581,6 +618,14 @@ final class KeyboardView: UIView {
         pressedKey = nil; pressedRect = nil; alts = nil
         setNeedsDisplay()
         if deleteSliding { deleteSliding = false; if fire && deleteWords > 0 { listener?.onDeleteWords(deleteWords) }; deleteWords = 0; return }
+        let path = glidePath
+        glidePath = nil
+        if gliding {
+            gliding = false
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { [weak self] in self?.glideTrail = []; self?.setNeedsDisplay() }
+            if fire, let path { listener?.onGlide(path); afterChar() }
+            return
+        }
         guard fire, let k else { return }
         if let a { listener?.onText(a.items[a.selected].text); afterChar(); return }
         if longFired || spaceDragging { return }
@@ -641,6 +686,21 @@ final class KeyboardView: UIView {
         if emojiDel.contains(pt) { listener?.onDelete(); return }
         if let tab = emojiTabs.first(where: { $0.0.contains(pt) }) { emojiGroup = tab.1; emojiScroll = 0; setNeedsDisplay(); return }
         if let cell = emojiCells.first(where: { $0.0.contains(pt) }) { rememberEmoji(cell.1); listener?.onEmoji(cell.1) }
+    }
+
+    // ── for tests: draw a word across the keys as a finger would
+    func glide(_ word: String) {
+        let pts = word.compactMap { c in placed.first(where: { $0.key.id == String(c) }).map { CGPoint(x: $0.rect.midX, y: $0.rect.midY) } }
+        guard let first = pts.first, let hit = keyAt(first) else { return }
+        press(hit, first)
+        for (a, b) in zip(pts, pts.dropFirst()) {
+            for s in 1...6 {
+                let p = CGPoint(x: a.x + (b.x - a.x) * CGFloat(s) / 6, y: a.y + (b.y - a.y) * CGFloat(s) / 6)
+                lastPoint = p
+                if glidePath != nil, let u = toUnits(p) { glidePath!.append(u); if Glide.isGlide(glidePath!) { gliding = true } }
+            }
+        }
+        release(fire: true)
     }
 
     // ── for tests: press a key as a finger would

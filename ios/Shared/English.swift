@@ -245,6 +245,37 @@ final class English {
         return Array(found.values.sorted { $0.score > $1.score }.prefix(8))
     }
 
+    /// Words for a line drawn across the keys (glide typing), best first: the shape of the line
+    /// against each word's line through its letters, and how common the word is
+    func glide(_ path: [(Float, Float)], max: Int = 5, after: [String] = []) -> [String] {
+        guard ready, path.count >= 2, Glide.isGlide(path) else { return [] }
+        let rs = Glide.resample(path), dense = Glide.resample(path, 64)
+        let starts = Glide.keysNear(path[0], 1.15), ends = Glide.keysNear(path[path.count - 1], 1.15)
+        let pathLen = Glide.length(path)
+        let follow = Set(after.map { $0.lowercased() })
+        var found: [String: Double] = [:]
+        func weigh(_ k: [UInt8], _ shown: String, _ rank: Int, _ learnedN: Int) {
+            guard k.count >= 2, starts.contains(k[0]), ends.contains(k[k.count - 1]), found[shown] == nil else { return }
+            guard let line = Glide.wordLine(k), line.count >= 2, Glide.lengthFits(pathLen, Glide.length(line)) else { return }
+            guard Glide.covers(k, dense, 1.25), !quiet.contains(shown) else { return }
+            // names only when you have written them yourself; a likely next word counts a little more
+            let name = shown.first?.isUppercase == true && learnedN == 0
+            found[shown] = Glide.score(rs, Glide.resample(line), rank: rank, learned: learnedN) - (name ? 1 : 0) + (follow.contains(shown.lowercased()) ? 0.8 : 0)
+        }
+        for len in 2..<byLength.count {
+            for k in byLength[len] where starts.contains(k[0]) && ends.contains(k[k.count - 1]) {
+                let key = String(decoding: k, as: UTF8.self)
+                guard let r = rankOf[key], r <= 30_000 else { continue }
+                weigh(k, words[r], r, learned[words[r]] ?? 0)
+            }
+        }
+        for (w, n) in learned {
+            let k = Array(plain(w).utf8)
+            if k.allSatisfy({ $0 >= 97 && $0 <= 122 }) { weigh(k, w, rankOf[String(decoding: k, as: UTF8.self)] ?? 40_000, n) }
+        }
+        return Array(found.sorted { $0.value > $1.value }.prefix(max).map { $0.key })
+    }
+
     /// Known words close to a typo, best first, in the case the person typed
     func corrections(_ typed: String, max: Int = 3, taps: [(Float, Float)?] = []) -> [String] {
         var seen = Set<String>()

@@ -47,6 +47,8 @@ final class Typist: KeyboardListener {
     /// The text before the cursor right after Ekushe added a space after a word (Space, a
     /// suggestion): if it is still the same, a . , ? ! typed next goes before that space
     private var autoSpaceText: String?
+    /// The word glide typing just placed: the space put before it, the word, the other guesses
+    private var glided: (space: String, word: String, guesses: [String])?
 
     init(target: TextTarget, view: KeyboardView?) {
         self.target = target; self.view = view
@@ -139,6 +141,11 @@ final class Typist: KeyboardListener {
 
     func onText(_ text: String) {
         guard let t = target else { return }
+        // a letter right after a glided word starts a new word: a space between them
+        if let g = glided {
+            glided = nil
+            if !typingBangla(), text.count == 1, text.first?.isLetter == true, t.contextBefore.hasSuffix(g.word) { t.insert(" ") }
+        }
         if text.count == 2, text.first == Layouts.literal {
             // a mark typed exactly as it is ("$" on the ৳ key while typing Bangla)
             if typingBangla() { if last.composing { apply(Engine.commit()) }; last = Output() }
@@ -198,6 +205,37 @@ final class Typist: KeyboardListener {
 
     func onLetterTap(_ x: Float, _ y: Float) { pendingTap = (x, y) }
 
+    /// A line drawn across the letters: the most likely word is typed, the other guesses shown
+    func onGlide(_ path: [(Float, Float)]) {
+        guard let t = target, !typingBangla() else { return }
+        if !en.isEmpty { placeEnglish(correct: true); t.insert(" ") }
+        let (a, b) = previousWords()
+        let guesses = English.shared.glide(path, max: 5, after: English.shared.nextWords(a, b, max: 8))
+        guard !guesses.isEmpty else {
+            view?.showSuggestions([], [], [])
+            view?.stripMessage = "এই রেখায় কোনো শব্দ পাওয়া গেল না · no word for that line"
+            view?.setNeedsDisplay()
+            return
+        }
+        let shift = view?.shift ?? .off
+        func shaped(_ w: String) -> String {
+            switch shift {
+            case .locked: return w.uppercased()
+            case .on: return w.prefix(1).uppercased() + w.dropFirst()
+            case .off: return (w == "i" || w.hasPrefix("i'")) ? "I" + w.dropFirst() : w
+            }
+        }
+        var seen = Set<String>()
+        let shown = guesses.map(shaped).filter { seen.insert($0).inserted }
+        let before = t.contextBefore.last
+        let space = (before != nil && !before!.isWhitespace && !"([{\"'“‘".contains(before!)) ? " " : ""
+        t.insert(space + shown[0])
+        if !privateField { English.shared.learn(shown[0], prev: b) }
+        glided = (space, shown[0], shown)
+        autoSpaceText = nil
+        view?.showSuggestions(shown.map { Candidate(text: $0, kind: "") }, [], [])
+    }
+
     /// Backspace slid left and let go: whole words before the cursor go
     func onDeleteWords(_ n: Int) {
         guard let t = target else { return }
@@ -216,6 +254,7 @@ final class Typist: KeyboardListener {
 
     func onSpace() {
         guard let t = target else { return }
+        glided = nil
         let now = Date()
         if typingBangla() {
             if last.composing { apply(Engine.select(last.selected, trailing: " ")); lastSpaceAt = now; return }
@@ -257,6 +296,17 @@ final class Typist: KeyboardListener {
 
     func onDelete() {
         guard let t = target else { return }
+        // right after glide typing: the whole word goes (with the space put before it)
+        if let g = glided {
+            glided = nil
+            let all = g.space + g.word
+            if t.contextBefore.hasSuffix(all) {
+                for _ in 0..<all.count { t.deleteBackward() }
+                view?.showSuggestions([], [], [])
+                updateAutoShift()
+                return
+            }
+        }
         if typingBangla() && last.composing { apply(Engine.backspace()); return }
         // right after a word: take it back and reopen its Roman letters with their suggestions
         if typingBangla() && Engine.hasUndo() {
@@ -292,6 +342,7 @@ final class Typist: KeyboardListener {
 
     func onEnter() {
         guard let t = target else { return }
+        glided = nil
         if last.composing { apply(Engine.commit()) }
         if !en.isEmpty { placeEnglish(correct: false); view?.showSuggestions([], [], []) }
         enUndo = nil
@@ -301,6 +352,17 @@ final class Typist: KeyboardListener {
 
     func onCandidate(_ index: Int) {
         guard let t = target else { return }
+        // another guess for the glided word: it takes the word's place
+        if let g = glided {
+            guard index < g.guesses.count, t.contextBefore.hasSuffix(g.word) else { return }
+            let alt = g.guesses[index]
+            for _ in 0..<g.word.count { t.deleteBackward() }
+            t.insert(alt)
+            glided = (g.space, alt, g.guesses)
+            if !privateField { English.shared.learn(alt, prev: nil) }
+            view?.showSuggestions(g.guesses.map { Candidate(text: $0, kind: "") }, [], [])
+            return
+        }
         if !en.isEmpty, index < enShown.count, let f = enShown[index].first, !f.isLetter {
             // an emoji: the word as Space would place it, then the emoji
             let emoji = enShown[index]

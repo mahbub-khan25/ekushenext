@@ -141,6 +141,22 @@ final class EkusheTests: XCTestCase {
         XCTAssertTrue(email.contains { $0.text == "@" } && email.contains { $0.text == ".com" })
     }
 
+    func testGlideTyping() {
+        english()
+        kb.glide("hello")
+        XCTAssertEqual(doc.text.lowercased(), "hello", doc.text)
+        kb.glide("world")
+        XCTAssertTrue(doc.text.lowercased().hasSuffix("hello world"), doc.text)
+        typist.onDelete()
+        XCTAssertEqual(doc.text.lowercased(), "hello", "⌫ takes the whole glided word")
+    }
+
+    func testEmojiBesideTheWord() {
+        english()
+        type("love")
+        XCTAssertTrue(kb.candidates.contains { $0.text == "❤️" }, "\(kb.candidates.map { $0.text })")
+    }
+
     func testEnglishCompletionsAndNextWords() {
         english()
         type("beau")
