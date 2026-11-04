@@ -157,6 +157,27 @@ final class EkusheTests: XCTestCase {
         XCTAssertTrue(kb.candidates.contains { $0.text == "❤️" }, "\(kb.candidates.map { $0.text })")
     }
 
+    func testOneHandedKeys() {
+        Prefs.shared.oneHand = 2
+        kb.mode = .letters
+        kb.layoutIfNeeded()
+        let q = kb.keyCentres["q"]!.x
+        Prefs.shared.oneHand = 0
+        kb.mode = .letters
+        XCTAssertGreaterThan(q, 390 * 0.2, "the keys moved to the right")
+        XCTAssertLessThan(kb.keyCentres["q"]!.x, 390 * 0.1)
+    }
+
+    func testHeldSuggestionIsNotSuggestedAgain() {
+        english()
+        type("beau")
+        XCTAssertTrue(kb.candidates.contains { $0.text == "beautiful" })
+        let i = kb.candidates.firstIndex { $0.text == "beautiful" }!
+        typist.onCandidateHold(i)
+        XCTAssertFalse(kb.candidates.contains { $0.text == "beautiful" })
+        English.shared.addWord("beautiful")
+    }
+
     func testEnglishCompletionsAndNextWords() {
         english()
         type("beau")

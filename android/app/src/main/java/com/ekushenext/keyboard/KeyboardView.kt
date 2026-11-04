@@ -201,6 +201,13 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) = layoutKeys()
 
+    /** One-handed: the keys' area (left edge, width), and the side panel's two buttons */
+    private var keysLeft = 0f
+    private var keysW = 0f
+    private var sideSwap = RectF()
+    private var sideFull = RectF()
+    private fun oneHanded() = prefs.oneHand != 0 && mode != Mode.EMOJI && mode != Mode.NUMBERS && mode != Mode.PHONE && !stripOnly
+
     private fun layoutKeys() {
         if (width == 0) return
         val out = ArrayList<Placed>()
@@ -208,12 +215,21 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
         val areaH = height - stripH - bottomPad
         val rh = areaH / max(1, rows.size)
         val unitsMax = rows.maxOfOrNull { r -> r.sumOf { it.width.toDouble() } }?.toFloat() ?: 10f
+        // one-handed: the keys move to one side, a narrow panel with two buttons on the other
+        keysW = if (oneHanded()) width * 0.8f else width.toFloat()
+        keysLeft = if (oneHanded() && prefs.oneHand == 2) width - keysW else 0f
+        if (oneHanded()) {
+            val px = if (prefs.oneHand == 2) 0f else keysW
+            val pw = width - keysW
+            sideSwap = RectF(px + 6 * dp, areaTop + areaH * 0.12f, px + pw - 6 * dp, areaTop + areaH * 0.42f)
+            sideFull = RectF(px + 6 * dp, areaTop + areaH * 0.55f, px + pw - 6 * dp, areaTop + areaH * 0.85f)
+        }
         // the number pad spreads its four columns across; letters keep ten-key widths
         val pad = mode == Mode.NUMBERS || mode == Mode.PHONE
-        val unit = (width - gap) / (if (pad) unitsMax else max(10f, unitsMax))
+        val unit = (keysW - gap) / (if (pad) unitsMax else max(10f, unitsMax))
         rows.forEachIndexed { r, row ->
             val units = row.sumOf { it.width.toDouble() }.toFloat()
-            var x = (width - units * unit) / 2f
+            var x = keysLeft + (keysW - units * unit) / 2f
             val y = areaTop + r * rh
             row.forEach { k ->
                 val w = k.width * unit
@@ -268,6 +284,7 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
         logKeys()
         if (debuggable) { removeCallbacks(relog); relogLeft = 8; postDelayed(relog, 500) }
         for ((k, r) in placed) drawKey(c, k, r, pressedKey == k)
+        if (oneHanded()) drawSidePanel(c)
         if (!gliding) pressedKey?.let { k -> placed.firstOrNull { it.key == k }?.let { if (k.type == KeyType.CHAR && altsOpen == null) drawPreview(c, k, it.rect) } }
         altsOpen?.let { drawAlts(c, it) }
         if (glideTrail.size > 1) drawTrail(c)
@@ -435,6 +452,17 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
                     c.drawCircle(r.right - 6 * dp, r.top + 6 * dp, 1.6f * dp, keyPaint)
                 }
             }
+        }
+    }
+
+    /** One-handed: move the keys to the other side, or back to full width */
+    private fun drawSidePanel(c: Canvas) {
+        val p = palette
+        for ((r, glyph) in listOf(sideSwap to (if (prefs.oneHand == 2) "⇤" else "⇥"), sideFull to "⤢")) {
+            keyPaint.color = p.functionKey
+            c.drawRoundRect(r, 12 * dp, 12 * dp, keyPaint)
+            textPaint.typeface = Typeface.DEFAULT; textPaint.textSize = 22 * dp; textPaint.color = p.text
+            c.drawText(glyph, r.centerX(), r.centerY() + 8 * dp, textPaint)
         }
     }
 
@@ -714,11 +742,12 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
         tools = listOfNotNull(
             Tool("settings", RectF(4 * dp, 0f, 4 * dp + w, s)),
             if (stripMessage == null) Tool("help", RectF(4 * dp + w, 0f, 4 * dp + 2 * w, s)) else null,
+            if (stripMessage == null && clip == null && !stripOnly) Tool("onehand", RectF(4 * dp + 2 * w, 0f, 4 * dp + 3 * w, s)) else null,
         )
         textPaint.typeface = Typeface.DEFAULT
         textPaint.textSize = 20 * dp
         textPaint.color = p.subtext
-        val glyph = mapOf("help" to "?", "settings" to "⚙")
+        val glyph = mapOf("help" to "?", "settings" to "⚙", "onehand" to if (prefs.oneHand == 0) "◧" else "▭")
         for (t in tools) c.drawText(glyph[t.id]!!, t.rect.centerX(), t.rect.centerY() + 7 * dp, textPaint)
         // something just copied: one tap pastes it
         val copied = clip
@@ -901,6 +930,14 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
                 if (y < stripH) { stripDown(x); return true }
                 if (stripOnly) return true
                 if (mode == Mode.EMOJI) { emojiDragging = false; emojiDownY = y; emojiStartScroll = emojiScroll; downX = x; downY = y; return true }
+                if (oneHanded() && (x < keysLeft || x > keysLeft + keysW)) {
+                    listener.onKeyFeedback(this, HapticFeedbackConstants.KEYBOARD_TAP)
+                    when {
+                        sideSwap.contains(x, y) -> { prefs.oneHand = if (prefs.oneHand == 2) 1 else 2; layoutKeys(); invalidate() }
+                        sideFull.contains(x, y) -> { prefs.oneHand = 0; layoutKeys(); invalidate() }
+                    }
+                    return true
+                }
                 val hit = keyAt(x, y) ?: return true
                 press(hit, x, y)
             }
@@ -1109,6 +1146,7 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
             "settings" -> listener.onSettings()
             "hide" -> listener.onHide()
             "clip" -> listener.onPasteClip()
+            "onehand" -> { prefs.oneHand = if (prefs.oneHand == 0) 2 else 0; layoutKeys(); invalidate() }
         }
     }
 
@@ -1123,7 +1161,7 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
     // Settings changed in the app while the keyboard is open (the theme gallery): show them at once
     private val store = context.getSharedPreferences("keyboard", Context.MODE_PRIVATE)
     private val onPrefs = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-        if (key in setOf("theme", "key_borders", "photo", "photo_dim", "photo_stamp", "key_hints", "number_row", "height", "press_effect", "emoji_key", "voice_key")) post { refreshTheme() }
+        if (key in setOf("theme", "key_borders", "photo", "photo_dim", "photo_stamp", "key_hints", "number_row", "height", "press_effect", "emoji_key", "voice_key", "one_hand")) post { refreshTheme() }
     }
 
     override fun onAttachedToWindow() {

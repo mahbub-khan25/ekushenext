@@ -86,4 +86,8 @@ class Prefs(context: Context) {
     var glide: Boolean
         get() = p.getBoolean("glide", true)
         set(v) = p.edit().putBoolean("glide", v).apply()
+    /** One-handed keys: 0 off, 1 on the left, 2 on the right */
+    var oneHand: Int
+        get() = p.getInt("one_hand", 0)
+        set(v) = p.edit().putInt("one_hand", v).apply()
 }

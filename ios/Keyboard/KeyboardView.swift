@@ -110,6 +110,13 @@ final class KeyboardView: UIView {
         layoutKeys()
     }
 
+    /// One-handed: the keys' area, and the side panel's two buttons
+    private var keysLeft: CGFloat = 0
+    private var keysW: CGFloat = 0
+    private var sideSwap = CGRect.zero
+    private var sideFull = CGRect.zero
+    private var oneHanded: Bool { prefs.oneHand != 0 && mode != .emoji && mode != .numbers }
+
     private func layoutKeys() {
         guard bounds.width > 0 else { return }
         var out: [Placed] = []
@@ -117,10 +124,18 @@ final class KeyboardView: UIView {
         let areaH = bounds.height - stripH - bottomPad
         let rh = areaH / CGFloat(max(1, rows.count))
         let unitsMax = rows.map { $0.reduce(0) { $0 + $1.width } }.max() ?? 10
-        let unit = (bounds.width - gap) / (mode == .numbers ? unitsMax : max(10, unitsMax))
+        // one-handed: the keys move to one side, a narrow panel with two buttons on the other
+        keysW = oneHanded ? bounds.width * 0.8 : bounds.width
+        keysLeft = oneHanded && prefs.oneHand == 2 ? bounds.width - keysW : 0
+        if oneHanded {
+            let px = prefs.oneHand == 2 ? 0 : keysW, pw = bounds.width - keysW
+            sideSwap = CGRect(x: px + 6, y: top + areaH * 0.12, width: pw - 12, height: areaH * 0.3)
+            sideFull = CGRect(x: px + 6, y: top + areaH * 0.55, width: pw - 12, height: areaH * 0.3)
+        }
+        let unit = (keysW - gap) / (mode == .numbers ? unitsMax : max(10, unitsMax))
         for (r, row) in rows.enumerated() {
             let units = row.reduce(0) { $0 + $1.width }
-            var x = (bounds.width - units * unit) / 2
+            var x = keysLeft + (keysW - units * unit) / 2
             let y = top + CGFloat(r) * rh
             for k in row {
                 let w = k.width * unit
@@ -160,6 +175,12 @@ final class KeyboardView: UIView {
         drawStrip()
         if mode == .emoji { drawEmoji(); return }
         for pl in placed { drawKey(pl.key, pl.rect, pressed: pressedKey == pl.key && pressedRect == pl.rect) }
+        if oneHanded {
+            for (r, g) in [(sideSwap, prefs.oneHand == 2 ? "⇤" : "⇥"), (sideFull, "⤢")] {
+                fill(r, 12, palette.functionKey)
+                draw(g, centre: CGPoint(x: r.midX, y: r.midY), font: font(22), color: palette.text)
+            }
+        }
         if !gliding, let k = pressedKey, let r = pressedRect, k.type == .char, alts == nil, mode != .numbers { drawPreview(k, r) }
         if let a = alts { drawAlts(a) }
         if glideTrail.count > 1 { drawTrail() }
@@ -385,12 +406,13 @@ final class KeyboardView: UIView {
         let p = palette
         let w: CGFloat = 48
         tools = [Tool(id: "settings", rect: CGRect(x: 4, y: 0, width: w, height: stripH))]
+        if stripMessage == nil { tools.append(Tool(id: "onehand", rect: CGRect(x: 4 + w, y: 0, width: w, height: stripH))) }
         if let m = stripMessage {
             let a: [NSAttributedString.Key: Any] = [.font: font(13), .foregroundColor: p.subtext]
             let s = (m as NSString).size(withAttributes: a)
             (m as NSString).draw(at: CGPoint(x: 4 + w + 6, y: stripH / 2 - s.height / 2), withAttributes: a)
         }
-        let glyph = ["settings": "⚙︎"]
+        let glyph = ["settings": "⚙︎", "onehand": prefs.oneHand == 0 ? "◧" : "▭"]
         for t in tools { draw(glyph[t.id]!, centre: CGPoint(x: t.rect.midX, y: t.rect.midY), font: font(21), color: p.subtext) }
     }
 
@@ -502,6 +524,13 @@ final class KeyboardView: UIView {
             downPoint = pt
             if pt.y < stripH { stripPressed = true; stripDragging = false; stripStartScroll = stripScroll; stripDownAt = Date(); continue }
             if mode == .emoji { emojiDragging = false; emojiStartScroll = emojiScroll; continue }
+            if oneHanded && (pt.x < keysLeft || pt.x > keysLeft + keysW) {
+                listener?.onKeyFeedback()
+                if sideSwap.contains(pt) { prefs.oneHand = prefs.oneHand == 2 ? 1 : 2; layoutKeys(); setNeedsDisplay() }
+                else if sideFull.contains(pt) { prefs.oneHand = 0; layoutKeys(); setNeedsDisplay() }
+                activeTouch = nil
+                continue
+            }
             if let hit = keyAt(pt) { press(hit, pt) }
         }
     }
@@ -686,6 +715,7 @@ final class KeyboardView: UIView {
         case "lang": listener?.onLanguageToggle()
         case "emoji": openEmoji()
         case "settings": listener?.onSettings()
+        case "onehand": prefs.oneHand = prefs.oneHand == 0 ? 2 : 0; layoutKeys(); setNeedsDisplay()
         case "hide": listener?.onHide()
         default: break
         }
