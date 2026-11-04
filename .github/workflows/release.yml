@@ -81,6 +81,44 @@ jobs:
         run: cargo test --workspace
       - name: Release build
         run: cargo build --release --workspace
+      # Voice typing helpers (experimental, Windows): downloaded by the app from this release when the
+      # person downloads a speech model. Built with the C/C++ runtime inside (no Visual C++ runtime
+      # needed), each in a short folder of its own (the Vulkan shader build nests deep; whisper.cpp and
+      # the live speech runtime cannot share one program).
+      - name: Voice helper (processor, Whisper models)
+        env:
+          RUSTFLAGS: -C target-feature=+crt-static
+        run: |
+          cargo build --release -p ekushe-voice --target-dir C:\v
+          Copy-Item C:\v\release\ekushe-voice.exe target\release\ekushe-voice-x64.exe
+      - name: Vulkan SDK (for the graphics-card voice helper)
+        env:
+          VULKAN_VERSION: 1.4.313.2
+        run: |
+          curl.exe -sSL -o "$env:RUNNER_TEMP\vulkan-sdk.exe" "https://sdk.lunarg.com/sdk/download/$env:VULKAN_VERSION/windows/vulkansdk-windows-X64-$env:VULKAN_VERSION.exe"
+          & "$env:RUNNER_TEMP\vulkan-sdk.exe" --accept-licenses --default-answer --confirm-command install | Out-Null
+          Add-Content $env:GITHUB_ENV "VULKAN_SDK=C:\VulkanSDK\$env:VULKAN_VERSION"
+          Add-Content $env:GITHUB_PATH "C:\VulkanSDK\$env:VULKAN_VERSION\Bin"
+      - name: Voice helper (graphics card, Whisper models)
+        env:
+          RUSTFLAGS: -C target-feature=+crt-static
+        run: |
+          cargo build --release -p ekushe-voice --features vulkan --target-dir C:\g
+          Copy-Item C:\g\release\ekushe-voice.exe target\release\ekushe-voice-gpu-x64.exe
+      - name: Voice helper (live model)
+        env:
+          RUSTFLAGS: -C target-feature=+crt-static
+        run: |
+          cargo build --release -p ekushe-voice --no-default-features --features mic,live --target-dir C:\l
+          Copy-Item C:\l\release\ekushe-voice.exe target\release\ekushe-voice-live-x64.exe
+      - name: Voice helpers start (each prints its usage and exits with 2 without a model)
+        shell: pwsh
+        run: |
+          foreach ($f in 'ekushe-voice-x64.exe','ekushe-voice-live-x64.exe') {
+            $p = Start-Process -FilePath "target\release\$f" -PassThru -NoNewWindow -Wait -RedirectStandardError "$env:RUNNER_TEMP\$f.err"
+            Write-Host "$f exit $($p.ExitCode): $(Get-Content "$env:RUNNER_TEMP\$f.err" -Raw)"
+            if ($p.ExitCode -ne 2) { Write-Error "$f does not start on this PC"; exit 1 }
+          }
       # Code signing with Azure Artifact Signing. Runs once the repository has the settings from
       # docs/CODE_SIGNING.md; until then releases are published unsigned.
       - name: Azure sign-in (code signing)
@@ -90,7 +128,7 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      - name: Sign ekushe.exe, ekushe_tsf.dll, ekushe-cli.exe
+      - name: Sign ekushe.exe, ekushe_tsf.dll, ekushe-cli.exe and the voice helpers
         if: vars.SIGNING_ACCOUNT != '' && (needs.version.outputs.mode != 'candidate' || github.ref == 'refs/heads/candidate')
         uses: azure/artifact-signing-action@c7ab2a863ab5f9a846ddb8265964877ef296ee82 # v2
         with:
@@ -101,6 +139,9 @@ jobs:
             ${{ github.workspace }}\target\release\ekushe.exe
             ${{ github.workspace }}\target\release\ekushe_tsf.dll
             ${{ github.workspace }}\target\release\ekushe-cli.exe
+            ${{ github.workspace }}\target\release\ekushe-voice-x64.exe
+            ${{ github.workspace }}\target\release\ekushe-voice-gpu-x64.exe
+            ${{ github.workspace }}\target\release\ekushe-voice-live-x64.exe
           file-digest: SHA256
           timestamp-rfc3161: http://timestamp.acs.microsoft.com
           timestamp-digest: SHA256
@@ -117,7 +158,7 @@ jobs:
         if: vars.SIGNING_ACCOUNT != '' && (needs.version.outputs.mode != 'candidate' || github.ref == 'refs/heads/candidate')
         shell: pwsh
         run: |
-          foreach ($f in 'ekushe.exe','ekushe_tsf.dll','ekushe-cli.exe') {
+          foreach ($f in 'ekushe.exe','ekushe_tsf.dll','ekushe-cli.exe','ekushe-voice-x64.exe','ekushe-voice-gpu-x64.exe','ekushe-voice-live-x64.exe') {
             $sig = Get-AuthenticodeSignature "target\release\$f"
             Write-Host "$f : $($sig.Status) — $($sig.SignerCertificate.Subject)"
             if ($sig.Status -ne 'Valid') { Write-Error "$f is not validly signed"; exit 1 }
@@ -140,6 +181,8 @@ jobs:
           # Browsers block a bare .exe more often than a .zip
           Compress-Archive -Path dist\Ekushe-Setup.exe -DestinationPath dist\Ekushe-Setup.zip
           Compress-Archive -Path target\release\ekushe_tsf.dll, target\release\ekushe-cli.exe -DestinationPath dist\Ekushe-Developer-Tools-x64.zip
+          # Voice typing helpers: the app downloads the one it needs (names as in crates/ekushe-tray/src/voice.rs)
+          foreach ($f in 'ekushe-voice-x64.exe','ekushe-voice-gpu-x64.exe','ekushe-voice-live-x64.exe') { Copy-Item "target\release\$f" "dist\$f" }
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: release-windows

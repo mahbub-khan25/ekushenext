@@ -82,6 +82,25 @@ next to the files):
 The misread tables `data/ocr/rules.tsv` (learned from Ekushe's own test pages) and
 `data/ocr/rules_extra.tsv` are Ekushe's own data.
 
+## Voice typing (Windows, experimental; `crates/ekushe-voice`)
+
+The voice helpers (`ekushe-voice*.exe`, downloaded with a speech model when the person asks) use:
+
+- **sherpa-onnx** by the k2-fsa project (Apache-2.0) with **ONNX Runtime** by Microsoft (MIT), for the
+  live model; **whisper.cpp** / ggml by Georgi Gerganov and contributors (MIT) through **whisper-rs**
+  (Unlicense), for the Whisper models; **cpal** (Apache-2.0) for the microphone.
+- **Silero VAD** v5.1.2 (MIT, Copyright (c) 2020-present Silero Team), to find where speech starts and
+  stops: `assets/ggml-silero-v5.1.2.bin` (converted by the whisper.cpp project, MIT) and
+  `assets/silero_vad.onnx` (as published by sherpa-onnx). Details in `crates/ekushe-voice/assets/NOTICE.txt`.
+
+Speech models (separate downloads from Ekushe's GitHub releases, each with its own notice):
+
+- **Live model** `bn-live-1.ekm`: the Bangla Zipformer transducer (int8 ONNX) by Sayed Shaun
+  (https://huggingface.co/SayedShaun/bangla-zipformer-onnx, CC BY-SA 4.0), repackaged unchanged into
+  one file by Ekushe (the pack includes `CREDITS.txt`) and shared under the same licence.
+- **Accurate model** `bn-medium-q5_0.bin`: Bengali.AI's Whisper-medium Bangla model, converted to the
+  whisper.cpp format by Ekushe's `voice-model.yml` workflow (release `voice-model-1`, with NOTICE.txt).
+
 ## Promo video project (`ekushe-promo/`)
 
 Built with [Remotion](https://www.remotion.dev/), installed from npm (not bundled here). Remotion has its own

@@ -750,8 +750,15 @@ pub unsafe fn render(
             let pill_w = label
                 .map(|l| probe.measure(&fonts.bn_small, l).0 as f32 + 20.0 * s)
                 .unwrap_or(0.0);
-            let (bw, _) = probe.measure(&fonts.bn_small, body);
-            let h = 44.0 * s;
+            // several lines (e.g. the voice banner with the words being heard)
+            let lines: Vec<&str> = body.split('\n').collect();
+            let bw = lines
+                .iter()
+                .map(|l| probe.measure(&fonts.bn_small, l).0)
+                .max()
+                .unwrap_or(0);
+            let line_h = 26.0 * s;
+            let h = 44.0 * s + (lines.len() as f32 - 1.0) * line_h;
             let w = pad
                 + pill_w
                 + if label.is_some() { 10.0 * s } else { 4.0 * s }
@@ -781,7 +788,11 @@ pub unsafe fn render(
             } else {
                 x += 4.0 * s;
             }
-            c.text(&fonts.bn_small, body, x as i32, cy, pal.ink);
+            let top = cy as f32 - (lines.len() as f32 - 1.0) * line_h / 2.0;
+            for (i, l) in lines.iter().enumerate() {
+                let y = (top + i as f32 * line_h) as i32;
+                c.text(&fonts.bn_small, l, x as i32, y, pal.ink);
+            }
             Some((c, hits))
         }
         Content::Candidates {

@@ -1,0 +1,54 @@
+[package]
+name = "ekushe-voice"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Offline Bangla voice typing for Ekushe Next: microphone, speech recognition (whisper.cpp), tidy text"
+
+[dependencies]
+ekushe-core = { path = "../ekushe-core" }
+whisper-rs = { version = "0.16", default-features = false, optional = true }
+cpal = { version = "0.18", optional = true }
+# The fast Bangla Zipformer and the Silero speech detector (live voice typing)
+sherpa-onnx = { version = "2.0.1", optional = true }
+thiserror.workspace = true
+parking_lot.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+hound = "3.5"
+
+[features]
+default = ["mic", "whisper"]
+# The Whisper model (whisper.cpp)
+whisper = ["dep:whisper-rs"]
+# Live voice typing with the Zipformer model (sherpa-onnx).
+# Build it WITHOUT `whisper` (--no-default-features --features mic,live): whisper.cpp and the
+# speech runtime both carry C++ library code that clashes when linked into one program.
+live = ["dep:sherpa-onnx"]
+# Record from the microphone (cpal). Off for builds that only transcribe given audio.
+mic = ["dep:cpal"]
+# Graphics-card acceleration in whisper.cpp
+vulkan = ["whisper", "whisper-rs/vulkan"]
+metal = ["whisper", "whisper-rs/metal"]
+
+[[bin]]
+name = "ekushe-voice"
+path = "src/main.rs"
+required-features = ["mic"]
+
+[[example]]
+name = "voice_bench"
+required-features = ["whisper"]
+
+[[example]]
+name = "voice_file"
+required-features = ["whisper"]
+
+[[example]]
+name = "zip_once"
+required-features = ["live"]
+
+[[example]]
+name = "live_pack"
+required-features = ["live"]

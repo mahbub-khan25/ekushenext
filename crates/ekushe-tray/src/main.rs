@@ -12,6 +12,7 @@ mod studio_layouts;
 mod studio_ocr;
 mod studio_ui;
 mod update_check;
+mod voice;
 
 use std::env;
 use std::io::{Read, Write};
@@ -215,6 +216,54 @@ static PASTE_TEXT: Mutex<Option<String>> = Mutex::new(None);
 /// Smart paste: read the clipboard (after the hotkey is released), then type it
 const WM_EKUSHE_SMART_PASTE: u32 = WM_APP + 9;
 const WM_EKUSHE_PASTE_READY: u32 = WM_APP + 10;
+/// Voice typing: the shortcut was pressed (wparam 1 = cancel), and events from the voice helper
+const WM_EKUSHE_VOICE: u32 = WM_APP + 11;
+const WM_EKUSHE_VOICE_EVENT: u32 = WM_APP + 12;
+/// The large model was slow here: suggest the small one after this dictation (once a session)
+static SLOW_HINT_SHOWN: AtomicBool = AtomicBool::new(false);
+static SLOW_HINT_PENDING: AtomicBool = AtomicBool::new(false);
+/// The window that was in front when voice typing started (text goes only there)
+static VOICE_TARGET: AtomicIsize = AtomicIsize::new(0);
+/// Dictated text kept for Ctrl+V after the person switched to another window
+static VOICE_CLIP: Mutex<String> = Mutex::new(String::new());
+/// The tray window, for the voice helper's reader thread
+static VOICE_TRAY: AtomicIsize = AtomicIsize::new(0);
+/// The last dictations (newest first), kept in memory only, so a wrong word can be fixed in Studio
+static RECENT_DICTATIONS: Mutex<Vec<String>> = Mutex::new(Vec::new());
+
+/// Heard but not typed yet (live model), shown in the listening banner
+static VOICE_TAIL: Mutex<String> = Mutex::new(String::new());
+/// The last voice text typed ended with a space
+static VOICE_ENDS_SPACE: AtomicBool = AtomicBool::new(false);
+/// The next text starts a new entry in the recent dictations
+static VOICE_NEW_DICTATION: AtomicBool = AtomicBool::new(true);
+
+/// A "voice events waiting" message is already on its way to the tray window
+static VOICE_NOTIFY_PENDING: AtomicBool = AtomicBool::new(false);
+/// When the listening banner was last drawn (ms since boot)
+static VOICE_BANNER_AT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+fn voice_notify() {
+    let h = VOICE_TRAY.load(Ordering::SeqCst);
+    // one message at a time: the tray thread takes every waiting event when it gets it
+    if h != 0 && !VOICE_NOTIFY_PENDING.swap(true, Ordering::SeqCst) {
+        // SAFETY: posting a message to our own tray window
+        unsafe { PostMessageW(h as HWND, WM_EKUSHE_VOICE_EVENT, 0, 0) };
+    }
+}
+
+fn voice_options(cfg: &Config) -> voice::Options {
+    voice::USE_GPU.store(cfg.voice_use_gpu, Ordering::SeqCst);
+    voice::Options {
+        model: cfg.voice_model.clone(),
+        bangla_digits: cfg.bangla_digits,
+        spoken_punctuation: cfg.voice_spoken_punctuation,
+        numbers_as_digits: cfg.voice_numbers_as_digits,
+        best_quality: cfg.voice_quality == "best",
+        stop_after_ms: cfg.voice_stop_after_ms.clamp(500, 5000),
+        auto_stop: cfg.voice_auto_stop,
+    }
+}
 
 /// Text as the app in front needs it: Bijoy in a Bijoy-output app, otherwise as it is
 fn app_text(s: &str) -> String {
@@ -1478,6 +1527,24 @@ unsafe fn keyboard_hook_inner(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRES
             return 1;
         }
 
+        // Voice typing (Ctrl+Alt+Space): start or finish a dictation, in either language;
+        // Esc while listening cancels it
+        let voice_hotkey = selection::Hotkey::parse(&st.ekushe.config().voice_hotkey);
+        let voice_cancel = vk == VK_ESCAPE && voice::LISTENING.load(Ordering::SeqCst);
+        if voice_cancel
+            || voice_hotkey
+                .is_some_and(|hk| hk.matches(vk, ctrl_down, alt_down, shift_down, win_down))
+        {
+            if st.injected_utf16_len > 0 || !st.last_output.preedit.is_empty() {
+                forget_composition(&mut st);
+            }
+            let tray = st.tray_hwnd as HWND;
+            drop(st);
+            request_overlay_refresh();
+            PostMessageW(tray, WM_EKUSHE_VOICE, voice_cancel as usize, 0);
+            return 1;
+        }
+
         // Ctrl+Backspace in Bangla mode: Flip the last committed word between Bangla ⇄ English!
         if st.ekushe.language() == InputLanguage::Bangla
             && ctrl_down
@@ -1976,11 +2043,317 @@ unsafe extern "system" fn tray_wnd_proc(
             handle_tray_command(hwnd, cmd);
             0
         }
+        WM_EKUSHE_VOICE => {
+            voice_hotkey_pressed(hwnd, wparam == 1);
+            0
+        }
+        WM_EKUSHE_VOICE_EVENT => {
+            voice_events();
+            0
+        }
         WM_DESTROY => {
+            voice::shutdown();
             PostQuitMessage(0);
             0
         }
         _ => DefWindowProcW(hwnd, msg, wparam, lparam),
+    }
+}
+
+/// Choose the speech model ("large" or "small"); the helper restarts with it on the next dictation
+fn set_voice_model(id: &str) {
+    let mut st = STATE.lock();
+    if st.ekushe.config().voice_model == id {
+        return;
+    }
+    let mut cfg = st.ekushe.config().clone();
+    cfg.voice_model = id.to_string();
+    let _ = cfg.save_to(&Config::default_config_path());
+    st.ekushe.set_config(cfg);
+}
+
+/// The soft sound when the microphone opens (rising) and closes (falling), if turned on
+static VOICE_CHIMED_OPEN: AtomicBool = AtomicBool::new(false);
+static CHIME_OPEN: Lazy<Vec<u8>> = Lazy::new(|| voice::chime(true));
+static CHIME_CLOSE: Lazy<Vec<u8>> = Lazy::new(|| voice::chime(false));
+
+#[link(name = "winmm")]
+extern "system" {
+    fn PlaySoundW(sound: *const u16, module: isize, flags: u32) -> i32;
+}
+
+fn voice_chime(open: bool) {
+    // close only once per opening
+    if !open && !VOICE_CHIMED_OPEN.swap(false, Ordering::SeqCst) {
+        return;
+    }
+    if open {
+        VOICE_CHIMED_OPEN.store(true, Ordering::SeqCst);
+    }
+    if !STATE.lock().ekushe.config().voice_sounds {
+        return;
+    }
+    const SND_ASYNC: u32 = 0x1;
+    const SND_NODEFAULT: u32 = 0x2;
+    const SND_MEMORY: u32 = 0x4;
+    let wav: &'static [u8] = if open { &CHIME_OPEN } else { &CHIME_CLOSE };
+    unsafe {
+        PlaySoundW(
+            wav.as_ptr() as *const u16,
+            0,
+            SND_ASYNC | SND_NODEFAULT | SND_MEMORY,
+        );
+    }
+}
+
+/// Type dictated text into the app in front; line breaks are typed as Enter (apps treat a typed
+/// line-break character differently, Word and Notepad ignore it)
+unsafe fn voice_type(text: &str) {
+    STATE.lock().ekushe.forget_undo();
+    for (i, part) in text.split('\n').enumerate() {
+        if i > 0 {
+            let keys = [
+                make_vk_input(VK_RETURN, 0),
+                make_vk_input(VK_RETURN, KEYEVENTF_KEYUP),
+            ];
+            SendInput(keys.len() as u32, keys.as_ptr(), size_of::<INPUT>() as i32);
+        }
+        if !part.is_empty() {
+            LAST_TYPED.lock().clear();
+            replace_active_text(0, part);
+        }
+    }
+    LAST_TYPED.lock().clear();
+}
+
+/// The voice typing shortcut: start listening, or finish the dictation in progress
+unsafe fn voice_hotkey_pressed(hwnd: HWND, cancel: bool) {
+    if cancel {
+        voice::cancel();
+        voice_chime(false);
+        show_mode_badge("🎤 বাতিল করা হয়েছে");
+        return;
+    }
+    if voice::LISTENING.load(Ordering::SeqCst) {
+        voice::stop();
+        return;
+    }
+    VOICE_TRAY.store(hwnd as isize, Ordering::SeqCst);
+    let (opts, port) = {
+        let st = STATE.lock();
+        (voice_options(st.ekushe.config()), st.studio_port)
+    };
+    let live = voice::active_model(&opts.model).map(|m| voice::model(m).live) == Some(true);
+    if !live && !voice::cpu_supported() {
+        show_mode_badge("🎤 এই কম্পিউটারের প্রসেসর ভয়েস টাইপিং চালাতে পারে না (AVX2 লাগে)");
+        return;
+    }
+    if voice::active_model(&opts.model)
+        .and_then(voice::helper_for)
+        .is_none()
+    {
+        show_mode_badge("🎤 ভয়েস টাইপিংয়ের জন্য আগে মডেলটি নামান: স্টুডিও → সেটিংস");
+        open_studio_window_tab(port, Some("settings"));
+        return;
+    }
+    // the text goes only into the window that was in front when the shortcut was pressed
+    VOICE_TARGET.store(GetForegroundWindow() as isize, Ordering::SeqCst);
+    VOICE_CLIP.lock().clear();
+    if let Err(e) = voice::ensure_started(&opts, voice_notify) {
+        show_mode_badge(&format!("🎤 ভয়েস টাইপিং চালু হয়নি: {e}"));
+        return;
+    }
+    if voice::listen() {
+        // the microphone is not open yet: say so, and switch to "speak" when it is (no words lost)
+        show_mode_badge("🎤 মাইক চালু হচ্ছে…");
+        let overlay = STATE.lock().overlay_hwnd as HWND;
+        if !overlay.is_null() {
+            SetTimer(overlay, TIMER_HIDE_BADGE, 30_000, None);
+        }
+    }
+}
+
+/// The listening banner stays up while the person speaks (the level meter moves)
+unsafe fn voice_banner(level: f32) {
+    let hk = STATE.lock().ekushe.config().voice_hotkey.clone();
+    let mut b = voice::level_banner(level, &hk);
+    {
+        // the words being heard right now (live model), the end of them if long
+        let tail = VOICE_TAIL.lock();
+        if !tail.is_empty() {
+            let chars: Vec<char> = tail.chars().collect();
+            let from = chars.len().saturating_sub(48);
+            let shown: String = chars[from..].iter().collect();
+            b = format!("{b}\n✍️ {}{shown}", if from > 0 { "…" } else { "" });
+        }
+    }
+    let overlay = {
+        let mut st = STATE.lock();
+        st.badge_banner = Some(b.clone());
+        st.overlay_hwnd as HWND
+    };
+    if overlay.is_null() {
+        return;
+    }
+    present_overlay(glass_popup::Content::Badge(b));
+    {
+        SetTimer(overlay, TIMER_HIDE_BADGE, 130_000, None);
+    }
+}
+
+/// Events from the voice helper: level, thinking, the text (typed into the app in front)
+unsafe fn voice_events() {
+    VOICE_NOTIFY_PENDING.store(false, Ordering::SeqCst);
+    let events = voice::take_events();
+    // Only the newest microphone level is drawn: redrawing the banner for every waiting level made
+    // the tray thread fall further and further behind during a long dictation (typing waited too)
+    let last_level = events
+        .iter()
+        .rposition(|e| matches!(e, voice::Event::Level(_)));
+    for (i, e) in events.into_iter().enumerate() {
+        if matches!(e, voice::Event::Level(_)) && Some(i) != last_level {
+            continue;
+        }
+        match e {
+            voice::Event::Listening => {
+                VOICE_TAIL.lock().clear();
+                VOICE_NEW_DICTATION.store(true, Ordering::SeqCst);
+                VOICE_ENDS_SPACE.store(false, Ordering::SeqCst);
+                voice_chime(true);
+                voice_banner(0.0);
+            }
+            voice::Event::Level(v) => {
+                // at most about eight redraws a second
+                let now = windows_sys::Win32::System::SystemInformation::GetTickCount64();
+                if voice::LISTENING.load(Ordering::SeqCst)
+                    && now.saturating_sub(VOICE_BANNER_AT.load(Ordering::SeqCst)) >= 120
+                {
+                    VOICE_BANNER_AT.store(now, Ordering::SeqCst);
+                    voice_banner(v)
+                }
+            }
+            voice::Event::Live(t) => {
+                *VOICE_TAIL.lock() = t;
+                if voice::LISTENING.load(Ordering::SeqCst) {
+                    let lv = voice::LAST_LEVEL.lock().unwrap_or(0.0);
+                    voice_banner(lv);
+                }
+            }
+            voice::Event::Thinking => {
+                // stays up until the rest arrives
+                voice_chime(false);
+                show_mode_badge("✍️ শেষটুকু লিখছি…");
+                let overlay = STATE.lock().overlay_hwnd as HWND;
+                if !overlay.is_null() {
+                    SetTimer(overlay, TIMER_HIDE_BADGE, 30_000, None);
+                }
+            }
+            voice::Event::Text {
+                text,
+                more,
+                secs,
+                took,
+                ..
+            } => {
+                // the large model is slow on this computer: suggest the small one (once a session)
+                if secs >= 2.0
+                    && took > secs * 0.9
+                    && voice::LAST_SPEED.lock().map(|l| l.0) == Some("large")
+                    && !SLOW_HINT_SHOWN.swap(true, Ordering::SeqCst)
+                {
+                    SLOW_HINT_PENDING.store(true, Ordering::SeqCst);
+                }
+                let overlay = STATE.lock().overlay_hwnd as HWND;
+                if !more && !overlay.is_null() {
+                    KillTimer(overlay, TIMER_HIDE_BADGE);
+                    SetTimer(overlay, TIMER_HIDE_BADGE, 10, None);
+                }
+                if !text.is_empty() {
+                    {
+                        // one entry per dictation, also when it is typed piece by piece
+                        let mut r = RECENT_DICTATIONS.lock();
+                        if VOICE_NEW_DICTATION.swap(false, Ordering::SeqCst) || r.is_empty() {
+                            r.insert(0, text.clone());
+                        } else {
+                            let sep = if r[0].ends_with('\n') { "" } else { " " };
+                            r[0] = format!("{}{sep}{text}", r[0]);
+                        }
+                        r.truncate(10);
+                    }
+                    let typed = if text.ends_with('\n') {
+                        text
+                    } else {
+                        format!("{text} ")
+                    };
+                    let target = VOICE_TARGET.load(Ordering::SeqCst) as HWND;
+                    // the same app counts (Word's own pop-ups and dialogs are other windows)
+                    let pid = |w: HWND| {
+                        let mut p = 0u32;
+                        GetWindowThreadProcessId(w, &mut p);
+                        p
+                    };
+                    let fg = GetForegroundWindow();
+                    if fg == target || (!fg.is_null() && pid(fg) == pid(target)) {
+                        // a mark said on its own ("দাঁড়ি") belongs to the word before: take back
+                        // the space typed after that word
+                        if ekushe_core::voice::starts_with_mark(&typed)
+                            && VOICE_ENDS_SPACE.load(Ordering::SeqCst)
+                        {
+                            let keys = [
+                                make_vk_input(VK_BACK, 0),
+                                make_vk_input(VK_BACK, KEYEVENTF_KEYUP),
+                            ];
+                            SendInput(keys.len() as u32, keys.as_ptr(), size_of::<INPUT>() as i32);
+                        }
+                        voice_type(&typed);
+                        VOICE_ENDS_SPACE.store(typed.ends_with(' '), Ordering::SeqCst);
+                    } else {
+                        // another window came to the front: never type into it; keep it for Ctrl+V
+                        let all = {
+                            let mut c = VOICE_CLIP.lock();
+                            c.push_str(&typed);
+                            c.clone()
+                        };
+                        let tray = VOICE_TRAY.load(Ordering::SeqCst) as HWND;
+                        if selection::set_clipboard_text(tray, all.trim_end()) {
+                            show_mode_badge(
+                                "📋 অন্য উইন্ডো সামনে ছিল, তাই লেখাটি কপি করা হয়েছে: Ctrl+V চাপুন",
+                            );
+                        }
+                    }
+                }
+            }
+            voice::Event::Done if SLOW_HINT_PENDING.swap(false, Ordering::SeqCst) => {
+                show_mode_badge(
+                    "🎤 এই কম্পিউটারে বড় মডেলটি ধীর; স্টুডিও → সেটিংসে ছোট মডেলটি নিয়ে দেখুন",
+                );
+            }
+            voice::Event::Done | voice::Event::Nothing
+                if !voice::LISTENING.load(Ordering::SeqCst)
+                    && VOICE_CHIMED_OPEN.load(Ordering::SeqCst) =>
+            {
+                voice_chime(false);
+                if matches!(e, voice::Event::Nothing) {
+                    show_mode_badge("🎤 কিছু শোনা যায়নি");
+                } else {
+                    let overlay = STATE.lock().overlay_hwnd as HWND;
+                    if !overlay.is_null() {
+                        KillTimer(overlay, TIMER_HIDE_BADGE);
+                        SetTimer(overlay, TIMER_HIDE_BADGE, 10, None);
+                    }
+                }
+            }
+            voice::Event::Done => {
+                let overlay = STATE.lock().overlay_hwnd as HWND;
+                if !overlay.is_null() {
+                    KillTimer(overlay, TIMER_HIDE_BADGE);
+                    SetTimer(overlay, TIMER_HIDE_BADGE, 10, None);
+                }
+            }
+            voice::Event::Nothing => show_mode_badge("🎤 কিছু শোনা যায়নি"),
+            voice::Event::Error(m) => show_mode_badge(&format!("🎤 {m}")),
+            voice::Event::Ready | voice::Event::Exited => {}
+        }
     }
 }
 
@@ -2574,6 +2947,20 @@ fn handle_http_client(mut stream: TcpStream, req: &str) -> std::io::Result<()> {
 
     // Picture to text: the OCR files, and the dictionary clean-up of what it read
     if method == "GET" && clean_path.starts_with("/ocr/") {
+        // an OCR model the person trained themselves (%APPDATA%\Ekushe\ocr\benreal.traineddata), for testing
+        if clean_path == "/ocr/benreal.traineddata" {
+            let own = ekushe_core::config::Config::default_dir()
+                .join("ocr")
+                .join("benreal.traineddata");
+            if let Ok(bytes) = std::fs::read(&own) {
+                return write_http_response(
+                    &mut stream,
+                    "200 OK",
+                    "application/octet-stream",
+                    &bytes,
+                );
+            }
+        }
         if let Some((ct, bytes)) = studio_ocr::asset(clean_path) {
             return write_http_response(&mut stream, "200 OK", ct, bytes);
         }
@@ -2658,6 +3045,18 @@ fn handle_http_client(mut stream: TcpStream, req: &str) -> std::io::Result<()> {
             "bijoy_output": cfg.bijoy_output,
             "bijoy_output_apps": cfg.bijoy_output_apps.join(", "),
             "check_for_updates": cfg.check_for_updates,
+            "voice": {
+                "hotkey": cfg.voice_hotkey,
+                "spoken_punctuation": cfg.voice_spoken_punctuation,
+                "numbers_as_digits": cfg.voice_numbers_as_digits,
+                "quality": cfg.voice_quality,
+                "auto_stop": cfg.voice_auto_stop,
+                "sounds": cfg.voice_sounds,
+                "use_gpu": cfg.voice_use_gpu,
+                "helper": true,
+                "model": voice::active_model(&cfg.voice_model).and_then(voice::helper_for).is_some(),
+                "voice_model": cfg.voice_model,
+            },
             "start_bangla": cfg.start_language == InputLanguage::Bangla,
             "app_version": update_check::current_version(),
             "snippets": snippet_pairs,
@@ -2758,6 +3157,122 @@ fn handle_http_client(mut stream: TcpStream, req: &str) -> std::io::Result<()> {
             "application/json; charset=utf-8",
             json.as_bytes(),
         );
+    }
+
+    if method == "GET" && clean_path == "/api/voice" {
+        let d = voice::DOWNLOADED.load(Ordering::SeqCst);
+        let preferred = STATE.lock().ekushe.config().voice_model.clone();
+        let active = voice::active_model(&preferred);
+        let downloading = voice::DOWNLOADING.load(Ordering::SeqCst);
+        let dl_model = *voice::DOWNLOADING_MODEL.lock();
+        let models: Vec<serde_json::Value> = voice::MODELS
+            .iter()
+            .map(|m| {
+                serde_json::json!({
+                    "id": m.id,
+                    "bytes": m.bytes,
+                    "available": m.bytes > 0,
+                    "ready": voice::model_ready(m.id),
+                    "active": active == Some(m.id),
+                })
+            })
+            .collect();
+        let speed = voice::LAST_SPEED
+            .lock()
+            .map(|(m, secs, took)| serde_json::json!({ "model": m, "secs": secs, "took": took }));
+        let json = serde_json::json!({
+            "helper": true,
+            "model": active.and_then(voice::helper_for).is_some(),
+            "models": models,
+            "downloading": downloading,
+            "downloading_model": dl_model,
+            "downloaded": if d == u64::MAX { 0 } else { d },
+            "failed": d == u64::MAX,
+            "speed": speed,
+            "recent": RECENT_DICTATIONS.lock().clone(),
+            "learned": std::fs::read_to_string(voice::learned_path()).unwrap_or_default(),
+        })
+        .to_string();
+        return write_http_response(
+            &mut stream,
+            "200 OK",
+            "application/json; charset=utf-8",
+            json.as_bytes(),
+        );
+    }
+
+    if method == "POST"
+        && (clean_path == "/api/voice/download"
+            || clean_path == "/api/voice/remove"
+            || clean_path == "/api/voice/use")
+    {
+        let parsed: serde_json::Value = serde_json::from_str(body).unwrap_or_default();
+        let id = voice::model(
+            parsed
+                .get("model")
+                .and_then(|v| v.as_str())
+                .unwrap_or("live"),
+        )
+        .id;
+        let mut result = Ok(());
+        match clean_path {
+            "/api/voice/download" => {
+                // the model being downloaded becomes the one in use once it is there
+                set_voice_model(id);
+                voice::start_download(id, |r| {
+                    if let Err(e) = r {
+                        eprintln!("voice model download: {e}");
+                    }
+                });
+            }
+            "/api/voice/remove" => result = voice::remove_model(id),
+            _ => set_voice_model(id),
+        }
+        let json = match result {
+            Ok(()) => serde_json::json!({ "ok": true }),
+            Err(e) => serde_json::json!({ "ok": false, "error": e }),
+        }
+        .to_string();
+        return write_http_response(&mut stream, "200 OK", "application/json", json.as_bytes());
+    }
+
+    if method == "POST" && clean_path == "/api/voice/learn" {
+        let parsed: serde_json::Value = serde_json::from_str(body).unwrap_or_default();
+        let f = |k: &str| {
+            parsed
+                .get(k)
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .trim()
+                .to_string()
+        };
+        let (heard, wanted) = (f("heard"), f("wanted"));
+        if !heard.is_empty()
+            && !wanted.is_empty()
+            && heard.chars().count() < 2000
+            && wanted.chars().count() < 2000
+        {
+            voice::learn_correction(&heard, &wanted);
+            let mut r = RECENT_DICTATIONS.lock();
+            if let Some(x) = r.iter_mut().find(|x| **x == heard) {
+                *x = wanted;
+            }
+        }
+        return write_http_response(&mut stream, "200 OK", "application/json", b"{\"ok\":true}");
+    }
+
+    if method == "POST" && clean_path == "/api/voice/forget" {
+        let parsed: serde_json::Value = serde_json::from_str(body).unwrap_or_default();
+        if let Some(h) = parsed.get("heard").and_then(|v| v.as_str()) {
+            let p = voice::learned_path();
+            let mut l = ekushe_core::voice::VoiceLearned::parse(
+                &std::fs::read_to_string(&p).unwrap_or_default(),
+            );
+            l.forget(h);
+            let _ = std::fs::write(&p, l.to_tsv());
+            voice::reload_learned();
+        }
+        return write_http_response(&mut stream, "200 OK", "application/json", b"{\"ok\":true}");
     }
 
     if method == "GET" && clean_path == "/api/recent" {
@@ -2920,6 +3435,19 @@ fn handle_http_client(mut stream: TcpStream, req: &str) -> std::io::Result<()> {
             .and_then(|v| v.as_bool());
         let bijoy_opt = parsed.get("bijoy_output").and_then(|v| v.as_bool());
         let welcome_opt = parsed.get("welcome_done").and_then(|v| v.as_bool());
+        let voice_punct_opt = parsed
+            .get("voice_spoken_punctuation")
+            .and_then(|v| v.as_bool());
+        let voice_num_opt = parsed
+            .get("voice_numbers_as_digits")
+            .and_then(|v| v.as_bool());
+        let voice_auto_stop_opt = parsed.get("voice_auto_stop").and_then(|v| v.as_bool());
+        let voice_sounds_opt = parsed.get("voice_sounds").and_then(|v| v.as_bool());
+        let voice_gpu_opt = parsed.get("voice_use_gpu").and_then(|v| v.as_bool());
+        let voice_quality_opt = parsed
+            .get("voice_quality")
+            .and_then(|v| v.as_str())
+            .map(|q| q.to_string());
         let bijoy_apps_opt = parsed
             .get("bijoy_output_apps")
             .and_then(|v| v.as_str())
@@ -2973,6 +3501,48 @@ fn handle_http_client(mut stream: TcpStream, req: &str) -> std::io::Result<()> {
             }
             if let Some(b) = welcome_opt {
                 cfg.welcome_done = b;
+            }
+            let voice_before = (
+                cfg.voice_spoken_punctuation,
+                cfg.voice_numbers_as_digits,
+                cfg.voice_quality.clone(),
+                cfg.bangla_digits,
+                cfg.voice_auto_stop,
+                cfg.voice_use_gpu,
+            );
+            if let Some(b) = voice_gpu_opt {
+                cfg.voice_use_gpu = b;
+            }
+            if let Some(b) = voice_auto_stop_opt {
+                cfg.voice_auto_stop = b;
+            }
+            if let Some(b) = voice_sounds_opt {
+                cfg.voice_sounds = b;
+            }
+            if let Some(b) = voice_punct_opt {
+                cfg.voice_spoken_punctuation = b;
+            }
+            if let Some(b) = voice_num_opt {
+                cfg.voice_numbers_as_digits = b;
+            }
+            if let Some(q) = voice_quality_opt {
+                cfg.voice_quality = if q == "best" {
+                    "best".into()
+                } else {
+                    "fast".into()
+                };
+            }
+            if voice_before
+                != (
+                    cfg.voice_spoken_punctuation,
+                    cfg.voice_numbers_as_digits,
+                    cfg.voice_quality.clone(),
+                    cfg.bangla_digits,
+                    cfg.voice_auto_stop,
+                    cfg.voice_use_gpu,
+                )
+            {
+                voice::shutdown(); // started again with the new options at the next dictation
             }
             if let Some(apps) = bijoy_apps_opt {
                 cfg.bijoy_output_apps = apps;

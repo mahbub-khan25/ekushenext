@@ -81,7 +81,9 @@ impl Hotkey {
                         return None;
                     }
                     let b = k.as_bytes();
-                    hk.vk = if b.len() == 1 && b[0].is_ascii_alphanumeric() {
+                    hk.vk = if k == "space" {
+                        0x20
+                    } else if b.len() == 1 && b[0].is_ascii_alphanumeric() {
                         b[0].to_ascii_uppercase() as u16
                     } else {
                         let n = k.strip_prefix('f').and_then(|n| n.parse::<u16>().ok())?;
@@ -273,6 +275,18 @@ unsafe fn write_text(text: &str) -> bool {
     units.push(0);
     let bytes = std::slice::from_raw_parts(units.as_ptr() as *const u8, units.len() * 2);
     EmptyClipboard() != 0 && put(CF_UNICODETEXT, bytes)
+}
+
+/// Put text on the clipboard (voice typing, when the window it was meant for is no longer in front)
+pub fn set_clipboard_text(owner: HWND, text: &str) -> bool {
+    unsafe {
+        if OpenClipboard(owner) == 0 {
+            return false;
+        }
+        let ok = write_text(text);
+        CloseClipboard();
+        ok
+    }
 }
 
 /// Put the saved clipboard back, unless something else has written to it in the meantime.

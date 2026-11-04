@@ -127,6 +127,104 @@ fn https_get(path: &str) -> Option<String> {
     }
 }
 
+/// Download `https://github.com/...` (redirects followed) into `dest`, reporting bytes so far.
+/// Used for the voice typing model; only github.com and its download host are allowed.
+pub fn download(url: &str, dest: &std::path::Path, progress: impl Fn(u64)) -> Result<(), String> {
+    use std::io::Write;
+    struct H(*mut core::ffi::c_void);
+    impl Drop for H {
+        fn drop(&mut self) {
+            if !self.0.is_null() {
+                // SAFETY: the handle came from WinHttp and is closed once
+                unsafe { WinHttpCloseHandle(self.0) };
+            }
+        }
+    }
+    let path = url
+        .strip_prefix("https://github.com")
+        .ok_or("only github.com downloads")?;
+    let agent = wide(&format!("EkusheNext/{}", current_version()));
+    let mut file = std::fs::File::create(dest).map_err(|e| e.to_string())?;
+    // SAFETY: every pointer passed is a live NUL-terminated wide string or a buffer of the given size.
+    unsafe {
+        let session = H(WinHttpOpen(
+            agent.as_ptr(),
+            WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY,
+            std::ptr::null(),
+            std::ptr::null(),
+            0,
+        ));
+        if session.0.is_null() {
+            return Err("no internet connection".into());
+        }
+        WinHttpSetTimeouts(session.0, 15_000, 15_000, 30_000, 60_000);
+        let host = wide("github.com");
+        let conn = H(WinHttpConnect(
+            session.0,
+            host.as_ptr(),
+            INTERNET_DEFAULT_HTTPS_PORT,
+            0,
+        ));
+        if conn.0.is_null() {
+            return Err("github.com cannot be reached".into());
+        }
+        let (verb, obj) = (wide("GET"), wide(path));
+        let req = H(WinHttpOpenRequest(
+            conn.0,
+            verb.as_ptr(),
+            obj.as_ptr(),
+            std::ptr::null(),
+            std::ptr::null(),
+            std::ptr::null(),
+            WINHTTP_FLAG_SECURE,
+        ));
+        if req.0.is_null() {
+            return Err("request failed".into());
+        }
+        // GitHub answers with a redirect to its download host; WinHTTP follows it (https only)
+        if WinHttpSendRequest(req.0, std::ptr::null(), 0, std::ptr::null(), 0, 0, 0) == 0
+            || WinHttpReceiveResponse(req.0, std::ptr::null_mut()) == 0
+        {
+            return Err("download could not start".into());
+        }
+        let mut status: u32 = 0;
+        let mut len = std::mem::size_of::<u32>() as u32;
+        WinHttpQueryHeaders(
+            req.0,
+            WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+            std::ptr::null(),
+            &mut status as *mut u32 as *mut core::ffi::c_void,
+            &mut len,
+            std::ptr::null_mut(),
+        );
+        if status != 200 {
+            return Err(format!("server answered {status}"));
+        }
+        let mut buf = vec![0u8; 256 * 1024];
+        let mut total = 0u64;
+        loop {
+            let mut got = 0u32;
+            if WinHttpReadData(
+                req.0,
+                buf.as_mut_ptr() as *mut _,
+                buf.len() as u32,
+                &mut got,
+            ) == 0
+            {
+                return Err("download interrupted".into());
+            }
+            if got == 0 {
+                break;
+            }
+            file.write_all(&buf[..got as usize])
+                .map_err(|e| e.to_string())?;
+            total += got as u64;
+            progress(total);
+        }
+    }
+    file.flush().map_err(|e| e.to_string())
+}
+
 /// The newest published release tag (beta releases count), or `None` if GitHub cannot be reached.
 pub fn latest_release() -> Option<String> {
     let body = https_get(RELEASES_PATH)?;

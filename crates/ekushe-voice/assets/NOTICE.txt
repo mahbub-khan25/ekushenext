@@ -1,0 +1,8 @@
+ggml-silero-v5.1.2.bin: Silero VAD v5.1.2 (https://github.com/snakers4/silero-vad, MIT License,
+Copyright (c) 2020-present Silero Team), converted to the whisper.cpp (ggml) format by the
+whisper.cpp project (https://huggingface.co/ggml-org/whisper-vad, MIT License).
+Ekushe Next's voice typing uses it to find where speech starts and stops.
+
+silero_vad.onnx: Silero VAD (https://github.com/snakers4/silero-vad, MIT License, Copyright (c)
+2020-present Silero Team), as published by the sherpa-onnx project
+(https://github.com/k2-fsa/sherpa-onnx, Apache-2.0).

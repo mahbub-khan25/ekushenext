@@ -9,3 +9,13 @@ rustflags = ["-C", "link-arg=-Wl,-z,max-page-size=16384"]
 
 [target.x86_64-linux-android]
 rustflags = ["-C", "link-arg=-Wl,-z,max-page-size=16384"]
+
+# Voice typing (whisper.cpp through whisper-rs-sys): never tune the CPU code to the build machine.
+# GitHub's Windows runners have AVX-512, and a "native" build crashed on AMD Ryzen (no AVX-512) the
+# moment it started recognizing. AVX2 + FMA covers Intel since 2013 and AMD since 2015.
+[env]
+GGML_NATIVE = "OFF"
+GGML_AVX = "ON"
+GGML_AVX2 = "ON"
+GGML_FMA = "ON"
+GGML_F16C = "ON"

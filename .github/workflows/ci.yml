@@ -23,6 +23,10 @@ jobs:
         run: cargo test --workspace
       - name: Release build (tray app with embedded dictionary, TSF DLL, CLI)
         run: cargo build --release --workspace
+      - name: Live voice typing helper builds (Zipformer, sherpa-onnx)
+        env:
+          RUSTFLAGS: -C target-feature=+crt-static
+        run: cargo build --release -p ekushe-voice --no-default-features --features mic,live --target-dir C:\l
       - name: Pilot accuracy
         run: cargo run --release -p ekushe-core --example engine_eval -- data/dictionary/ekushe.dict.z tools/dict-builder/eval/pilot.tsv
       - name: Accuracy on every test set (fails if it drops below the last release)

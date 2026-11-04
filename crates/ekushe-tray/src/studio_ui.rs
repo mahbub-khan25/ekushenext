@@ -897,6 +897,52 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
         </div>
       </div>
       <div id="settingsSavedMsg" role="status" class="hint" style="margin-top:12px"></div>
+      <div class="etched" id="voiceBox" hidden style="margin-top:18px">
+        <div class="section-title">🎤 ভয়েস টাইপিং <small class="hint" style="font-weight:400">(পরীক্ষামূলক)</small></div>
+        <div class="hint" style="margin:4px 0 8px"><b>পরীক্ষামূলক:</b> ভয়েস টাইপিং এখনো শেখার পথে; কিছু শব্দ ভুল আসবে, তাই লেখা একবার দেখে নিন। কেমন কাজ করছে তা <a href="https://ekushenext.com/report/" target="_blank" rel="noopener">সমস্যা জানান</a> পাতায় জানালে আমরা এটিকে আরও ভালো করতে পারব।</div>
+        <div class="hint">যেকোনো অ্যাপে <b id="voiceHotkey">Ctrl+Alt+Space</b> চাপুন; টুং শব্দ আর “🔴 শুনছি” দেখলে বাংলায় বলুন। একটু থামলেই সেটুকু লেখা হয়ে যায়, আর একুশে শুনতে থাকে; শেষ হলে আবার শর্টকাট চাপুন (<b>Esc</b> চাপলে বাতিল)। সব কাজ আপনার কম্পিউটারেই হয়, কণ্ঠ বা লেখা কোথাও পাঠানো হয় না। “দাঁড়ি”, “কমা”, “নতুন লাইন”, “নতুন অনুচ্ছেদ” বললে চিহ্ন বা নতুন লাইন বসে।</div>
+        <div id="voiceModelMsg" class="hint" style="margin-top:10px"></div>
+        <div id="voiceModels" style="margin-top:8px"></div>
+        <div id="voiceSpeed" class="hint" style="margin-top:6px"></div>
+        <div id="voiceOptions" style="margin-top:10px">
+          <label class="toggle">
+            <span><b>বলা চিহ্ন</b><small>“দাঁড়ি” → ।, “কমা” → ,, “প্রশ্নবোধক চিহ্ন” → ?, “নতুন লাইন” → নতুন লাইন</small></span>
+            <span class="switch"><input type="checkbox" id="cfgVoicePunct" checked onchange="saveSettings()"><i></i></span>
+          </label>
+          <label class="toggle">
+            <span><b>সংখ্যা অঙ্কে</b><small>“দুই হাজার পাঁচশো টাকা” → ২৫০০ টাকা (ছোট সংখ্যা যেমন “এক কাপ চা” কথায় থাকে)</small></span>
+            <span class="switch"><input type="checkbox" id="cfgVoiceNum" checked onchange="saveSettings()"><i></i></span>
+          </label>
+          <label class="toggle">
+            <span><b>থামলে নিজে থেকে শেষ</b><small>চালু করলে কথা থামালেই ভয়েস টাইপিং বন্ধ হয়; বন্ধ থাকলে শর্টকাট বা Esc না চাপা পর্যন্ত শুনতে থাকে</small></span>
+            <span class="switch"><input type="checkbox" id="cfgVoiceAutoStop" onchange="saveSettings()"><i></i></span>
+          </label>
+          <label class="toggle">
+            <span><b>গ্রাফিক্স কার্ড ব্যবহার</b><small>থাকলে দ্রুত হয়; বন্ধ করলে শুধু প্রসেসরে চলে</small></span>
+            <span class="switch"><input type="checkbox" id="cfgVoiceGpu" checked onchange="saveSettings()"><i></i></span>
+          </label>
+          <label class="toggle">
+            <span><b>শব্দ</b><small>মাইক চালু ও বন্ধ হলে মৃদু টুং শব্দ</small></span>
+            <span class="switch"><input type="checkbox" id="cfgVoiceSounds" checked onchange="saveSettings()"><i></i></span>
+          </label>
+          <div class="setting">
+            <label for="cfgVoiceQuality">গতি ও নির্ভুলতা</label>
+            <select id="cfgVoiceQuality" onchange="saveSettings()">
+              <option value="fast">দ্রুত (সাধারণ কম্পিউটারের জন্য)</option>
+              <option value="best">সবচেয়ে নির্ভুল (একটু ধীর)</option>
+            </select>
+          </div>
+        </div>
+        <div id="voiceRecentBox" hidden style="margin-top:12px">
+          <div class="section-title" style="font-size:.95rem">শেষ কয়েকটি বলা লেখা</div>
+          <div class="hint">কোনো শব্দ ভুল এলে এখানে ঠিক করে “শিখুন” চাপুন; একুশে পরের বার সেটি ঠিক লিখবে (শুধু আপনার কম্পিউটারে)।</div>
+          <div id="voiceRecent"></div>
+        </div>
+        <div id="voiceLearnedBox" hidden style="margin-top:10px">
+          <div class="hint">একুশে যা শিখেছে (ক্লিক করলে ভুলে যাবে):</div>
+          <div class="chip-bar" id="voiceLearned"></div>
+        </div>
+      </div>
       <div class="etched" id="backupBox" style="margin-top:18px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
         <div><div class="section-title">ব্যাকআপ ও ফিরিয়ে আনা</div><div class="hint">সেটিংস, আপনার শর্টকাট, যোগ করা কীবোর্ড লেআউট আর একুশের শেখা শব্দ এক ফাইলে রাখুন। নতুন কম্পিউটারে (উইন্ডোজ, ম্যাক বা লিনাক্স) ফাইলটি দিলেই সব ফিরে আসবে, আগের কিছু মুছবে না।</div><div id="backupMsg" role="status" class="hint" style="margin-top:6px"></div></div>
         <div class="row" style="gap:8px">
@@ -1129,6 +1175,7 @@ async function refreshState() {
     if (document.activeElement !== appsEl) appsEl.value = st.bijoy_output_apps || '';
   }
   document.getElementById('fixedLayoutOptions').hidden = !st.active_layout || st.active_layout === 'AvroPhonetic';
+  applyVoiceState(st.voice);
   if (st.app_version) { appInfo.app = st.app_version; document.querySelectorAll('.aboutVer').forEach(e => e.textContent = st.app_version); }
   if (typeof st.check_for_updates === 'boolean' && st.app_version) {
     document.getElementById('cfgUpdatesRow').style.display = '';
@@ -2411,6 +2458,13 @@ async function saveSettings(extra) {
     start_bangla: !!document.getElementById('cfgStartBn').checked,
     fixed_spelling_hint: !!document.getElementById('cfgSpellHint').checked,
     fixed_word_suggestions: !!document.getElementById('cfgWordSugg').checked,
+  }, document.getElementById('voiceBox').hidden ? {} : {
+    voice_spoken_punctuation: !!document.getElementById('cfgVoicePunct').checked,
+    voice_numbers_as_digits: !!document.getElementById('cfgVoiceNum').checked,
+    voice_quality: document.getElementById('cfgVoiceQuality').value,
+    voice_auto_stop: !!document.getElementById('cfgVoiceAutoStop').checked,
+    voice_sounds: !!document.getElementById('cfgVoiceSounds').checked,
+    voice_use_gpu: !!document.getElementById('cfgVoiceGpu').checked,
   }, document.getElementById('bijoyOutBox').hidden ? {} : {
     bijoy_output: !!document.getElementById('cfgBijoyOut').checked,
     bijoy_output_apps: document.getElementById('cfgBijoyApps').value,
@@ -2418,6 +2472,98 @@ async function saveSettings(extra) {
   const res = await fetch('/api/settings', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
   document.getElementById('settingsSavedMsg').textContent = res.ok ? 'সংরক্ষিত হয়েছে' : 'সংরক্ষণ করা যায়নি — একুশে চালু আছে কি না দেখুন';
   await refreshState();
+}
+// Voice typing (Windows): model download, options, recent dictations to correct
+let voiceTimer = null;
+function applyVoiceState(v) {
+  const box = document.getElementById('voiceBox');
+  if (!v || !v.helper) { box.hidden = true; return; }
+  box.hidden = false;
+  document.getElementById('voiceHotkey').textContent = v.hotkey || 'Ctrl+Alt+Space';
+  document.getElementById('cfgVoicePunct').checked = v.spoken_punctuation !== false;
+  document.getElementById('cfgVoiceNum').checked = v.numbers_as_digits !== false;
+  document.getElementById('cfgVoiceQuality').value = v.quality === 'best' ? 'best' : 'fast';
+  document.getElementById('cfgVoiceAutoStop').checked = !!v.auto_stop;
+  document.getElementById('cfgVoiceSounds').checked = v.sounds !== false;
+  document.getElementById('cfgVoiceGpu').checked = v.use_gpu !== false;
+  loadVoice();
+}
+const VOICE_MODELS = {
+  live: ['লাইভ মডেল', 'বলার সঙ্গে সঙ্গে লেখা হয়; যেকোনো কম্পিউটারে চলে, গ্রাফিক্স কার্ড লাগে না। কিছু কণ্ঠে বা মাইকে ভুল বেশি হতে পারে। মডেল: SayedShaun, CC BY-SA 4.0'],
+  large: ['নির্ভুল মডেল', 'ভুল কম, কিন্তু শক্তিশালী গ্রাফিক্স কার্ড ছাড়া ধীর; একটু থামলে একসঙ্গে লেখা হয়। মডেল: Bengali.AI, Apache-2.0'],
+  small: ['ছোট মডেল', 'প্রায় তিন গুণ দ্রুত, ভুল একটু বেশি; সাধারণ বা পুরনো কম্পিউটারের জন্য'],
+};
+async function loadVoice() {
+  let v;
+  try { v = await (await fetch('/api/voice')).json(); } catch (e) { return; }
+  const msg = document.getElementById('voiceModelMsg');
+  document.getElementById('voiceOptions').hidden = !v.model;
+  const mb = n => bnNum(Math.round(n / 1048576));
+  if (v.downloading) {
+    const m = (v.models || []).find(x => x.id === v.downloading_model) || { bytes: 1 };
+    msg.textContent = `মডেল নামানো হচ্ছে… ${bnNum(Math.floor(100 * (v.downloaded || 0) / m.bytes))}% (${mb(v.downloaded || 0)} / ${mb(m.bytes)} MB)`;
+  } else if (v.failed) {
+    msg.textContent = 'নামানো যায়নি। ইন্টারনেট সংযোগ দেখে আবার চেষ্টা করুন।';
+  } else if (v.model) {
+    msg.textContent = '✓ ভয়েস মডেল আছে। যেকোনো অ্যাপে শর্টকাট চেপে বলুন। নামানোর পর ইন্টারনেট লাগে না।';
+  } else {
+    msg.textContent = 'ভয়েস টাইপিংয়ের জন্য একটি বাংলা ভয়েস মডেল একবার নামাতে হবে (একুশে শুধু তখনই ইন্টারনেট ব্যবহার করে)। পরে এখান থেকেই মুছে ফেলা যায়।';
+  }
+  const list = document.getElementById('voiceModels'); list.innerHTML = '';
+  (v.models || []).filter(m => m.available).forEach(m => {
+    const [name, desc] = VOICE_MODELS[m.id] || [m.id, ''];
+    const row = document.createElement('div'); row.className = 'row';
+    row.style.cssText = 'gap:10px;align-items:center;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--line, rgba(127,127,127,.2))';
+    const info = document.createElement('div'); info.style.cssText = 'flex:1;min-width:220px';
+    info.innerHTML = `<b></b> <span class="hint"></span><div class="hint"></div>`;
+    info.querySelector('b').textContent = name + (m.active ? ' ✓ ব্যবহার হচ্ছে' : '');
+    info.querySelector('span').textContent = m.bytes ? `(${mb(m.bytes)} MB)` : '';
+    info.querySelector('div').textContent = m.available ? desc : 'শিগগির আসছে';
+    row.appendChild(info);
+    const btn = (label, cls, fn) => { const b = document.createElement('button'); b.className = 'btn ' + cls; b.textContent = label; b.onclick = fn; row.appendChild(b); };
+    const post = (url) => fetch(url, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ model: m.id }) });
+    if (!m.available) { /* not yet */ }
+    else if (!m.ready) { if (!v.downloading) btn('নামান', 'primary', async () => { await post('/api/voice/download'); setTimeout(loadVoice, 300); }); }
+    else {
+      if (!m.active) btn('এটি ব্যবহার করুন', 'primary', async () => { await post('/api/voice/use'); loadVoice(); });
+      btn('মুছুন', '', async () => {
+        if (!confirm(`${name} মুছে ফেলবেন? (${mb(m.bytes)} MB জায়গা খালি হবে। পরে আবার নামানো যাবে।)`)) return;
+        const r = await (await post('/api/voice/remove')).json();
+        toast(r.ok ? 'মুছে ফেলা হয়েছে' : 'মোছা যায়নি'); loadVoice();
+      });
+    }
+    list.appendChild(row);
+  });
+  const sp = document.getElementById('voiceSpeed'); sp.textContent = '';
+  if (v.speed && v.speed.secs > 0) {
+    const r = v.speed.took / v.speed.secs;
+    const name = (VOICE_MODELS[v.speed.model] || [''])[0];
+    sp.textContent = `শেষবার (${name}): ${bnNum(v.speed.secs.toFixed(1))} সেকেন্ডের কথা ${bnNum(v.speed.took.toFixed(1))} সেকেন্ডে লেখা হয়েছে।` +
+      (v.speed.model === 'large' && r > 0.9 ? ' এই কম্পিউটারে বড় মডেলটি ধীর; ছোট মডেলটি নিয়ে দেখুন।' : '');
+  }
+  clearTimeout(voiceTimer);
+  if (v.downloading) voiceTimer = setTimeout(loadVoice, 1000);
+  const rb = document.getElementById('voiceRecent'); rb.innerHTML = '';
+  document.getElementById('voiceRecentBox').hidden = !(v.recent && v.recent.length);
+  (v.recent || []).slice(0, 5).forEach(t => {
+    const row = document.createElement('div'); row.className = 'row'; row.style.cssText = 'gap:8px;margin-top:6px';
+    const inp = document.createElement('input'); inp.type = 'text'; inp.value = t; inp.style.cssText = 'flex:1;font-family:var(--font-bn)';
+    const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'শিখুন';
+    b.onclick = async () => {
+      if (inp.value.trim() === t.trim()) { toast('লেখাটি বদলানো হয়নি'); return; }
+      await fetch('/api/voice/learn', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ heard: t, wanted: inp.value }) });
+      toast('শিখে নিয়েছে'); loadVoice();
+    };
+    row.append(inp, b); rb.appendChild(row);
+  });
+  const lb = document.getElementById('voiceLearned'); lb.innerHTML = '';
+  const rows = (v.learned || '').split('\n').map(l => l.split('\t')).filter(f => f.length >= 2 && f[0]);
+  document.getElementById('voiceLearnedBox').hidden = !rows.length;
+  rows.forEach(([h, w]) => {
+    const c = document.createElement('button'); c.className = 'chip'; c.textContent = `${h} → ${w}`;
+    c.onclick = async () => { await fetch('/api/voice/forget', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ heard: h }) }); loadVoice(); };
+    lb.appendChild(c);
+  });
 }
 async function addCustomSnippet() {
   const kEl = document.getElementById('newSnipKey');
