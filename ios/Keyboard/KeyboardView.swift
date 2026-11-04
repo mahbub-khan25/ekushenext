@@ -21,12 +21,17 @@ protocol KeyboardListener: AnyObject {
     func onDeleteWords(_ n: Int)
     /// A line drawn across the English letters (glide typing), in key units
     func onGlide(_ path: [(Float, Float)])
+    /// A suggestion held down: the word typed is added to your words, another is not suggested again
+    func onCandidateHold(_ index: Int)
+    func onPredictionHold(_ word: String)
 }
 
 extension KeyboardListener {
     func onLetterTap(_ x: Float, _ y: Float) {}
     func onDeleteWords(_ n: Int) {}
     func onGlide(_ path: [(Float, Float)]) {}
+    func onCandidateHold(_ index: Int) {}
+    func onPredictionHold(_ word: String) {}
 }
 
 enum Mode { case letters, symbols, moreSymbols, numbers, emoji }
@@ -290,7 +295,7 @@ final class KeyboardView: UIView {
     }
 
     // ── suggestion strip
-    private struct Chip { let rect: CGRect; let action: () -> Void; let label: String; let note: String?; let strong: Bool; let tip: Bool }
+    private struct Chip { let rect: CGRect; let action: () -> Void; let label: String; let note: String?; let strong: Bool; let tip: Bool; var hold: (() -> Void)? = nil }
     private var chips: [Chip] = []
     private var stripScroll: CGFloat = 0
     private var stripContentW: CGFloat = 0
@@ -303,19 +308,19 @@ final class KeyboardView: UIView {
         var list: [Chip] = []
         let chipsRight = layoutCluster()
         var x: CGFloat = 8 - stripScroll
-        func chip(_ label: String, _ note: String?, strong: Bool, tip: Bool, _ action: @escaping () -> Void) {
+        func chip(_ label: String, _ note: String?, strong: Bool, tip: Bool, hold: (() -> Void)? = nil, _ action: @escaping () -> Void) {
             let f = font(17, strong ? .semibold : .regular)
             var w = (label as NSString).size(withAttributes: [.font: f]).width + 24
             if let n = note { w += (n as NSString).size(withAttributes: [.font: font(12, .bold)]).width + 8 }
             w = max(w, 52)
-            list.append(Chip(rect: CGRect(x: x, y: 6, width: w, height: stripH - 12), action: action, label: label, note: note, strong: strong, tip: tip))
+            list.append(Chip(rect: CGRect(x: x, y: 6, width: w, height: stripH - 12), action: action, label: label, note: note, strong: strong, tip: tip, hold: hold))
             x += w + 6
         }
         if !candidates.isEmpty {
-            for (i, c) in candidates.enumerated() { chip(c.text, c.kind == "English" ? "EN" : nil, strong: i == 0, tip: false) { [weak self] in self?.listener?.onCandidate(i) } }
+            for (i, c) in candidates.enumerated() { chip(c.text, c.kind == "English" ? "EN" : nil, strong: i == 0, tip: false, hold: { [weak self] in self?.listener?.onCandidateHold(i) }) { [weak self] in self?.listener?.onCandidate(i) } }
             for t in tips { if let i = candidates.firstIndex(where: { $0.text == t.bangla }) { chip(t.bangla, t.keys, strong: false, tip: true) { [weak self] in self?.listener?.onCandidate(i) } } }
         } else if !predictions.isEmpty {
-            for w in predictions { chip(w, nil, strong: false, tip: false) { [weak self] in self?.listener?.onPrediction(w) } }
+            for w in predictions { chip(w, nil, strong: false, tip: false, hold: { [weak self] in self?.listener?.onPredictionHold(w) }) { [weak self] in self?.listener?.onPrediction(w) } }
         }
         stripContentW = x + stripScroll
         chips = list
@@ -461,6 +466,7 @@ final class KeyboardView: UIView {
     private var repeatTimer: Timer?
     private var repeatCount = 0
     private var stripPressed = false
+    private var stripDownAt = Date.distantPast
     private var stripDragging = false
     private var stripStartScroll: CGFloat = 0
     private var emojiDragging = false
@@ -494,7 +500,7 @@ final class KeyboardView: UIView {
             activeTouch = t
             let pt = t.location(in: self)
             downPoint = pt
-            if pt.y < stripH { stripPressed = true; stripDragging = false; stripStartScroll = stripScroll; continue }
+            if pt.y < stripH { stripPressed = true; stripDragging = false; stripStartScroll = stripScroll; stripDownAt = Date(); continue }
             if mode == .emoji { emojiDragging = false; emojiStartScroll = emojiScroll; continue }
             if let hit = keyAt(pt) { press(hit, pt) }
         }
@@ -670,7 +676,12 @@ final class KeyboardView: UIView {
             }
             return
         }
-        if !chips.isEmpty { chips.first(where: { $0.rect.contains(pt) })?.action(); return }
+        if !chips.isEmpty {
+            guard let ch = chips.first(where: { $0.rect.contains(pt) }) else { return }
+            // held down: the word's own choices (add it, or never suggest it)
+            if Date().timeIntervalSince(stripDownAt) > 0.5, let h = ch.hold { h() } else { ch.action() }
+            return
+        }
         switch tools.first(where: { $0.rect.contains(pt) })?.id {
         case "lang": listener?.onLanguageToggle()
         case "emoji": openEmoji()

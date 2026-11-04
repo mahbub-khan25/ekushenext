@@ -16,6 +16,8 @@ final class English {
     private var emojiOf: [String: [String]] = [:]
     private var learned: [String: Int] = [:]
     private var pairs: [String: Int] = [:]
+    /// Words the person asked never to be suggested (a suggestion held down)
+    private var blocked = Set<String>()
     private(set) var ready = false
     /// For corrections: the 40,000 most common words (plain form, as bytes), by length, with which letters each has
     private var byLength: [[[UInt8]]] = []
@@ -63,8 +65,10 @@ final class English {
                 }
             }
             var learned: [String: Int] = [:], pairs: [String: Int] = [:]
+            var blocked = Set<String>()
             if let s = try? String(contentsOf: self.file, encoding: .utf8) {
                 for line in s.split(separator: "\n") {
+                    if line.hasPrefix("b\t") { blocked.insert(String(line.dropFirst(2))); continue }
                     let p = line.split(separator: "\t").map(String.init)
                     guard p.count == 3, let n = Int(p[2]) else { continue }
                     if p[0] == "w" { learned[p[1]] = n } else if p[0] == "p" { pairs[p[1]] = n }
@@ -80,7 +84,7 @@ final class English {
                 self.words = list; self.rankOf = rank; self.exact = exact
                 self.byLength = buckets; self.lettersByLength = masks
                 self.sorted = sortedKeys; self.next = next; self.emojiOf = emojiOf
-                self.learned = learned; self.pairs = pairs
+                self.learned = learned; self.pairs = pairs; self.blocked = blocked
                 self.ready = true
             }
             // tests load on the main thread and use it at once; the keyboard hands it over to the main thread
@@ -158,7 +162,7 @@ final class English {
             i += 1; scanned += 1
         }
         var seen = Set<String>()
-        return found.sorted { $0.1 > $1.1 }.map { spell(typed, $0.0) }.filter { seen.insert($0).inserted }.prefix(max).map { $0 }
+        return found.filter { !blocked.contains($0.0.lowercased()) }.sorted { $0.1 > $1.1 }.map { spell(typed, $0.0) }.filter { seen.insert($0).inserted }.prefix(max).map { $0 }
     }
 
     /// A guess at what was meant, with how far it is from what was typed
@@ -200,7 +204,7 @@ final class English {
             if c > limit { return }
             let r = rankOf[key]
             let shown = r.map { words[$0] } ?? key
-            if quiet.contains(shown) { return }
+            if quiet.contains(shown) || blocked.contains(shown.lowercased()) { return }
             // a name (Dan, Eth) for a word typed in small letters is a less likely guess
             let name = lowerTyped && shown.first?.isUppercase == true
             found[key] = Guess(word: shown, cost: c, score: Spatial.score(rank: r ?? 60_000, learned: learned[shown] ?? learned[key] ?? 0, cost: c) - (name ? 2 : 0))
@@ -257,7 +261,7 @@ final class English {
         func weigh(_ k: [UInt8], _ shown: String, _ rank: Int, _ learnedN: Int) {
             guard k.count >= 2, starts.contains(k[0]), ends.contains(k[k.count - 1]), found[shown] == nil else { return }
             guard let line = Glide.wordLine(k), line.count >= 2, Glide.lengthFits(pathLen, Glide.length(line)) else { return }
-            guard Glide.covers(k, dense, 1.25), !quiet.contains(shown) else { return }
+            guard Glide.covers(k, dense, 1.25), !quiet.contains(shown), !blocked.contains(shown.lowercased()) else { return }
             // names only when you have written them yourself; a likely next word counts a little more
             let name = shown.first?.isUppercase == true && learnedN == 0
             found[shown] = Glide.score(rs, Glide.resample(line), rank: rank, learned: learnedN) - (name ? 1 : 0) + (follow.contains(shown.lowercased()) ? 0.8 : 0)
@@ -295,7 +299,7 @@ final class English {
         if let p2 = prev2, let l = next["\(p2.lowercased()) \(a)"] { out += l }
         if let l = next[a] { out += l }
         var seen = Set<String>()
-        return out.map { $0 == "i" || $0.hasPrefix("i'") ? "I" + $0.dropFirst() : $0 }.filter { !$0.isEmpty && seen.insert($0).inserted }.prefix(max).map { $0 }
+        return out.filter { !blocked.contains($0.lowercased()) }.map { $0 == "i" || $0.hasPrefix("i'") ? "I" + $0.dropFirst() : $0 }.filter { !$0.isEmpty && seen.insert($0).inserted }.prefix(max).map { $0 }
     }
 
     /// Remember a word that was written (not in private fields)
@@ -312,12 +316,29 @@ final class English {
         var text = ""
         for (k, v) in learned.sorted(by: { $0.value > $1.value }).prefix(5000) { text += "w\t\(k)\t\(v)\n" }
         for (k, v) in pairs.sorted(by: { $0.value > $1.value }).prefix(5000) { text += "p\t\(k)\t\(v)\n" }
+        for b in blocked { text += "b\t\(b)\n" }
         try? FileManager.default.createDirectory(at: Engine.folder, withIntermediateDirectories: true)
         try? text.write(to: file, atomically: true, encoding: .utf8)
     }
 
+    /// Never suggest this word again (it can still be typed)
+    func block(_ word: String) {
+        let k = word.lowercased()
+        blocked.insert(k)
+        learned[word] = nil; learned[k] = nil
+        pairs = pairs.filter { !$0.key.hasSuffix(" " + k) }
+        dirty = true
+    }
+
+    /// One of your words: never corrected, and suggested like a common word
+    func addWord(_ word: String) {
+        blocked.remove(word.lowercased())
+        learned[word, default: 0] += 20
+        dirty = true
+    }
+
     func forget() {
-        learned.removeAll(); pairs.removeAll(); dirty = false
+        learned.removeAll(); pairs.removeAll(); blocked.removeAll(); dirty = false
         try? FileManager.default.removeItem(at: file)
     }
 }

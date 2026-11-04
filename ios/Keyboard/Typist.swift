@@ -205,6 +205,25 @@ final class Typist: KeyboardListener {
 
     func onLetterTap(_ x: Float, _ y: Float) { pendingTap = (x, y) }
 
+    /// A suggestion held down (English): the word as typed becomes one of your words; any other
+    /// word is never suggested again
+    func onCandidateHold(_ index: Int) {
+        guard !typingBangla(), !en.isEmpty, index < enShown.count, let f = enShown[index].first, f.isLetter else { return }
+        let word = enShown[index]
+        if word == en { English.shared.addWord(word); enKeep = word } else { English.shared.block(word) }
+        English.shared.save()
+        onClick?()
+        showEnglish()
+    }
+
+    func onPredictionHold(_ word: String) {
+        guard !typingBangla() else { return }
+        English.shared.block(word)
+        English.shared.save()
+        onClick?()
+        showNextEnglish()
+    }
+
     /// A line drawn across the letters: the most likely word is typed, the other guesses shown
     func onGlide(_ path: [(Float, Float)]) {
         guard let t = target, !typingBangla() else { return }
