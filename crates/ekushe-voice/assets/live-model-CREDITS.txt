@@ -1,0 +1,13 @@
+Bangla speech model for Ekushe Next live voice typing
+
+Model: Bangla Zipformer transducer (int8 ONNX) by Sayed Shaun
+  https://huggingface.co/SayedShaun/bangla-zipformer-onnx
+License: Creative Commons Attribution-ShareAlike 4.0 (CC BY-SA 4.0)
+  https://creativecommons.org/licenses/by-sa/4.0/
+Repackaged unchanged into one file by Ekushe Next (no modifications to the model).
+
+The model was trained on these public Bangla speech collections:
+IndicVoices, OpenSLR-53, Vaani, Kathbath, Common Voice, Shrutilipi, FLEURS,
+BEN10 and OpenSLR-37. Thanks to everyone who recorded and transcribed them.
+
+Run with sherpa-onnx (Apache-2.0, k2-fsa) and ONNX Runtime (MIT, Microsoft).
