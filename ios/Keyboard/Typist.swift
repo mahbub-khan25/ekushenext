@@ -41,6 +41,12 @@ final class Typist: KeyboardListener {
     private var enShown: [String] = []
     private var enUndo: (typed: String, placed: String)?
     private var enKeep: String?
+    /// Where each letter of `en` was tapped (key units; nil for a long-press)
+    private var enTaps: [(Float, Float)?] = []
+    private var pendingTap: (Float, Float)?
+    /// The text before the cursor right after Ekushe added a space after a word (Space, a
+    /// suggestion): if it is still the same, a . , ? ! typed next goes before that space
+    private var autoSpaceText: String?
 
     init(target: TextTarget, view: KeyboardView?) {
         self.target = target; self.view = view
@@ -53,7 +59,7 @@ final class Typist: KeyboardListener {
     func begin() {
         Engine.setPrivate(privateField)
         Engine.reset()
-        last = Output(); en = ""; enUndo = nil; enKeep = nil; marked = false
+        last = Output(); en = ""; enTaps = []; enUndo = nil; enKeep = nil; marked = false
         view?.bangla = typingBangla()
         view?.shift = .off
         updateAutoShift()
@@ -64,7 +70,7 @@ final class Typist: KeyboardListener {
     func externalChange() {
         guard marked || !en.isEmpty || last.composing else { return }
         target?.unmark(); marked = false
-        en = ""; enUndo = nil
+        en = ""; enTaps = []; enUndo = nil
         if last.composing { Engine.reset(); last = Output() }
         view?.showSuggestions([], [], [])
     }
@@ -115,7 +121,7 @@ final class Typist: KeyboardListener {
 
     /// Close the word being typed, keeping what is shown
     func finishWord() {
-        if !en.isEmpty { target?.unmark(); marked = false; en = ""; view?.showSuggestions([], [], []) }
+        if !en.isEmpty { target?.unmark(); marked = false; en = ""; enTaps = []; view?.showSuggestions([], [], []) }
         if last.composing { target?.unmark(); marked = false; Engine.reset(); last = Output(); view?.showSuggestions([], [], []) }
     }
 
@@ -142,19 +148,23 @@ final class Typist: KeyboardListener {
             return
         }
         if !typingBangla() {
-            if plainField { t.insert(text); updateAutoShift(); return }
+            if plainField { t.insert(text); pendingTap = nil; updateAutoShift(); return }
             for ch in text {
                 if (ch.isLetter && ch.isASCII) || (ch == "'" && !en.isEmpty) {
-                    en.append(ch); enUndo = nil
+                    en.append(ch); enTaps.append(text.count == 1 ? pendingTap : nil); enUndo = nil
+                    autoSpaceText = nil
                     showEnglish()
+                } else if ".,?!;:".contains(ch) && en.isEmpty && swapSpace(ch) {
+                    enUndo = nil
                 } else {
                     // a mark or digit ends the word, as typed (makhan.aumi@gmail stays exactly that)
                     if !en.isEmpty { placeEnglish(correct: false) }
                     t.insert(String(ch))
-                    enUndo = nil
+                    enUndo = nil; autoSpaceText = nil
                     view?.showSuggestions([], [], [])
                 }
             }
+            pendingTap = nil
             if en.isEmpty { updateAutoShift() }
             return
         }
@@ -169,6 +179,39 @@ final class Typist: KeyboardListener {
                 apply(Engine.key(ch))
             }
         }
+    }
+
+    private func markAutoSpace() { autoSpaceText = target?.contextBefore }
+
+    /// "word ." → "word. ": the mark goes where the space Ekushe added was, and the space after it
+    private func swapSpace(_ ch: Character) -> Bool {
+        guard let t = target, let was = autoSpaceText, t.contextBefore == was else { return false }
+        guard was.hasSuffix(" "), let c = was.dropLast().last, c.isLetter || c.isNumber else { return false }
+        t.deleteBackward()
+        t.insert(String(ch) + " ")
+        markAutoSpace()
+        lastSpaceAt = .distantPast
+        view?.showSuggestions([], [], [])
+        updateAutoShift()
+        return true
+    }
+
+    func onLetterTap(_ x: Float, _ y: Float) { pendingTap = (x, y) }
+
+    /// Backspace slid left and let go: whole words before the cursor go
+    func onDeleteWords(_ n: Int) {
+        guard let t = target else { return }
+        finishWord()
+        let text = Array(t.contextBefore)
+        var i = text.count
+        for _ in 0..<n {
+            while i > 0 && text[i - 1].isWhitespace { i -= 1 }
+            if i > 0 && !(text[i - 1].isLetter || text[i - 1].isNumber || text[i - 1] == "'") { i -= 1; continue }
+            while i > 0 && (text[i - 1].isLetter || text[i - 1].isNumber || text[i - 1] == "'") { i -= 1 }
+        }
+        for _ in 0..<(text.count - i) { t.deleteBackward() }
+        autoSpaceText = nil
+        if !typingBangla() { updateAutoShift() }
     }
 
     func onSpace() {
@@ -190,10 +233,18 @@ final class Typist: KeyboardListener {
             placeEnglish(correct: true)
             t.insert(" ")
             lastSpaceAt = now
+            markAutoSpace()
             showNextEnglish(); updateAutoShift()
             return
         }
         enUndo = nil
+        // "word. " then Space: the space is already there
+        if let was = autoSpaceText, t.contextBefore == was, now.timeIntervalSince(lastSpaceAt) > 0.45,
+           was.hasSuffix(" "), let c = was.dropLast().last, ".,?!;:".contains(c) {
+            autoSpaceText = nil
+            return
+        }
+        autoSpaceText = nil
         if now.timeIntervalSince(lastSpaceAt) < 0.45 {
             let before = t.contextBefore
             if before.hasSuffix(" "), let c = before.dropLast().last, c.isLetter || c.isNumber {
@@ -217,8 +268,10 @@ final class Typist: KeyboardListener {
                 return
             }
         }
+        autoSpaceText = nil
         if !typingBangla() && !en.isEmpty {
             en.removeLast()
+            if !enTaps.isEmpty { enTaps.removeLast() }
             if en.isEmpty { setMarked(""); view?.showSuggestions([], [], []); updateAutoShift() } else { showEnglish() }
             return
         }
@@ -228,6 +281,7 @@ final class Typist: KeyboardListener {
             if !typingBangla() && t.contextBefore.hasSuffix(u.placed + " ") {
                 for _ in 0..<(u.placed.count + 1) { t.deleteBackward() }
                 en = u.typed; enKeep = u.typed
+                enTaps = Array(repeating: nil, count: u.typed.count)
                 showEnglish()
                 return
             }
@@ -253,8 +307,9 @@ final class Typist: KeyboardListener {
             learnEnglish(word)
             t.setMarked(word); t.unmark(); marked = false
             t.insert(" ")
-            en = ""; enUndo = nil; enKeep = nil
+            en = ""; enTaps = []; enUndo = nil; enKeep = nil
             lastSpaceAt = Date()
+            markAutoSpace()
             showNextEnglish(); updateAutoShift()
             return
         }
@@ -269,6 +324,7 @@ final class Typist: KeyboardListener {
             let w = view?.shift == .on ? word.prefix(1).uppercased() + word.dropFirst() : word
             learnEnglish(w)
             t.insert(w + " ")
+            markAutoSpace()
             showNextEnglish(); updateAutoShift()
             return
         }
@@ -328,7 +384,9 @@ final class Typist: KeyboardListener {
         if typed.dropFirst().contains(where: { $0.isUppercase }) { return nil }
         // a capital letter in the middle of a sentence is most likely a name
         if typed.first?.isUppercase == true && !sentenceStart(typed) { return nil }
-        return E.best(E.corrections(typed, max: 3))
+        // the word list's guesses and iOS's, weighed by how common each word is and how close it is
+        // on the keys to where the fingers landed (thw → the, teh → the, not tech)
+        return E.guesses(typed, taps: enTaps, max: 1).first.map { E.spell(typed, $0.word) }
     }
 
     private func showEnglish() {
@@ -337,7 +395,7 @@ final class Typist: KeyboardListener {
         let fix = englishFix(en)
         var list: [String] = fix.map { [$0, en] } ?? [en]
         list += E.complete(en, max: 3)
-        if !E.known(en) { list += E.corrections(en, max: 2) }
+        if !E.known(en) { list += E.corrections(en, max: 3, taps: enTaps) }
         var seen = Set<String>()
         enShown = Array(list.filter { !$0.isEmpty && seen.insert($0).inserted }.prefix(6))
         view?.showSuggestions(enShown.map { Candidate(text: $0, kind: "") }, [], [])
@@ -351,7 +409,7 @@ final class Typist: KeyboardListener {
         target?.setMarked(word); target?.unmark(); marked = false
         enUndo = word != typed ? (typed, word) : nil
         if typed != enKeep { enKeep = nil }
-        en = ""
+        en = ""; enTaps = []
     }
 
     private func learnEnglish(_ word: String) {

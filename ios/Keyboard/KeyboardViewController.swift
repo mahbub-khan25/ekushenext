@@ -68,6 +68,7 @@ final class KeyboardViewController: UIInputViewController, TextTarget {
         typist.plainField = numbers.contains(type) || plain.contains(type) || p.isSecureTextEntry == true
         typist.privateField = p.isSecureTextEntry == true || p.autocorrectionType == .no
         typist.autoCapitalize = (p.autocapitalizationType ?? .sentences) != .none
+        kb.address = type == .emailAddress ? .email : type == .URL ? .web : .none
         kb.showsGlobe = needsInputModeSwitchKey
         kb.mode = numbers.contains(type) ? .numbers : .letters
         kb.enterLabel = {

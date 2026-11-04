@@ -15,6 +15,15 @@ protocol KeyboardListener: AnyObject {
     func onHide()
     func onEmoji(_ e: String)
     func onKeyFeedback()
+    /// Where the finger landed on the English letter about to be typed, in key units (see Spatial)
+    func onLetterTap(_ x: Float, _ y: Float)
+    /// Backspace slid left and let go: delete this many words before the cursor
+    func onDeleteWords(_ n: Int)
+}
+
+extension KeyboardListener {
+    func onLetterTap(_ x: Float, _ y: Float) {}
+    func onDeleteWords(_ n: Int) {}
 }
 
 enum Mode { case letters, symbols, moreSymbols, numbers, emoji }
@@ -30,7 +39,9 @@ final class KeyboardView: UIView {
 
     var mode: Mode = .letters { didSet { buildKeys(); setNeedsDisplay() } }
     var shift: Shift = .off { didSet { setNeedsDisplay() } }
-    var bangla = true { didSet { if oldValue != bangla && mode == .symbols { buildKeys() }; setNeedsDisplay() } }
+    var bangla = true { didSet { if oldValue != bangla && (mode == .symbols || mode == .letters) { buildKeys() }; setNeedsDisplay() } }
+    /// An email or web address field: @ or / and .com on the bottom row
+    var address: Layouts.Address = .none { didSet { if oldValue != address && mode == .letters { buildKeys(); setNeedsDisplay() } } }
     var enterLabel = "↵" { didSet { setNeedsDisplay() } }
     /// iOS asks for a globe key when the phone has no other way to switch keyboards
     var showsGlobe = false { didSet { if oldValue != showsGlobe { buildKeys(); setNeedsDisplay() } } }
@@ -76,7 +87,8 @@ final class KeyboardView: UIView {
 
     private func buildKeys() {
         switch mode {
-        case .letters: rows = Layouts.letters(numberRow: prefs.numberRow, globe: showsGlobe)
+        case .letters: rows = bangla ? Layouts.letters(numberRow: prefs.numberRow, globe: showsGlobe)
+            : Layouts.englishLetters(numberRow: prefs.numberRow, globe: showsGlobe, address: address)
         case .symbols: rows = Layouts.symbols(globe: showsGlobe, bangla: bangla)
         case .moreSymbols: rows = Layouts.moreSymbols(globe: showsGlobe)
         case .numbers: rows = Layouts.numbers()
@@ -204,12 +216,17 @@ final class KeyboardView: UIView {
             let t = keyText(k)
             let size: CGFloat = [.delete, .shift, .emoji, .globe].contains(k.type) ? 20 : isFunction(k) ? 15 : mode == .numbers ? 27 : t.count > 2 ? 14 : 23
             draw(t, centre: c, font: font(size, k.letter ? .regular : .medium), color: fg)
-            if k.letter && bangla && mode == .letters && prefs.keyHints, let h = shift != .off ? k.hintShift : k.hint {
+            // the Bangla letter this key types, small in the corner (in English: the digit on its long-press)
+            let digitHint = !bangla && (k.hint?.first?.isNumber ?? false)
+            if k.letter && mode == .letters && ((bangla && prefs.keyHints) || digitHint), let h = (shift != .off && bangla) ? k.hintShift : k.hint {
                 let a: [NSAttributedString.Key: Any] = [.font: font(10), .foregroundColor: p.hint]
                 let s = (h as NSString).size(withAttributes: a)
                 (h as NSString).draw(at: CGPoint(x: r.maxX - s.width - 4, y: r.minY + 1), withAttributes: a)
             }
             if !k.alts.isEmpty && !k.letter { fill(CGRect(x: r.maxX - 8, y: r.minY + 5, width: 3, height: 3), 1.5, p.subtext) }
+            if k.type == .delete && deleteSliding && pressed {
+                draw(deleteWords == 0 ? "↩" : "−\(deleteWords)", centre: CGPoint(x: r.midX, y: r.minY + 10), font: font(12, .bold), color: p.text)
+            }
         }
     }
 
@@ -233,7 +250,8 @@ final class KeyboardView: UIView {
     private func openAlts(_ k: Key, _ r: CGRect) {
         let items = shift != .off ? (k.shiftAlts ?? k.alts) : k.alts
         guard !items.isEmpty else { return }
-        let cell = max(r.width, 46)
+        let widest = items.map { ($0.label as NSString).size(withAttributes: [.font: font(15, .semibold)]).width }.max() ?? 0
+        let cell = max(max(r.width, 46), widest + 18)
         let w = cell * CGFloat(items.count), h: CGFloat = 58
         let left = min(max(2, r.midX - cell / 2), max(2, bounds.width - w - 2))
         alts = AltsPopup(key: k, items: items, rect: CGRect(x: left, y: max(0, r.minY - h - 4), width: w, height: h), cell: cell, selected: 0)
@@ -431,6 +449,10 @@ final class KeyboardView: UIView {
     private var emojiDragging = false
     private var emojiStartScroll: CGFloat = 0
     private var lastShiftTap = Date.distantPast
+    private var lastPoint = CGPoint.zero
+    /// Backspace sliding left: whole words are counted, and deleted when the finger lifts
+    private var deleteSliding = false
+    private var deleteWords = 0
 
     private func keyAt(_ pt: CGPoint) -> Placed? {
         if let hit = placed.first(where: { $0.rect.contains(pt) }) { return hit }
@@ -469,6 +491,7 @@ final class KeyboardView: UIView {
             return
         }
         guard let k = pressedKey else { return }
+        lastPoint = pt
         if var a = alts {
             let i = min(max(0, Int((pt.x - a.rect.minX) / a.cell)), a.items.count - 1)
             if i != a.selected { a.selected = i; alts = a; setNeedsDisplay() }
@@ -483,7 +506,15 @@ final class KeyboardView: UIView {
             }
             return
         }
-        if k.type == .delete { return }
+        if k.type == .delete {
+            // slide left: one more word for each step, back to the right: fewer
+            if !deleteSliding && downPoint.x - pt.x > 20 && repeatCount == 0 { deleteSliding = true; repeatTimer?.invalidate() }
+            if deleteSliding {
+                let n = max(0, Int((downPoint.x - pt.x - 12) / 26) + 1)
+                if n != deleteWords { deleteWords = n; listener?.onKeyFeedback(); setNeedsDisplay() }
+            }
+            return
+        }
         // sliding to another key changes the choice
         if let hit = keyAt(pt), hit.key != k, hit.key.type == .char, k.type == .char {
             pressedKey = hit.key; pressedRect = hit.rect
@@ -515,6 +546,7 @@ final class KeyboardView: UIView {
         let k = hit.key
         pressedKey = k; pressedRect = hit.rect
         longFired = false; spaceDragging = false; spaceAnchorX = pt.x; repeatCount = 0
+        lastPoint = pt; deleteSliding = false; deleteWords = 0
         listener?.onKeyFeedback()
         switch k.type {
         case .delete:
@@ -528,7 +560,7 @@ final class KeyboardView: UIView {
     }
 
     private func repeatDelete() {
-        guard pressedKey?.type == .delete else { return }
+        guard pressedKey?.type == .delete, !deleteSliding else { return }
         repeatCount += 1
         listener?.onDelete()
         repeatTimer = Timer.scheduledTimer(withTimeInterval: repeatCount > 12 ? 0.035 : 0.07, repeats: false) { [weak self] _ in self?.repeatDelete() }
@@ -545,14 +577,20 @@ final class KeyboardView: UIView {
 
     private func release(fire: Bool) {
         longTimer?.invalidate(); repeatTimer?.invalidate()
-        let k = pressedKey, a = alts
+        let k = pressedKey, a = alts, r = pressedRect
         pressedKey = nil; pressedRect = nil; alts = nil
         setNeedsDisplay()
+        if deleteSliding { deleteSliding = false; if fire && deleteWords > 0 { listener?.onDeleteWords(deleteWords) }; deleteWords = 0; return }
         guard fire, let k else { return }
         if let a { listener?.onText(a.items[a.selected].text); afterChar(); return }
         if longFired || spaceDragging { return }
         switch k.type {
-        case .char: listener?.onText(k.letter && shift != .off ? k.text.uppercased() : k.text); afterChar()
+        case .char:
+            // English letters: where the finger landed, for spelling fixes
+            if !bangla && mode == .letters && k.letter, let r, let c = Spatial.center(Character(k.text)) {
+                listener?.onLetterTap(c.0 + Float((lastPoint.x - r.midX) / (r.width + gap)), c.1 + Float((lastPoint.y - r.midY) / (r.height + gap)))
+            }
+            listener?.onText(k.letter && shift != .off ? k.text.uppercased() : k.text); afterChar()
         case .space: listener?.onSpace()
         case .enter: listener?.onEnter()
         case .delete: break

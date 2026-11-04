@@ -103,6 +103,44 @@ final class EkusheTests: XCTestCase {
         XCTAssertTrue(doc.text.hasSuffix("www.ekushenext.com "), doc.text)
     }
 
+    func testEnglishNeighbouringKeysAndRunTogetherWords() {
+        english()
+        type("thw ")
+        XCTAssertEqual(doc.text, "the ", "w sits next to e")
+        type("abiut ")
+        XCTAssertTrue(doc.text.hasSuffix("about "), doc.text)
+        type("alot ")
+        XCTAssertTrue(doc.text.hasSuffix("a lot "), doc.text)
+        type("definately ")
+        XCTAssertTrue(doc.text.hasSuffix("definitely "), doc.text)
+    }
+
+    func testFullStopGoesBeforeTheAddedSpace() {
+        english()
+        type("good ")
+        typist.onText(".")
+        XCTAssertEqual(doc.text, "good. ")
+        type(" ")
+        XCTAssertEqual(doc.text, "good. ", "no second space")
+    }
+
+    func testBackspaceSlideDeletesWords() {
+        english()
+        type("one two three ")
+        typist.onDeleteWords(2)
+        XCTAssertEqual(doc.text, "one ")
+    }
+
+    func testEnglishKeysHaveAccentsNotBangla() {
+        english()
+        kb.mode = .letters
+        let e = Layouts.englishLetters(numberRow: false, globe: false)[0][2]
+        XCTAssertEqual(e.alts.first?.text, "3")
+        XCTAssertTrue(e.alts.contains { $0.text == "é" })
+        let email = Layouts.englishLetters(numberRow: false, globe: false, address: .email).last!
+        XCTAssertTrue(email.contains { $0.text == "@" } && email.contains { $0.text == ".com" })
+    }
+
     func testEnglishCompletionsAndNextWords() {
         english()
         type("beau")

@@ -23,9 +23,9 @@ struct Key: Equatable {
     /// Letters follow Shift; symbols do not
     var letter = false
 
-    init(_ type: KeyType, _ label: String, _ text: String? = nil, width: CGFloat = 1, hint: String? = nil, hintShift: String? = nil, alts: [Alt] = [], letter: Bool = false) {
+    init(_ type: KeyType, _ label: String, _ text: String? = nil, width: CGFloat = 1, hint: String? = nil, hintShift: String? = nil, alts: [Alt] = [], shiftAlts: [Alt]? = nil, letter: Bool = false) {
         self.type = type; self.label = label; self.text = text ?? label; self.width = width
-        self.hint = hint; self.hintShift = hintShift; self.alts = alts; self.letter = letter
+        self.hint = hint; self.hintShift = hintShift; self.alts = alts; self.shiftAlts = shiftAlts; self.letter = letter
     }
 
     /// An id for tests and logs: the character, or the kind of key
@@ -89,19 +89,66 @@ enum Layouts {
         return rows
     }
 
+    // ── English: digits on the top row's long-press (shown small), accents on the vowels
+    private static let accents: [Character: String] = [
+        "e": "éèêëēę", "y": "ýÿ", "u": "úùûüū", "i": "íìîïī", "o": "óòôöõøœō",
+        "a": "áàâäãåæā", "s": "ßśš", "d": "ð", "l": "ł", "z": "žźż", "c": "çćč", "n": "ñń", "g": "ğ",
+    ]
+
+    /// An email or web address field
+    enum Address { case none, email, web }
+
+    /// English QWERTY: no Bangla, long-press for a digit (top row) and accented letters
+    static func englishLetters(numberRow: Bool, globe: Bool, address: Address = .none) -> [[Key]] {
+        func en(_ c: Character, _ digit: Character? = nil) -> Key {
+            let acc = Array(accents[c] ?? "")
+            let d = (digit != nil && !numberRow) ? [Alt(label: String(digit!), text: String(digit!))] : []
+            return Key(.char, String(c), String(c), hint: numberRow ? nil : digit.map { String($0) },
+                       alts: d + acc.map { Alt(label: String($0), text: String($0)) },
+                       shiftAlts: d + acc.map { Alt(label: $0.uppercased(), text: $0.uppercased()) }, letter: true)
+        }
+        var rows: [[Key]] = []
+        if numberRow { rows.append(self.numberRow) }
+        rows.append(zip("qwertyuiop", "1234567890").map { en($0, $1) })
+        rows.append("asdfghjkl".map { en($0) })
+        rows.append([Key(.shift, "⇧", width: 1.5)] + "zxcvbnm".map { en($0) } + [Key(.delete, "⌫", width: 1.5)])
+        rows.append(address == .none ? bottomRow(.symbols, "?১২৩", globe: globe, english: true) : addressRow(address, globe: globe))
+        return rows
+    }
+
+    private static let domains = [".com", ".net", ".org", ".bd", ".com.bd", ".edu", ".io", ".ca", ".co.uk", ".info"].map { Alt(label: $0, text: $0) }
+
+    /// In an address field: @ (email) or / (web) and .com where the comma was, a smaller Space
+    private static func addressRow(_ a: Address, globe: Bool) -> [Key] {
+        var row: [Key] = [Key(.symbols, "?১২৩", width: 1.5)]
+        var space: CGFloat = 3.5
+        if globe { row.append(Key(.globe, "🌐")); space -= 1 }
+        row.append(a == .email
+            ? Key(.char, "@", "@", alts: ["_", "-", "+"].map { Alt(label: $0, text: $0) })
+            : Key(.char, "/", "/", alts: [":", "-", "_", "?", "=", "&", "#"].map { Alt(label: $0, text: $0) }))
+        row.append(Key(.space, " ", " ", width: space))
+        row.append(Key(.char, ".com", ".com", width: 1.5, alts: domains))
+        row.append(Key(.char, ".", ".", alts: ["-", "_", "@", "/"].map { Alt(label: $0, text: $0) }))
+        row.append(Key(.enter, "↵", "\n", width: 1.5))
+        return row
+    }
+
+    private static let enCommaAlts = [";", "'", "\"", "-", ":", "(", ")"].map { Alt(label: $0, text: $0) }
+    private static let enPeriodAlts = ["?", "!", ",", "'", "\"", "…", "@", "/"].map { Alt(label: $0, text: $0) }
+
     private static let commaAlts = [Alt(label: ",,", text: ",,", note: "হসন্ত"), Alt(label: "+", text: "+", note: "যুক্ত"), Alt(label: "`", text: "`", note: "আলাদা"), Alt(label: ";", text: ";"), Alt(label: "'", text: "'"), Alt(label: "\"", text: "\""), Alt(label: "-", text: "-")]
     private static let periodAlts = [Alt(label: "..", text: "..", note: "বিন্দু"), Alt(label: "?", text: "?"), Alt(label: "!", text: "!"), Alt(label: ":", text: ":", note: "ঃ"), Alt(label: "^", text: "^", note: "ঁ"), Alt(label: "/", text: "/", note: "English"), Alt(label: "$", text: "$", note: "৳")]
 
     /// The bottom row: the layout switch, the globe (when iOS asks for it), comma, Space, full stop
     /// and Return. Bangla/English, emoji and ; are on the bar above the keys, so Space gets the room
     /// (a narrow Space caused many mistyped words). Always ten units wide.
-    static func bottomRow(_ switchType: KeyType, _ switchLabel: String, globe: Bool) -> [Key] {
+    static func bottomRow(_ switchType: KeyType, _ switchLabel: String, globe: Bool, english: Bool = false) -> [Key] {
         var row: [Key] = [Key(switchType, switchLabel, width: 1.5)]
         var space: CGFloat = 5
         if globe { row.append(Key(.globe, "🌐")); space -= 1 }
-        row.append(Key(.char, ",", ",", alts: commaAlts))
+        row.append(Key(.char, ",", ",", alts: english ? enCommaAlts : commaAlts))
         row.append(Key(.space, " ", " ", width: space))
-        row.append(Key(.char, ".", ".", alts: periodAlts))
+        row.append(Key(.char, ".", ".", alts: english ? enPeriodAlts : periodAlts))
         row.append(Key(.enter, "↵", "\n", width: 1.5))
         return row
     }
