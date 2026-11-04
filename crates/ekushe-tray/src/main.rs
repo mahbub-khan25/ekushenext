@@ -59,7 +59,7 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
     SetWindowPos, SetWindowsHookExW, ShowWindow, TrackPopupMenu, TranslateMessage,
     UnhookWindowsHookEx, WindowFromPoint, GA_ROOT, GUITHREADINFO, GWL_STYLE, HHOOK, HICON,
     HWND_TOPMOST, IDC_HAND, IDI_APPLICATION, KBDLLHOOKSTRUCT, LR_DEFAULTCOLOR, MF_CHECKED,
-    MF_SEPARATOR, MF_STRING, MF_UNCHECKED, MSG, MSLLHOOKSTRUCT, SM_CXSCREEN, SM_CXSMICON,
+    MF_POPUP, MF_SEPARATOR, MF_STRING, MF_UNCHECKED, MSG, MSLLHOOKSTRUCT, SM_CXSCREEN, SM_CXSMICON,
     SM_CYSCREEN, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_SHOWWINDOW, SW_HIDE, TPM_BOTTOMALIGN,
     TPM_LEFTALIGN, TPM_RETURNCMD, TPM_RIGHTBUTTON, WH_KEYBOARD_LL, WH_MOUSE_LL, WM_APP, WM_COMMAND,
     WM_CONTEXTMENU, WM_DESTROY, WM_KEYDOWN, WM_KEYUP, WM_LBUTTONDBLCLK, WM_LBUTTONDOWN,
@@ -101,6 +101,8 @@ const CMD_HOTKEY_CTRL_SPACE: usize = 1011;
 const CMD_HOTKEY_F12: usize = 1012;
 const CMD_HOTKEY_CTRL_ALT_B: usize = 1013;
 const CMD_STUDIO_KEYMAP: usize = 1014;
+const CMD_STUDIO_LAYOUTS: usize = 1015;
+const CMD_VOICE_SETTINGS: usize = 1016;
 const CMD_MODE_PHONETIC_FIRST: usize = 1020;
 const CMD_MODE_SMART: usize = 1021;
 const CMD_MODE_PHONETIC_ONLY: usize = 1022;
@@ -2358,187 +2360,77 @@ unsafe fn voice_events() {
 }
 
 unsafe fn show_tray_context_menu(hwnd: HWND) {
+    // Kept short (Khan, 2026-11-03): what people change often. Everything else is in Studio.
     let menu = CreatePopupMenu();
     let st = STATE.lock();
     let is_bn = st.ekushe.language() == InputLanguage::Bangla;
     let cfg = st.ekushe.config().clone();
     drop(st);
+    let add = |m, flags, id: usize, text: &str| {
+        AppendMenuW(m, flags, id, wide_null(text).as_ptr());
+    };
 
-    // 1. Primary Bold Action at Top: Open Ekushe Studio + Direct Studio Tool Shortcuts
-    AppendMenuW(
-        menu,
-        MF_STRING,
-        CMD_OPEN_STUDIO,
-        wide_null("✨ একুশে নেক্সট স্টুডিও খুলুন (Open Ekushe Next Studio)").as_ptr(),
-    );
-    let _ = SetMenuDefaultItem(menu, CMD_OPEN_STUDIO as u32, 0);
-
-    AppendMenuW(
-        menu,
-        MF_STRING,
-        CMD_STUDIO_PLAYGROUND,
-        wide_null("⌨️ স্মার্ট বাংলা রাইটিং ও যুক্তবর্ণ প্যাড (Smart Writing Pad)").as_ptr(),
-    );
-    AppendMenuW(
-        menu,
-        MF_STRING,
-        CMD_STUDIO_XRAY,
-        wide_null("🔬 শব্দ এক্স-রে ও ২-ক্লিক যুক্তবর্ণ নির্মাতা (Word X-Ray & Conjunct Builder)").as_ptr(),
-    );
-    AppendMenuW(
-        menu,
-        MF_STRING,
-        CMD_STUDIO_SIGNS,
-        wide_null("🔤 যুক্তবর্ণ ও চিহ্নের সহায়িকা (+  ,,  ^ …)").as_ptr(),
-    );
-    AppendMenuW(
-        menu,
-        MF_STRING,
-        CMD_STUDIO_SPELL,
-        wide_null("✔ বাংলা বানান পরীক্ষক (Bangla Spell Checker)").as_ptr(),
-    );
-    AppendMenuW(
-        menu,
-        MF_STRING,
-        CMD_STUDIO_CONVERT,
-        wide_null("🔄 বিজয় ⇄ ইউনিকোড কনভার্টার (Bijoy / Unicode Converter)").as_ptr(),
-    );
-    AppendMenuW(
-        menu,
-        MF_STRING,
-        CMD_STUDIO_FIX,
-        wide_null("✏️ ভুল শব্দ ঠিক করুন (A word was wrong)").as_ptr(),
-    );
-    AppendMenuW(
-        menu,
-        MF_STRING,
-        CMD_STUDIO_SETTINGS,
-        wide_null("⚙️ সেটিংস, ফন্ট ও স্বচ্ছতা (Settings, Fonts & Opacity)").as_ptr(),
-    );
-    if cfg.active_layout != LayoutId::AvroPhonetic {
-        AppendMenuW(
+    // a new version: only when there is one
+    if let Some(tag) = update_check::AVAILABLE.lock().clone() {
+        add(
             menu,
             MF_STRING,
-            CMD_STUDIO_KEYMAP,
-            wide_null("⌨️ কী-ম্যাপ দেখুন (Key map of this layout)").as_ptr(),
+            CMD_UPDATE_DOWNLOAD,
+            &format!("⬇️ নতুন সংস্করণ {tag} এসেছে — নামান"),
         );
+        AppendMenuW(menu, MF_SEPARATOR, 0, ptr::null());
     }
+
+    add(menu, MF_STRING, CMD_OPEN_STUDIO, "একুশে স্টুডিও খুলুন");
+    let _ = SetMenuDefaultItem(menu, CMD_OPEN_STUDIO as u32, 0);
     AppendMenuW(menu, MF_SEPARATOR, 0, ptr::null());
 
-    // 2. Language Toggle (Bangla <-> English)
-    let toggle_label = if is_bn {
-        format!(
-            "✓ বাংলা সক্রিয় (Bangla Active) — Switch: {}",
-            cfg.switch_hotkey.display_name()
-        )
-    } else {
-        format!(
-            "বাংলা চালু করুন (Currently EN) — Switch: {}",
-            cfg.switch_hotkey.display_name()
-        )
-    };
-    AppendMenuW(
+    add(
         menu,
         MF_STRING | if is_bn { MF_CHECKED } else { MF_UNCHECKED },
         CMD_TOGGLE_LANG,
-        wide_null(&toggle_label).as_ptr(),
+        &format!("বাংলা চালু\t{}", cfg.switch_hotkey.display_name()),
     );
-    AppendMenuW(menu, MF_SEPARATOR, 0, ptr::null());
 
-    // 3. Keyboard Layouts (built-in, then the user's imported layout files)
+    // Layouts: the one in use on the line, the rest in a submenu
     let active = studio_layouts::setting_value(&cfg);
-    for (i, (value, name)) in menu_layouts().into_iter().enumerate() {
+    let layouts = menu_layouts();
+    let current = layouts
+        .iter()
+        .find(|(v, _)| *v == active)
+        .map(|(_, n)| n.clone())
+        .unwrap_or_default();
+    let sub = CreatePopupMenu();
+    for (i, (value, name)) in layouts.into_iter().enumerate() {
         let flag = if value == active {
             MF_CHECKED
         } else {
             MF_UNCHECKED
         };
-        AppendMenuW(
-            menu,
-            MF_STRING | flag,
-            CMD_LAYOUT_FIRST + i,
-            wide_null(&format!("লেআউট: {name}")).as_ptr(),
-        );
+        add(sub, MF_STRING | flag, CMD_LAYOUT_FIRST + i, &name);
     }
-    AppendMenuW(menu, MF_SEPARATOR, 0, ptr::null());
-
-    // 4. Typing Modes
-    for (m, label, cmd_id) in [
-        (
-            TypingMode::PhoneticFirst,
-            "মোড: Phonetic-First",
-            CMD_MODE_PHONETIC_FIRST,
-        ),
-        (TypingMode::Smart, "মোড: Smart (Default)", CMD_MODE_SMART),
-        (
-            TypingMode::PhoneticOnly,
-            "মোড: Phonetic-Only (No Popup)",
-            CMD_MODE_PHONETIC_ONLY,
-        ),
-    ] {
-        let flag = if cfg.typing_mode == m {
-            MF_CHECKED
-        } else {
-            MF_UNCHECKED
-        };
-        AppendMenuW(menu, MF_STRING | flag, cmd_id, wide_null(label).as_ptr());
+    AppendMenuW(sub, MF_SEPARATOR, 0, ptr::null());
+    if cfg.active_layout != LayoutId::AvroPhonetic {
+        add(sub, MF_STRING, CMD_STUDIO_KEYMAP, "কী-ম্যাপ দেখুন");
     }
-    AppendMenuW(menu, MF_SEPARATOR, 0, ptr::null());
-
-    // 5. Switch Hotkey Presets
-    for (hk, cmd_id) in [
-        (SwitchHotkey::DoubleTapShift, CMD_HOTKEY_DBL_SHIFT),
-        (SwitchHotkey::CtrlSpace, CMD_HOTKEY_CTRL_SPACE),
-        (SwitchHotkey::F12, CMD_HOTKEY_F12),
-        (SwitchHotkey::CtrlAltB, CMD_HOTKEY_CTRL_ALT_B),
-    ] {
-        let flag = if cfg.switch_hotkey == hk {
-            MF_CHECKED
-        } else {
-            MF_UNCHECKED
-        };
-        AppendMenuW(
-            menu,
-            MF_STRING | flag,
-            cmd_id,
-            wide_null(&format!("হটকি: {}", hk.display_name())).as_ptr(),
-        );
-    }
-
-    AppendMenuW(menu, MF_SEPARATOR, 0, ptr::null());
-    if let Some(tag) = update_check::AVAILABLE.lock().clone() {
-        AppendMenuW(
-            menu,
-            MF_STRING,
-            CMD_UPDATE_DOWNLOAD,
-            wide_null(&format!(
-                "⬇️ নতুন সংস্করণ {tag} এসেছে — ডাউনলোড করুন (Update available)"
-            ))
-            .as_ptr(),
-        );
-    }
+    add(sub, MF_STRING, CMD_STUDIO_LAYOUTS, "লেআউট যোগ করুন বা বানান…");
     AppendMenuW(
         menu,
-        MF_STRING,
-        CMD_CHECK_UPDATE,
-        wide_null(&format!(
-            "🔄 হালনাগাদ দেখুন (Check for updates) — {}",
-            update_check::current_version()
-        ))
-        .as_ptr(),
+        MF_STRING | MF_POPUP,
+        sub as usize,
+        wide_null(&format!("লেআউট: {current}")).as_ptr(),
     );
-    AppendMenuW(
+
+    add(
         menu,
         MF_STRING,
-        CMD_REPORT,
-        wide_null("🐞 সমস্যা জানান (Report a problem)").as_ptr(),
+        CMD_VOICE_SETTINGS,
+        &format!("ভয়েস টাইপিং…\t{}", cfg.voice_hotkey),
     );
-    AppendMenuW(
-        menu,
-        MF_STRING,
-        CMD_EXIT,
-        wide_null("প্রস্থান করুন (Exit Ekushe Next)").as_ptr(),
-    );
+    AppendMenuW(menu, MF_SEPARATOR, 0, ptr::null());
+
+    add(menu, MF_STRING, CMD_REPORT, "সমস্যা জানান");
+    add(menu, MF_STRING, CMD_EXIT, "বন্ধ করুন");
 
     let mut pt = POINT { x: 0, y: 0 };
     GetCursorPos(&mut pt);
@@ -2602,6 +2494,14 @@ unsafe fn handle_tray_command(hwnd: HWND, cmd: usize) {
         CMD_STUDIO_KEYMAP => {
             let port = STATE.lock().studio_port;
             open_studio_window_tab(port, Some("keymap"));
+        }
+        CMD_STUDIO_LAYOUTS => {
+            let port = STATE.lock().studio_port;
+            open_studio_window_tab(port, Some("layouts"));
+        }
+        CMD_VOICE_SETTINGS => {
+            let port = STATE.lock().studio_port;
+            open_studio_window_tab(port, Some("voice"));
         }
         CMD_STUDIO_FIX => {
             let port = STATE.lock().studio_port;
@@ -3234,6 +3134,12 @@ fn handle_http_client(mut stream: TcpStream, req: &str) -> std::io::Result<()> {
         }
         .to_string();
         return write_http_response(&mut stream, "200 OK", "application/json", json.as_bytes());
+    }
+
+    // Studio's "check now" for a new version (it was in the tray menu before)
+    if method == "POST" && clean_path == "/api/update/check" {
+        update_check::check_now_and_tell();
+        return write_http_response(&mut stream, "200 OK", "application/json", b"{\"ok\":true}");
     }
 
     if method == "POST" && clean_path == "/api/voice/learn" {

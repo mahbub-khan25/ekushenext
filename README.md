@@ -98,12 +98,15 @@ cargo run --release -p ekushe-core --example engine_eval -- data/dictionary/ekus
 
 ## Privacy
 
-Ekushe Next does not send anything over the network on its own. Three exceptions, all only when you
-ask: on Windows, when you choose "Check for updates" or turn on update notices, it asks GitHub for the
+Ekushe Next does not send anything over the network on its own. Four exceptions, all only when you
+ask: on Windows, when you choose "check now" in Studio or turn on update notices, it asks GitHub for the
 newest version number; for voice typing (Windows, experimental), pressing **নামান** downloads the
 speech model and its helper from Ekushe's GitHub releases once (your voice is recognised on your own
-computer and never sent anywhere); and in Studio's picture to text, **একুশেকে পাঠান** sends that page's picture
-and your corrected text to ekushenext.com after you agree, to train better reading. Typing, learned words and settings stay on your
+computer, and voice typing sends nothing); in Studio's picture to text, **একুশেকে পাঠান** sends that page's picture
+and your corrected text to ekushenext.com after you agree, to train better reading; and in
+Studio's **একুশেকে কণ্ঠ দিন**, the sentences you read aloud are sent to ekushenext.com only when you
+agree and press **পাঠান** (your voice is only sent if you choose to send it), used only to train Ekushe's
+own voice typing models and never published, with a random code that lets you delete them again. Typing, learned words and settings stay on your
 computer (`%APPDATA%\Ekushe` on Windows, `~/Library/Application Support/Ekushe` on macOS, `~/.config/Ekushe`
 on Linux). Ekushe Studio runs on `127.0.0.1` only and refuses requests from other websites. There is no
 telemetry and no account.
