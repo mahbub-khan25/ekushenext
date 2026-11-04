@@ -261,6 +261,29 @@ sh(f'input motionevent UP {x - 150} {y}')
 time.sleep(0.6)
 got = field_text()[0] or ''
 expect('Backspace slide deletes whole words', len(got) < len(before) - 4 and not got.endswith('three '), True)
+# glide typing: draw h-e-l-l-o without lifting the finger
+def glide(word):
+    pts = [km[c] for c in word]
+    x0, y0 = pts[0]
+    sh(f'input motionevent DOWN {x0} {y0}')
+    for (ax, ay), (bx, by) in zip(pts, pts[1:]):
+        for s in range(1, 7):
+            sh(f'input motionevent MOVE {ax + (bx - ax) * s // 6} {ay + (by - ay) * s // 6}')
+    time.sleep(0.2)
+    sh(f'input motionevent UP {pts[-1][0]} {pts[-1][1]}')
+    time.sleep(0.8)
+before = field_text()[0] or ''
+glide('hello')
+shot('10h-glide-hello')
+got = field_text()[0] or ''
+expect('glide typing writes hello', got.rstrip().lower().endswith('hello'), True)
+tap(*km['DELETE'], 0.6)
+got = field_text()[0] or ''
+expect('⌫ after glide removes the whole word', got == before, True)
+# an emoji beside the word
+typed('love', 0.15)
+shot('10i-emoji-suggestion')
+typed(' ', 0.4)
 # the microphone on the bar
 if 'MIC' in km:
     tap(*km['MIC'], 1.5)

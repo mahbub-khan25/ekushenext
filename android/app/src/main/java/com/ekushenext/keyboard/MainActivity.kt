@@ -391,6 +391,8 @@ class MainActivity : AppCompatActivity() {
         divider(card)
         card.addView(switch("ইংরেজিতে পরের শব্দ", "Suggest the next word in English", prefs.nextWordEnglish) { prefs.nextWordEnglish = it })
         divider(card)
+        card.addView(switch("গ্লাইড টাইপিং", "Draw across the letters without lifting your finger to write an English word. Other guesses show above the keys; ⌫ right after removes the whole word.", prefs.glide) { prefs.glide = it })
+        divider(card)
         card.addView(switch("ভয়েস টাইপিং বোতাম (পরীক্ষামূলক)", "The 🎤 on the bar: speak Bangla or English, in the language you're typing. It uses your phone's speech service (Google on most phones): if that language is downloaded for offline use it stays on the phone, otherwise your voice goes to that service. Ekushe itself sends nothing.", prefs.voiceKey) { prefs.voiceKey = it })
         if (Build.VERSION.SDK_INT >= 31) {
             val tsm = getSystemService(TEXT_SERVICES_MANAGER_SERVICE) as android.view.textservice.TextServicesManager

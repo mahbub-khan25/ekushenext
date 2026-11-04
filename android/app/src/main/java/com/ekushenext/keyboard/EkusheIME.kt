@@ -70,6 +70,9 @@ class EkusheIME : InputMethodService(), KeyboardListener, Voice.Events {
     private var slideAnchor = -1
     private var selStart = -1
     private var selEnd = -1
+    /** The word glide typing just placed: (the space put before it, the word, the other guesses) */
+    private var glided: Triple<String, String, List<String>>? = null
+
     /** Email or web address field (its own bottom row) */
     private var addressKind = Layouts.Address.NONE
     private var voice: Voice? = null
@@ -366,6 +369,13 @@ class EkusheIME : InputMethodService(), KeyboardListener, Voice.Events {
 
     override fun onText(text: String) {
         if (voice?.active == true) stopVoice()
+        // a letter right after a glided word starts a new word: a space between them
+        glided?.let { g ->
+            glided = null
+            val ic0 = currentInputConnection
+            if (!typingBangla() && text.length == 1 && text[0].isLetter() && ic0 != null &&
+                ic0.getTextBeforeCursor(g.second.length, 0)?.toString() == g.second) ic0.commitText(" ", 1)
+        }
         val ic = currentInputConnection ?: return
         if (text.length == 2 && text[0] == Layouts.LITERAL) {
             // a mark typed exactly as it is ("$" on the ৳ key while typing Bangla)
@@ -430,6 +440,7 @@ class EkusheIME : InputMethodService(), KeyboardListener, Voice.Events {
 
     override fun onSpace() {
         if (voice?.active == true) stopVoice()
+        glided = null
         val ic = currentInputConnection ?: return
         val now = System.currentTimeMillis()
         if (typingBangla()) {
@@ -485,6 +496,18 @@ class EkusheIME : InputMethodService(), KeyboardListener, Voice.Events {
 
     override fun onDelete() {
         if (voice?.active == true) stopVoice()
+        // right after glide typing: the whole word goes (with the space put before it)
+        glided?.let { g ->
+            glided = null
+            val ic0 = currentInputConnection
+            val all = g.first + g.second
+            if (ic0 != null && ic0.getTextBeforeCursor(all.length, 0)?.toString() == all) {
+                editing = true; ic0.deleteSurroundingText(all.length, 0); editing = false
+                view?.showSuggestions(emptyList(), emptyList(), emptyList())
+                updateAutoShift()
+                return
+            }
+        }
         val ic = currentInputConnection ?: return
         if (typingBangla() && last.composing) { apply(Engine.backspace()); return }
         // Right after a word: bring its Roman letters back (once)
@@ -548,6 +571,7 @@ class EkusheIME : InputMethodService(), KeyboardListener, Voice.Events {
 
     override fun onEnter() {
         if (voice?.active == true) stopVoice()
+        glided = null
         val ic = currentInputConnection ?: return
         if (last.composing) apply(Engine.commit())
         if (en.isNotEmpty()) { placeEnglish(correct = false); view?.showSuggestions(emptyList(), emptyList(), emptyList()) }
@@ -565,6 +589,21 @@ class EkusheIME : InputMethodService(), KeyboardListener, Voice.Events {
     }
 
     override fun onCandidate(index: Int) {
+        // another guess for the glided word: it takes the word's place
+        glided?.let { g ->
+            val ic0 = currentInputConnection ?: return
+            val alt = g.third.getOrNull(index) ?: return
+            if (ic0.getTextBeforeCursor(g.second.length, 0)?.toString() == g.second) {
+                editing = true
+                ic0.beginBatchEdit(); ic0.deleteSurroundingText(g.second.length, 0); ic0.commitText(alt, 1); ic0.endBatchEdit()
+                editing = false
+                glided = Triple(g.first, alt, g.third)
+                if (!privateField) English.learn(alt, null)
+                view?.showSuggestions(g.third.map { Candidate(it, "") }, emptyList(), emptyList())
+                view?.selected = index
+            }
+            return
+        }
         if (en.isNotEmpty() && enShown.getOrNull(index)?.firstOrNull()?.isLetter() == false) {
             // an emoji: the word as Space would place it, then the emoji
             val emoji = enShown[index]
@@ -746,6 +785,38 @@ class EkusheIME : InputMethodService(), KeyboardListener, Voice.Events {
             while (i > 0 && (text[i - 1].isLetterOrDigit() || text[i - 1] == '\'' || Character.getType(text[i - 1]) == Character.NON_SPACING_MARK.toInt() || Character.getType(text[i - 1]) == Character.COMBINING_SPACING_MARK.toInt())) i--
         }
         return text.length - i
+    }
+
+    // ───────────────────────── glide typing ─────────────────────────
+
+    override fun onGlide(path: List<FloatArray>) {
+        val ic = currentInputConnection ?: return
+        if (voice?.active == true) stopVoice()
+        if (typingBangla()) return
+        // a word being typed is placed first
+        if (en.isNotEmpty()) { placeEnglish(correct = true); ic.commitText(" ", 1) }
+        val (a, b) = previousWords()
+        val guesses = English.glide(path, 5, English.nextWords(a, b, 8).map { it.lowercase() })
+        if (guesses.isEmpty()) {
+            view?.showSuggestions(emptyList(), emptyList(), emptyList())
+            view?.stripMessage = "এই রেখায় কোনো শব্দ পাওয়া গেল না · no word for that line"
+            view?.invalidate()
+            return
+        }
+        val shift = view?.shift ?: Shift.OFF
+        fun shaped(w: String) = when (shift) {
+            Shift.LOCKED -> w.uppercase()
+            Shift.ON -> w.replaceFirstChar { it.uppercaseChar() }
+            else -> if (w == "i" || w.startsWith("i'")) "I" + w.substring(1) else w
+        }
+        val shown = guesses.map(::shaped).distinct()
+        val before = ic.getTextBeforeCursor(1, 0)?.toString().orEmpty()
+        val space = if (before.isNotEmpty() && !before[0].isWhitespace() && before[0] !in "([{\"'“‘") " " else ""
+        editing = true; ic.commitText(space + shown[0], 1); editing = false
+        if (!privateField) English.learn(shown[0], b)
+        glided = Triple(space, shown[0], shown)
+        autoSpace = false
+        view?.showSuggestions(shown.map { Candidate(it, "") }, emptyList(), emptyList())
     }
 
     // ───────────────────────── voice typing ─────────────────────────

@@ -241,6 +241,44 @@ object English {
         return found.values.sortedByDescending { it.score }.take(8)
     }
 
+    /**
+     * Words for a line drawn across the keys (glide typing), best first: the shape of the line
+     * against each word's line through its letters, and how common the word is. `path` is in key
+     * units (see Spatial).
+     */
+    fun glide(path: List<FloatArray>, max: Int = 5, after: List<String> = emptyList()): List<String> {
+        if (!ready.get() || path.size < 2 || !Glide.isGlide(path)) return emptyList()
+        val rs = Glide.resample(path)
+        val dense = Glide.resample(path, 64)
+        val starts = Glide.keysNear(path.first(), 1.15f)
+        val ends = Glide.keysNear(path.last(), 1.15f)
+        val pathLen = Glide.length(path)
+        val found = HashMap<String, Double>()
+        fun weigh(key: String, shown: String, rank: Int, learnedN: Int) {
+            if (key.length < 2 || key[0] !in starts || key.last() !in ends || key in found) return
+            val line = Glide.wordLine(key) ?: return
+            if (line.size < 2 || !Glide.lengthFits(pathLen, Glide.length(line))) return
+            if (!Glide.covers(key, dense, 1.25f)) return
+            if (shown in quiet) return
+            // names (Hugo, Sufi) only when you have written them yourself
+            val name = shown.first().isUpperCase() && learnedN == 0
+            // a likely next word after the one before it counts a little more
+            val follows = if (shown.lowercase() in after) 0.8 else 0.0
+            found[shown] = Glide.score(rs, Glide.resample(line), rank, learnedN) - (if (name) 1.0 else 0.0) + follows
+        }
+        for (len in 2 until byLength.size) for (w in byLength[len]) {
+            val r = rankOf[w] ?: continue
+            if (r > 30_000) continue
+            val shown = words[r]
+            weigh(w, shown, r, learned[shown] ?: 0)
+        }
+        for ((w, n) in learned) {
+            val k = plain(w)
+            if (k.all { it in 'a'..'z' }) weigh(k, w, rankOf[k] ?: 40_000, n)
+        }
+        return found.entries.sortedByDescending { it.value }.take(max).map { it.key }
+    }
+
     /** Known words close to a typo, best first, in the case the person typed */
     fun corrections(typed: String, max: Int = 3, taps: List<FloatArray?> = emptyList()): List<String> =
         guesses(typed, taps, emptyList(), max).map { spell(typed, it.word) }.distinct()

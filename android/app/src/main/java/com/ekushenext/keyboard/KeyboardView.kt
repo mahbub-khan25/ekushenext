@@ -48,6 +48,8 @@ interface KeyboardListener {
     fun onDeleteWordsDone(n: Int) {}
     /** The microphone button: start or stop voice typing */
     fun onMic() {}
+    /** A line drawn across the English letters (glide typing), in key units */
+    fun onGlide(path: List<FloatArray>) {}
 }
 
 enum class Mode { LETTERS, SYMBOLS, MORE_SYMBOLS, NUMBERS, PHONE, EMOJI }
@@ -258,8 +260,9 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
         logKeys()
         if (debuggable) { removeCallbacks(relog); relogLeft = 8; postDelayed(relog, 500) }
         for ((k, r) in placed) drawKey(c, k, r, pressedKey == k)
-        pressedKey?.let { k -> placed.firstOrNull { it.key == k }?.let { if (k.type == KeyType.CHAR && altsOpen == null) drawPreview(c, k, it.rect) } }
+        if (!gliding) pressedKey?.let { k -> placed.firstOrNull { it.key == k }?.let { if (k.type == KeyType.CHAR && altsOpen == null) drawPreview(c, k, it.rect) } }
         altsOpen?.let { drawAlts(c, it) }
+        if (glideTrail.size > 1) drawTrail(c)
     }
 
     /** The room under the strip: the physical keyboard's shortcuts, in case the taskbar steps aside */
@@ -424,6 +427,17 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
                     c.drawCircle(r.right - 6 * dp, r.top + 6 * dp, 1.6f * dp, keyPaint)
                 }
             }
+        }
+    }
+
+    /** The line the finger is drawing, thinner and fainter towards its start */
+    private fun drawTrail(c: Canvas) {
+        val pts = glideTrail.takeLast(48)
+        for (i in 1 until pts.size) {
+            val t = i / pts.size.toFloat()
+            trailPaint.color = Palette.alpha(palette.accent, 0.25f + 0.6f * t)
+            trailPaint.strokeWidth = (2.5f + 4f * t) * dp
+            c.drawLine(pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1], trailPaint)
         }
     }
 
@@ -793,6 +807,18 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
     private var repeatCount = 0
     private var lastX = 0f
     private var lastY = 0f
+    /** Glide typing: the line being drawn, in key units (for the word) and on screen (the trail) */
+    private var glidePath: ArrayList<FloatArray>? = null
+    private val glideTrail = ArrayList<FloatArray>()
+    private var gliding = false
+    private val trailPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND }
+
+    /** A point on the keys in key units (q's centre is 0.5, 0.5), from the q key's place and size */
+    private fun toUnits(x: Float, y: Float): FloatArray? {
+        val q = placed.firstOrNull { it.key.type == KeyType.CHAR && it.key.text == "q" }?.rect ?: return null
+        return floatArrayOf(0.5f + (x - q.centerX()) / (q.width() + gap), 0.5f + (y - q.centerY()) / (q.height() + gap))
+    }
+
     /** Backspace sliding left: whole words are marked, and deleted when the finger lifts */
     private var deleteSliding = false
     private var deleteWords = 0
@@ -879,6 +905,10 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
         }
         longFired = false; spaceDragging = false; spaceAnchorX = x; repeatCount = 0
         lastX = x; lastY = y; deleteSliding = false; deleteWords = 0
+        gliding = false; glideTrail.clear()
+        glidePath = if (k.type == KeyType.CHAR && k.letter && !bangla && mode == Mode.LETTERS && prefs.glide)
+            toUnits(x, y)?.let { arrayListOf(it) } else null
+        if (glidePath != null) glideTrail += floatArrayOf(x, y)
         listener.onKeyFeedback(this, HapticFeedbackConstants.KEYBOARD_TAP)
         when (k.type) {
             // one character as the finger lands (sliding left afterwards marks whole words instead)
@@ -892,6 +922,15 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
     private fun move(x: Float, y: Float) {
         val k = pressedKey ?: return
         lastX = x; lastY = y
+        // glide typing: once the finger has travelled most of a key, it draws a word
+        glidePath?.let { gp ->
+            if (altsOpen == null) {
+                toUnits(x, y)?.let { gp += it }
+                glideTrail += floatArrayOf(x, y)
+                if (!gliding && Glide.isGlide(gp)) { gliding = true; handler.removeCallbacks(longPress) }
+                if (gliding) { invalidate(); return }
+            }
+        }
         altsOpen?.let { a ->
             val i = ((x - a.rect.left) / a.cell).toInt().coerceIn(0, a.items.size - 1)
             if (i != a.selected) { a.selected = i; invalidate() }
@@ -941,6 +980,14 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
         pressedKey = null; pressedRect = null; altsOpen = null
         invalidate()
         if (deleteSliding) { deleteSliding = false; listener.onDeleteWordsDone(if (fire) deleteWords else 0); deleteWords = 0; return }
+        val path = glidePath
+        glidePath = null
+        if (gliding) {
+            gliding = false
+            postDelayed({ glideTrail.clear(); invalidate() }, 120)
+            if (fire && path != null) { listener.onGlide(path); afterChar() }
+            return
+        }
         if (!fire || k == null) return
         if (a != null) { listener.onText(a.items[a.selected].text); afterChar(); return }
         if (longFired || spaceDragging) return

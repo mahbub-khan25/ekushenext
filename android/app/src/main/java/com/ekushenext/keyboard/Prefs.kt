@@ -82,4 +82,8 @@ class Prefs(context: Context) {
     var voiceKey: Boolean
         get() = p.getBoolean("voice_key", true)
         set(v) = p.edit().putBoolean("voice_key", v).apply()
+    /** English: draw across the letters to write a word */
+    var glide: Boolean
+        get() = p.getBoolean("glide", true)
+        set(v) = p.edit().putBoolean("glide", v).apply()
 }
