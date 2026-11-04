@@ -305,16 +305,20 @@ jobs:
           EKUSHE_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           EKUSHE_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          ./gradlew --no-daemon assembleRelease
+          ./gradlew --no-daemon assembleRelease bundleRelease
           mkdir -p ../dist-android
           cp app/build/outputs/apk/release/app-release.apk ../dist-android/Ekushe-Next-Android.apk
+          # the same app as an Android App Bundle, for uploading to Google Play (same key)
+          cp app/build/outputs/bundle/release/app-release.aab ../dist-android/Ekushe-Next-Android-GooglePlay.aab
           BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
           "$BT/apksigner" verify --print-certs ../dist-android/Ekushe-Next-Android.apk | head -3
           rm -f "$RUNNER_TEMP/release.jks"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: release-android
-          path: dist-android/Ekushe-Next-Android.apk
+          path: |
+            dist-android/Ekushe-Next-Android.apk
+            dist-android/Ekushe-Next-Android-GooglePlay.aab
 
   publish:
     needs: [version, windows, macos, linux, fedora, android]
