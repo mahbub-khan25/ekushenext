@@ -63,7 +63,7 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
     var shift = Shift.OFF
         set(v) { field = v; invalidate() }
     var bangla = true
-        set(v) { val changed = field != v; field = v; if (changed && Layouts.fixed != null) buildKeys(); invalidate() }
+        set(v) { val changed = field != v; field = v; if (changed && (Layouts.fixed != null || mode == Mode.SYMBOLS)) buildKeys(); invalidate() }
 
     /** The fixed layout changed (or phonetic typing came back): new keys */
     fun reloadLayout() { buildKeys(); invalidate() }
@@ -150,7 +150,7 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
         rows = when (mode) {
             Mode.LETTERS -> Layouts.fixed?.takeIf { bangla }?.let { Layouts.fixedLetters(it, prefs.numberRow) }
                 ?: Layouts.letters(prefs.numberRow)
-            Mode.SYMBOLS -> Layouts.symbols()
+            Mode.SYMBOLS -> Layouts.symbols(bangla)
             Mode.MORE_SYMBOLS -> Layouts.moreSymbols()
             Mode.NUMBERS -> Layouts.numbers(false)
             Mode.PHONE -> Layouts.numbers(true)
@@ -257,6 +257,7 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
         k.letter && shift != Shift.OFF -> k.label.uppercase()
         // Symbols key: Bangla digits alone in Bangla ("?" next to them sat oddly high), ?123 in English
         k.type == KeyType.SYMBOLS && k.label == "?১২৩" -> if (bangla) "১২৩" else "?123"
+        k.type == KeyType.LETTERS && k.label == "ABC" -> if (bangla) "অআক" else "ABC"
         mode == Mode.SYMBOLS && k.label.length == 1 && k.label[0].isDigit() -> Layouts.digitLabel(k.label[0], bangla)
         mode == Mode.LETTERS && k.label.length == 1 && k.label[0].isDigit() -> Layouts.digitLabel(k.label[0], bangla)
         else -> k.label

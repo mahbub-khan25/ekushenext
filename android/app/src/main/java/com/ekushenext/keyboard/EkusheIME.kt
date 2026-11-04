@@ -333,6 +333,14 @@ class EkusheIME : InputMethodService(), KeyboardListener {
 
     override fun onText(text: String) {
         val ic = currentInputConnection ?: return
+        if (text.length == 2 && text[0] == Layouts.LITERAL) {
+            // a mark typed exactly as it is ("$" on the ৳ key while typing Bangla)
+            if (typingBangla()) { if (last.composing) apply(Engine.commit()); last = Output() }
+            else if (en.isNotEmpty()) placeEnglish(correct = false)
+            ic.commitText(text.substring(1), 1)
+            view?.showSuggestions(emptyList(), emptyList(), emptyList())
+            return
+        }
         if (!typingBangla()) {
             if (!englishHelp()) { ic.commitText(text, 1); updateAutoShift(); return }
             for (ch in text) {

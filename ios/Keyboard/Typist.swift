@@ -133,6 +133,14 @@ final class Typist: KeyboardListener {
 
     func onText(_ text: String) {
         guard let t = target else { return }
+        if text.count == 2, text.first == Layouts.literal {
+            // a mark typed exactly as it is ("$" on the ৳ key while typing Bangla)
+            if typingBangla() { if last.composing { apply(Engine.commit()) }; last = Output() }
+            else if !en.isEmpty { placeEnglish(correct: false) }
+            t.insert(String(text.dropFirst()))
+            view?.showSuggestions([], [], [])
+            return
+        }
         if !typingBangla() {
             if plainField { t.insert(text); updateAutoShift(); return }
             for ch in text {

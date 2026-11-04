@@ -41,6 +41,8 @@ class FixedKeys(val name: String, val keys: Map<Char, String>, val altgr: Map<Ch
 object Layouts {
     /** Marks a long-press choice typed with AltGr (the text after it is the key) */
     const val ALTGR = '\u0001'
+    /** Before a mark that is typed exactly as it is, even while typing Bangla ("$" there is ৳) */
+    const val LITERAL = '\u0002'
 
     /** The fixed layout in use, or null for phonetic typing (the IME keeps this up to date) */
     var fixed: FixedKeys? = null
@@ -145,11 +147,14 @@ object Layouts {
         Key(KeyType.ENTER, "↵", "\n", width = 1.5f),
     )
 
-    /** Digits and the common symbols */
-    fun symbols(): List<List<Key>> = listOf(
+    /** Digits and the common symbols: Bangla ones (৳ first) while typing Bangla, English ones ($
+     *  first) in English */
+    fun symbols(bangla: Boolean): List<List<Key>> = listOf(
         "1234567890".map { Key(KeyType.CHAR, it.toString(), it.toString()) },
-        listOf("@", "#", "৳", "_", "&", "-", "+", "(", ")", "/").map {
-            Key(KeyType.CHAR, it, it, alts = if (it == "৳") listOf(Alt("$", "$"), Alt("€", "€"), Alt("£", "£"), Alt("¥", "¥"), Alt("₹", "₹")) else emptyList())
+        listOf("@", "#", "MONEY", "_", "&", "-", "+", "(", ")", "/").map {
+            if (it != "MONEY") Key(KeyType.CHAR, it, it)
+            else if (bangla) Key(KeyType.CHAR, "৳", "৳", alts = listOf(Alt("$", "${LITERAL}$"), Alt("€", "€"), Alt("£", "£"), Alt("¥", "¥"), Alt("₹", "₹")))
+            else Key(KeyType.CHAR, "$", "$", alts = listOf(Alt("৳", "৳"), Alt("€", "€"), Alt("£", "£"), Alt("¥", "¥"), Alt("₹", "₹"), Alt("¢", "¢")))
         },
         listOf(Key(KeyType.MORE_SYMBOLS, "=\\<", width = 1.5f)) +
             listOf("*", "\"", "'", ":", ";", "!", "?").map { Key(KeyType.CHAR, it, it) } +
