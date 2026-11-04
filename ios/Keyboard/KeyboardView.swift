@@ -30,7 +30,7 @@ final class KeyboardView: UIView {
 
     var mode: Mode = .letters { didSet { buildKeys(); setNeedsDisplay() } }
     var shift: Shift = .off { didSet { setNeedsDisplay() } }
-    var bangla = true { didSet { setNeedsDisplay() } }
+    var bangla = true { didSet { if oldValue != bangla && mode == .symbols { buildKeys() }; setNeedsDisplay() } }
     var enterLabel = "↵" { didSet { setNeedsDisplay() } }
     /// iOS asks for a globe key when the phone has no other way to switch keyboards
     var showsGlobe = false { didSet { if oldValue != showsGlobe { buildKeys(); setNeedsDisplay() } } }
@@ -77,7 +77,7 @@ final class KeyboardView: UIView {
     private func buildKeys() {
         switch mode {
         case .letters: rows = Layouts.letters(numberRow: prefs.numberRow, globe: showsGlobe)
-        case .symbols: rows = Layouts.symbols(globe: showsGlobe)
+        case .symbols: rows = Layouts.symbols(globe: showsGlobe, bangla: bangla)
         case .moreSymbols: rows = Layouts.moreSymbols(globe: showsGlobe)
         case .numbers: rows = Layouts.numbers()
         case .emoji: rows = []
@@ -150,6 +150,7 @@ final class KeyboardView: UIView {
         if k.letter && shift != .off { return k.label.uppercased() }
         // Symbols key: Bangla digits alone in Bangla ("?" next to them sat oddly high), ?123 in English
         if k.type == .symbols && k.label == "?১২৩" { return bangla ? "১২৩" : "?123" }
+        if k.type == .letters && k.label == "ABC" { return bangla ? "অআক" : "ABC" }
         if (mode == .symbols || mode == .letters), k.label.count == 1, let c = k.label.first, c.isASCII, c.isNumber { return Layouts.digitLabel(c, bangla: bangla) }
         return k.label
     }

@@ -39,6 +39,8 @@ enum Layouts {
     }
 
     private static let bnDigits = Array("০১২৩৪৫৬৭৮৯")
+    /// Before a mark that is typed exactly as it is, even while typing Bangla ("$" there is ৳)
+    static let literal: Character = "\u{2}"
     static func digitLabel(_ d: Character, bangla: Bool) -> String {
         guard bangla, let v = d.wholeNumberValue, d.isASCII else { return String(d) }
         return String(bnDigits[v])
@@ -105,12 +107,14 @@ enum Layouts {
     }
 
     /// Digits and the common symbols
-    static func symbols(globe: Bool) -> [[Key]] {
-        [
+    /// Bangla ones (৳ first) while typing Bangla, English ones ($ first) in English
+    static func symbols(globe: Bool, bangla: Bool) -> [[Key]] {
+        let money = bangla
+            ? Key(.char, "৳", "৳", alts: [Alt(label: "$", text: String(literal) + "$"), Alt(label: "€", text: "€"), Alt(label: "£", text: "£"), Alt(label: "¥", text: "¥"), Alt(label: "₹", text: "₹")])
+            : Key(.char, "$", "$", alts: [Alt(label: "৳", text: "৳"), Alt(label: "€", text: "€"), Alt(label: "£", text: "£"), Alt(label: "¥", text: "¥"), Alt(label: "₹", text: "₹"), Alt(label: "¢", text: "¢")])
+        return [
             "1234567890".map { Key(.char, String($0)) },
-            ["@", "#", "৳", "_", "&", "-", "+", "(", ")", "/"].map {
-                Key(.char, $0, $0, alts: $0 == "৳" ? [Alt(label: "$", text: "$"), Alt(label: "€", text: "€"), Alt(label: "£", text: "£"), Alt(label: "¥", text: "¥"), Alt(label: "₹", text: "₹")] : [])
-            },
+            ["@", "#", "MONEY", "_", "&", "-", "+", "(", ")", "/"].map { $0 == "MONEY" ? money : Key(.char, $0) },
             [Key(.moreSymbols, "=\\<", width: 1.5)] + ["*", "\"", "'", ":", ";", "!", "?"].map { Key(.char, $0) } + [Key(.delete, "⌫", width: 1.5)],
             bottomRow(.letters, "ABC", globe: globe),
         ]
