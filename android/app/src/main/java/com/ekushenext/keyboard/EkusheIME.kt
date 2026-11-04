@@ -514,14 +514,6 @@ class EkusheIME : InputMethodService(), KeyboardListener {
 
     override fun onPrediction(word: String) {
         val ic = currentInputConnection ?: return
-        if (text.length == 2 && text[0] == Layouts.LITERAL) {
-            // a mark typed exactly as it is ("$" on the ৳ key while typing Bangla)
-            if (typingBangla()) { if (last.composing) apply(Engine.commit()); last = Output() }
-            else if (en.isNotEmpty()) placeEnglish(correct = false)
-            ic.commitText(text.substring(1), 1)
-            view?.showSuggestions(emptyList(), emptyList(), emptyList())
-            return
-        }
         if (!typingBangla()) {
             // the sentence's first word gets its capital
             val w = if (view?.shift == Shift.ON) word.replaceFirstChar { it.uppercase() } else word
