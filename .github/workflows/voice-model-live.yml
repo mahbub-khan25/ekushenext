@@ -1,0 +1,60 @@
+# Live voice typing model: packs Sayed Shaun's Bangla Zipformer (int8 ONNX, CC BY-SA 4.0) into the
+# one file Ekushe Next downloads (bn-live-1.ekm) and puts it on a draft release (voice-model-live-1),
+# which is published by hand. The file must come out byte for byte as the one Ekushe was tested with.
+# Run by hand: Actions → this workflow.
+name: Live voice typing model
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag for the model
+        required: true
+        default: voice-model-live-1
+
+permissions:
+  contents: read
+
+jobs:
+  model:
+    name: Pack the live Bangla voice model
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    env:
+      HF_MODEL: SayedShaun/bangla-zipformer-onnx
+      HF_REVISION: 16bec01c5f554d3f0dc8f0139de3a00839a72efc
+      EXPECT_BYTES: "73635876"
+      EXPECT_SHA256: b5c9326afddd844c07be02f100f9a01f4fe5d1cd7c6d7b737de9bf8d26e18d08
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Download and pack
+        run: |
+          mkdir -p m
+          base="https://huggingface.co/$HF_MODEL/resolve/$HF_REVISION"
+          for p in encoder decoder joiner; do curl -fsSL --retry 5 -o "m/$p.int8.onnx" "$base/int8/$p.onnx"; done
+          curl -fsSL --retry 5 -o m/tokens.txt "$base/tokens.txt"
+          cp crates/ekushe-voice/assets/live-model-CREDITS.txt m/CREDITS.txt
+          python3 tools/voice/pack_live_model.py bn-live-1.ekm m/encoder.int8.onnx m/decoder.int8.onnx m/joiner.int8.onnx m/tokens.txt m/CREDITS.txt
+          test "$(stat -c %s bn-live-1.ekm)" = "$EXPECT_BYTES"
+          echo "$EXPECT_SHA256  bn-live-1.ekm" | sha256sum -c
+          cp m/CREDITS.txt NOTICE.txt
+          sha256sum bn-live-1.ekm NOTICE.txt | tee SHA256SUMS.txt
+      - name: Draft release with the model
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          cat > notes.md <<'MD'
+          **Live voice typing model for Ekushe Next (not an app release).**
+
+          Ekushe Next's voice typing downloads `bn-live-1.ekm` from here once (Studio → Settings → ভয়েস টাইপিং) and then runs it entirely on your computer. You don't need to download anything from this page yourself.
+
+          - Model: the Bangla Zipformer transducer by Sayed Shaun ([bangla-zipformer-onnx](https://huggingface.co/SayedShaun/bangla-zipformer-onnx), int8, CC BY-SA 4.0), repackaged unchanged into one file. See `NOTICE.txt`.
+          - Checksum: `SHA256SUMS.txt`.
+          MD
+          sed -i 's/^          //' notes.md
+          gh release create "$TAG" bn-live-1.ekm NOTICE.txt SHA256SUMS.txt \
+            --draft --prerelease --latest=false --target "$GITHUB_SHA" \
+            --title "Live voice typing model ($TAG)" --notes-file notes.md

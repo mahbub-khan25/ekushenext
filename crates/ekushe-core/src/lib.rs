@@ -79,6 +79,7 @@ pub mod phonetic;
 pub mod roman;
 pub mod spell;
 pub mod suggest;
+pub mod voice;
 
 use std::collections::HashMap;
 

@@ -145,6 +145,26 @@ pub struct Config {
     /// Once a day, ask GitHub whether a newer Ekushe Next has been released (Windows; Linux updates
     /// come through the package manager). Off unless the user turns it on: Ekushe stays offline.
     pub check_for_updates: bool,
+    /// Voice typing: the shortcut that starts (and stops) dictation in any app
+    pub voice_hotkey: String,
+    /// Voice typing: say "দাঁড়ি", "কমা", "নতুন লাইন" to type punctuation
+    pub voice_spoken_punctuation: bool,
+    /// Voice typing: numbers said in words are typed as digits
+    pub voice_numbers_as_digits: bool,
+    /// Voice typing: "fast" (greedy) or "best" (beam search, slower)
+    pub voice_quality: String,
+    /// Voice typing: a pause this long (ms) after speaking ends the dictation
+    pub voice_stop_after_ms: u32,
+    /// Voice typing: which speech model to use, "large" (most accurate) or "small" (faster, for
+    /// slower computers). If only the other one is downloaded, that one is used.
+    pub voice_model: String,
+    /// Voice typing: end the dictation by itself after a pause (`voice_stop_after_ms`). Off: it
+    /// keeps listening, typing at each pause, until the shortcut or Esc is pressed.
+    pub voice_auto_stop: bool,
+    /// Voice typing: a soft sound when the microphone opens and closes
+    pub voice_sounds: bool,
+    /// Voice typing: use the graphics card when there is one (off: the processor only)
+    pub voice_use_gpu: bool,
 }
 
 impl Default for Config {
@@ -185,11 +205,25 @@ impl Default for Config {
             type_while_composing: true,
             check_for_updates: false,
             start_language: InputLanguage::English,
+            voice_hotkey: "Ctrl+Alt+Space".into(),
+            voice_spoken_punctuation: true,
+            voice_numbers_as_digits: true,
+            voice_quality: "fast".into(),
+            voice_stop_after_ms: 1400,
+            voice_model: "live".into(),
+            voice_auto_stop: false,
+            voice_sounds: true,
+            voice_use_gpu: true,
         }
     }
 }
 
 impl Config {
+    /// Where voice typing keeps its model and what it learned: `<config dir>/voice`
+    pub fn voice_dir() -> PathBuf {
+        Self::default_dir().join("voice")
+    }
+
     /// Default OS config directory (`%APPDATA%\Ekushe` on Windows, `~/Library/Application Support/Ekushe` on macOS, `$XDG_CONFIG_HOME/ekushe` on Linux).
     pub fn default_dir() -> PathBuf {
         dirs::config_dir()
