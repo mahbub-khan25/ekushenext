@@ -15,6 +15,12 @@ Ekushe Next dictionary, CC BY-SA 4.0. Derived from Bangla Wikipedia (CC BY-SA 3.
 (ODC-By 1.0), Sangraha by AI4Bharat (CC BY 4.0) and wordfreq (CC BY-SA 4.0). See
 [`data/dictionary/LICENSE.md`](data/dictionary/LICENSE.md).
 
+## English words for the phone keyboards (`data/english/`)
+
+`words.txt` comes from wordfreq by Robyn Speer (CC BY-SA 4.0). The counted part of `next.tsv` (likely
+next words) is made from the English sentences of Tatoeba (https://tatoeba.org), CC BY 2.0 FR. See
+[`data/english/README.md`](data/english/README.md).
+
 ## Bijoy (SutonnyMJ) glyph tables (`crates/ekushe-core/src/bijoy.rs`)
 
 The glyph-to-letter tables of the Bijoy ⇄ Unicode converter come from bijoy_helper
