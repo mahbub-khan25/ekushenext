@@ -2,6 +2,19 @@
 
 Type Bangla the way it sounds, in English letters (`amar sonar bangla` → আমার সোনার বাংলা), and Ekushe writes it with the spelling you meant.
 
+**New in beta.15: English on the phone keyboards, good enough for every day (Android and iPhone/iPad).**
+- **Autocorrect that knows the keyboard:** a letter next to the one you meant (`thw` → the), two mistakes in a long word (`definately` → definitely) and words run together (`alot` → a lot) are fixed when you press Space; names, addresses and Banglish are left alone, and ⌫ right after puts back what you typed.
+- **Glide typing:** draw across the letters without lifting your finger to write an English word; other guesses show above the keys, and ⌫ right after removes the whole word.
+- **Better next words** from thousands of everyday sentences, and an **emoji** beside the word (love → ❤️).
+- **English keys without Bangla:** long-press for accents (é ñ ç …) and the top row's digits; email and web boxes get **@** or **/** and a **.com** key.
+- A full stop or comma after a word goes before the space (`good.`), and **sliding left from ⌫** deletes whole words.
+- **Hold a suggestion** to add your own word (never corrected again) or to stop seeing a word.
+- **One-handed keys** (◧ on the bar), and on Android, text you just copied shows on the bar for one-tap paste.
+
+**New in beta.15 (Android, experimental): voice typing.** Tap 🎤 on the bar and speak Bangla or English, in the language you are typing. It uses your phone's own speech service (Google's on most phones): if that language is downloaded on the phone for offline use your voice stays on the phone; otherwise that service may use the internet. Ekushe itself sends nothing. The microphone is asked for the first time you tap it. (Apple does not let keyboards use the microphone, so on iPhone use Apple's own dictation key.)
+
+**Android is now ready for Google Play:** it targets Android 16, and each release includes the file Google Play needs.
+
 **New in beta.14: lending your voice, all inside Studio.** In **একুশেকে কণ্ঠ দিন** you now choose the microphone you dictate with, watch a level bar while you read, and see your progress: how many of the 240 sentences you have sent, how far each part is, and a row of boxes for the sentences of the part (sent, recorded but not sent, or still to read; click one to go to it). A recording with almost no sound is caught at once, Space starts and stops recording, the arrow keys move between sentences and P plays back. Your progress is kept on your computer, so you can continue another day, and Studio reminds you before closing if recordings are not sent yet. As before, nothing is sent until you press পাঠান, and the recordings are used only to train Ekushe's own voice typing.
 
 **New in beta.13: make your own keyboard layout.** Studio → Settings → Keyboard layout → **নিজে লেআউট বানান** shows a keyboard: click a key and pick what it types, on its own, with Shift and with AltGr (right Alt). Choose the link key for conjuncts, whether vowel signs are typed first and whether the reph comes after, start from nothing or from a copy of a layout, and try it in the box below as you go; Ekushe tells you if a letter can't be typed yet. **সংরক্ষণ ও চালু করুন** saves it and turns it on, and it can be saved as a layout file for another computer or an Android tablet. On Android, layout files are now added on tablets only.
