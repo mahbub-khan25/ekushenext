@@ -34,7 +34,7 @@ jobs:
           android/build-rust.sh
       - name: App
         working-directory: android
-        run: ./gradlew --no-daemon assembleDebug assembleRelease
+        run: ./gradlew --no-daemon testDebugUnitTest assembleDebug assembleRelease
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ekushe-android
@@ -92,14 +92,14 @@ jobs:
       # A tablet with a physical keyboard attached (hw.keyboard): made here so the emulator starts with it
       - name: Make the tablet
         run: |
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "system-images;android-35;google_apis;x86_64" emulator >/dev/null
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "system-images;android-36;google_apis;x86_64" emulator >/dev/null
           mkdir -p "$ANDROID_AVD_HOME"
-          echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd --force -n test -k "system-images;android-35;google_apis;x86_64" -d pixel_tablet
+          echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd --force -n test -k "system-images;android-36;google_apis;x86_64" -d pixel_tablet
           sed -i 's/^hw.keyboard=.*/hw.keyboard=yes/' "$ANDROID_AVD_HOME/test.avd/config.ini"
           grep -E "keyboard|lcd|device" "$ANDROID_AVD_HOME/test.avd/config.ini"
       - uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
-          api-level: 35
+          api-level: 36
           target: google_apis
           arch: x86_64
           profile: pixel_tablet

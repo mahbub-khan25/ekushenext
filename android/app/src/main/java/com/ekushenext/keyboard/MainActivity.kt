@@ -18,6 +18,8 @@ import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import android.widget.SeekBar
 import android.widget.Toast
 import androidx.activity.result.PickVisualMediaRequest
@@ -114,8 +116,28 @@ class MainActivity : AppCompatActivity() {
         scroll = ScrollView(this).apply { isFillViewport = true }
         root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(18f), dp(24f), dp(18f), dp(40f)) }
         scroll.addView(root)
+        // Android 15+ draws apps edge to edge: keep the content clear of the status bar, the
+        // navigation bar, a camera cutout, and the keyboard while the try-it box is in use
+        ViewCompat.setOnApplyWindowInsetsListener(scroll) { v, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
+            v.setPadding(bars.left, bars.top, bars.right, maxOf(bars.bottom, ime.bottom))
+            insets
+        }
         setContentView(scroll)
         build()
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 7) {
+            val ok = grantResults.firstOrNull() == android.content.pm.PackageManager.PERMISSION_GRANTED
+            android.widget.Toast.makeText(this,
+                if (ok) "ভয়েস টাইপিং চালু। যেখানে লিখছিলেন সেখানে ফিরে 🎤 চাপুন · Voice typing is on: go back and tap the mic"
+                else "মাইক্রোফোন ছাড়া ভয়েস টাইপিং হবে না · voice typing needs the microphone", android.widget.Toast.LENGTH_LONG).show()
+            if (ok) moveTaskToBack(true)
+            build()
+        }
     }
 
     // Opened again from the keyboard (⚙, ?) while already running: take the new request
@@ -128,6 +150,12 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         build()
         val open = intent?.getStringExtra("open")
+        if (open == "mic") {
+            intent.removeExtra("open")
+            // the keyboard's 🎤: Android asks here, then you go back to where you were typing
+            if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED)
+                requestPermissions(arrayOf(android.Manifest.permission.RECORD_AUDIO), 7)
+        }
         if (open == "settings" || open == "marks") {
             intent.removeExtra("open")
             val at = if (open == "marks") marksAnchor else settingsAnchor
@@ -362,6 +390,10 @@ class MainActivity : AppCompatActivity() {
         card.addView(switch("ইংরেজি অটোকারেক্ট", "Space fixes a clear typo (teh → the, dont → don't). ⌫ right after puts back what you typed.", prefs.enAutocorrect) { prefs.enAutocorrect = it })
         divider(card)
         card.addView(switch("ইংরেজিতে পরের শব্দ", "Suggest the next word in English", prefs.nextWordEnglish) { prefs.nextWordEnglish = it })
+        divider(card)
+        card.addView(switch("গ্লাইড টাইপিং", "Draw across the letters without lifting your finger to write an English word. Other guesses show above the keys; ⌫ right after removes the whole word.", prefs.glide) { prefs.glide = it })
+        divider(card)
+        card.addView(switch("ভয়েস টাইপিং বোতাম (পরীক্ষামূলক)", "The 🎤 on the bar: speak Bangla or English, in the language you're typing. It uses your phone's speech service (Google on most phones): if that language is downloaded for offline use it stays on the phone, otherwise your voice goes to that service. Ekushe itself sends nothing.", prefs.voiceKey) { prefs.voiceKey = it })
         if (Build.VERSION.SDK_INT >= 31) {
             val tsm = getSystemService(TEXT_SERVICES_MANAGER_SERVICE) as android.view.textservice.TextServicesManager
             if (!tsm.isSpellCheckerEnabled) {

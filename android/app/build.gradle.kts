@@ -21,12 +21,12 @@ fun secret(key: String, env: String): String? = signing.getProperty(key) ?: Syst
 
 android {
     namespace = "com.ekushenext.keyboard"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.ekushenext.keyboard"
         minSdk = 24
-        targetSdk = 35
+        targetSdk = 36
         versionCode = versionNumber
         versionName = release
     }
@@ -73,13 +73,16 @@ android {
     lint {
         checkReleaseBuilds = false
     }
+    // Unit tests touch a few Android classes only by name
+    testOptions { unitTests.isReturnDefaultValues = true }
     packaging {
         jniLibs.useLegacyPackaging = false
     }
 }
 
 dependencies {
-    implementation("androidx.core:core-ktx:1.13.1")
+    implementation("androidx.core:core-ktx:1.16.0")
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("com.google.android.material:material:1.12.0")
+    testImplementation("junit:junit:4.13.2")
 }

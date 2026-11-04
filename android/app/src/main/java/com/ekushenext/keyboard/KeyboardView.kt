@@ -40,6 +40,21 @@ interface KeyboardListener {
     fun onShowKeys()
     /** The ? button: how to type conjuncts, hasanta and the other marks */
     fun onHelp()
+    /** Where the finger landed on the English letter about to be typed, in key units (see Spatial) */
+    fun onLetterTap(gx: Float, gy: Float) {}
+    /** Backspace slid left: mark this many words before the cursor (0: none) */
+    fun onDeleteWords(n: Int) {}
+    /** The slide ended: delete what is marked (or nothing, if it slid back) */
+    fun onDeleteWordsDone(n: Int) {}
+    /** The microphone button: start or stop voice typing */
+    fun onMic() {}
+    /** A line drawn across the English letters (glide typing), in key units */
+    fun onGlide(path: List<FloatArray>) {}
+    /** The copied-text button on the bar: paste it */
+    fun onPasteClip() {}
+    /** A suggestion held down: the word typed is added to your words, another is not suggested again */
+    fun onCandidateHold(index: Int) {}
+    fun onPredictionHold(word: String) {}
 }
 
 enum class Mode { LETTERS, SYMBOLS, MORE_SYMBOLS, NUMBERS, PHONE, EMOJI }
@@ -63,7 +78,21 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
     var shift = Shift.OFF
         set(v) { field = v; invalidate() }
     var bangla = true
-        set(v) { val changed = field != v; field = v; if (changed && (Layouts.fixed != null || mode == Mode.SYMBOLS)) buildKeys(); invalidate() }
+        set(v) { val changed = field != v; field = v; if (changed && (mode == Mode.LETTERS || mode == Mode.SYMBOLS)) buildKeys(); invalidate() }
+    /** An email or web address field: @ or / and .com on the bottom row */
+    var address = Layouts.Address.NONE
+        set(v) { if (field != v) { field = v; if (mode == Mode.LETTERS) buildKeys(); invalidate() } }
+    /** Voice typing: listening (the strip shows it), and how loud the voice is now (0..1) */
+    var listening = false
+        set(v) { field = v; invalidate() }
+    var voiceLevel = 0f
+        set(v) { field = v; if (listening) invalidate() }
+    /** Text copied a moment ago, offered on the bar as one tap to paste (null: none) */
+    var clip: String? = null
+        set(v) { field = v; invalidate() }
+    /** What the strip says while listening */
+    var listeningNote = ""
+        set(v) { field = v; if (listening) invalidate() }
 
     /** The fixed layout changed (or phonetic typing came back): new keys */
     fun reloadLayout() { buildKeys(); invalidate() }
@@ -148,8 +177,10 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
 
     private fun buildKeys() {
         rows = when (mode) {
-            Mode.LETTERS -> Layouts.fixed?.takeIf { bangla }?.let { Layouts.fixedLetters(it, prefs.numberRow) }
-                ?: Layouts.letters(prefs.numberRow)
+            Mode.LETTERS -> when {
+                !bangla -> Layouts.englishLetters(prefs.numberRow, address)
+                else -> Layouts.fixed?.let { Layouts.fixedLetters(it, prefs.numberRow) } ?: Layouts.letters(prefs.numberRow)
+            }
             Mode.SYMBOLS -> Layouts.symbols(bangla)
             Mode.MORE_SYMBOLS -> Layouts.moreSymbols()
             Mode.NUMBERS -> Layouts.numbers(false)
@@ -170,6 +201,13 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) = layoutKeys()
 
+    /** One-handed: the keys' area (left edge, width), and the side panel's two buttons */
+    private var keysLeft = 0f
+    private var keysW = 0f
+    private var sideSwap = RectF()
+    private var sideFull = RectF()
+    private fun oneHanded() = prefs.oneHand != 0 && mode != Mode.EMOJI && mode != Mode.NUMBERS && mode != Mode.PHONE && !stripOnly
+
     private fun layoutKeys() {
         if (width == 0) return
         val out = ArrayList<Placed>()
@@ -177,12 +215,21 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
         val areaH = height - stripH - bottomPad
         val rh = areaH / max(1, rows.size)
         val unitsMax = rows.maxOfOrNull { r -> r.sumOf { it.width.toDouble() } }?.toFloat() ?: 10f
+        // one-handed: the keys move to one side, a narrow panel with two buttons on the other
+        keysW = if (oneHanded()) width * 0.8f else width.toFloat()
+        keysLeft = if (oneHanded() && prefs.oneHand == 2) width - keysW else 0f
+        if (oneHanded()) {
+            val px = if (prefs.oneHand == 2) 0f else keysW
+            val pw = width - keysW
+            sideSwap = RectF(px + 6 * dp, areaTop + areaH * 0.12f, px + pw - 6 * dp, areaTop + areaH * 0.42f)
+            sideFull = RectF(px + 6 * dp, areaTop + areaH * 0.55f, px + pw - 6 * dp, areaTop + areaH * 0.85f)
+        }
         // the number pad spreads its four columns across; letters keep ten-key widths
         val pad = mode == Mode.NUMBERS || mode == Mode.PHONE
-        val unit = (width - gap) / (if (pad) unitsMax else max(10f, unitsMax))
+        val unit = (keysW - gap) / (if (pad) unitsMax else max(10f, unitsMax))
         rows.forEachIndexed { r, row ->
             val units = row.sumOf { it.width.toDouble() }.toFloat()
-            var x = (width - units * unit) / 2f
+            var x = keysLeft + (keysW - units * unit) / 2f
             val y = areaTop + r * rh
             row.forEach { k ->
                 val w = k.width * unit
@@ -237,8 +284,10 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
         logKeys()
         if (debuggable) { removeCallbacks(relog); relogLeft = 8; postDelayed(relog, 500) }
         for ((k, r) in placed) drawKey(c, k, r, pressedKey == k)
-        pressedKey?.let { k -> placed.firstOrNull { it.key == k }?.let { if (k.type == KeyType.CHAR && altsOpen == null) drawPreview(c, k, it.rect) } }
+        if (oneHanded()) drawSidePanel(c)
+        if (!gliding) pressedKey?.let { k -> placed.firstOrNull { it.key == k }?.let { if (k.type == KeyType.CHAR && altsOpen == null) drawPreview(c, k, it.rect) } }
         altsOpen?.let { drawAlts(c, it) }
+        if (glideTrail.size > 1) drawTrail(c)
     }
 
     /** The room under the strip: the physical keyboard's shortcuts, in case the taskbar steps aside */
@@ -337,6 +386,10 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
             }
         }
         if (effect == "ripple") drawRipples(c, slot, radius)
+        if (k.type == KeyType.DELETE && deleteSliding && pressed) {
+            textPaint.typeface = Typeface.DEFAULT_BOLD; textPaint.textSize = 13 * dp; textPaint.color = p.text
+            c.drawText(if (deleteWords == 0) "↩" else "−$deleteWords", r.centerX(), r.top + 14 * dp, textPaint)
+        }
 
         val fg = when { enter -> p.onEnter ?: p.onAccent; shift == Shift.LOCKED && k.type == KeyType.SHIFT -> p.onAccent; else -> p.text }
         when (k.type) {
@@ -384,9 +437,9 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
                     val dy = (textPaint.descent() + textPaint.ascent()) / 2
                     c.drawText(t, r.centerX(), r.centerY() - dy, textPaint)
                 }
-                // The Bangla letter this key types, small in the corner
-                if (k.letter && bangla && mode == Mode.LETTERS && prefs.keyHints) {
-                    val h = if (shift != Shift.OFF) k.hintShift else k.hint
+                // The Bangla letter this key types, small in the corner (in English: the digit on its long-press)
+                if (k.letter && mode == Mode.LETTERS && ((bangla && prefs.keyHints) || (!bangla && k.hint?.firstOrNull()?.isDigit() == true))) {
+                    val h = if (shift != Shift.OFF && bangla) k.hintShift else k.hint
                     if (h != null) {
                         hintPaint.typeface = bnFaceRegular
                         hintPaint.textSize = 10.5f * dp
@@ -399,6 +452,28 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
                     c.drawCircle(r.right - 6 * dp, r.top + 6 * dp, 1.6f * dp, keyPaint)
                 }
             }
+        }
+    }
+
+    /** One-handed: move the keys to the other side, or back to full width */
+    private fun drawSidePanel(c: Canvas) {
+        val p = palette
+        for ((r, glyph) in listOf(sideSwap to (if (prefs.oneHand == 2) "⇤" else "⇥"), sideFull to "⤢")) {
+            keyPaint.color = p.functionKey
+            c.drawRoundRect(r, 12 * dp, 12 * dp, keyPaint)
+            textPaint.typeface = Typeface.DEFAULT; textPaint.textSize = 22 * dp; textPaint.color = p.text
+            c.drawText(glyph, r.centerX(), r.centerY() + 8 * dp, textPaint)
+        }
+    }
+
+    /** The line the finger is drawing, thinner and fainter towards its start */
+    private fun drawTrail(c: Canvas) {
+        val pts = glideTrail.takeLast(48)
+        for (i in 1 until pts.size) {
+            val t = i / pts.size.toFloat()
+            trailPaint.color = Palette.alpha(palette.accent, 0.25f + 0.6f * t)
+            trailPaint.strokeWidth = (2.5f + 4f * t) * dp
+            c.drawLine(pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1], trailPaint)
         }
     }
 
@@ -436,7 +511,9 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
     private fun openAlts(k: Key, r: RectF) {
         val items = (if (shift != Shift.OFF) k.shiftAlts ?: k.alts else k.alts)
         if (items.isEmpty()) return
-        val cell = max(r.width(), 46 * dp)
+        textPaint.textSize = 15 * dp
+        val widest = items.maxOf { textPaint.measureText(it.label) }
+        val cell = max(max(r.width(), 46 * dp), widest + 18 * dp)
         val w = cell * items.size
         val h = 58 * dp
         val left = (r.centerX() - cell / 2).coerceIn(2 * dp, max(2 * dp, width - w - 2 * dp))
@@ -473,7 +550,7 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
     }
 
     // ── suggestion strip
-    private data class Chip(val rect: RectF, val action: () -> Unit, val label: String, val note: String?, val strong: Boolean, val tip: Boolean)
+    private data class Chip(val rect: RectF, val action: () -> Unit, val label: String, val note: String?, val strong: Boolean, val tip: Boolean, val hold: (() -> Unit)? = null)
     private var chips: List<Chip> = emptyList()
     private var stripScroll = 0f
     private var stripContentW = 0f
@@ -482,6 +559,7 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
         val p = palette
         keyPaint.color = p.strip
         c.drawRect(0f, 0f, width.toFloat(), stripH, keyPaint)
+        if (listening) { drawListening(c); return }
         val list = ArrayList<Chip>()
         val pad = 8 * dp
         val chipsRight = layoutCluster()
@@ -490,25 +568,25 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
         val bottom = stripH - 6 * dp
         textPaint.textSize = 17 * dp
 
-        fun chip(label: String, note: String?, strong: Boolean, tip: Boolean, action: () -> Unit) {
+        fun chip(label: String, note: String?, strong: Boolean, tip: Boolean, hold: (() -> Unit)? = null, action: () -> Unit) {
             textPaint.typeface = if (strong) bnFace else bnFaceRegular
             val tw = textPaint.measureText(label)
             var w = tw + 24 * dp
             if (note != null) { hintPaint.textSize = 12 * dp; w += hintPaint.measureText(note) + 8 * dp }
-            list += Chip(RectF(x, top, x + max(w, 52 * dp), bottom), action, label, note, strong, tip)
+            list += Chip(RectF(x, top, x + max(w, 52 * dp), bottom), action, label, note, strong, tip, hold)
             x += max(w, 52 * dp) + 6 * dp
         }
         when {
             candidates.isNotEmpty() -> {
                 candidates.forEachIndexed { i, cand ->
-                    chip(cand.text, if (cand.kind == "English") "EN" else null, i == selected, false) { listener.onCandidate(i) }
+                    chip(cand.text, if (cand.kind == "English") "EN" else null, i == selected, false, { listener.onCandidateHold(i) }) { listener.onCandidate(i) }
                 }
                 tips.forEach { t ->
                     val i = candidates.indexOfFirst { it.text == t.bangla }
                     if (i >= 0) chip(t.bangla, t.keys, false, true) { listener.onCandidate(i) }
                 }
             }
-            predictions.isNotEmpty() -> predictions.forEach { w -> chip(w, null, false, false) { listener.onPrediction(w) } }
+            predictions.isNotEmpty() -> predictions.forEach { w -> chip(w, null, false, false, { listener.onPredictionHold(w) }) { listener.onPrediction(w) } }
         }
         stripContentW = x + stripScroll
         chips = list
@@ -539,6 +617,38 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
         drawCluster(c)
     }
 
+    /** Voice typing: a red dot that grows with the voice, what was heard so far, and how to stop */
+    private fun drawListening(c: Canvas) {
+        val p = palette
+        cluster = emptyList(); chips = emptyList(); tools = emptyList()
+        val cy = stripH / 2
+        val r = 9 * dp + 7 * dp * voiceLevel.coerceIn(0f, 1f)
+        keyPaint.color = Palette.alpha(0xFFE0303F.toInt(), 0.25f)
+        c.drawCircle(24 * dp, cy, r + 4 * dp, keyPaint)
+        keyPaint.color = 0xFFE0303F.toInt()
+        c.drawCircle(24 * dp, cy, 9 * dp, keyPaint)
+        textPaint.typeface = Typeface.DEFAULT; textPaint.textSize = 12 * dp; textPaint.color = Color.WHITE
+        c.drawText("●", 24 * dp, cy + 4 * dp, textPaint)
+        // the stop button on the right
+        val stop = if (bangla) "থামুন" else "Done"
+        textPaint.typeface = bnFace; textPaint.textSize = 14 * dp
+        val sw = textPaint.measureText(stop) + 26 * dp
+        val pill = RectF(width - sw - 8 * dp, 8 * dp, width - 8 * dp, stripH - 8 * dp)
+        keyPaint.color = p.accent
+        c.drawRoundRect(pill, pill.height() / 2, pill.height() / 2, keyPaint)
+        textPaint.color = p.onAccent
+        c.drawText(stop, pill.centerX(), pill.centerY() + 5 * dp, textPaint)
+        // what was heard (the end of it, if long)
+        textPaint.typeface = bnFaceRegular; textPaint.textSize = 15 * dp; textPaint.color = p.text
+        textPaint.textAlign = Paint.Align.LEFT
+        var t = listeningNote
+        val room = pill.left - 48 * dp
+        while (t.length > 1 && textPaint.measureText(t) > room) t = t.substring(1)
+        if (t != listeningNote) t = "…" + t.drop(1)
+        c.drawText(t, 42 * dp, cy + 5.5f * dp, textPaint)
+        textPaint.textAlign = Paint.Align.CENTER
+    }
+
     // Always on the right of the bar, also while suggestions show: ; (for shortcuts), emoji and the
     // language switch (long-press: the phone's keyboard list)
     private var cluster: List<Tool> = emptyList()
@@ -551,9 +661,11 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
         // at most a third of the bar, so the suggestions keep most of it
         val ids = listOfNotNull(
             if (!stripOnly) "hide" else null, "lang",
-            if (prefs.emojiKey || stripOnly) "emoji" else null, if (!stripOnly) "semicolon" else null,
+            if (prefs.emojiKey || stripOnly) "emoji" else null,
+            if (prefs.voiceKey && !stripOnly) "mic" else null,
+            if (!stripOnly) "semicolon" else null,
         )
-        val share = mapOf("hide" to 0.8f, "lang" to 1.5f, "emoji" to 1f, "semicolon" to 0.8f)
+        val share = mapOf("hide" to 0.8f, "lang" to 1.5f, "emoji" to 1f, "mic" to 1f, "semicolon" to 0.8f)
         val total = minOf(width / 3f, ids.size * 38 * dp)
         val unit = total / ids.sumOf { share[it]!!.toDouble() }.toFloat()
         fun add(id: String, w: Float) { list += Tool(id, RectF(right - w, 0f, right, s)); right -= w }
@@ -590,12 +702,33 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
                     textPaint.typeface = Typeface.DEFAULT_BOLD; textPaint.textSize = 20 * dp; textPaint.color = p.text
                     c.drawText(";", t.rect.centerX(), t.rect.centerY() + 6 * dp, textPaint)
                 }
+                "mic" -> drawMic(c, t.rect.centerX(), t.rect.centerY(), p.subtext)
                 "hide" -> {
                     textPaint.typeface = Typeface.DEFAULT; textPaint.textSize = 18 * dp; textPaint.color = p.subtext
                     c.drawText("⌄", t.rect.centerX(), t.rect.centerY() + 3 * dp, textPaint)
                 }
             }
         }
+    }
+
+    /** A small clipboard, drawn */
+    private fun drawClipIcon(c: Canvas, cx: Float, cy: Float, color: Int) {
+        keyPaint.color = color; keyPaint.style = Paint.Style.STROKE; keyPaint.strokeWidth = 1.5f * dp
+        c.drawRoundRect(cx - 5 * dp, cy - 6 * dp, cx + 5 * dp, cy + 7 * dp, 1.5f * dp, 1.5f * dp, keyPaint)
+        keyPaint.style = Paint.Style.FILL
+        c.drawRoundRect(cx - 2.5f * dp, cy - 7.5f * dp, cx + 2.5f * dp, cy - 4.5f * dp, 1 * dp, 1 * dp, keyPaint)
+    }
+
+    /** A small microphone, drawn (the emoji one looks out of place among the other buttons) */
+    private fun drawMic(c: Canvas, cx: Float, cy: Float, color: Int) {
+        keyPaint.color = color
+        val w = 4.2f * dp; val h = 7.5f * dp
+        c.drawRoundRect(cx - w, cy - h - 2 * dp, cx + w, cy + 2 * dp, w, w, keyPaint)
+        keyPaint.style = Paint.Style.STROKE; keyPaint.strokeWidth = 1.6f * dp
+        c.drawArc(cx - 7 * dp, cy - 7 * dp, cx + 7 * dp, cy + 5.5f * dp, 20f, 140f, false, keyPaint)
+        c.drawLine(cx, cy + 5.5f * dp, cx, cy + 9 * dp, keyPaint)
+        c.drawLine(cx - 4 * dp, cy + 9 * dp, cx + 4 * dp, cy + 9 * dp, keyPaint)
+        keyPaint.style = Paint.Style.FILL
     }
 
     // Toolbar when nothing is being typed: language, emoji, settings, hide
@@ -609,12 +742,34 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
         tools = listOfNotNull(
             Tool("settings", RectF(4 * dp, 0f, 4 * dp + w, s)),
             if (stripMessage == null) Tool("help", RectF(4 * dp + w, 0f, 4 * dp + 2 * w, s)) else null,
+            if (stripMessage == null && clip == null && !stripOnly) Tool("onehand", RectF(4 * dp + 2 * w, 0f, 4 * dp + 3 * w, s)) else null,
         )
         textPaint.typeface = Typeface.DEFAULT
         textPaint.textSize = 20 * dp
         textPaint.color = p.subtext
-        val glyph = mapOf("help" to "?", "settings" to "⚙")
+        val glyph = mapOf("help" to "?", "settings" to "⚙", "onehand" to if (prefs.oneHand == 0) "◧" else "▭")
         for (t in tools) c.drawText(glyph[t.id]!!, t.rect.centerX(), t.rect.centerY() + 7 * dp, textPaint)
+        // something just copied: one tap pastes it
+        val copied = clip
+        if (copied != null && stripMessage == null) {
+            val left = 4 * dp + 2 * w + 4 * dp
+            val right = (cluster.minOfOrNull { it.rect.left } ?: width.toFloat()) - 8 * dp
+            if (right - left > 80 * dp) {
+                textPaint.typeface = bnFaceRegular; textPaint.textSize = 14 * dp
+                var t = copied.replace('\n', ' ').trim()
+                val room = right - left - 40 * dp
+                if (textPaint.measureText(t) > room) { while (t.length > 1 && textPaint.measureText("$t…") > room) t = t.dropLast(1); t += "…" }
+                val cw = textPaint.measureText(t) + 40 * dp
+                val r = RectF(left, 8 * dp, left + cw, s - 8 * dp)
+                keyPaint.color = p.chip
+                c.drawRoundRect(r, r.height() / 2, r.height() / 2, keyPaint)
+                textPaint.textAlign = Paint.Align.LEFT; textPaint.color = p.text
+                c.drawText(t, r.left + 30 * dp, r.centerY() + 5 * dp, textPaint)
+                textPaint.textAlign = Paint.Align.CENTER
+                drawClipIcon(c, r.left + 16 * dp, r.centerY(), p.subtext)
+                tools = tools + Tool("clip", r)
+            }
+        }
         // a note (password box, English only) beside the settings button
         stripMessage?.let {
             textPaint.typeface = bnFaceRegular; textPaint.textSize = 13 * dp; textPaint.color = p.subtext
@@ -716,6 +871,23 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
     private var emojiStartScroll = 0f
     private var longFired = false
     private var repeatCount = 0
+    private var lastX = 0f
+    private var lastY = 0f
+    /** Glide typing: the line being drawn, in key units (for the word) and on screen (the trail) */
+    private var glidePath: ArrayList<FloatArray>? = null
+    private val glideTrail = ArrayList<FloatArray>()
+    private var gliding = false
+    private val trailPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND }
+
+    /** A point on the keys in key units (q's centre is 0.5, 0.5), from the q key's place and size */
+    private fun toUnits(x: Float, y: Float): FloatArray? {
+        val q = placed.firstOrNull { it.key.type == KeyType.CHAR && it.key.text == "q" }?.rect ?: return null
+        return floatArrayOf(0.5f + (x - q.centerX()) / (q.width() + gap), 0.5f + (y - q.centerY()) / (q.height() + gap))
+    }
+
+    /** Backspace sliding left: whole words are marked, and deleted when the finger lifts */
+    private var deleteSliding = false
+    private var deleteWords = 0
 
     private val longPress = Runnable {
         val k = pressedKey ?: return@Runnable
@@ -730,7 +902,7 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
 
     private val repeatDelete = object : Runnable {
         override fun run() {
-            if (pressedKey?.type != KeyType.DELETE) return
+            if (pressedKey?.type != KeyType.DELETE || deleteSliding) return
             repeatCount++
             listener.onDelete()
             listener.onKeyFeedback(this@KeyboardView, HapticFeedbackConstants.KEYBOARD_TAP)
@@ -758,6 +930,14 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
                 if (y < stripH) { stripDown(x); return true }
                 if (stripOnly) return true
                 if (mode == Mode.EMOJI) { emojiDragging = false; emojiDownY = y; emojiStartScroll = emojiScroll; downX = x; downY = y; return true }
+                if (oneHanded() && (x < keysLeft || x > keysLeft + keysW)) {
+                    listener.onKeyFeedback(this, HapticFeedbackConstants.KEYBOARD_TAP)
+                    when {
+                        sideSwap.contains(x, y) -> { prefs.oneHand = if (prefs.oneHand == 2) 1 else 2; layoutKeys(); invalidate() }
+                        sideFull.contains(x, y) -> { prefs.oneHand = 0; layoutKeys(); invalidate() }
+                    }
+                    return true
+                }
                 val hit = keyAt(x, y) ?: return true
                 press(hit, x, y)
             }
@@ -798,8 +978,14 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
             ripples += Ripple(hit.rect, x, y, now)
         }
         longFired = false; spaceDragging = false; spaceAnchorX = x; repeatCount = 0
+        lastX = x; lastY = y; deleteSliding = false; deleteWords = 0
+        gliding = false; glideTrail.clear()
+        glidePath = if (k.type == KeyType.CHAR && k.letter && !bangla && mode == Mode.LETTERS && prefs.glide)
+            toUnits(x, y)?.let { arrayListOf(it) } else null
+        if (glidePath != null) glideTrail += floatArrayOf(x, y)
         listener.onKeyFeedback(this, HapticFeedbackConstants.KEYBOARD_TAP)
         when (k.type) {
+            // one character as the finger lands (sliding left afterwards marks whole words instead)
             KeyType.DELETE -> { listener.onDelete(); handler.postDelayed(repeatDelete, 400) }
             KeyType.SHIFT -> {}
             else -> handler.postDelayed(longPress, if (k.type == KeyType.CHAR) 330L else 500L)
@@ -809,6 +995,16 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
 
     private fun move(x: Float, y: Float) {
         val k = pressedKey ?: return
+        lastX = x; lastY = y
+        // glide typing: once the finger has travelled most of a key, it draws a word
+        glidePath?.let { gp ->
+            if (altsOpen == null) {
+                toUnits(x, y)?.let { gp += it }
+                glideTrail += floatArrayOf(x, y)
+                if (!gliding && Glide.isGlide(gp)) { gliding = true; handler.removeCallbacks(longPress) }
+                if (gliding) { invalidate(); return }
+            }
+        }
         altsOpen?.let { a ->
             val i = ((x - a.rect.left) / a.cell).toInt().coerceIn(0, a.items.size - 1)
             if (i != a.selected) { a.selected = i; invalidate() }
@@ -823,7 +1019,20 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
             }
             return
         }
-        if (k.type == KeyType.DELETE) return
+        if (k.type == KeyType.DELETE) {
+            // slide left: one more word marked for each step, back to the right: fewer
+            if (!deleteSliding && downX - x > 20 * dp && repeatCount == 0) { deleteSliding = true; handler.removeCallbacks(repeatDelete) }
+            if (deleteSliding) {
+                val n = max(0, ((downX - x - 12 * dp) / (26 * dp)).toInt() + 1)
+                if (n != deleteWords) {
+                    deleteWords = n
+                    listener.onDeleteWords(n)
+                    listener.onKeyFeedback(this, HapticFeedbackConstants.KEYBOARD_TAP)
+                    invalidate()
+                }
+            }
+            return
+        }
         // sliding to another key changes the choice
         val hit = keyAt(x, y)
         if (hit != null && hit.key != k && hit.key.type == KeyType.CHAR && k.type == KeyType.CHAR) {
@@ -840,14 +1049,34 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
         handler.removeCallbacks(longPress)
         handler.removeCallbacks(repeatDelete)
         val k = pressedKey
+        val r = pressedRect
         val a = altsOpen
         pressedKey = null; pressedRect = null; altsOpen = null
         invalidate()
+        if (deleteSliding) { deleteSliding = false; listener.onDeleteWordsDone(if (fire) deleteWords else 0); deleteWords = 0; return }
+        val path = glidePath
+        glidePath = null
+        if (gliding) {
+            gliding = false
+            postDelayed({ glideTrail.clear(); invalidate() }, 120)
+            if (fire && path != null) { listener.onGlide(path); afterChar() }
+            return
+        }
         if (!fire || k == null) return
         if (a != null) { listener.onText(a.items[a.selected].text); afterChar(); return }
         if (longFired || spaceDragging) return
         when (k.type) {
-            KeyType.CHAR -> { listener.onText(if (k.letter && shift != Shift.OFF) k.text.uppercase() else k.text); afterChar() }
+            KeyType.CHAR -> {
+                // English letters: where the finger landed, for spelling fixes
+                if (!bangla && mode == Mode.LETTERS && k.letter && r != null) {
+                    Spatial.center(k.text[0])?.let { c ->
+                        val unitW = r.width() + gap
+                        val unitH = r.height() + gap
+                        listener.onLetterTap(c[0] + (lastX - r.centerX()) / unitW, c[1] + (lastY - r.centerY()) / unitH)
+                    }
+                }
+                listener.onText(if (k.letter && shift != Shift.OFF) k.text.uppercase() else k.text); afterChar()
+            }
             KeyType.SPACE -> listener.onSpace()
             KeyType.ENTER -> listener.onEnter()
             KeyType.DELETE -> {}
@@ -890,6 +1119,7 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
     }
     private fun stripUp(x: Float, y: Float) {
         stripPressed = false
+        if (listening) { listener.onKeyFeedback(this, HapticFeedbackConstants.KEYBOARD_TAP); listener.onMic(); return }
         if (stripDragging) return
         listener.onKeyFeedback(this, HapticFeedbackConstants.KEYBOARD_TAP)
         cluster.firstOrNull { it.rect.contains(stripDownX, y) && it.rect.contains(x, y) }?.let {
@@ -898,16 +1128,25 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
                 "emoji" -> if (stripOnly) listener.onShowKeys() else openEmoji()
                 "semicolon" -> listener.onText(";")
                 "hide" -> listener.onHide()
+                "mic" -> listener.onMic()
             }
             return
         }
-        if (chips.isNotEmpty()) { chips.firstOrNull { it.rect.contains(x, y) }?.action?.invoke(); return }
+        if (chips.isNotEmpty()) {
+            val ch = chips.firstOrNull { it.rect.contains(x, y) } ?: return
+            // held down: the word's own choices (add it, or never suggest it)
+            if (android.os.SystemClock.uptimeMillis() - stripDownAt > 500 && ch.hold != null) { listener.onKeyFeedback(this, HapticFeedbackConstants.LONG_PRESS); ch.hold.invoke() }
+            else ch.action()
+            return
+        }
         when (tools.firstOrNull { it.rect.contains(x, y) }?.id) {
             "lang" -> listener.onLanguageToggle()
             "help" -> listener.onHelp()
             "emoji" -> if (stripOnly) listener.onShowKeys() else openEmoji()
             "settings" -> listener.onSettings()
             "hide" -> listener.onHide()
+            "clip" -> listener.onPasteClip()
+            "onehand" -> { prefs.oneHand = if (prefs.oneHand == 0) 2 else 0; layoutKeys(); invalidate() }
         }
     }
 
@@ -922,7 +1161,7 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
     // Settings changed in the app while the keyboard is open (the theme gallery): show them at once
     private val store = context.getSharedPreferences("keyboard", Context.MODE_PRIVATE)
     private val onPrefs = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-        if (key in setOf("theme", "key_borders", "photo", "photo_dim", "photo_stamp", "key_hints", "number_row", "height", "press_effect", "emoji_key")) post { refreshTheme() }
+        if (key in setOf("theme", "key_borders", "photo", "photo_dim", "photo_stamp", "key_hints", "number_row", "height", "press_effect", "emoji_key", "voice_key", "one_hand")) post { refreshTheme() }
     }
 
     override fun onAttachedToWindow() {

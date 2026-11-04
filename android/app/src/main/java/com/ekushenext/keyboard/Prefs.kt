@@ -78,4 +78,16 @@ class Prefs(context: Context) {
     var seenTour: Boolean
         get() = p.getBoolean("seen_tour", false)
         set(v) = p.edit().putBoolean("seen_tour", v).apply()
+    /** The microphone button on the bar: voice typing with the phone's speech service */
+    var voiceKey: Boolean
+        get() = p.getBoolean("voice_key", true)
+        set(v) = p.edit().putBoolean("voice_key", v).apply()
+    /** English: draw across the letters to write a word */
+    var glide: Boolean
+        get() = p.getBoolean("glide", true)
+        set(v) = p.edit().putBoolean("glide", v).apply()
+    /** One-handed keys: 0 off, 1 on the left, 2 on the right */
+    var oneHand: Int
+        get() = p.getInt("one_hand", 0)
+        set(v) = p.edit().putInt("one_hand", v).apply()
 }

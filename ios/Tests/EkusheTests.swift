@@ -103,6 +103,81 @@ final class EkusheTests: XCTestCase {
         XCTAssertTrue(doc.text.hasSuffix("www.ekushenext.com "), doc.text)
     }
 
+    func testEnglishNeighbouringKeysAndRunTogetherWords() {
+        english()
+        type("thw ")
+        XCTAssertEqual(doc.text, "the ", "w sits next to e")
+        type("abiut ")
+        XCTAssertTrue(doc.text.hasSuffix("about "), doc.text)
+        type("alot ")
+        XCTAssertTrue(doc.text.hasSuffix("a lot "), doc.text)
+        type("definately ")
+        XCTAssertTrue(doc.text.hasSuffix("definitely "), doc.text)
+    }
+
+    func testFullStopGoesBeforeTheAddedSpace() {
+        english()
+        type("good ")
+        typist.onText(".")
+        XCTAssertEqual(doc.text, "good. ")
+        type(" ")
+        XCTAssertEqual(doc.text, "good. ", "no second space")
+    }
+
+    func testBackspaceSlideDeletesWords() {
+        english()
+        type("one two three ")
+        typist.onDeleteWords(2)
+        XCTAssertEqual(doc.text, "one ")
+    }
+
+    func testEnglishKeysHaveAccentsNotBangla() {
+        english()
+        kb.mode = .letters
+        let e = Layouts.englishLetters(numberRow: false, globe: false)[0][2]
+        XCTAssertEqual(e.alts.first?.text, "3")
+        XCTAssertTrue(e.alts.contains { $0.text == "é" })
+        let email = Layouts.englishLetters(numberRow: false, globe: false, address: .email).last!
+        XCTAssertTrue(email.contains { $0.text == "@" } && email.contains { $0.text == ".com" })
+    }
+
+    func testGlideTyping() {
+        english()
+        kb.glide("hello")
+        XCTAssertEqual(doc.text.lowercased(), "hello", doc.text)
+        kb.glide("world")
+        XCTAssertTrue(doc.text.lowercased().hasSuffix("hello world"), doc.text)
+        typist.onDelete()
+        XCTAssertEqual(doc.text.lowercased(), "hello", "⌫ takes the whole glided word")
+    }
+
+    func testEmojiBesideTheWord() {
+        english()
+        type("love")
+        XCTAssertTrue(kb.candidates.contains { $0.text == "❤️" }, "\(kb.candidates.map { $0.text })")
+    }
+
+    func testOneHandedKeys() {
+        Prefs.shared.oneHand = 2
+        kb.mode = .letters
+        kb.layoutIfNeeded()
+        let q = kb.keyCentres["q"]!.x
+        Prefs.shared.oneHand = 0
+        kb.mode = .letters
+        XCTAssertGreaterThan(q, 390 * 0.2, "the keys moved to the right")
+        XCTAssertLessThan(kb.keyCentres["q"]!.x, 390 * 0.1)
+    }
+
+    func testHeldSuggestionIsNotSuggestedAgain() {
+        english()
+        type("beau")
+        XCTAssertTrue(kb.candidates.contains { $0.text == "beautiful" })
+        let i = kb.candidates.firstIndex { $0.text == "beautiful" }!
+        typist.onCandidateHold(i)
+        XCTAssertFalse(kb.candidates.contains { $0.text == "beautiful" })
+        English.shared.addWord("beautiful")
+    }
+
     func testEnglishCompletionsAndNextWords() {
         english()
         type("beau")

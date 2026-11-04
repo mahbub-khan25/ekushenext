@@ -1,8 +1,8 @@
 import UIKit
 
-/// English typing help, kept small, as on Android: complete a word from the 50,000 most common
-/// English words, catch a typo one letter away (with iOS's own spell checker, UITextChecker), learn
-/// the words you use, and offer a few likely next words.
+/// English typing help, as on Android: complete a word from the 50,000 most common English words,
+/// fix a typo by how close the keys are (with iOS's own spell checker, UITextChecker, asked too),
+/// learn the words you use, and offer a few likely next words.
 final class English {
     static let shared = English()
 
@@ -12,9 +12,16 @@ final class English {
     private var sorted: [String] = []
     private var exact = Set<String>()
     private var next: [String: [String]] = [:]
+    /// Emoji offered beside a word (love → ❤️ 😍)
+    private var emojiOf: [String: [String]] = [:]
     private var learned: [String: Int] = [:]
     private var pairs: [String: Int] = [:]
+    /// Words the person asked never to be suggested (a suggestion held down)
+    private var blocked = Set<String>()
     private(set) var ready = false
+    /// For corrections: the 40,000 most common words (plain form, as bytes), by length, with which letters each has
+    private var byLength: [[[UInt8]]] = []
+    private var lettersByLength: [[Int32]] = []
     private var dirty = false
     private let checker = UITextChecker()
     private var file: URL { Engine.folder.appendingPathComponent("en_learned.tsv") }
@@ -50,29 +57,48 @@ final class English {
                     if parts.count > 1 { next[parts[0], default: []].append(contentsOf: parts.dropFirst()) }
                 }
             }
+            var emojiOf: [String: [String]] = [:]
+            if let p = bundle.path(forResource: "emoji", ofType: "tsv"), let s = try? String(contentsOfFile: p, encoding: .utf8) {
+                for line in s.split(separator: "\n") where !line.hasPrefix("#") {
+                    let parts = line.split(separator: "\t").map(String.init)
+                    if parts.count > 1 { emojiOf[parts[0].lowercased()] = Array(parts.dropFirst()) }
+                }
+            }
             var learned: [String: Int] = [:], pairs: [String: Int] = [:]
+            var blocked = Set<String>()
             if let s = try? String(contentsOf: self.file, encoding: .utf8) {
                 for line in s.split(separator: "\n") {
+                    if line.hasPrefix("b\t") { blocked.insert(String(line.dropFirst(2))); continue }
                     let p = line.split(separator: "\t").map(String.init)
                     guard p.count == 3, let n = Int(p[2]) else { continue }
                     if p[0] == "w" { learned[p[1]] = n } else if p[0] == "p" { pairs[p[1]] = n }
                 }
             }
-            DispatchQueue.main.async {
+            var buckets = [[[UInt8]]](repeating: [], count: 32)
+            for (k, r) in rank where r < 40_000 && k.count < 32 && !k.isEmpty && k.utf8.allSatisfy({ $0 >= 97 && $0 <= 122 }) {
+                buckets[k.utf8.count].append(Array(k.utf8))
+            }
+            let masks = buckets.map { $0.map { Spatial.letters($0) } }
+            let sortedKeys = rank.keys.sorted()
+            let install = {
                 self.words = list; self.rankOf = rank; self.exact = exact
-                self.sorted = rank.keys.sorted(); self.next = next
-                self.learned = learned; self.pairs = pairs
+                self.byLength = buckets; self.lettersByLength = masks
+                self.sorted = sortedKeys; self.next = next; self.emojiOf = emojiOf
+                self.learned = learned; self.pairs = pairs; self.blocked = blocked
                 self.ready = true
             }
+            // tests load on the main thread and use it at once; the keyboard hands it over to the main thread
+            if sync { install() } else { DispatchQueue.main.async(execute: install) }
         }
         if sync {
             work()
-            // the main queue runs the hand-over at once in tests
-            RunLoop.main.run(until: Date().addingTimeInterval(0.05))
         } else {
             DispatchQueue.global(qos: .userInitiated).async(execute: work)
         }
     }
+
+    /// Emoji for a word (love → ❤️, 😍), or none
+    func emoji(_ word: String) -> [String] { emojiOf[word.lowercased()] ?? emojiOf[plain(word)] ?? [] }
 
     /// Words the person keeps on the phone (contacts' names, text replacements), from UILexicon
     func addSupplementary(_ ws: [String]) {
@@ -136,33 +162,128 @@ final class English {
             i += 1; scanned += 1
         }
         var seen = Set<String>()
-        return found.sorted { $0.1 > $1.1 }.map { spell(typed, $0.0) }.filter { seen.insert($0).inserted }.prefix(max).map { $0 }
+        return found.filter { !blocked.contains($0.0.lowercased()) }.sorted { $0.1 > $1.1 }.map { spell(typed, $0.0) }.filter { seen.insert($0).inserted }.prefix(max).map { $0 }
     }
 
-    /// Known words one letter away from a typo, best first, with iOS's own spell checker's guesses
-    func corrections(_ typed: String, max: Int = 3) -> [String] {
+    /// A guess at what was meant, with how far it is from what was typed
+    struct Guess { let word: String; let cost: Float; let score: Double }
+
+    private var memoAsk: String?
+    private var memoAnswer: [Guess] = []
+
+    /// Known words close to a typo, best first: letters mistyped (next keys cost least, and where the
+    /// finger landed counts), missing, extra or swapped, and two words run together (alot → a lot).
+    /// iOS's own spell checker's guesses are weighed the same way.
+    func guesses(_ typed: String, taps: [(Float, Float)?] = [], max: Int = 3) -> [Guess] {
         guard ready, typed.count >= 2, !known(typed) else { return [] }
-        let p = Array(plain(typed))
-        var cand = Set<String>()
-        let letters = Array("abcdefghijklmnopqrstuvwxyz")
-        for i in 0...p.count {
-            if i < p.count { var q = p; q.remove(at: i); cand.insert(String(q)) }
-            if i < p.count - 1 { var q = p; q.swapAt(i, i + 1); cand.insert(String(q)) }
-            for c in letters {
-                if i < p.count { var q = p; q[i] = c; cand.insert(String(q)) }
-                var q = p; q.insert(c, at: i); cand.insert(String(q))
+        // the same word is asked about more than once per key (the strip, then Space's choice)
+        let key = typed + "|" + taps.map { $0.map { "\($0.0),\($0.1)" } ?? "-" }.joined(separator: ";")
+        if key == memoAsk { return Array(memoAnswer.prefix(max)) }
+        let all = guessesNow(typed, taps: taps)
+        memoAsk = key; memoAnswer = all
+        return Array(all.prefix(max))
+    }
+
+    private func guessesNow(_ typed: String, taps: [(Float, Float)?]) -> [Guess] {
+        // letters only, each with its tap
+        var t: [UInt8] = [], tp: [(Float, Float)?] = []
+        for (i, ch) in typed.enumerated() where ch.isLetter {
+            guard let a = ch.lowercased().unicodeScalars.first, a.value >= 97, a.value <= 122 else { return [] }
+            t.append(UInt8(a.value)); tp.append(i < taps.count ? taps[i] : nil)
+        }
+        guard !t.isEmpty else { return [] }
+        let p = String(decoding: t, as: UTF8.self)
+        let limit = Spatial.limit(t.count)
+        let reach = t.count >= 6 ? 2 : 1
+        var found: [String: Guess] = [:]
+        let lowerTyped = typed.first?.isLowercase == true
+        func weigh(_ k: [UInt8]) {
+            let key = String(decoding: k, as: UTF8.self)
+            if found[key] != nil { return }
+            let c = Spatial.cost(t, tp, k, limit: limit)
+            if c > limit { return }
+            let r = rankOf[key]
+            let shown = r.map { words[$0] } ?? key
+            if quiet.contains(shown) || blocked.contains(shown.lowercased()) { return }
+            // a name (Dan, Eth) for a word typed in small letters is a less likely guess
+            let name = lowerTyped && shown.first?.isUppercase == true
+            found[key] = Guess(word: shown, cost: c, score: Spatial.score(rank: r ?? 60_000, learned: learned[shown] ?? learned[key] ?? 0, cost: c) - (name ? 2 : 0))
+        }
+        // a word sharing too few of the typed letters can't be close: skip it before the full comparison
+        let mine = Spatial.letters(t)
+        let need = mine.nonzeroBitCount - (t.count >= 6 ? 3 : 2)
+        for len in (t.count - reach)...(t.count + reach) where len >= 1 && len < byLength.count {
+            let list = byLength[len], masks = lettersByLength[len]
+            for i in 0..<list.count where (masks[i] & mine).nonzeroBitCount >= need {
+                if Spatial.startsLike(t, tp.first ?? nil, list[i]) { weigh(list[i]) }
             }
         }
-        var out: [String] = cand.compactMap { k in rankOf[k].map { words[$0] } }
-            .filter { !quiet.contains($0) && (rankOf[plain($0)] ?? Int.max) < 20_000 }
+        // the person's own words (names, places) count too
+        for (w, n) in learned {
+            let k = Array(plain(w).utf8)
+            guard k.count >= 2, abs(k.count - t.count) <= reach, k.allSatisfy({ $0 >= 97 && $0 <= 122 }), Spatial.startsLike(t, tp.first ?? nil, k) else { continue }
+            let key = String(decoding: k, as: UTF8.self)
+            if found[key] != nil { continue }
+            let c = Spatial.cost(t, tp, k, limit: limit)
+            if c <= limit { found[key] = Guess(word: w, cost: c, score: Spatial.score(rank: rankOf[key] ?? 60_000, learned: n, cost: c)) }
+        }
         // iOS's spell checker
         let ns = typed as NSString
         let miss = checker.rangeOfMisspelledWord(in: typed, range: NSRange(location: 0, length: ns.length), startingAt: 0, wrap: false, language: "en_US")
         if miss.location != NSNotFound {
-            out += (checker.guesses(forWordRange: miss, in: typed, language: "en_US") ?? []).prefix(3).filter { !$0.contains(" ") && !quiet.contains($0.lowercased()) }
+            for g in (checker.guesses(forWordRange: miss, in: typed, language: "en_US") ?? []).prefix(3) where !g.contains(" ") {
+                let k = Array(plain(g).utf8)
+                if !k.isEmpty && k.allSatisfy({ $0 >= 97 && $0 <= 122 }) { weigh(k) }
+            }
         }
+        // two words run together (alot, ofthe, inthe): both common
+        if t.count >= 3 && t.count <= 14 {
+            for i in 1..<t.count {
+                let a = String(p.prefix(i)), b = String(p.dropFirst(i))
+                guard let ra = rankOf[a], let rb = rankOf[b] else { continue }
+                if (a.count == 1 && a != "a" && a != "i") || ra > 3000 || rb > 3000 { continue }
+                let both = "\(words[ra]) \(words[rb])"
+                found[both] = Guess(word: both, cost: 0.5, score: Spatial.score(rank: Swift.max(ra, rb) * 2, learned: 0, cost: 0.5))
+            }
+        }
+        return Array(found.values.sorted { $0.score > $1.score }.prefix(8))
+    }
+
+    /// Words for a line drawn across the keys (glide typing), best first: the shape of the line
+    /// against each word's line through its letters, and how common the word is
+    func glide(_ path: [(Float, Float)], max: Int = 5, after: [String] = []) -> [String] {
+        guard ready, path.count >= 2, Glide.isGlide(path) else { return [] }
+        let rs = Glide.resample(path), dense = Glide.resample(path, 64)
+        let starts = Glide.keysNear(path[0], 1.15), ends = Glide.keysNear(path[path.count - 1], 1.15)
+        let pathLen = Glide.length(path)
+        let follow = Set(after.map { $0.lowercased() })
+        var found: [String: Double] = [:]
+        func weigh(_ k: [UInt8], _ shown: String, _ rank: Int, _ learnedN: Int) {
+            guard k.count >= 2, starts.contains(k[0]), ends.contains(k[k.count - 1]), found[shown] == nil else { return }
+            guard let line = Glide.wordLine(k), line.count >= 2, Glide.lengthFits(pathLen, Glide.length(line)) else { return }
+            guard Glide.covers(k, dense, 1.25), !quiet.contains(shown), !blocked.contains(shown.lowercased()) else { return }
+            // names only when you have written them yourself; a likely next word counts a little more
+            let name = shown.first?.isUppercase == true && learnedN == 0
+            found[shown] = Glide.score(rs, Glide.resample(line), rank: rank, learned: learnedN) - (name ? 1 : 0) + (follow.contains(shown.lowercased()) ? 0.8 : 0)
+        }
+        for len in 2..<byLength.count {
+            for k in byLength[len] where starts.contains(k[0]) && ends.contains(k[k.count - 1]) {
+                let key = String(decoding: k, as: UTF8.self)
+                guard let r = rankOf[key], r <= 30_000 else { continue }
+                weigh(k, words[r], r, learned[words[r]] ?? 0)
+            }
+        }
+        for (w, n) in learned {
+            let k = Array(plain(w).utf8)
+            if k.allSatisfy({ $0 >= 97 && $0 <= 122 }) { weigh(k, w, rankOf[String(decoding: k, as: UTF8.self)] ?? 40_000, n) }
+        }
+        return Array(found.sorted { $0.value > $1.value }.prefix(max).map { $0.key })
+    }
+
+    /// Known words close to a typo, best first, in the case the person typed
+    func corrections(_ typed: String, max: Int = 3, taps: [(Float, Float)?] = []) -> [String] {
         var seen = Set<String>()
-        return out.sorted { score($0) > score($1) }.map { spell(typed, $0) }.filter { seen.insert($0).inserted }.prefix(max).map { $0 }
+        return guesses(typed, taps: taps, max: max).map { spell(typed, $0.word) }.filter { seen.insert($0).inserted }
     }
 
     /// The most likely of some guesses: the most common word
@@ -178,7 +299,7 @@ final class English {
         if let p2 = prev2, let l = next["\(p2.lowercased()) \(a)"] { out += l }
         if let l = next[a] { out += l }
         var seen = Set<String>()
-        return out.map { $0 == "i" || $0.hasPrefix("i'") ? "I" + $0.dropFirst() : $0 }.filter { !$0.isEmpty && seen.insert($0).inserted }.prefix(max).map { $0 }
+        return out.filter { !blocked.contains($0.lowercased()) }.map { $0 == "i" || $0.hasPrefix("i'") ? "I" + $0.dropFirst() : $0 }.filter { !$0.isEmpty && seen.insert($0).inserted }.prefix(max).map { $0 }
     }
 
     /// Remember a word that was written (not in private fields)
@@ -195,12 +316,29 @@ final class English {
         var text = ""
         for (k, v) in learned.sorted(by: { $0.value > $1.value }).prefix(5000) { text += "w\t\(k)\t\(v)\n" }
         for (k, v) in pairs.sorted(by: { $0.value > $1.value }).prefix(5000) { text += "p\t\(k)\t\(v)\n" }
+        for b in blocked { text += "b\t\(b)\n" }
         try? FileManager.default.createDirectory(at: Engine.folder, withIntermediateDirectories: true)
         try? text.write(to: file, atomically: true, encoding: .utf8)
     }
 
+    /// Never suggest this word again (it can still be typed)
+    func block(_ word: String) {
+        let k = word.lowercased()
+        blocked.insert(k)
+        learned[word] = nil; learned[k] = nil
+        pairs = pairs.filter { !$0.key.hasSuffix(" " + k) }
+        dirty = true
+    }
+
+    /// One of your words: never corrected, and suggested like a common word
+    func addWord(_ word: String) {
+        blocked.remove(word.lowercased())
+        learned[word, default: 0] += 20
+        dirty = true
+    }
+
     func forget() {
-        learned.removeAll(); pairs.removeAll(); dirty = false
+        learned.removeAll(); pairs.removeAll(); blocked.removeAll(); dirty = false
         try? FileManager.default.removeItem(at: file)
     }
 }

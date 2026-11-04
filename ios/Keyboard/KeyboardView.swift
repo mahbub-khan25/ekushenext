@@ -15,6 +15,23 @@ protocol KeyboardListener: AnyObject {
     func onHide()
     func onEmoji(_ e: String)
     func onKeyFeedback()
+    /// Where the finger landed on the English letter about to be typed, in key units (see Spatial)
+    func onLetterTap(_ x: Float, _ y: Float)
+    /// Backspace slid left and let go: delete this many words before the cursor
+    func onDeleteWords(_ n: Int)
+    /// A line drawn across the English letters (glide typing), in key units
+    func onGlide(_ path: [(Float, Float)])
+    /// A suggestion held down: the word typed is added to your words, another is not suggested again
+    func onCandidateHold(_ index: Int)
+    func onPredictionHold(_ word: String)
+}
+
+extension KeyboardListener {
+    func onLetterTap(_ x: Float, _ y: Float) {}
+    func onDeleteWords(_ n: Int) {}
+    func onGlide(_ path: [(Float, Float)]) {}
+    func onCandidateHold(_ index: Int) {}
+    func onPredictionHold(_ word: String) {}
 }
 
 enum Mode { case letters, symbols, moreSymbols, numbers, emoji }
@@ -30,7 +47,9 @@ final class KeyboardView: UIView {
 
     var mode: Mode = .letters { didSet { buildKeys(); setNeedsDisplay() } }
     var shift: Shift = .off { didSet { setNeedsDisplay() } }
-    var bangla = true { didSet { if oldValue != bangla && mode == .symbols { buildKeys() }; setNeedsDisplay() } }
+    var bangla = true { didSet { if oldValue != bangla && (mode == .symbols || mode == .letters) { buildKeys() }; setNeedsDisplay() } }
+    /// An email or web address field: @ or / and .com on the bottom row
+    var address: Layouts.Address = .none { didSet { if oldValue != address && mode == .letters { buildKeys(); setNeedsDisplay() } } }
     var enterLabel = "↵" { didSet { setNeedsDisplay() } }
     /// iOS asks for a globe key when the phone has no other way to switch keyboards
     var showsGlobe = false { didSet { if oldValue != showsGlobe { buildKeys(); setNeedsDisplay() } } }
@@ -76,7 +95,8 @@ final class KeyboardView: UIView {
 
     private func buildKeys() {
         switch mode {
-        case .letters: rows = Layouts.letters(numberRow: prefs.numberRow, globe: showsGlobe)
+        case .letters: rows = bangla ? Layouts.letters(numberRow: prefs.numberRow, globe: showsGlobe)
+            : Layouts.englishLetters(numberRow: prefs.numberRow, globe: showsGlobe, address: address)
         case .symbols: rows = Layouts.symbols(globe: showsGlobe, bangla: bangla)
         case .moreSymbols: rows = Layouts.moreSymbols(globe: showsGlobe)
         case .numbers: rows = Layouts.numbers()
@@ -90,6 +110,13 @@ final class KeyboardView: UIView {
         layoutKeys()
     }
 
+    /// One-handed: the keys' area, and the side panel's two buttons
+    private var keysLeft: CGFloat = 0
+    private var keysW: CGFloat = 0
+    private var sideSwap = CGRect.zero
+    private var sideFull = CGRect.zero
+    private var oneHanded: Bool { prefs.oneHand != 0 && mode != .emoji && mode != .numbers }
+
     private func layoutKeys() {
         guard bounds.width > 0 else { return }
         var out: [Placed] = []
@@ -97,10 +124,18 @@ final class KeyboardView: UIView {
         let areaH = bounds.height - stripH - bottomPad
         let rh = areaH / CGFloat(max(1, rows.count))
         let unitsMax = rows.map { $0.reduce(0) { $0 + $1.width } }.max() ?? 10
-        let unit = (bounds.width - gap) / (mode == .numbers ? unitsMax : max(10, unitsMax))
+        // one-handed: the keys move to one side, a narrow panel with two buttons on the other
+        keysW = oneHanded ? bounds.width * 0.8 : bounds.width
+        keysLeft = oneHanded && prefs.oneHand == 2 ? bounds.width - keysW : 0
+        if oneHanded {
+            let px = prefs.oneHand == 2 ? 0 : keysW, pw = bounds.width - keysW
+            sideSwap = CGRect(x: px + 6, y: top + areaH * 0.12, width: pw - 12, height: areaH * 0.3)
+            sideFull = CGRect(x: px + 6, y: top + areaH * 0.55, width: pw - 12, height: areaH * 0.3)
+        }
+        let unit = (keysW - gap) / (mode == .numbers ? unitsMax : max(10, unitsMax))
         for (r, row) in rows.enumerated() {
             let units = row.reduce(0) { $0 + $1.width }
-            var x = (bounds.width - units * unit) / 2
+            var x = keysLeft + (keysW - units * unit) / 2
             let y = top + CGFloat(r) * rh
             for k in row {
                 let w = k.width * unit
@@ -140,8 +175,15 @@ final class KeyboardView: UIView {
         drawStrip()
         if mode == .emoji { drawEmoji(); return }
         for pl in placed { drawKey(pl.key, pl.rect, pressed: pressedKey == pl.key && pressedRect == pl.rect) }
-        if let k = pressedKey, let r = pressedRect, k.type == .char, alts == nil, mode != .numbers { drawPreview(k, r) }
+        if oneHanded {
+            for (r, g) in [(sideSwap, prefs.oneHand == 2 ? "⇤" : "⇥"), (sideFull, "⤢")] {
+                fill(r, 12, palette.functionKey)
+                draw(g, centre: CGPoint(x: r.midX, y: r.midY), font: font(22), color: palette.text)
+            }
+        }
+        if !gliding, let k = pressedKey, let r = pressedRect, k.type == .char, alts == nil, mode != .numbers { drawPreview(k, r) }
         if let a = alts { drawAlts(a) }
+        if glideTrail.count > 1 { drawTrail() }
     }
 
     private func isFunction(_ k: Key) -> Bool { k.type != .char && k.type != .space }
@@ -204,12 +246,30 @@ final class KeyboardView: UIView {
             let t = keyText(k)
             let size: CGFloat = [.delete, .shift, .emoji, .globe].contains(k.type) ? 20 : isFunction(k) ? 15 : mode == .numbers ? 27 : t.count > 2 ? 14 : 23
             draw(t, centre: c, font: font(size, k.letter ? .regular : .medium), color: fg)
-            if k.letter && bangla && mode == .letters && prefs.keyHints, let h = shift != .off ? k.hintShift : k.hint {
+            // the Bangla letter this key types, small in the corner (in English: the digit on its long-press)
+            let digitHint = !bangla && (k.hint?.first?.isNumber ?? false)
+            if k.letter && mode == .letters && ((bangla && prefs.keyHints) || digitHint), let h = (shift != .off && bangla) ? k.hintShift : k.hint {
                 let a: [NSAttributedString.Key: Any] = [.font: font(10), .foregroundColor: p.hint]
                 let s = (h as NSString).size(withAttributes: a)
                 (h as NSString).draw(at: CGPoint(x: r.maxX - s.width - 4, y: r.minY + 1), withAttributes: a)
             }
             if !k.alts.isEmpty && !k.letter { fill(CGRect(x: r.maxX - 8, y: r.minY + 5, width: 3, height: 3), 1.5, p.subtext) }
+            if k.type == .delete && deleteSliding && pressed {
+                draw(deleteWords == 0 ? "↩" : "−\(deleteWords)", centre: CGPoint(x: r.midX, y: r.minY + 10), font: font(12, .bold), color: p.text)
+            }
+        }
+    }
+
+    /// The line the finger is drawing, thinner and fainter towards its start
+    private func drawTrail() {
+        let pts = Array(glideTrail.suffix(48))
+        for i in 1..<pts.count {
+            let t = CGFloat(i) / CGFloat(pts.count)
+            palette.accent.withAlphaComponent(0.25 + 0.6 * t).setStroke()
+            let b = UIBezierPath()
+            b.move(to: pts[i - 1]); b.addLine(to: pts[i])
+            b.lineWidth = 2.5 + 4 * t; b.lineCapStyle = .round
+            b.stroke()
         }
     }
 
@@ -233,7 +293,8 @@ final class KeyboardView: UIView {
     private func openAlts(_ k: Key, _ r: CGRect) {
         let items = shift != .off ? (k.shiftAlts ?? k.alts) : k.alts
         guard !items.isEmpty else { return }
-        let cell = max(r.width, 46)
+        let widest = items.map { ($0.label as NSString).size(withAttributes: [.font: font(15, .semibold)]).width }.max() ?? 0
+        let cell = max(max(r.width, 46), widest + 18)
         let w = cell * CGFloat(items.count), h: CGFloat = 58
         let left = min(max(2, r.midX - cell / 2), max(2, bounds.width - w - 2))
         alts = AltsPopup(key: k, items: items, rect: CGRect(x: left, y: max(0, r.minY - h - 4), width: w, height: h), cell: cell, selected: 0)
@@ -255,7 +316,7 @@ final class KeyboardView: UIView {
     }
 
     // ── suggestion strip
-    private struct Chip { let rect: CGRect; let action: () -> Void; let label: String; let note: String?; let strong: Bool; let tip: Bool }
+    private struct Chip { let rect: CGRect; let action: () -> Void; let label: String; let note: String?; let strong: Bool; let tip: Bool; var hold: (() -> Void)? = nil }
     private var chips: [Chip] = []
     private var stripScroll: CGFloat = 0
     private var stripContentW: CGFloat = 0
@@ -268,19 +329,19 @@ final class KeyboardView: UIView {
         var list: [Chip] = []
         let chipsRight = layoutCluster()
         var x: CGFloat = 8 - stripScroll
-        func chip(_ label: String, _ note: String?, strong: Bool, tip: Bool, _ action: @escaping () -> Void) {
+        func chip(_ label: String, _ note: String?, strong: Bool, tip: Bool, hold: (() -> Void)? = nil, _ action: @escaping () -> Void) {
             let f = font(17, strong ? .semibold : .regular)
             var w = (label as NSString).size(withAttributes: [.font: f]).width + 24
             if let n = note { w += (n as NSString).size(withAttributes: [.font: font(12, .bold)]).width + 8 }
             w = max(w, 52)
-            list.append(Chip(rect: CGRect(x: x, y: 6, width: w, height: stripH - 12), action: action, label: label, note: note, strong: strong, tip: tip))
+            list.append(Chip(rect: CGRect(x: x, y: 6, width: w, height: stripH - 12), action: action, label: label, note: note, strong: strong, tip: tip, hold: hold))
             x += w + 6
         }
         if !candidates.isEmpty {
-            for (i, c) in candidates.enumerated() { chip(c.text, c.kind == "English" ? "EN" : nil, strong: i == 0, tip: false) { [weak self] in self?.listener?.onCandidate(i) } }
+            for (i, c) in candidates.enumerated() { chip(c.text, c.kind == "English" ? "EN" : nil, strong: i == 0, tip: false, hold: { [weak self] in self?.listener?.onCandidateHold(i) }) { [weak self] in self?.listener?.onCandidate(i) } }
             for t in tips { if let i = candidates.firstIndex(where: { $0.text == t.bangla }) { chip(t.bangla, t.keys, strong: false, tip: true) { [weak self] in self?.listener?.onCandidate(i) } } }
         } else if !predictions.isEmpty {
-            for w in predictions { chip(w, nil, strong: false, tip: false) { [weak self] in self?.listener?.onPrediction(w) } }
+            for w in predictions { chip(w, nil, strong: false, tip: false, hold: { [weak self] in self?.listener?.onPredictionHold(w) }) { [weak self] in self?.listener?.onPrediction(w) } }
         }
         stripContentW = x + stripScroll
         chips = list
@@ -345,12 +406,13 @@ final class KeyboardView: UIView {
         let p = palette
         let w: CGFloat = 48
         tools = [Tool(id: "settings", rect: CGRect(x: 4, y: 0, width: w, height: stripH))]
+        if stripMessage == nil { tools.append(Tool(id: "onehand", rect: CGRect(x: 4 + w, y: 0, width: w, height: stripH))) }
         if let m = stripMessage {
             let a: [NSAttributedString.Key: Any] = [.font: font(13), .foregroundColor: p.subtext]
             let s = (m as NSString).size(withAttributes: a)
             (m as NSString).draw(at: CGPoint(x: 4 + w + 6, y: stripH / 2 - s.height / 2), withAttributes: a)
         }
-        let glyph = ["settings": "⚙︎"]
+        let glyph = ["settings": "⚙︎", "onehand": prefs.oneHand == 0 ? "◧" : "▭"]
         for t in tools { draw(glyph[t.id]!, centre: CGPoint(x: t.rect.midX, y: t.rect.midY), font: font(21), color: p.subtext) }
     }
 
@@ -426,11 +488,26 @@ final class KeyboardView: UIView {
     private var repeatTimer: Timer?
     private var repeatCount = 0
     private var stripPressed = false
+    private var stripDownAt = Date.distantPast
     private var stripDragging = false
     private var stripStartScroll: CGFloat = 0
     private var emojiDragging = false
     private var emojiStartScroll: CGFloat = 0
     private var lastShiftTap = Date.distantPast
+    private var lastPoint = CGPoint.zero
+    /// Glide typing: the line being drawn, in key units (for the word) and on screen (the trail)
+    private var glidePath: [(Float, Float)]?
+    private var glideTrail: [CGPoint] = []
+    private var gliding = false
+
+    /// A point on the keys in key units (q's centre is 0.5, 0.5), from the q key's place and size
+    private func toUnits(_ pt: CGPoint) -> (Float, Float)? {
+        guard let q = placed.first(where: { $0.key.type == .char && $0.key.text == "q" })?.rect else { return nil }
+        return (0.5 + Float((pt.x - q.midX) / (q.width + gap)), 0.5 + Float((pt.y - q.midY) / (q.height + gap)))
+    }
+    /// Backspace sliding left: whole words are counted, and deleted when the finger lifts
+    private var deleteSliding = false
+    private var deleteWords = 0
 
     private func keyAt(_ pt: CGPoint) -> Placed? {
         if let hit = placed.first(where: { $0.rect.contains(pt) }) { return hit }
@@ -445,8 +522,15 @@ final class KeyboardView: UIView {
             activeTouch = t
             let pt = t.location(in: self)
             downPoint = pt
-            if pt.y < stripH { stripPressed = true; stripDragging = false; stripStartScroll = stripScroll; continue }
+            if pt.y < stripH { stripPressed = true; stripDragging = false; stripStartScroll = stripScroll; stripDownAt = Date(); continue }
             if mode == .emoji { emojiDragging = false; emojiStartScroll = emojiScroll; continue }
+            if oneHanded && (pt.x < keysLeft || pt.x > keysLeft + keysW) {
+                listener?.onKeyFeedback()
+                if sideSwap.contains(pt) { prefs.oneHand = prefs.oneHand == 2 ? 1 : 2; layoutKeys(); setNeedsDisplay() }
+                else if sideFull.contains(pt) { prefs.oneHand = 0; layoutKeys(); setNeedsDisplay() }
+                activeTouch = nil
+                continue
+            }
             if let hit = keyAt(pt) { press(hit, pt) }
         }
     }
@@ -469,6 +553,14 @@ final class KeyboardView: UIView {
             return
         }
         guard let k = pressedKey else { return }
+        lastPoint = pt
+        // glide typing: once the finger has travelled most of a key, it draws a word
+        if glidePath != nil && alts == nil {
+            if let u = toUnits(pt) { glidePath!.append(u) }
+            glideTrail.append(pt)
+            if !gliding && Glide.isGlide(glidePath!) { gliding = true; longTimer?.invalidate() }
+            if gliding { setNeedsDisplay(); return }
+        }
         if var a = alts {
             let i = min(max(0, Int((pt.x - a.rect.minX) / a.cell)), a.items.count - 1)
             if i != a.selected { a.selected = i; alts = a; setNeedsDisplay() }
@@ -483,7 +575,15 @@ final class KeyboardView: UIView {
             }
             return
         }
-        if k.type == .delete { return }
+        if k.type == .delete {
+            // slide left: one more word for each step, back to the right: fewer
+            if !deleteSliding && downPoint.x - pt.x > 20 && repeatCount == 0 { deleteSliding = true; repeatTimer?.invalidate() }
+            if deleteSliding {
+                let n = max(0, Int((downPoint.x - pt.x - 12) / 26) + 1)
+                if n != deleteWords { deleteWords = n; listener?.onKeyFeedback(); setNeedsDisplay() }
+            }
+            return
+        }
         // sliding to another key changes the choice
         if let hit = keyAt(pt), hit.key != k, hit.key.type == .char, k.type == .char {
             pressedKey = hit.key; pressedRect = hit.rect
@@ -515,6 +615,10 @@ final class KeyboardView: UIView {
         let k = hit.key
         pressedKey = k; pressedRect = hit.rect
         longFired = false; spaceDragging = false; spaceAnchorX = pt.x; repeatCount = 0
+        lastPoint = pt; deleteSliding = false; deleteWords = 0
+        gliding = false; glideTrail = []
+        glidePath = (k.type == .char && k.letter && !bangla && mode == .letters && prefs.glide) ? toUnits(pt).map { [$0] } : nil
+        if glidePath != nil { glideTrail = [pt] }
         listener?.onKeyFeedback()
         switch k.type {
         case .delete:
@@ -528,7 +632,7 @@ final class KeyboardView: UIView {
     }
 
     private func repeatDelete() {
-        guard pressedKey?.type == .delete else { return }
+        guard pressedKey?.type == .delete, !deleteSliding else { return }
         repeatCount += 1
         listener?.onDelete()
         repeatTimer = Timer.scheduledTimer(withTimeInterval: repeatCount > 12 ? 0.035 : 0.07, repeats: false) { [weak self] _ in self?.repeatDelete() }
@@ -545,14 +649,28 @@ final class KeyboardView: UIView {
 
     private func release(fire: Bool) {
         longTimer?.invalidate(); repeatTimer?.invalidate()
-        let k = pressedKey, a = alts
+        let k = pressedKey, a = alts, r = pressedRect
         pressedKey = nil; pressedRect = nil; alts = nil
         setNeedsDisplay()
+        if deleteSliding { deleteSliding = false; if fire && deleteWords > 0 { listener?.onDeleteWords(deleteWords) }; deleteWords = 0; return }
+        let path = glidePath
+        glidePath = nil
+        if gliding {
+            gliding = false
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { [weak self] in self?.glideTrail = []; self?.setNeedsDisplay() }
+            if fire, let path { listener?.onGlide(path); afterChar() }
+            return
+        }
         guard fire, let k else { return }
         if let a { listener?.onText(a.items[a.selected].text); afterChar(); return }
         if longFired || spaceDragging { return }
         switch k.type {
-        case .char: listener?.onText(k.letter && shift != .off ? k.text.uppercased() : k.text); afterChar()
+        case .char:
+            // English letters: where the finger landed, for spelling fixes
+            if !bangla && mode == .letters && k.letter, let r, let c = Spatial.center(Character(k.text)) {
+                listener?.onLetterTap(c.0 + Float((lastPoint.x - r.midX) / (r.width + gap)), c.1 + Float((lastPoint.y - r.midY) / (r.height + gap)))
+            }
+            listener?.onText(k.letter && shift != .off ? k.text.uppercased() : k.text); afterChar()
         case .space: listener?.onSpace()
         case .enter: listener?.onEnter()
         case .delete: break
@@ -587,11 +705,17 @@ final class KeyboardView: UIView {
             }
             return
         }
-        if !chips.isEmpty { chips.first(where: { $0.rect.contains(pt) })?.action(); return }
+        if !chips.isEmpty {
+            guard let ch = chips.first(where: { $0.rect.contains(pt) }) else { return }
+            // held down: the word's own choices (add it, or never suggest it)
+            if Date().timeIntervalSince(stripDownAt) > 0.5, let h = ch.hold { h() } else { ch.action() }
+            return
+        }
         switch tools.first(where: { $0.rect.contains(pt) })?.id {
         case "lang": listener?.onLanguageToggle()
         case "emoji": openEmoji()
         case "settings": listener?.onSettings()
+        case "onehand": prefs.oneHand = prefs.oneHand == 0 ? 2 : 0; layoutKeys(); setNeedsDisplay()
         case "hide": listener?.onHide()
         default: break
         }
@@ -603,6 +727,21 @@ final class KeyboardView: UIView {
         if emojiDel.contains(pt) { listener?.onDelete(); return }
         if let tab = emojiTabs.first(where: { $0.0.contains(pt) }) { emojiGroup = tab.1; emojiScroll = 0; setNeedsDisplay(); return }
         if let cell = emojiCells.first(where: { $0.0.contains(pt) }) { rememberEmoji(cell.1); listener?.onEmoji(cell.1) }
+    }
+
+    // ── for tests: draw a word across the keys as a finger would
+    func glide(_ word: String) {
+        let pts = word.compactMap { c in placed.first(where: { $0.key.id == String(c) }).map { CGPoint(x: $0.rect.midX, y: $0.rect.midY) } }
+        guard let first = pts.first, let hit = keyAt(first) else { return }
+        press(hit, first)
+        for (a, b) in zip(pts, pts.dropFirst()) {
+            for s in 1...6 {
+                let p = CGPoint(x: a.x + (b.x - a.x) * CGFloat(s) / 6, y: a.y + (b.y - a.y) * CGFloat(s) / 6)
+                lastPoint = p
+                if glidePath != nil, let u = toUnits(p) { glidePath!.append(u); if Glide.isGlide(glidePath!) { gliding = true } }
+            }
+        }
+        release(fire: true)
     }
 
     // ── for tests: press a key as a finger would

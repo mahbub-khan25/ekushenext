@@ -220,6 +220,75 @@ got = field_text()[0] or ''
 expect("dont → don't, i → I", got.endswith("don't I "), True)
 typed('thank ')
 shot('10c-english-thank')
+# a neighbouring key (w for e) is fixed by where it sits on the keyboard
+typed('thw ')
+got = field_text()[0] or ''
+expect('thw → the (neighbouring key)', got.endswith('the '), True)
+# two words run together
+typed('alot ')
+got = field_text()[0] or ''
+expect('alot → a lot', got.endswith('a lot '), True)
+# a full stop after a word goes before the space Ekushe added
+typed('good')
+typed(' .', 0.3)
+got = field_text()[0] or ''
+expect('word + . → "word. "', got.endswith('good. '), True)
+typed(' ', 0.4)
+got = field_text()[0] or ''
+expect('Space after "word. " is not doubled', got.endswith('good. '), True)
+# long-press e in English: accents (and the digit 3), not Bangla
+x, y = km['e']
+sh(f'input motionevent DOWN {x} {y}')
+time.sleep(0.9)
+shot('10e-english-longpress-e')
+sh(f'input motionevent UP {x} {y}')
+time.sleep(0.4)
+got = field_text()[0] or ''
+expect('long-press e in English types 3', got.endswith('3'), True)
+tap(*km['DELETE'], 0.4)
+# slide left from Backspace: whole words
+typed('one two three ')
+before = field_text()[0] or ''
+x, y = km['DELETE']
+sh(f'input motionevent DOWN {x} {y}')
+time.sleep(0.15)
+for dx in (30, 60, 90, 120, 150):
+    sh(f'input motionevent MOVE {x - dx} {y}')
+    time.sleep(0.08)
+time.sleep(0.3)
+shot('10f-delete-words')
+sh(f'input motionevent UP {x - 150} {y}')
+time.sleep(0.6)
+got = field_text()[0] or ''
+expect('Backspace slide deletes whole words', len(got) < len(before) - 4 and not got.endswith('three '), True)
+# glide typing: draw h-e-l-l-o without lifting the finger
+def glide(word):
+    pts = [km[c] for c in word]
+    x0, y0 = pts[0]
+    sh(f'input motionevent DOWN {x0} {y0}')
+    for (ax, ay), (bx, by) in zip(pts, pts[1:]):
+        for s in range(1, 7):
+            sh(f'input motionevent MOVE {ax + (bx - ax) * s // 6} {ay + (by - ay) * s // 6}')
+    time.sleep(0.2)
+    sh(f'input motionevent UP {pts[-1][0]} {pts[-1][1]}')
+    time.sleep(0.8)
+before = field_text()[0] or ''
+glide('hello')
+shot('10h-glide-hello')
+got = field_text()[0] or ''
+expect('glide typing writes hello', got.rstrip().lower().endswith('hello'), True)
+tap(*km['DELETE'], 0.6)
+got = field_text()[0] or ''
+expect('⌫ after glide removes the whole word', got == before, True)
+# an emoji beside the word
+typed('love', 0.15)
+shot('10i-emoji-suggestion')
+typed(' ', 0.4)
+# the microphone on the bar
+if 'MIC' in km:
+    tap(*km['MIC'], 1.5)
+    shot('10g-voice')
+    tap(*km['MIC'], 0.8)
 
 def sym(ch):
     """Type a mark from the symbols page and come back to the letters."""

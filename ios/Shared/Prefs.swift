@@ -22,4 +22,8 @@ final class Prefs {
     var recentEmoji: [String] { get { d.stringArray(forKey: "recent_emoji") ?? [] } set { d.set(Array(newValue.prefix(32)), forKey: "recent_emoji") } }
     var enAutocorrect: Bool { get { bool("en_autocorrect", true) } set { d.set(newValue, forKey: "en_autocorrect") } }
     var nextWordEnglish: Bool { get { bool("en_next_word", true) } set { d.set(newValue, forKey: "en_next_word") } }
+    /// English: draw across the letters to write a word
+    var glide: Bool { get { bool("glide", true) } set { d.set(newValue, forKey: "glide") } }
+    /// One-handed keys: 0 off, 1 on the left, 2 on the right
+    var oneHand: Int { get { d.integer(forKey: "one_hand") } set { d.set(newValue, forKey: "one_hand") } }
 }
