@@ -21,6 +21,8 @@ object English {
     /** The words exactly as listed ("its" and "it's" are both words) */
     private val exact = HashSet<String>(80_000)
     private val next = HashMap<String, List<String>>()
+    /** Emoji offered beside a word (love → ❤️ 😍) */
+    private val emojiOf = HashMap<String, List<String>>()
     /** How often you chose each word, and which word you wrote after which */
     private val learned = HashMap<String, Int>()
     private val pairs = HashMap<String, Int>()
@@ -45,6 +47,7 @@ object English {
         thread(name = "ekushe-english") {
             runCatching {
                 loadWords(app.assets.open("en/words.txt").bufferedReader().readLines())
+                runCatching { loadEmoji(app.assets.open("en/emoji.tsv").bufferedReader().readLines()) }
                 app.assets.open("en/next.tsv").bufferedReader().forEachLine { line ->
                     if (line.startsWith("#") || line.isBlank()) return@forEachLine
                     val parts = line.split('\t')
@@ -82,6 +85,17 @@ object English {
         byLength = Array(32) { buckets[it].toTypedArray() }
         lettersByLength = Array(32) { l -> IntArray(byLength[l].size) { Spatial.letters(byLength[l][it]) } }
     }
+
+    internal fun loadEmoji(lines: List<String>) {
+        for (line in lines) {
+            if (line.startsWith("#") || line.isBlank()) continue
+            val p = line.split('\t')
+            if (p.size > 1) emojiOf[p[0].lowercase()] = p.drop(1).filter { it.isNotBlank() }
+        }
+    }
+
+    /** Emoji for a word (love → ❤️, 😍), or none */
+    fun emoji(word: String): List<String> = emojiOf[word.lowercase()] ?: emojiOf[plain(word)].orEmpty()
 
     /** Tests: the word list alone, ready to use */
     internal fun loadForTest(lines: List<String>) { loadWords(lines); ready.set(true) }

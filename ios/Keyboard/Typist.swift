@@ -301,6 +301,15 @@ final class Typist: KeyboardListener {
 
     func onCandidate(_ index: Int) {
         guard let t = target else { return }
+        if !en.isEmpty, index < enShown.count, let f = enShown[index].first, !f.isLetter {
+            // an emoji: the word as Space would place it, then the emoji
+            let emoji = enShown[index]
+            placeEnglish(correct: true)
+            t.insert(" " + emoji + " ")
+            lastSpaceAt = Date()
+            showNextEnglish(); updateAutoShift()
+            return
+        }
         if !en.isEmpty {
             guard index < enShown.count else { return }
             let word = enShown[index]
@@ -397,7 +406,11 @@ final class Typist: KeyboardListener {
         list += E.complete(en, max: 3)
         if !E.known(en) { list += E.corrections(en, max: 3, taps: enTaps) }
         var seen = Set<String>()
-        enShown = Array(list.filter { !$0.isEmpty && seen.insert($0).inserted }.prefix(6))
+        let words = list.filter { !$0.isEmpty && seen.insert($0).inserted }
+        // an emoji for the word (love → ❤️) right after what Space places
+        let base = fix ?? (E.known(en) ? en : (words.count > 1 ? words[1] : nil))
+        let emo = (privateField || base == nil) ? [] : Array(E.emoji(base!).prefix(1))
+        enShown = Array((Array(words.prefix(1)) + emo + Array(words.dropFirst())).prefix(6))
         view?.showSuggestions(enShown.map { Candidate(text: $0, kind: "") }, [], [])
     }
 

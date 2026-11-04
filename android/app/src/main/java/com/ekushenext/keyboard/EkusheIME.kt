@@ -565,6 +565,16 @@ class EkusheIME : InputMethodService(), KeyboardListener, Voice.Events {
     }
 
     override fun onCandidate(index: Int) {
+        if (en.isNotEmpty() && enShown.getOrNull(index)?.firstOrNull()?.isLetter() == false) {
+            // an emoji: the word as Space would place it, then the emoji
+            val emoji = enShown[index]
+            val ic = currentInputConnection ?: return
+            placeEnglish(correct = true)
+            editing = true; ic.commitText(" $emoji ", 1); editing = false
+            lastSpaceAt = System.currentTimeMillis()
+            showNextEnglish(); updateAutoShift()
+            return
+        }
         if (en.isNotEmpty()) {
             val word = enShown.getOrNull(index) ?: return
             val ic = currentInputConnection ?: return
@@ -634,7 +644,11 @@ class EkusheIME : InputMethodService(), KeyboardListener, Voice.Events {
         spell?.answer(typed)?.let { a -> if (a.typo) list += a.suggestions.take(2).map { English.spell(typed, it) } }
         list += English.complete(typed, 3)
         if (!English.known(typed)) list += English.corrections(typed, 3, enTaps)
-        enShown = list.filter { it.isNotEmpty() }.distinct().take(6)
+        // an emoji for the word (love → ❤️) right after what Space places
+        val base = fix ?: typed.takeIf { English.known(it) } ?: list.getOrNull(1)
+        val emo = if (privateField || base == null) emptyList() else English.emoji(base).take(1)
+        val words = list.filter { it.isNotEmpty() }.distinct()
+        enShown = (words.take(1) + emo + words.drop(1)).take(6)
         view?.showSuggestions(enShown.map { Candidate(it, "") }, emptyList(), emptyList())
         // Never in a private field: the phone's spell checker is another app's service
         if (ask && !privateField && typed.length >= 3 && !English.known(typed)) spell?.ask(typed)

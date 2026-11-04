@@ -12,6 +12,8 @@ final class English {
     private var sorted: [String] = []
     private var exact = Set<String>()
     private var next: [String: [String]] = [:]
+    /// Emoji offered beside a word (love → ❤️ 😍)
+    private var emojiOf: [String: [String]] = [:]
     private var learned: [String: Int] = [:]
     private var pairs: [String: Int] = [:]
     private(set) var ready = false
@@ -53,6 +55,13 @@ final class English {
                     if parts.count > 1 { next[parts[0], default: []].append(contentsOf: parts.dropFirst()) }
                 }
             }
+            var emojiOf: [String: [String]] = [:]
+            if let p = bundle.path(forResource: "emoji", ofType: "tsv"), let s = try? String(contentsOfFile: p, encoding: .utf8) {
+                for line in s.split(separator: "\n") where !line.hasPrefix("#") {
+                    let parts = line.split(separator: "\t").map(String.init)
+                    if parts.count > 1 { emojiOf[parts[0].lowercased()] = Array(parts.dropFirst()) }
+                }
+            }
             var learned: [String: Int] = [:], pairs: [String: Int] = [:]
             if let s = try? String(contentsOf: self.file, encoding: .utf8) {
                 for line in s.split(separator: "\n") {
@@ -70,7 +79,7 @@ final class English {
             let install = {
                 self.words = list; self.rankOf = rank; self.exact = exact
                 self.byLength = buckets; self.lettersByLength = masks
-                self.sorted = sortedKeys; self.next = next
+                self.sorted = sortedKeys; self.next = next; self.emojiOf = emojiOf
                 self.learned = learned; self.pairs = pairs
                 self.ready = true
             }
@@ -83,6 +92,9 @@ final class English {
             DispatchQueue.global(qos: .userInitiated).async(execute: work)
         }
     }
+
+    /// Emoji for a word (love → ❤️, 😍), or none
+    func emoji(_ word: String) -> [String] { emojiOf[word.lowercased()] ?? emojiOf[plain(word)] ?? [] }
 
     /// Words the person keeps on the phone (contacts' names, text replacements), from UILexicon
     func addSupplementary(_ ws: [String]) {
