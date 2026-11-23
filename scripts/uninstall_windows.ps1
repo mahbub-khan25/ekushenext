@@ -27,8 +27,12 @@ foreach ($dir in @((Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Program
 }
 
 # Per-user fonts Ekushe installed (fonts-installed.txt lists only the ones it wrote itself; an
-# older install without the list installed all five)
+# older install without the list installed the five fonts before Shishir Bangla)
 $fonts = @{
+    "ShishirBangla-Regular.ttf"  = "Shishir Bangla (TrueType)"
+    "ShishirBangla-Medium.ttf"   = "Shishir Bangla Medium (TrueType)"
+    "ShishirBangla-SemiBold.ttf" = "Shishir Bangla SemiBold (TrueType)"
+    "ShishirBangla-Bold.ttf"     = "Shishir Bangla Bold (TrueType)"
     "Kalpurush.ttf"            = "Kalpurush (TrueType)"
     "SolaimanLipi.ttf"         = "SolaimanLipi (TrueType)"
     "SiyamRupali.ttf"          = "Siyam Rupali (TrueType)"
@@ -36,7 +40,8 @@ $fonts = @{
     "HindSiliguri-Bold.ttf"    = "Hind Siliguri Bold (TrueType)"
 }
 $marker = Join-Path $installDir "fonts-installed.txt"
-$ours = if (Test-Path $marker) { Get-Content $marker | Where-Object { $_.Trim() -ne "" } } else { $fonts.Keys }
+$legacy = @("Kalpurush.ttf", "SolaimanLipi.ttf", "SiyamRupali.ttf", "HindSiliguri-Regular.ttf", "HindSiliguri-Bold.ttf")
+$ours = if (Test-Path $marker) { Get-Content $marker | Where-Object { $_.Trim() -ne "" } } else { $legacy }
 $userFonts = Join-Path $env:LOCALAPPDATA "Microsoft\Windows\Fonts"
 foreach ($file in $ours) {
     if ($fonts.ContainsKey($file)) {
