@@ -37,10 +37,7 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
     WNDCLASSW, WS_CAPTION, WS_MINIMIZEBOX, WS_OVERLAPPED, WS_SYSMENU,
 };
 
-use crate::{
-    wide_null, FONT_HINDSILIGURI_BOLD, FONT_HINDSILIGURI_REG, FONT_KALPURUSH, FONT_SIYAMRUPALI,
-    FONT_SOLAIMANLIPI, LOGO_PNG_BYTES,
-};
+use crate::{studio_fonts, wide_null, LOGO_PNG_BYTES};
 
 static ICON_EKUSHE_ICO: &[u8] = include_bytes!("../../../assets/icons/ekushe.ico");
 pub static ICON_TRAY_BANGLA_ICO: &[u8] = include_bytes!("../../../assets/icons/tray_bangla.ico");
@@ -117,31 +114,6 @@ pub fn install_root_dir() -> PathBuf {
         .join("Ekushe")
 }
 
-/// The bundled Bangladeshi fonts: registry name, file name, bytes.
-const BUNDLED_FONTS: &[(&str, &str, &[u8])] = &[
-    ("Kalpurush (TrueType)", "Kalpurush.ttf", FONT_KALPURUSH),
-    (
-        "SolaimanLipi (TrueType)",
-        "SolaimanLipi.ttf",
-        FONT_SOLAIMANLIPI,
-    ),
-    (
-        "Siyam Rupali (TrueType)",
-        "SiyamRupali.ttf",
-        FONT_SIYAMRUPALI,
-    ),
-    (
-        "Hind Siliguri (TrueType)",
-        "HindSiliguri-Regular.ttf",
-        FONT_HINDSILIGURI_REG,
-    ),
-    (
-        "Hind Siliguri Bold (TrueType)",
-        "HindSiliguri-Bold.ttf",
-        FONT_HINDSILIGURI_BOLD,
-    ),
-];
-
 /// `%LOCALAPPDATA%\Microsoft\Windows\Fonts`: where Windows keeps fonts installed for one user.
 fn user_fonts_dir() -> PathBuf {
     dirs::data_local_dir()
@@ -157,8 +129,9 @@ fn installed_fonts_marker() -> PathBuf {
     install_root_dir().join("fonts-installed.txt")
 }
 
-/// Silently ensures that whenever `ekushe.exe` runs on any PC, its icons, Bangladeshi fonts,
-/// and default configuration (`Kalpurush` font + `Double-Tap Shift`) are extracted and active.
+/// Silently ensures that whenever `ekushe.exe` runs on any PC, its icons, Bengali fonts (Shishir
+/// Bangla, the default, and the other bundled choices, installed for this user) and default
+/// configuration (`Shishir Bangla` font + `Double-Tap Shift`) are extracted and active.
 pub fn ensure_self_configured() {
     let root = install_root_dir();
     let icons_dir = root.join("assets").join("icons");
@@ -173,7 +146,8 @@ pub fn ensure_self_configured() {
     write_if_missing(&icons_dir.join("tray_bangla.ico"), ICON_TRAY_BANGLA_ICO);
     write_if_missing(&icons_dir.join("tray_english.ico"), ICON_TRAY_ENGLISH_ICO);
 
-    // Extract & register bundled Bangladeshi fonts
+    // Extract the bundled Bengali fonts and install them for this user (Windows' own per-user font
+    // folder and registry list, as Settings > Fonts does)
     let user_win_fonts = user_fonts_dir();
     let _ = fs::create_dir_all(&user_win_fonts);
     let marker = installed_fonts_marker();
@@ -184,7 +158,8 @@ pub fn ensure_self_configured() {
         .filter(|l| !l.is_empty())
         .collect();
 
-    for (reg_name, filename, bytes) in BUNDLED_FONTS {
+    for font in studio_fonts::FONTS {
+        let (reg_name, filename, bytes) = (font.windows_name, font.file, font.bytes);
         let app_font_path = fonts_dir.join(filename);
         write_if_missing(&app_font_path, bytes);
 
@@ -192,7 +167,7 @@ pub fn ensure_self_configured() {
         if !win_font_path.exists() {
             // Not there before: this font is ours to remove at uninstall
             if fs::write(&win_font_path, bytes).is_ok() && !ours.iter().any(|f| f == filename) {
-                ours.push((*filename).to_string());
+                ours.push(filename.to_string());
             }
         }
 
@@ -207,8 +182,11 @@ pub fn ensure_self_configured() {
         }
     }
     let _ = fs::write(&marker, ours.join("\n"));
+    // Shishir Bangla's licence (SIL OFL 1.1) travels with the font files
+    let (licence_file, licence) = studio_fonts::SHISHIR_BANGLA_LICENCE;
+    let _ = fs::write(fonts_dir.join(licence_file), licence);
 
-    // Ensure default config.toml exists with Kalpurush Bangladeshi font
+    // Ensure default config.toml exists (Shishir Bangla font); a font the user chose is kept
     let cfg_path = Config::default_config_path();
     if !cfg_path.exists() {
         let cfg = Config::default();
@@ -218,7 +196,7 @@ pub fn ensure_self_configured() {
 
 /// Removes the fonts Ekushe installed for this user (file and registry entry). Fonts that were
 /// already in the user's font folder before Ekushe are left alone. Installs from before the marker
-/// file existed are treated as having installed all five.
+/// file existed are treated as having installed the five fonts Ekushe had then.
 fn remove_user_fonts() {
     use windows_sys::Win32::Graphics::Gdi::RemoveFontResourceW;
     let user_win_fonts = user_fonts_dir();
@@ -229,12 +207,13 @@ fn remove_user_fonts() {
             .map(|l| l.trim().to_string())
             .filter(|l| !l.is_empty())
             .collect(),
-        Err(_) => BUNDLED_FONTS
+        Err(_) => studio_fonts::LEGACY_FILES
             .iter()
-            .map(|(_, f, _)| (*f).to_string())
+            .map(|f| (*f).to_string())
             .collect(),
     };
-    for (reg_name, filename, _) in BUNDLED_FONTS {
+    for font in studio_fonts::FONTS {
+        let (reg_name, filename) = (font.windows_name, font.file);
         if !ours.iter().any(|f| f == filename) {
             continue;
         }
@@ -381,7 +360,7 @@ pub fn perform_full_install(
     // preview, and running it together with this tray app would convert every key twice. Testers
     // register it themselves from an administrator prompt: `regsvr32 ekushe_tsf.dll`.
 
-    // Broadcast WM_FONTCHANGE so all open Windows applications immediately see Kalpurush & SolaimanLipi
+    // Broadcast WM_FONTCHANGE so all open Windows applications immediately see Shishir Bangla and the other fonts
     unsafe {
         // Posted, not sent: a slow or hung application must never hold up the installer
         let _ = PostMessageW(HWND_BROADCAST, WM_FONTCHANGE, 0, 0);
@@ -992,7 +971,7 @@ unsafe fn paint_installer_canvas(hdc: HDC, rc_client: &RECT) {
         0,
         5,
         0,
-        wide_null("Hind Siliguri SemiBold").as_ptr(),
+        wide_null("Shishir Bangla SemiBold").as_ptr(),
     );
     let font_sub = CreateFontW(
         -15,
@@ -1008,7 +987,7 @@ unsafe fn paint_installer_canvas(hdc: HDC, rc_client: &RECT) {
         0,
         5,
         0,
-        wide_null("Hind Siliguri").as_ptr(),
+        wide_null("Shishir Bangla").as_ptr(),
     );
     let font_card_title = CreateFontW(
         -17,
@@ -1024,7 +1003,7 @@ unsafe fn paint_installer_canvas(hdc: HDC, rc_client: &RECT) {
         0,
         5,
         0,
-        wide_null("Hind Siliguri SemiBold").as_ptr(),
+        wide_null("Shishir Bangla SemiBold").as_ptr(),
     );
     let font_card_desc = CreateFontW(
         -14,
@@ -1040,7 +1019,7 @@ unsafe fn paint_installer_canvas(hdc: HDC, rc_client: &RECT) {
         0,
         5,
         0,
-        wide_null("Kalpurush").as_ptr(),
+        wide_null("Shishir Bangla").as_ptr(),
     );
     let font_btn = CreateFontW(
         -17,
@@ -1056,7 +1035,7 @@ unsafe fn paint_installer_canvas(hdc: HDC, rc_client: &RECT) {
         0,
         5,
         0,
-        wide_null("Hind Siliguri SemiBold").as_ptr(),
+        wide_null("Shishir Bangla SemiBold").as_ptr(),
     );
 
     let old_font = SelectObject(hdc, font_title as _);

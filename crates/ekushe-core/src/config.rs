@@ -77,6 +77,10 @@ pub const DEFAULT_BIJOY_APPS: &[&str] = &[
     "com.corel.coreldraw",
 ];
 
+/// The Bengali font Ekushe uses unless the user picks another: Shishir Bangla, bundled with Ekushe
+/// (`assets/fonts/ShishirBangla-*.ttf`, four weights) and installed with it on Windows, Linux and macOS.
+pub const DEFAULT_BENGALI_FONT: &str = "Shishir Bangla";
+
 /// Full Ekushe configuration persisted in `config.toml`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
@@ -107,7 +111,8 @@ pub struct Config {
     pub enable_next_word_prediction: bool,
     /// Maximum number of candidates shown (1..=9)
     pub max_candidates: usize,
-    /// Bundled Bangladeshi / Bengali UI & candidate window font family (`Kalpurush`, `SolaimanLipi`, `Siyam Rupali`, `Hind Siliguri`)
+    /// Bengali font family for the suggestion window and Studio's writing: [`DEFAULT_BENGALI_FONT`]
+    /// unless the user picks another bundled one (`Kalpurush`, `SolaimanLipi`, `Siyam Rupali`, `Hind Siliguri`)
     pub candidate_font_family: String,
     /// Candidate window font size in pt
     pub candidate_font_size: u16,
@@ -189,7 +194,7 @@ impl Default for Config {
             enable_emoji_suggestions: true,
             enable_next_word_prediction: true,
             max_candidates: 9,
-            candidate_font_family: "Kalpurush".to_string(),
+            candidate_font_family: DEFAULT_BENGALI_FONT.to_string(),
             candidate_font_size: 16,
             layout_automation: LayoutAutomation::default(),
             fixed_spelling_hint: true,
@@ -245,5 +250,28 @@ impl Config {
         let serialized = toml::to_string_pretty(self)
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
         crate::suggest::write_atomic(path, &serialized)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_default_bengali_font_is_shishir_bangla() {
+        assert_eq!(DEFAULT_BENGALI_FONT, "Shishir Bangla");
+        assert_eq!(Config::default().candidate_font_family, "Shishir Bangla");
+        // A settings file that never chose a font gets the default
+        let cfg: Config = toml::from_str("bangla_digits = true\n").unwrap();
+        assert_eq!(cfg.candidate_font_family, DEFAULT_BENGALI_FONT);
+    }
+
+    #[test]
+    fn a_font_the_user_chose_is_kept() {
+        let cfg: Config = toml::from_str("candidate_font_family = \"Kalpurush\"\n").unwrap();
+        assert_eq!(cfg.candidate_font_family, "Kalpurush");
+        let saved = toml::to_string_pretty(&cfg).unwrap();
+        let again: Config = toml::from_str(&saved).unwrap();
+        assert_eq!(again.candidate_font_family, "Kalpurush");
     }
 }

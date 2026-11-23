@@ -7,6 +7,8 @@
 //! opened with a fresh one-time launch code ([`launch_url`]). Requests are bounded in size and time,
 //! and a slow client cannot hold the server (see `studio_http.rs`).
 
+#[path = "../../ekushe-tray/src/studio_fonts.rs"]
+mod studio_fonts;
 #[path = "../../ekushe-tray/src/studio_http.rs"]
 mod studio_http;
 #[path = "../../ekushe-tray/src/studio_layouts.rs"]
@@ -27,28 +29,6 @@ use ekushe_core::convert::{banglish_to_bangla, bijoy_to_unicode, unicode_to_bijo
 use crate::SHARED;
 
 static LOGO: &[u8] = include_bytes!("../../../assets/icons/logo_256.png");
-static FONTS: &[(&str, &[u8])] = &[
-    (
-        "Kalpurush.ttf",
-        include_bytes!("../../../assets/fonts/Kalpurush.ttf"),
-    ),
-    (
-        "SolaimanLipi.ttf",
-        include_bytes!("../../../assets/fonts/SolaimanLipi.ttf"),
-    ),
-    (
-        "SiyamRupali.ttf",
-        include_bytes!("../../../assets/fonts/SiyamRupali.ttf"),
-    ),
-    (
-        "HindSiliguri-Regular.ttf",
-        include_bytes!("../../../assets/fonts/HindSiliguri-Regular.ttf"),
-    ),
-    (
-        "HindSiliguri-Bold.ttf",
-        include_bytes!("../../../assets/fonts/HindSiliguri-Bold.ttf"),
-    ),
-];
 
 /// Linux: add Ekushe to the user's keyboards, on whichever desktop this is (see the module).
 #[cfg(target_os = "linux")]
@@ -275,8 +255,8 @@ fn handle(mut s: TcpStream, req: &str, port: u16) -> std::io::Result<()> {
         ),
         ("GET", p) if p.starts_with("/fonts/") => {
             let name = &p["/fonts/".len()..];
-            match FONTS.iter().find(|(n, _)| *n == name) {
-                Some((_, bytes)) => respond(&mut s, "200 OK", "font/ttf", bytes),
+            match studio_fonts::font_file(name) {
+                Some(bytes) => respond(&mut s, "200 OK", "font/ttf", bytes),
                 None => respond(&mut s, "404 Not Found", "text/plain", b"no such font"),
             }
         }
@@ -550,5 +530,16 @@ mod tests {
             format!("GET /api/suggest?q=amar HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nX-Ekushe-Token: {}\r\nConnection: close\r\n\r\n", token()),
         );
         assert!(ok.starts_with("HTTP/1.1 200") && ok.contains("candidates"));
+        // The default Bengali font, Shishir Bangla, is declared in four weights and served
+        let page = studio_ui::STUDIO_HTML;
+        for w in ["Regular", "Medium", "SemiBold", "Bold"] {
+            assert!(page.contains(&format!("url('/fonts/ShishirBangla-{w}.ttf')")));
+            let font = http(
+                port,
+                format!("GET /fonts/ShishirBangla-{w}.ttf HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nConnection: close\r\n\r\n"),
+            );
+            assert!(font.starts_with("HTTP/1.1 200") && font.contains("font/ttf"));
+        }
+        assert!(page.contains("--font-bn: 'Shishir Bangla',"));
     }
 }

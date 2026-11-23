@@ -7,6 +7,7 @@ mod glass_popup;
 mod secure_field;
 mod selection;
 mod setup_wizard;
+mod studio_fonts;
 mod studio_http;
 mod studio_layouts;
 mod studio_ocr;
@@ -70,15 +71,6 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
 
 /// Embedded 256x256 PNG logo for the Studio UI (`/logo.png`)
 static LOGO_PNG_BYTES: &[u8] = include_bytes!("../../../assets/icons/logo_256.png");
-
-/// Bundled Bangladeshi & Bengali OpenType Fonts (100% offline, compiled into binary)
-static FONT_KALPURUSH: &[u8] = include_bytes!("../../../assets/fonts/Kalpurush.ttf");
-static FONT_SOLAIMANLIPI: &[u8] = include_bytes!("../../../assets/fonts/SolaimanLipi.ttf");
-static FONT_SIYAMRUPALI: &[u8] = include_bytes!("../../../assets/fonts/SiyamRupali.ttf");
-static FONT_HINDSILIGURI_REG: &[u8] =
-    include_bytes!("../../../assets/fonts/HindSiliguri-Regular.ttf");
-static FONT_HINDSILIGURI_BOLD: &[u8] =
-    include_bytes!("../../../assets/fonts/HindSiliguri-Bold.ttf");
 
 /// Magic extra info tag so our low-level keyboard hook never intercepts our own `SendInput` events.
 pub(crate) const EKUSHE_EXTRA_INFO: usize = 0xE21B_0945;
@@ -156,7 +148,7 @@ struct AppSharedState {
 static STATE: Lazy<Mutex<AppSharedState>> = Lazy::new(|| {
     let mut cfg = Config::load_from(&Config::default_config_path()).unwrap_or_default();
     if cfg.candidate_font_family.is_empty() || cfg.candidate_font_family == "Nirmala UI" {
-        cfg.candidate_font_family = "Kalpurush".to_string();
+        cfg.candidate_font_family = ekushe_core::config::DEFAULT_BENGALI_FONT.to_string();
     }
     // Ensure Bangla digits are enabled in Ekushe Bangla mode so English mode = 0-9 and Ekushe mode = ০-৯
     cfg.bangla_digits = true;
@@ -319,17 +311,11 @@ const REHOOK_INTERVAL_MS: u32 = 30_000;
 const ES_PASSWORD_STYLE: i32 = 0x0020;
 
 unsafe fn register_embedded_bangla_fonts() {
-    for font_bytes in [
-        FONT_KALPURUSH,
-        FONT_SOLAIMANLIPI,
-        FONT_SIYAMRUPALI,
-        FONT_HINDSILIGURI_REG,
-        FONT_HINDSILIGURI_BOLD,
-    ] {
+    for font in studio_fonts::FONTS {
         let num_fonts: u32 = 0;
         let _ = AddFontMemResourceEx(
-            font_bytes.as_ptr() as *const _,
-            font_bytes.len() as u32,
+            font.bytes.as_ptr() as *const _,
+            font.bytes.len() as u32,
             ptr::null(),
             &num_fonts,
         );
@@ -345,7 +331,7 @@ fn main() {
 
     unsafe {
         let _ = windows_sys::Win32::UI::WindowsAndMessaging::SetProcessDPIAware();
-        // Register bundled Bangladeshi fonts (Kalpurush, SolaimanLipi, Siyam Rupali, Hind Siliguri) in GDI memory
+        // Register the bundled Bengali fonts (Shishir Bangla, the default, and the other choices) in GDI memory
         register_embedded_bangla_fonts();
 
         // CI / design check: draw the popup and badge to PNG files and exit
@@ -781,8 +767,19 @@ fn run_self_test(port: u16) {
     // 2. Verify /api/state
     let r_state = http_get("/api/state");
     assert!(r_state.contains("\"language\""));
-    assert!(r_state.contains("Kalpurush"));
+    assert!(r_state.contains("\"font_family\""));
     println!("✓ /api/state verified");
+    // The default Bengali font is served to Studio in its four weights
+    for w in ["Regular", "Medium", "SemiBold", "Bold"] {
+        let font = raw(format!(
+            "GET /fonts/ShishirBangla-{w}.ttf HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nConnection: close\r\n\r\n"
+        ));
+        assert!(
+            font.starts_with("HTTP/1.1 200"),
+            "ShishirBangla-{w}.ttf not served"
+        );
+    }
+    println!("✓ /fonts/ShishirBangla-*.ttf served");
 
     // 3. Verify /api/suggest (Phonetic + Connected Letters + Sign Hints)
     let r_sug = http_get("/api/suggest?q=swadhin");
@@ -815,7 +812,7 @@ fn run_self_test(port: u16) {
     // 7. Verify POST /api/settings
     let r_set = http_post(
         "/api/settings",
-        r#"{"hotkey":"DoubleTapShift","typing_mode":"PhoneticFirst","active_layout":"AvroPhonetic","font_family":"Kalpurush"}"#,
+        r#"{"hotkey":"DoubleTapShift","typing_mode":"PhoneticFirst","active_layout":"AvroPhonetic","font_family":"Shishir Bangla"}"#,
     );
     assert!(r_set.contains("\"ok\":true"));
     println!("✓ POST /api/settings verified");
@@ -2888,21 +2885,14 @@ fn handle_http_client(mut stream: TcpStream, req: &str) -> std::io::Result<()> {
         return write_http_response(&mut stream, "200 OK", "image/png", LOGO_PNG_BYTES);
     }
 
-    // Serve bundled Bangladeshi & Bengali OpenType TTF fonts directly from memory
-    if method == "GET" && clean_path == "/fonts/Kalpurush.ttf" {
-        return write_http_response(&mut stream, "200 OK", "font/ttf", FONT_KALPURUSH);
-    }
-    if method == "GET" && clean_path == "/fonts/SolaimanLipi.ttf" {
-        return write_http_response(&mut stream, "200 OK", "font/ttf", FONT_SOLAIMANLIPI);
-    }
-    if method == "GET" && clean_path == "/fonts/SiyamRupali.ttf" {
-        return write_http_response(&mut stream, "200 OK", "font/ttf", FONT_SIYAMRUPALI);
-    }
-    if method == "GET" && clean_path == "/fonts/HindSiliguri-Regular.ttf" {
-        return write_http_response(&mut stream, "200 OK", "font/ttf", FONT_HINDSILIGURI_REG);
-    }
-    if method == "GET" && clean_path == "/fonts/HindSiliguri-Bold.ttf" {
-        return write_http_response(&mut stream, "200 OK", "font/ttf", FONT_HINDSILIGURI_BOLD);
+    // Serve the bundled Bengali fonts directly from memory
+    if method == "GET" {
+        if let Some(bytes) = clean_path
+            .strip_prefix("/fonts/")
+            .and_then(studio_fonts::font_file)
+        {
+            return write_http_response(&mut stream, "200 OK", "font/ttf", bytes);
+        }
     }
 
     if method == "GET" && clean_path == "/api/state" {
@@ -3324,7 +3314,7 @@ fn handle_http_client(mut stream: TcpStream, req: &str) -> std::io::Result<()> {
         let font_str = parsed
             .get("font_family")
             .and_then(|v| v.as_str())
-            .unwrap_or("Kalpurush");
+            .unwrap_or(ekushe_core::config::DEFAULT_BENGALI_FONT);
         let opacity_opt = parsed
             .get("popup_opacity")
             .and_then(|v| v.as_u64())

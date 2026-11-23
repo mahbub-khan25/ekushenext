@@ -718,7 +718,7 @@ pub unsafe fn render(
     let pal = Palette::new(dark, glass_alpha);
     let fonts = cached_fonts(
         if bangla_font.is_empty() {
-            "Kalpurush"
+            ekushe_core::config::DEFAULT_BENGALI_FONT
         } else {
             bangla_font
         },
@@ -1120,9 +1120,15 @@ pub fn render_previews(dir: &std::path::Path) -> std::io::Result<Vec<std::path::
         for (dark, theme) in [(false, "light"), (true, "dark")] {
             for (scale, tag) in [(1.0f32, "100"), (1.5, "150")] {
                 let t0 = std::time::Instant::now();
-                let Some((mut canvas, _)) =
-                    (unsafe { render(content, "Kalpurush", scale, dark, glass_alpha(85, true)) })
-                else {
+                let Some((mut canvas, _)) = (unsafe {
+                    render(
+                        content,
+                        ekushe_core::config::DEFAULT_BENGALI_FONT,
+                        scale,
+                        dark,
+                        glass_alpha(85, true),
+                    )
+                }) else {
                     continue;
                 };
                 println!(
