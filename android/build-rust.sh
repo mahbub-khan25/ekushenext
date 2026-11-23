@@ -11,6 +11,8 @@ mkdir -p "$HERE/app/src/main/assets"
 cp "$ROOT/data/dictionary/ekushe.dict.z" "$HERE/app/src/main/assets/ekushe.dict.z"
 mkdir -p "$HERE/app/src/main/assets/en"
 cp "$ROOT/data/english/words.txt" "$ROOT/data/english/next.tsv" "$ROOT/data/english/emoji.tsv" "$HERE/app/src/main/assets/en/"
+# Only the fonts the app uses (an older build's Hind Siliguri must not stay behind in the APK)
+rm -rf "$HERE/app/src/main/assets/fonts"
 mkdir -p "$HERE/app/src/main/assets/fonts"
 # Shishir Bangla, Ekushe's default Bengali font (the weights the app and keyboard use), with its licence
 cp "$ROOT"/assets/fonts/ShishirBangla-{Regular,Medium,SemiBold}.ttf "$HERE/app/src/main/assets/fonts/"

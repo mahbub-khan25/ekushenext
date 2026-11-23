@@ -116,17 +116,26 @@ telemetry and no account.
 The Windows installer, for your user account only (no administrator rights):
 - copies `ekushe.exe` to `%LOCALAPPDATA%\Programs\Ekushe`
 - installs the bundled Bangla fonts for your user, among them **Shishir Bangla**, Ekushe's default Bengali
-  font, so every program can use it (only the fonts Ekushe added are removed again at uninstall)
+  font, so every program can use it. Shishir Bangla goes in under its version's name
+  (`ShishirBangla-Regular-0.003.ttf`), so a newer Ekushe can switch to a newer version while the old
+  file is still open; a font you installed yourself is never replaced, and only the fonts Ekushe
+  added are removed again at uninstall (a file still in use goes at the next restart or sign-in)
 - adds a Start Menu shortcut, and a desktop shortcut and "start with Windows" if you leave those ticked
 - registers Ekushe in **Settings → Apps**, where **Uninstall** removes all of the above (your settings
   and learned words are kept)
 
 The macOS `.pkg` puts Ekushe in `/Library/Input Methods` and the Shishir Bangla font in `/Library/Fonts`
-(only the font files it added are listed, in `/Library/Application Support/Ekushe/fonts-installed.txt`;
-to remove Ekushe, delete those files and `Ekushe.app`). The Linux packages install the IBus engine,
+(only the font files it added are listed, in `/Library/Application Support/Ekushe/fonts-installed.txt`,
+and a listed one is replaced only by a newer version). To remove Ekushe, run
+`sudo "/Library/Input Methods/Ekushe.app/Contents/Resources/uninstall.sh"`: it takes out the listed
+fonts and `Ekushe.app` and keeps your settings. The Linux packages install the IBus engine,
 the Fcitx 5 addon, Ekushe Studio, an applications-menu entry and the Shishir Bangla font
-(`/usr/share/fonts/shishir-bangla/`, or `/usr/share/fonts/truetype/shishir-bangla/` on Debian and Ubuntu),
-for every program. Removing the package removes them. On Android and iOS, Shishir Bangla comes inside
+(`/usr/share/fonts/shishir-bangla/`, or `/usr/share/fonts/truetype/shishir-bangla/` on Debian and Ubuntu;
+the Fedora and Ubuntu repositories carry it as its own package, `shishir-bangla-fonts` /
+`fonts-shishir-bangla`), for every program, and Studio's other fonts in `/usr/share/ekushe/fonts/`.
+Removing the package removes them. On Linux the suggestion list under the word is drawn by IBus or
+Fcitx 5 in your desktop's font (IBus Preferences or Fcitx's theme settings choose it; pick Shishir
+Bangla there to see it in the list too). On Android and iOS, Shishir Bangla comes inside
 the app and its keyboard (phones don't let an app install a font for other apps). On
 Linux, Studio's **কিবোর্ড যোগ করুন** button (or `ekushe-studio --add-keyboard`) adds Ekushe to your
 desktop's own keyboard list, or to Fcitx's input methods when Fcitx 5 is what your desktop uses (then
