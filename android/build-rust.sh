@@ -12,7 +12,9 @@ cp "$ROOT/data/dictionary/ekushe.dict.z" "$HERE/app/src/main/assets/ekushe.dict.
 mkdir -p "$HERE/app/src/main/assets/en"
 cp "$ROOT/data/english/words.txt" "$ROOT/data/english/next.tsv" "$ROOT/data/english/emoji.tsv" "$HERE/app/src/main/assets/en/"
 mkdir -p "$HERE/app/src/main/assets/fonts"
-cp "$ROOT/assets/fonts/HindSiliguri-Regular.ttf" "$ROOT/assets/fonts/HindSiliguri-SemiBold.ttf" "$HERE/app/src/main/assets/fonts/"
+# Shishir Bangla, Ekushe's default Bengali font (the weights the app and keyboard use), with its licence
+cp "$ROOT"/assets/fonts/ShishirBangla-{Regular,Medium,SemiBold}.ttf "$HERE/app/src/main/assets/fonts/"
+cp "$ROOT/assets/fonts/LICENSES/OFL-1.1-ShishirBangla.txt" "$HERE/app/src/main/assets/fonts/OFL-1.1-ShishirBangla.txt"
 ls -la "$HERE/app/src/main/jniLibs"/*/ "$HERE/app/src/main/assets/"
 # Every library must be 16 KB page-aligned (.cargo/config.toml sets the linker flag); Google Play
 # requires it for targetSdk 35 and 16 KB-page phones can't load a 4 KB-aligned one
