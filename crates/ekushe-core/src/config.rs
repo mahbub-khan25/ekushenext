@@ -358,10 +358,16 @@ impl Config {
             }
         };
         let done = Upgrades::load(path).settings_version;
+        // The settings are good either way: a file that cannot be written now is upgraded again
+        // (the same way) at the next start, so a write error only goes to the log
         if cfg.upgrade(done) {
-            cfg.save_to(path)?;
+            if let Err(e) = cfg.save_to(path) {
+                eprintln!("Ekushe: the upgraded settings could not be saved: {e}");
+            }
         }
-        Upgrades::record(path)?;
+        if let Err(e) = Upgrades::record(path) {
+            eprintln!("Ekushe: {UPGRADES_FILE} could not be written: {e}");
+        }
         Ok(cfg)
     }
 
@@ -390,16 +396,26 @@ impl Config {
         Upgrades::record(path)
     }
 
-    /// The answer to the font notice: keep Shishir Bangla, or go back to the font from before.
-    /// Returns whether there was a notice to answer.
+    /// The answer to the font notice: keep Shishir Bangla, or go back to the font from before. Going
+    /// back only applies while Shishir Bangla is still the font (a font picked since is never
+    /// undone). Returns whether there was a notice to answer.
     pub fn answer_font_notice(&mut self, go_back: bool) -> bool {
         let Some(old) = self.font_migrated_from.take() else {
             return false;
         };
-        if go_back {
+        if go_back && self.candidate_font_family == DEFAULT_BENGALI_FONT {
             self.candidate_font_family = old;
         }
         true
+    }
+
+    /// The Bengali font the person picked in the settings. Picking another font answers the font
+    /// notice too (it is not shown again, and its "Go back" no longer applies).
+    pub fn set_bengali_font(&mut self, family: &str) {
+        if family != self.candidate_font_family {
+            self.candidate_font_family = family.to_string();
+            self.font_migrated_from = None;
+        }
     }
 
     /// Save (owner-only on macOS and Linux, replaced in one step so a crash never leaves half a file).
@@ -575,5 +591,56 @@ mod tests {
         assert!(!n.keep_bn.is_empty() && !n.keep_en.is_empty());
         // A font without a Bengali name keeps its own name in the Bengali text
         assert!(font_notice("Some Font").back_bn.contains("Some Font"));
+    }
+
+    #[test]
+    fn a_font_picked_after_the_upgrade_is_never_undone_by_the_notice() {
+        let dir = Folder::new("picked");
+        let path = dir.settings(OLD_FILE);
+        let mut cfg = Config::load_and_upgrade(&path).unwrap();
+        // The person picks another font in the settings: the notice is gone, "Go back" does nothing
+        cfg.set_bengali_font("Siyam Rupali");
+        assert_eq!(cfg.font_migrated_from, None);
+        assert!(!cfg.answer_font_notice(true));
+        assert_eq!(cfg.candidate_font_family, "Siyam Rupali");
+        // Sending the same font again (any other setting saved) keeps the notice
+        let mut cfg = Config::load_and_upgrade(&dir.settings(OLD_FILE)).unwrap_or_default();
+        cfg.font_migrated_from = Some("Kalpurush".into());
+        cfg.candidate_font_family = DEFAULT_BENGALI_FONT.into();
+        cfg.set_bengali_font(DEFAULT_BENGALI_FONT);
+        assert_eq!(cfg.font_migrated_from.as_deref(), Some("Kalpurush"));
+        // Even with the note still there, "Go back" only applies while Shishir Bangla is the font
+        cfg.candidate_font_family = "Hind Siliguri".into();
+        assert!(cfg.answer_font_notice(true));
+        assert_eq!(cfg.candidate_font_family, "Hind Siliguri");
+        assert_eq!(cfg.font_migrated_from, None);
+    }
+
+    #[test]
+    fn settings_still_load_when_the_upgrade_record_cannot_be_written() {
+        let dir = Folder::new("record");
+        let path =
+            dir.settings("candidate_font_family = \"Siyam Rupali\"\nbangla_digits = false\n");
+        // A folder where the record file would go: writing it fails
+        fs::create_dir_all(path.with_file_name(UPGRADES_FILE)).unwrap();
+        let cfg = Config::load_and_upgrade(&path).unwrap();
+        assert_eq!(cfg.candidate_font_family, "Siyam Rupali");
+        assert!(!cfg.bangla_digits, "the person's settings were lost");
+    }
+
+    #[test]
+    fn the_tray_balloon_fits_windows_limits() {
+        // A balloon title holds 63 UTF-16 units, its text 255
+        for old in ["Kalpurush", "SolaimanLipi", "Siyam Rupali", "Hind Siliguri"] {
+            let n = font_notice(old);
+            assert!(
+                n.title_bn.encode_utf16().count() <= 63,
+                "{old}: title too long"
+            );
+            assert!(
+                n.body_bn.encode_utf16().count() <= 255,
+                "{old}: text too long"
+            );
+        }
     }
 }

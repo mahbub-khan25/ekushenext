@@ -350,7 +350,15 @@ fn schedule_removal(path: &Path) -> Option<&'static str> {
 fn remove_user_fonts() {
     let user_fonts = user_fonts_dir();
     let marker = installed_fonts_marker();
-    let mut ours = read_list(&marker);
+    // An install from before Ekushe kept its list installed the five fonts it had then
+    let mut ours = if marker.exists() {
+        read_list(&marker)
+    } else {
+        studio_fonts::LEGACY_FILES
+            .iter()
+            .map(|f| f.to_string())
+            .collect()
+    };
     for f in read_list(&pending_font_removals()) {
         if !ours.iter().any(|o| o.eq_ignore_ascii_case(&f)) {
             ours.push(f);

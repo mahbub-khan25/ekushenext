@@ -1916,11 +1916,8 @@ unsafe extern "system" fn tray_wnd_proc(
                 let old = STATE.lock().ekushe.config().font_migrated_from.clone();
                 if let Some(old) = old {
                     let n = ekushe_core::config::font_notice(&old);
-                    show_tray_balloon(
-                        hwnd,
-                        &n.title_bn,
-                        &format!("{} {} / {}", n.body_bn, n.title_en, n.body_en),
-                    );
+                    // Bengali, like the rest of the tray (both fit a balloon: see ekushe-core's test)
+                    show_tray_balloon(hwnd, &n.title_bn, &n.body_bn);
                 }
             }
             0
@@ -3430,7 +3427,7 @@ fn handle_http_client(mut stream: TcpStream, req: &str) -> std::io::Result<()> {
                 _ => TypingMode::Smart,
             };
             studio_layouts::apply_setting(&mut cfg, lay_str);
-            cfg.candidate_font_family = font_str.to_string();
+            cfg.set_bengali_font(font_str);
             if let Some(cp) = compact_opt {
                 cfg.compact_popup = cp;
             }

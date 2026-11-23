@@ -439,7 +439,7 @@ fn handle(mut s: TcpStream, req: &str, port: u16) -> std::io::Result<()> {
                     studio_layouts::apply_setting(&mut cfg, l);
                 }
                 if let Some(f) = p["font_family"].as_str() {
-                    cfg.candidate_font_family = f.to_string();
+                    cfg.set_bengali_font(f);
                 }
                 if let Some(c) = p["compact_popup"].as_bool() {
                     cfg.compact_popup = c;

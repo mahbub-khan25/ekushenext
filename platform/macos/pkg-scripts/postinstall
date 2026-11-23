@@ -5,7 +5,9 @@ APP="/Library/Input Methods/Ekushe.app"
 # listed in /Library/Application Support/Ekushe/fonts-installed.txt. A font file that was there
 # before and isn't listed is the user's own and stays; a listed one is replaced only by a newer
 # version (the font's own version number). Ekushe.app/Contents/Resources/uninstall.sh removes them.
-"$APP/Contents/MacOS/Ekushe" --install-fonts || true
+if ! "$APP/Contents/MacOS/Ekushe" --install-fonts; then
+  echo "Ekushe: Shishir Bangla could not be added to /Library/Fonts (see the line above); Ekushe itself still uses its own copy." >&2
+fi
 # Restart a running older copy so the new one loads
 /usr/bin/pkill -x Ekushe 2>/dev/null || true
 # Add Ekushe to the signed-in user's input sources (they still pick it from the menu bar)
