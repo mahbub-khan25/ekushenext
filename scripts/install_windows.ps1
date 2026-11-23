@@ -29,7 +29,7 @@ New-Item -ItemType Directory -Force -Path $fontsDir | Out-Null
 # Copy icons, logo, and bundled Bangladeshi fonts
 Copy-Item -Force (Join-Path $repoRoot "logo.png") $installDir
 Copy-Item -Force (Join-Path $repoRoot "assets\icons\*") $iconsDir
-Copy-Item -Force (Join-Path $repoRoot "assets\fonts\*") $fontsDir
+Copy-Item -Force -Recurse (Join-Path $repoRoot "assets\fonts\*") $fontsDir   # with LICENSES\ (OFL and the others)
 Write-Host "  [OK] Copied icons and Bengali fonts (Shishir Bangla, Kalpurush, SolaimanLipi, Siyam Rupali, Hind Siliguri)" -ForegroundColor Green
 
 # Also install Bangladeshi fonts into user's Windows Fonts so all apps on the PC render Bangla cleanly
@@ -55,11 +55,15 @@ $ours = @(if (Test-Path $marker) { Get-Content $marker | Where-Object { $_.Trim(
 foreach ($kv in $banglaFontMap.GetEnumerator()) {
     $srcFont = Join-Path $fontsDir $kv.Value
     $dstFont = Join-Path $userWinFontsDir $kv.Value
-    if (Test-Path $srcFont) {
-        if (-not (Test-Path $dstFont) -and $ours -notcontains $kv.Value) { $ours += $kv.Value }
-        Copy-Item -Force $srcFont $dstFont -ErrorAction SilentlyContinue
-        Set-ItemProperty -Path $fontRegKey -Name $kv.Key -Value $dstFont -ErrorAction SilentlyContinue
+    if (-not (Test-Path $srcFont)) { continue }
+    # A font file that was there before Ekushe is the user's own: not copied over, not registered
+    if ((Test-Path $dstFont) -and ($ours -notcontains $kv.Value)) {
+        Write-Host "  kept your own $($kv.Value)"
+        continue
     }
+    if ($ours -notcontains $kv.Value) { $ours += $kv.Value }
+    Copy-Item -Force $srcFont $dstFont -ErrorAction SilentlyContinue
+    Set-ItemProperty -Path $fontRegKey -Name $kv.Key -Value $dstFont -ErrorAction SilentlyContinue
 }
 Set-Content -Path $marker -Value $ours
 Write-Host "  [OK] Installed Bengali Unicode fonts to User Windows Fonts (Shishir Bangla default)" -ForegroundColor Green

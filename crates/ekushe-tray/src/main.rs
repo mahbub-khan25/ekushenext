@@ -304,6 +304,8 @@ const TIMER_TRAY_RETRY: usize = 104;
 const TIMER_CONFLICTS: usize = 105;
 /// The other keyboards already pointed out, so each is mentioned once while it keeps running
 static CONFLICTS_SHOWN: parking_lot::Mutex<Vec<&'static str>> = parking_lot::Mutex::new(Vec::new());
+/// The "the font is now Shishir Bangla" balloon was shown in this run (it waits for Studio's answer)
+static FONT_NOTICE_SHOWN: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 static TRAY_RETRIES: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 /// The message Explorer broadcasts when the taskbar is (re)created; tray icons must be added again
 static TASKBAR_CREATED: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
@@ -1908,6 +1910,18 @@ unsafe extern "system" fn tray_wnd_proc(
             };
             if !new.is_empty() {
                 show_tray_balloon(hwnd, "অন্য বাংলা কীবোর্ড চালু আছে", &conflicts::message(&new));
+            } else if !FONT_NOTICE_SHOWN.swap(true, Ordering::SeqCst) {
+                // The font moved to Shishir Bangla: say so once (clicking opens Studio's settings,
+                // where it can be kept or changed back)
+                let old = STATE.lock().ekushe.config().font_migrated_from.clone();
+                if let Some(old) = old {
+                    let n = ekushe_core::config::font_notice(&old);
+                    show_tray_balloon(
+                        hwnd,
+                        &n.title_bn,
+                        &format!("{} {} / {}", n.body_bn, n.title_en, n.body_en),
+                    );
+                }
             }
             0
         }
@@ -2032,6 +2046,13 @@ unsafe extern "system" fn tray_wnd_proc(
                     if update_check::AVAILABLE.lock().is_some() =>
                 {
                     open_in_browser(update_check::DOWNLOAD_PAGE);
+                }
+                // The "the font is now Shishir Bangla" notice was clicked: Studio's settings answer it
+                windows_sys::Win32::UI::Shell::NIN_BALLOONUSERCLICK
+                    if STATE.lock().ekushe.config().font_migrated_from.is_some() =>
+                {
+                    let port = STATE.lock().studio_port;
+                    open_studio_window_tab(port, Some("settings"));
                 }
                 _ => {}
             }
@@ -2891,7 +2912,7 @@ fn handle_http_client(mut stream: TcpStream, req: &str) -> std::io::Result<()> {
             .strip_prefix("/fonts/")
             .and_then(studio_fonts::font_file)
         {
-            return write_http_response(&mut stream, "200 OK", "font/ttf", bytes);
+            return write_http_response(&mut stream, "200 OK", "font/ttf", &bytes);
         }
     }
 
@@ -2926,6 +2947,7 @@ fn handle_http_client(mut stream: TcpStream, req: &str) -> std::io::Result<()> {
             "layout_name": studio_layouts::active_names(cfg).0,
             "conflicts": conflicts_note,
             "font_family": cfg.candidate_font_family,
+            "font_notice": cfg.font_migrated_from.as_deref().map(ekushe_core::config::font_notice),
             "popup_opacity": st.popup_opacity_pct,
             "compact_popup": cfg.compact_popup,
             "auto_english_in_terminals": cfg.auto_english_in_terminals,
@@ -3294,6 +3316,35 @@ fn handle_http_client(mut stream: TcpStream, req: &str) -> std::io::Result<()> {
             "200 OK",
             "application/json; charset=utf-8",
             json.to_string().as_bytes(),
+        );
+    }
+
+    // The one-time "the font is now Shishir Bangla" notice: keep it, or go back to the old font
+    if method == "POST" && clean_path == "/api/font-notice" {
+        let parsed: serde_json::Value = serde_json::from_str(body).unwrap_or_default();
+        let go_back = parsed
+            .get("go_back")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+        let (ok, family) = {
+            let mut st = STATE.lock();
+            let mut cfg = st.ekushe.config().clone();
+            cfg.answer_font_notice(go_back);
+            let ok = cfg.save_to(&Config::default_config_path()).is_ok();
+            let family = cfg.candidate_font_family.clone();
+            st.ekushe.set_config(cfg);
+            (ok, family)
+        };
+        let json = serde_json::json!({ "ok": ok, "font_family": family }).to_string();
+        return write_http_response(
+            &mut stream,
+            if ok {
+                "200 OK"
+            } else {
+                "500 Internal Server Error"
+            },
+            "application/json; charset=utf-8",
+            json.as_bytes(),
         );
     }
 

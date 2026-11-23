@@ -8,7 +8,7 @@
 //! and a slow client cannot hold the server (see `studio_http.rs`).
 
 #[path = "../../ekushe-tray/src/studio_fonts.rs"]
-mod studio_fonts;
+pub(crate) mod studio_fonts;
 #[path = "../../ekushe-tray/src/studio_http.rs"]
 mod studio_http;
 #[path = "../../ekushe-tray/src/studio_layouts.rs"]
@@ -256,7 +256,7 @@ fn handle(mut s: TcpStream, req: &str, port: u16) -> std::io::Result<()> {
         ("GET", p) if p.starts_with("/fonts/") => {
             let name = &p["/fonts/".len()..];
             match studio_fonts::font_file(name) {
-                Some(bytes) => respond(&mut s, "200 OK", "font/ttf", bytes),
+                Some(bytes) => respond(&mut s, "200 OK", "font/ttf", &bytes),
                 None => respond(&mut s, "404 Not Found", "text/plain", b"no such font"),
             }
         }
@@ -301,6 +301,7 @@ fn handle(mut s: TcpStream, req: &str, port: u16) -> std::io::Result<()> {
                     "active_layout": studio_layouts::setting_value(cfg),
                     "layout_name": studio_layouts::active_names(cfg).0,
                     "font_family": cfg.candidate_font_family,
+                    "font_notice": cfg.font_migrated_from.as_deref().map(ekushe_core::config::font_notice),
                     "popup_opacity": OPACITY.load(Ordering::Relaxed),
                     "compact_popup": cfg.compact_popup,
                     "auto_english_in_terminals": cfg.auto_english_in_terminals,
@@ -387,6 +388,29 @@ fn handle(mut s: TcpStream, req: &str, port: u16) -> std::io::Result<()> {
                 ct,
                 &json(serde_json::json!({ "result": r })),
             )
+        }
+        // The one-time "the font is now Shishir Bangla" notice: keep it, or go back to the old font
+        ("POST", "/api/font-notice") => {
+            let p: serde_json::Value = serde_json::from_str(body).unwrap_or_default();
+            let go_back = p["go_back"].as_bool().unwrap_or(false);
+            let saved = {
+                let mut sh = SHARED.lock();
+                let mut cfg = sh.ekushe.config().clone();
+                cfg.answer_font_notice(go_back);
+                let ok = cfg.save_to(&Config::default_config_path()).is_ok();
+                let family = cfg.candidate_font_family.clone();
+                sh.ekushe.set_config(cfg);
+                ok.then_some(family)
+            };
+            match saved {
+                Some(f) => respond(
+                    &mut s,
+                    "200 OK",
+                    ct,
+                    &json(serde_json::json!({ "ok": true, "font_family": f })),
+                ),
+                None => respond(&mut s, "500 Internal Server Error", ct, b"{\"ok\":false}"),
+            }
         }
         ("POST", "/api/settings") => {
             let p: serde_json::Value = serde_json::from_str(body).unwrap_or_default();

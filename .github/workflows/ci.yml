@@ -73,8 +73,10 @@ jobs:
           $userFonts = "$env:LOCALAPPDATA\Microsoft\Windows\Fonts"
           $fontReg = Get-ItemProperty 'HKCU:\Software\Microsoft\Windows NT\CurrentVersion\Fonts'
           foreach ($w in @(@('Regular', 'Shishir Bangla (TrueType)'), @('Medium', 'Shishir Bangla Medium (TrueType)'), @('SemiBold', 'Shishir Bangla SemiBold (TrueType)'), @('Bold', 'Shishir Bangla Bold (TrueType)'))) {
-            if (-not (Test-Path "$userFonts\ShishirBangla-$($w[0]).ttf")) { Write-Error "ShishirBangla-$($w[0]).ttf not installed"; exit 1 }
-            if ($fontReg.($w[1]) -ne "$userFonts\ShishirBangla-$($w[0]).ttf") { Write-Error "font entry '$($w[1])' missing"; exit 1 }
+            # Installed under its version's name, e.g. ShishirBangla-Regular-0.003.ttf
+            $file = "$userFonts\ShishirBangla-$($w[0])-0.003.ttf"
+            if (-not (Test-Path $file)) { Write-Error "$file not installed"; exit 1 }
+            if ($fontReg.($w[1]) -ne $file) { Write-Error "font entry '$($w[1])' missing"; exit 1 }
           }
           if (-not (Test-Path "$root\assets\fonts\OFL-1.1-ShishirBangla.txt")) { Write-Error "Shishir Bangla licence missing"; exit 1 }
           Write-Host "installed OK"
@@ -248,7 +250,7 @@ jobs:
           rpmbuild --rebuild build/dist/ekushe-*.src.rpm --define "_rpmdir $PWD/build/dist/rpms"
       - name: Install and type
         run: |
-          dnf install -y -q build/dist/rpms/*/ekushe-*.rpm ibus python3-gobject python3-dbus dbus-daemon dbus-tools fcitx5
+          dnf install -y -q build/dist/rpms/*/*.rpm ibus python3-gobject python3-dbus dbus-daemon dbus-tools fcitx5
           platform/linux/dist/test-installed.sh
 
   ppa-check:
@@ -272,7 +274,7 @@ jobs:
           cd src && dpkg-buildpackage -b -us -uc
       - name: Install and type
         run: |
-          apt-get install -y -q ./build/dist/deb/ekushe_*_amd64.deb ibus python3-gi python3-dbus gir1.2-ibus-1.0 dbus fcitx5
+          apt-get install -y -q ./build/dist/deb/ekushe_*_amd64.deb ./build/dist/deb/fonts-shishir-bangla_*_all.deb ibus python3-gi python3-dbus gir1.2-ibus-1.0 dbus fcitx5
           platform/linux/dist/test-installed.sh
 
   dict-builder:
