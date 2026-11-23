@@ -1,5 +1,5 @@
-# Shishir Bangla across upgrades, on a computer without Ekushe (CI runs it before the install and
-# uninstall test):
+# Shishir Bangla across upgrades, on a computer where Ekushe has never run (CI runs it before the
+# tray self-test, because every start of ekushe.exe installs its fonts for the user):
 #  - an older Shishir Bangla that an earlier Ekushe installed, registered and loaded (in use), is
 #    replaced: the new version goes in under its own name and the font entry points at it, and the
 #    old file is removed or, while Windows still has it open, scheduled for removal;
@@ -13,6 +13,12 @@ $userFonts = "$env:LOCALAPPDATA\Microsoft\Windows\Fonts"
 $fontKey = 'HKCU:\Software\Microsoft\Windows NT\CurrentVersion\Fonts'
 New-Item -ItemType Directory -Force $root, $userFonts | Out-Null
 if (-not (Test-Path $fontKey)) { New-Item -Path $fontKey -Force | Out-Null }
+# The starting point must be clean: Ekushe's fonts from an earlier run would be (rightly) taken for
+# the user's own once this test rewrites Ekushe's list
+$already = @(Get-ChildItem "$userFonts\ShishirBangla-*" -ErrorAction SilentlyContinue)
+if ($already.Count -gt 0 -or (Test-Path "$root\fonts-installed.txt")) {
+    Write-Error "Ekushe already ran on this computer (found: $($already.Name -join ', ')); run this test first"; exit 1
+}
 Add-Type -Namespace EkusheTest -Name Gdi -MemberDefinition '[DllImport("gdi32.dll", CharSet = CharSet.Unicode)] public static extern int AddFontResourceW(string file);'
 
 # `bytes` with the head table's font revision set to `rev` (an "older version" of the same font)

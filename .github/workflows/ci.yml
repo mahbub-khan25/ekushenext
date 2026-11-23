@@ -38,6 +38,12 @@ jobs:
           got=$(echo "$out" | sed -n 's/^TOTAL \([0-9]*\)\/.*/\1/p')
           min=$(grep -v '^#' $E/minimum.txt)
           [ "$got" -ge "$min" ] || { echo "::error::Accuracy fell to $got (minimum $min, tools/dict-builder/eval/minimum.txt)"; exit 1; }
+      - name: Shishir Bangla upgrades (an older one Ekushe installed is replaced, a user's own is kept)
+        shell: pwsh
+        timeout-minutes: 5
+        # First: every start of ekushe.exe (the self-test too) installs its fonts, and this test needs
+        # a computer where Ekushe has never run
+        run: ./.github/scripts/font-upgrade-test.ps1
       - name: Tray self-test (Studio HTTP endpoints)
         shell: pwsh
         run: |
@@ -51,10 +57,6 @@ jobs:
           if ($v.ProductName -ne 'Ekushe Next') { Write-Error "version resource missing"; exit 1 }
           $want = (Get-Content .github/release/VERSION -Raw).Trim().TrimStart('v')
           if ($v.ProductVersion -ne $want) { Write-Error "embedded version $($v.ProductVersion) is not this release ($want)"; exit 1 }
-      - name: Shishir Bangla upgrades (an older one Ekushe installed is replaced, a user's own is kept)
-        shell: pwsh
-        timeout-minutes: 5
-        run: ./.github/scripts/font-upgrade-test.ps1
       - name: Install and uninstall (as a user would)
         shell: pwsh
         timeout-minutes: 5
