@@ -144,7 +144,7 @@ fn record(sh: &mut Shared, out: SessionOutput) -> *mut c_char {
 pub(crate) static SHARED: Lazy<Mutex<Shared>> = Lazy::new(|| {
     // Settings, snippets and learned words are the user's own: owner-only (older versions were not)
     ekushe_core::suggest::tighten_permissions(&Config::default_dir());
-    let cfg = Config::load_from(&Config::default_config_path()).unwrap_or_default();
+    let cfg = Config::load_and_upgrade(&Config::default_config_path()).unwrap_or_default();
     let mut ekushe = Ekushe::new(cfg);
     let _ = ekushe
         .suggestions_engine_mut()

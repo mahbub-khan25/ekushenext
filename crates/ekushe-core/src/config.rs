@@ -81,10 +81,20 @@ pub const DEFAULT_BIJOY_APPS: &[&str] = &[
 /// (`assets/fonts/ShishirBangla-*.ttf`, four weights) and installed with it on Windows, Linux and macOS.
 pub const DEFAULT_BENGALI_FONT: &str = "Shishir Bangla";
 
+/// The Bengali font that was the default before Shishir Bangla (on Windows, Linux and macOS alike)
+pub const OLD_DEFAULT_BENGALI_FONT: &str = "Kalpurush";
+
+/// The settings format this version writes. 1: the old default font (Kalpurush) was moved to Shishir
+/// Bangla once; a file without `settings_version` is from before that.
+pub const SETTINGS_VERSION: u32 = 1;
+
 /// Full Ekushe configuration persisted in `config.toml`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Config {
+    /// Which upgrades have been made to this file ([`SETTINGS_VERSION`]); missing means 0
+    #[serde(default)]
+    pub settings_version: u32,
     /// Hotkey to toggle between Normal Default Keyboard and Ekushe
     pub switch_hotkey: SwitchHotkey,
     /// Hotkey to convert selected Banglish/Bijoy text in any app
@@ -181,6 +191,7 @@ impl Default for Config {
         per_app.insert("pwsh.exe".to_string(), InputLanguage::English);
 
         Self {
+            settings_version: SETTINGS_VERSION,
             switch_hotkey: SwitchHotkey::DoubleTapShift,
             convert_selection_hotkey: "Ctrl+Alt+C".to_string(),
             active_layout: LayoutId::AvroPhonetic,
@@ -240,9 +251,40 @@ impl Config {
         Self::default_dir().join("config.toml")
     }
 
+    /// Read a settings file, bringing one written by an older version up to date in memory (see
+    /// [`Config::upgrade`]).
     pub fn load_from(path: &Path) -> std::io::Result<Self> {
         let raw = fs::read_to_string(path)?;
-        toml::from_str(&raw).map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))
+        let mut cfg: Self = toml::from_str(&raw)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+        cfg.upgrade();
+        Ok(cfg)
+    }
+
+    /// [`Config::load_from`], and write the file back when it was upgraded, so each upgrade happens
+    /// once: a font chosen afterwards is never changed again.
+    pub fn load_and_upgrade(path: &Path) -> std::io::Result<Self> {
+        let raw = fs::read_to_string(path)?;
+        let mut cfg: Self = toml::from_str(&raw)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+        if cfg.upgrade() {
+            cfg.save_to(path)?;
+        }
+        Ok(cfg)
+    }
+
+    /// Upgrade settings from an older version; returns whether anything changed. Version 1: the old
+    /// default font, Kalpurush, becomes Shishir Bangla (the setup wrote the default into every
+    /// settings file, so Kalpurush there means "the default"); any other saved font is kept.
+    pub fn upgrade(&mut self) -> bool {
+        if self.settings_version >= SETTINGS_VERSION {
+            return false;
+        }
+        if self.candidate_font_family == OLD_DEFAULT_BENGALI_FONT {
+            self.candidate_font_family = DEFAULT_BENGALI_FONT.to_string();
+        }
+        self.settings_version = SETTINGS_VERSION;
+        true
     }
 
     /// Save (owner-only on macOS and Linux, replaced in one step so a crash never leaves half a file).
@@ -268,10 +310,64 @@ mod tests {
 
     #[test]
     fn a_font_the_user_chose_is_kept() {
-        let cfg: Config = toml::from_str("candidate_font_family = \"Kalpurush\"\n").unwrap();
-        assert_eq!(cfg.candidate_font_family, "Kalpurush");
+        let cfg: Config = toml::from_str("candidate_font_family = \"Siyam Rupali\"\n").unwrap();
+        assert_eq!(cfg.candidate_font_family, "Siyam Rupali");
         let saved = toml::to_string_pretty(&cfg).unwrap();
         let again: Config = toml::from_str(&saved).unwrap();
-        assert_eq!(again.candidate_font_family, "Kalpurush");
+        assert_eq!(again.candidate_font_family, "Siyam Rupali");
+    }
+
+    /// A settings file in its own temporary folder
+    fn settings_file(name: &str, contents: &str) -> PathBuf {
+        let dir =
+            std::env::temp_dir().join(format!("ekushe-config-test-{name}-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("config.toml");
+        fs::write(&path, contents).unwrap();
+        path
+    }
+
+    #[test]
+    fn the_old_default_font_moves_to_shishir_bangla_once() {
+        // Saved by a version from before Shishir Bangla, with the old default Kalpurush
+        let path = settings_file("old", "candidate_font_family = \"Kalpurush\"\n");
+        let cfg = Config::load_and_upgrade(&path).unwrap();
+        assert_eq!(cfg.candidate_font_family, DEFAULT_BENGALI_FONT);
+        assert_eq!(cfg.settings_version, SETTINGS_VERSION);
+        // ... and the move is written down, so it is not done again
+        let on_disk = fs::read_to_string(&path).unwrap();
+        assert!(on_disk.contains("settings_version = 1"));
+        assert!(on_disk.contains("candidate_font_family = \"Shishir Bangla\""));
+        // In memory, too, an old file is moved (backups, the other apps that read the file)
+        let cfg = Config::load_from(&settings_file(
+            "old2",
+            "candidate_font_family = \"Kalpurush\"\n",
+        ))
+        .unwrap();
+        assert_eq!(cfg.candidate_font_family, DEFAULT_BENGALI_FONT);
+    }
+
+    #[test]
+    fn another_saved_font_is_kept_when_upgrading() {
+        for font in ["SolaimanLipi", "Siyam Rupali", "Hind Siliguri"] {
+            let path = settings_file("custom", &format!("candidate_font_family = \"{font}\"\n"));
+            let cfg = Config::load_and_upgrade(&path).unwrap();
+            assert_eq!(cfg.candidate_font_family, font);
+            assert_eq!(cfg.settings_version, SETTINGS_VERSION);
+        }
+    }
+
+    #[test]
+    fn kalpurush_chosen_after_the_upgrade_is_kept() {
+        let path = settings_file(
+            "chosen",
+            "settings_version = 1\ncandidate_font_family = \"Kalpurush\"\n",
+        );
+        let before = fs::read_to_string(&path).unwrap();
+        let cfg = Config::load_and_upgrade(&path).unwrap();
+        assert_eq!(cfg.candidate_font_family, "Kalpurush");
+        assert_eq!(fs::read_to_string(&path).unwrap(), before, "file rewritten");
+        // A new install starts already upgraded
+        assert_eq!(Config::default().settings_version, SETTINGS_VERSION);
     }
 }

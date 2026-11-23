@@ -146,7 +146,7 @@ struct AppSharedState {
 }
 
 static STATE: Lazy<Mutex<AppSharedState>> = Lazy::new(|| {
-    let mut cfg = Config::load_from(&Config::default_config_path()).unwrap_or_default();
+    let mut cfg = Config::load_and_upgrade(&Config::default_config_path()).unwrap_or_default();
     if cfg.candidate_font_family.is_empty() || cfg.candidate_font_family == "Nirmala UI" {
         cfg.candidate_font_family = ekushe_core::config::DEFAULT_BENGALI_FONT.to_string();
     }
