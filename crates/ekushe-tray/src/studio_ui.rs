@@ -524,6 +524,14 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
     </div>
 
     <!-- Windows: another Bangla keyboard program is running next to Ekushe -->
+    <div class="etched" id="fontNotice" hidden role="status" style="margin-bottom:16px;border-left:4px solid var(--green, #0B6B4A)">
+      <div class="section-title" id="fontNoticeTitle"></div>
+      <div class="hint" id="fontNoticeBody"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+        <button class="chip" id="fontNoticeKeep" onclick="answerFontNotice(false)"></button>
+        <button class="chip" id="fontNoticeBack" onclick="answerFontNotice(true)"></button>
+      </div>
+    </div>
     <div class="etched" id="conflictBox" hidden role="status" style="margin-bottom:16px;border-left:4px solid var(--accent, #c0392b)">
       <div class="section-title">অন্য বাংলা কীবোর্ড চালু আছে</div><div class="hint" id="conflictMsg"></div>
     </div>
@@ -1233,6 +1241,24 @@ function onOpacityChange(pct) {
   opacitySaveTimer = setTimeout(saveSettings, 250);
 }
 
+// The one-time notice after the font moved to Shishir Bangla (words from the engine, Bengali and English)
+function showFontNotice(n) {
+  const box = document.getElementById('fontNotice');
+  box.hidden = !n;
+  if (!n) return;
+  document.getElementById('fontNoticeTitle').textContent = `${n.title_bn} · ${n.title_en}`;
+  document.getElementById('fontNoticeBody').textContent = `${n.body_bn} ${n.body_en}`;
+  document.getElementById('fontNoticeKeep').textContent = `${n.keep_bn} · ${n.keep_en}`;
+  document.getElementById('fontNoticeBack').textContent = `${n.back_bn} · ${n.back_en}`;
+}
+async function answerFontNotice(goBack) {
+  const res = await fetch('/api/font-notice', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ go_back: goBack }) });
+  const r = res.ok ? await res.json() : null;
+  if (r && r.ok) {
+    showFontNotice(null);
+    if (r.font_family) applyCssFont(r.font_family);
+  }
+}
 function applyCssFont(fontName) {
   document.documentElement.style.setProperty('--font-bn', `'${fontName}', 'Shishir Bangla', 'SolaimanLipi', 'Kalpurush', 'Hind Siliguri', sans-serif`);
   const sel = document.getElementById('cfgFont');
@@ -1277,6 +1303,7 @@ async function refreshState() {
   }
   welcomeMaybeShow(st);
   document.getElementById('conflictBox').hidden = !st.conflicts;
+  showFontNotice(st.font_notice);
   document.getElementById('conflictMsg').textContent = st.conflicts || '';
   const pill = document.getElementById('modePill');
   pill.className = 'lang-switch ' + (st.language === 'Bangla' ? 'bangla' : 'english');

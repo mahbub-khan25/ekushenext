@@ -8,6 +8,7 @@ Set-Content -Path $preset -Encoding utf8 -Value @'
 active_layout = "Probhat"
 start_language = "Bangla"
 welcome_done = true
+candidate_font_family = "Kalpurush"
 '@
 $p = Start-Process -FilePath $setup -ArgumentList '/S', '--no-launch', '--no-desktop-shortcut', '--settings', $preset -PassThru -NoNewWindow -Wait
 Get-Content "$env:TEMP\ekushe-install.log" -Tail 12 -ErrorAction SilentlyContinue
@@ -15,6 +16,8 @@ if ($p.ExitCode -ne 0) { Write-Error "silent install failed ($($p.ExitCode))"; e
 $cfg = Get-Content "$env:APPDATA\Ekushe\config.toml" -Raw
 if ($cfg -notmatch 'active_layout = "Probhat"') { Write-Error "the office's layout was not set:`n$cfg"; exit 1 }
 if ($cfg -notmatch 'welcome_done = true') { Write-Error "the welcome would still be asked:`n$cfg"; exit 1 }
+# The office's font is its choice: marked as current, so the Shishir Bangla upgrade leaves it alone
+if ($cfg -notmatch 'candidate_font_family = "Kalpurush"' -or $cfg -notmatch 'settings_version = 1') { Write-Error "the office's font was not kept as chosen:`n$cfg"; exit 1 }
 if (Test-Path "$([Environment]::GetFolderPath('Desktop'))\Ekushe Next Bangla Keyboard.lnk") { Write-Error "--no-desktop-shortcut was ignored"; exit 1 }
 if (-not (Test-Path "$env:LOCALAPPDATA\Programs\Ekushe\ekushe.exe")) { Write-Error "not installed"; exit 1 }
 Write-Host "silent install with settings OK"
