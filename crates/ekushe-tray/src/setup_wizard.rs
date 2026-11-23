@@ -18,9 +18,9 @@ use windows_sys::Win32::Graphics::Dwm::DwmSetWindowAttribute;
 use windows_sys::Win32::Graphics::Gdi::{
     AddFontResourceW, BeginPaint, BitBlt, CreateCompatibleBitmap, CreateCompatibleDC, CreateFontW,
     CreatePen, CreateSolidBrush, DeleteDC, DeleteObject, DrawTextW, EndPaint, FillRect,
-    InvalidateRect, RoundRect, ScreenToClient, SelectObject, SetBkMode, SetTextColor, UpdateWindow,
-    DT_CENTER, DT_LEFT, DT_NOPREFIX, DT_RIGHT, DT_SINGLELINE, DT_VCENTER, HBRUSH, HDC, PAINTSTRUCT,
-    PS_SOLID, SRCCOPY, TRANSPARENT,
+    InvalidateRect, RemoveFontResourceW, RoundRect, ScreenToClient, SelectObject, SetBkMode,
+    SetTextColor, UpdateWindow, DT_CENTER, DT_LEFT, DT_NOPREFIX, DT_RIGHT, DT_SINGLELINE,
+    DT_VCENTER, HBRUSH, HDC, PAINTSTRUCT, PS_SOLID, SRCCOPY, TRANSPARENT,
 };
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows_sys::Win32::System::Registry::{
@@ -160,14 +160,34 @@ pub fn ensure_self_configured() {
 
     for font in studio_fonts::FONTS {
         let (reg_name, filename, bytes) = (font.windows_name, font.file, font.bytes);
+        // Ekushe's own folder always holds this version's fonts
         let app_font_path = fonts_dir.join(filename);
-        write_if_missing(&app_font_path, bytes);
+        if fs::read(&app_font_path).map_or(true, |b| b != bytes) {
+            let _ = fs::write(&app_font_path, bytes);
+        }
 
         let win_font_path = user_win_fonts.join(filename);
         if !win_font_path.exists() {
             // Not there before: this font is ours to remove at uninstall
             if fs::write(&win_font_path, bytes).is_ok() && !ours.iter().any(|f| f == filename) {
                 ours.push(filename.to_string());
+            }
+        } else if ours.iter().any(|f| f == filename) {
+            // Installed by an older Ekushe: replace it with this newer version (a font Ekushe did
+            // not install is never touched). A font in use stays until the next start tries again.
+            let older =
+                fs::read(&win_font_path).is_ok_and(|b| studio_fonts::needs_update(&b, bytes));
+            if older {
+                unsafe {
+                    let wpath = wide_null(&win_font_path.to_string_lossy());
+                    let _ = RemoveFontResourceW(wpath.as_ptr());
+                }
+                match fs::write(&win_font_path, bytes) {
+                    Ok(()) => install_log(&format!("{filename}: updated to the newer version")),
+                    Err(e) => install_log(&format!(
+                        "{filename}: in use, updated at the next start ({e})"
+                    )),
+                }
             }
         }
 
@@ -194,11 +214,37 @@ pub fn ensure_self_configured() {
     }
 }
 
+/// Delete a file that is in use as soon as it is free: at the next restart (`MoveFileEx`, which
+/// needs administrator rights), or else at this user's next sign-in (a `RunOnce` entry). Says which.
+fn schedule_removal(path: &Path) -> Option<&'static str> {
+    use windows_sys::Win32::Storage::FileSystem::{MoveFileExW, MOVEFILE_DELAY_UNTIL_REBOOT};
+    let wpath = wide_null(&path.to_string_lossy());
+    if unsafe { MoveFileExW(wpath.as_ptr(), ptr::null(), MOVEFILE_DELAY_UNTIL_REBOOT) } != 0 {
+        return Some("at the next restart");
+    }
+    let name = format!(
+        "Ekushe remove {}",
+        path.file_name()
+            .map(|n| n.to_string_lossy())
+            .unwrap_or_default()
+    );
+    let cmd = format!("cmd.exe /c del /f /q \"{}\"", path.display());
+    match unsafe {
+        set_hkcu_reg_sz(
+            r"Software\Microsoft\Windows\CurrentVersion\RunOnce",
+            &name,
+            &cmd,
+        )
+    } {
+        Ok(()) => Some("at the next sign-in"),
+        Err(_) => None,
+    }
+}
+
 /// Removes the fonts Ekushe installed for this user (file and registry entry). Fonts that were
 /// already in the user's font folder before Ekushe are left alone. Installs from before the marker
 /// file existed are treated as having installed the five fonts Ekushe had then.
 fn remove_user_fonts() {
-    use windows_sys::Win32::Graphics::Gdi::RemoveFontResourceW;
     let user_win_fonts = user_fonts_dir();
     let marker = installed_fonts_marker();
     let ours: Vec<String> = match fs::read_to_string(&marker) {
@@ -226,7 +272,14 @@ fn remove_user_fonts() {
             let wpath = wide_null(&win_font_path.to_string_lossy());
             let _ = RemoveFontResourceW(wpath.as_ptr());
         }
-        let _ = fs::remove_file(&win_font_path);
+        if fs::remove_file(&win_font_path).is_err() && win_font_path.exists() {
+            // Still open in some program: its registry entry is gone now, so Windows won't load
+            // it at the next sign-in, and the file goes then
+            match schedule_removal(&win_font_path) {
+                Some(when) => install_log(&format!("{filename}: in use, removal scheduled {when}")),
+                None => install_log(&format!("{filename}: in use, could not be removed")),
+            }
+        }
     }
     let _ = fs::remove_file(&marker);
     unsafe {

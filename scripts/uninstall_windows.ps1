@@ -46,7 +46,13 @@ $userFonts = Join-Path $env:LOCALAPPDATA "Microsoft\Windows\Fonts"
 foreach ($file in $ours) {
     if ($fonts.ContainsKey($file)) {
         Remove-ItemProperty -Path "HKCU:\Software\Microsoft\Windows NT\CurrentVersion\Fonts" -Name $fonts[$file] -ErrorAction SilentlyContinue
-        Remove-Item -Force (Join-Path $userFonts $file) -ErrorAction SilentlyContinue
+        $path = Join-Path $userFonts $file
+        Remove-Item -Force $path -ErrorAction SilentlyContinue
+        if (Test-Path $path) {
+            # Still in use: its font entry is gone, so it is deleted at the next sign-in
+            Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce" -Name "Ekushe remove $file" -Value "cmd.exe /c del /f /q `"$path`""
+            Write-Host "  $file is in use: removed at the next sign-in"
+        }
     }
 }
 

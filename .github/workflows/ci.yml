@@ -51,6 +51,10 @@ jobs:
           if ($v.ProductName -ne 'Ekushe Next') { Write-Error "version resource missing"; exit 1 }
           $want = (Get-Content .github/release/VERSION -Raw).Trim().TrimStart('v')
           if ($v.ProductVersion -ne $want) { Write-Error "embedded version $($v.ProductVersion) is not this release ($want)"; exit 1 }
+      - name: Shishir Bangla upgrades (an older one Ekushe installed is replaced, a user's own is kept)
+        shell: pwsh
+        timeout-minutes: 5
+        run: ./.github/scripts/font-upgrade-test.ps1
       - name: Install and uninstall (as a user would)
         shell: pwsh
         timeout-minutes: 5
@@ -86,7 +90,12 @@ jobs:
           if ($u.ExitCode -ne 0) { exit $u.ExitCode }
           if (Test-Path "$root\ekushe.exe") { Write-Error "uninstall left ekushe.exe behind"; exit 1 }
           if (Test-Path "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Ekushe Next Bangla Keyboard.lnk") { Write-Error "uninstall left the shortcut"; exit 1 }
-          if (Test-Path "$userFonts\ShishirBangla-*.ttf") { Write-Error "uninstall left Shishir Bangla in the user's fonts"; exit 1 }
+          # A font file still open in some program is removed at the next restart or sign-in instead
+          $log = Get-Content "$env:TEMP\ekushe-install.log" -Raw -ErrorAction SilentlyContinue
+          foreach ($f in Get-ChildItem "$userFonts\ShishirBangla-*.ttf" -ErrorAction SilentlyContinue) {
+            if ($log -notmatch [regex]::Escape("$($f.Name): in use, removal scheduled")) { Write-Error "uninstall left $($f.Name) in the user's fonts"; exit 1 }
+            Write-Host "$($f.Name) in use: removal scheduled"
+          }
           if ((Get-ItemProperty 'HKCU:\Software\Microsoft\Windows NT\CurrentVersion\Fonts').'Shishir Bangla (TrueType)') { Write-Error "uninstall left the font entry"; exit 1 }
           Write-Host "uninstalled OK"
       - name: Office install (silent, with the office's settings)

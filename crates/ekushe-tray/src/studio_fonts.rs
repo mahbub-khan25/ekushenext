@@ -66,6 +66,34 @@ pub fn font_file(name: &str) -> Option<&'static [u8]> {
     FONTS.iter().find(|f| f.file == name).map(|f| f.bytes)
 }
 
+/// A TrueType font's own version: its `head` table's font revision (16.16 fixed point), or `None`
+/// when `bytes` is not a readable font.
+#[cfg_attr(not(any(windows, test)), allow(dead_code))]
+pub fn font_revision(bytes: &[u8]) -> Option<u32> {
+    let be32 = |at: usize| -> Option<u32> {
+        Some(u32::from_be_bytes(bytes.get(at..at + 4)?.try_into().ok()?))
+    };
+    let tables = u16::from_be_bytes(bytes.get(4..6)?.try_into().ok()?) as usize;
+    (0..tables).find_map(|i| {
+        let rec = 12 + 16 * i;
+        if bytes.get(rec..rec + 4)? != b"head" {
+            return None;
+        }
+        be32(be32(rec + 8)? as usize + 4)
+    })
+}
+
+/// Whether a font file Ekushe installed earlier (`installed`) should be replaced by the bundled one:
+/// it is an older version, or no longer a readable font. The same or a newer version is left alone.
+#[cfg_attr(not(windows), allow(dead_code))]
+pub fn needs_update(installed: &[u8], bundled: &[u8]) -> bool {
+    match (font_revision(installed), font_revision(bundled)) {
+        (Some(have), Some(new)) => have < new,
+        (None, Some(_)) => true,
+        _ => false,
+    }
+}
+
 #[cfg(test)]
 mod font_tests {
     use super::*;
@@ -120,5 +148,43 @@ mod font_tests {
             assert!(font_file(f).is_some(), "{f} is no longer bundled");
         }
         assert_eq!(font_file("../Cargo.toml"), None);
+    }
+
+    /// `bytes` with its `head` table's font revision set to `rev`
+    fn with_revision(bytes: &[u8], rev: u32) -> Vec<u8> {
+        let mut b = bytes.to_vec();
+        let n = u16::from_be_bytes([b[4], b[5]]) as usize;
+        for i in 0..n {
+            let rec = 12 + 16 * i;
+            if &b[rec..rec + 4] == b"head" {
+                let off = u32::from_be_bytes(b[rec + 8..rec + 12].try_into().unwrap()) as usize;
+                b[off + 4..off + 8].copy_from_slice(&rev.to_be_bytes());
+            }
+        }
+        b
+    }
+
+    #[test]
+    fn a_font_is_replaced_only_by_a_newer_version_of_itself() {
+        let bundled = font_file("ShishirBangla-Regular.ttf").unwrap();
+        // 0.003 is revision 0x00C5 in 16.16 fixed point (0.0030)
+        assert_eq!(font_revision(bundled), Some(0xC5));
+        assert_eq!(font_revision(b"not a font"), None);
+        // An older Shishir Bangla Ekushe installed is replaced
+        let older = with_revision(bundled, 0x83);
+        assert_eq!(font_revision(&older), Some(0x83));
+        assert!(needs_update(&older, bundled));
+        // A broken copy too
+        assert!(needs_update(b"half a fo", bundled));
+        // The same file, or a newer one (from a newer Ekushe, or installed by hand), is left alone
+        assert!(!needs_update(bundled, bundled));
+        assert!(!needs_update(&with_revision(bundled, 0x200), bundled));
+        // Same version number, other bytes: not replaced (a changed font gets a new version)
+        assert!(!needs_update(&with_revision(bundled, 0xC5)[..], &{
+            let mut b = bundled.to_vec();
+            let last = b.len() - 1;
+            b[last] ^= 1;
+            b
+        }));
     }
 }
