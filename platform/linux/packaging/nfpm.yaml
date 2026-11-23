@@ -45,6 +45,48 @@ contents:
     dst: /usr/share/icons/hicolor/256x256/apps/ekushe.png
   - src: build/linux/stage/usr/share/applications/ekushe-studio.desktop
     dst: /usr/share/applications/ekushe-studio.desktop
+  # Shishir Bangla, the default Bengali font, for every program (each distribution's fontconfig
+  # refreshes its font cache when files arrive in or leave its font folder)
+  - dst: /usr/share/fonts/shishir-bangla
+    type: dir
+    packager: rpm
+    file_info: { mode: 0755 }
+  - src: build/linux/stage/usr/share/fonts/shishir-bangla/ShishirBangla-Regular.ttf
+    dst: /usr/share/fonts/truetype/shishir-bangla/ShishirBangla-Regular.ttf
+    packager: deb
+  - src: build/linux/stage/usr/share/fonts/shishir-bangla/ShishirBangla-Regular.ttf
+    dst: /usr/share/fonts/shishir-bangla/ShishirBangla-Regular.ttf
+    packager: rpm
+  - src: build/linux/stage/usr/share/fonts/shishir-bangla/ShishirBangla-Medium.ttf
+    dst: /usr/share/fonts/truetype/shishir-bangla/ShishirBangla-Medium.ttf
+    packager: deb
+  - src: build/linux/stage/usr/share/fonts/shishir-bangla/ShishirBangla-Medium.ttf
+    dst: /usr/share/fonts/shishir-bangla/ShishirBangla-Medium.ttf
+    packager: rpm
+  - src: build/linux/stage/usr/share/fonts/shishir-bangla/ShishirBangla-SemiBold.ttf
+    dst: /usr/share/fonts/truetype/shishir-bangla/ShishirBangla-SemiBold.ttf
+    packager: deb
+  - src: build/linux/stage/usr/share/fonts/shishir-bangla/ShishirBangla-SemiBold.ttf
+    dst: /usr/share/fonts/shishir-bangla/ShishirBangla-SemiBold.ttf
+    packager: rpm
+  - src: build/linux/stage/usr/share/fonts/shishir-bangla/ShishirBangla-Bold.ttf
+    dst: /usr/share/fonts/truetype/shishir-bangla/ShishirBangla-Bold.ttf
+    packager: deb
+  - src: build/linux/stage/usr/share/fonts/shishir-bangla/ShishirBangla-Bold.ttf
+    dst: /usr/share/fonts/shishir-bangla/ShishirBangla-Bold.ttf
+    packager: rpm
+  - src: build/linux/stage/usr/share/fonts/shishir-bangla/OFL.txt
+    dst: /usr/share/fonts/truetype/shishir-bangla/OFL.txt
+    packager: deb
+  - src: build/linux/stage/usr/share/fonts/shishir-bangla/OFL.txt
+    dst: /usr/share/fonts/shishir-bangla/OFL.txt
+    packager: rpm
+  - src: build/linux/stage/usr/share/fonts/shishir-bangla/FONTLOG.md
+    dst: /usr/share/fonts/truetype/shishir-bangla/FONTLOG.md
+    packager: deb
+  - src: build/linux/stage/usr/share/fonts/shishir-bangla/FONTLOG.md
+    dst: /usr/share/fonts/shishir-bangla/FONTLOG.md
+    packager: rpm
   - src: build/linux/stage/usr/share/doc/ekushe/LICENSE
     dst: /usr/share/doc/ekushe/LICENSE
   - src: build/linux/stage/usr/share/doc/ekushe/THIRD_PARTY_NOTICES.md

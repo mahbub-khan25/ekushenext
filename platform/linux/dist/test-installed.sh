@@ -14,6 +14,13 @@ else
   echo "WebKitGTK not installed: Studio will open in the browser"
 fi
 grep -q "<exec>/usr/libexec/ekushe/ibus-engine-ekushe " /usr/share/ibus/component/ekushe.xml
+# Shishir Bangla, the default Bengali font, is installed for every program, with its licence
+FONTDIR=/usr/share/fonts/shishir-bangla; [ -d "$FONTDIR" ] || FONTDIR=/usr/share/fonts/truetype/shishir-bangla
+for w in Regular Medium SemiBold Bold; do test -f "$FONTDIR/ShishirBangla-$w.ttf"; done
+test -f "$FONTDIR/OFL.txt"
+if command -v fc-list >/dev/null 2>&1; then
+  test "$(fc-list "Shishir Bangla" file | grep -c "$FONTDIR/ShishirBangla-")" -eq 4
+fi
 rm -rf ~/.config/ibus/bus
 dbus-run-session -- bash -c 'ibus-daemon --xim=false --panel=disable --emoji-extension=disable --cache=none --config=disable &
   for i in $(seq 1 50); do F=$(ls ~/.config/ibus/bus/* 2>/dev/null | head -1); [ -n "$F" ] && break; sleep 0.2; done

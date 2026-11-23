@@ -10,7 +10,8 @@ export PATH := $(RUSTBIN):$(PATH)
 endif
 VERSION := $(shell dpkg-parsechangelog -SVersion | sed 's/-[^-]*$$//')
 MAKEARGS = -f platform/linux/Makefile VERSION=$(VERSION) CARGOFLAGS="--offline --frozen" \
-           PREFIX=/usr LIBEXECDIR=/usr/libexec DATADIR=/usr/share BINDIR=/usr/bin
+           PREFIX=/usr LIBEXECDIR=/usr/libexec DATADIR=/usr/share BINDIR=/usr/bin \
+           FONTDIR=/usr/share/fonts/truetype/shishir-bangla
 
 %:
 	dh $@

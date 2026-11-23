@@ -13,6 +13,14 @@ License: CC-BY-SA-4.0
 Comment: Derived from Bangla Wikipedia (CC BY-SA 3.0), FineWeb-2 (ODC-By 1.0), Sangraha
  (CC BY 4.0) and wordfreq (CC BY-SA 4.0). See data/dictionary/LICENSE.md.
 
+Files: assets/fonts/ShishirBangla-*
+Copyright: 2026 Mahbub Khan (Shishir Bangla); 2022 Ekushey (SolaimanLipi 2.002, by Solaiman Karim
+ and Al Mamun Hossen); 2025 The Noto Project Authors (Noto Sans Bengali); 2016 The Inter Project
+ Authors (Inter)
+License: OFL-1.1
+Comment: Shishir Bangla 0.003, https://github.com/mahbub-khan25/shishir-bangla. Installed in
+ /usr/share/fonts/truetype/shishir-bangla/ with its licence (OFL.txt) and credits (FONTLOG.md).
+
 Files: assets/fonts/Kalpurush.ttf assets/fonts/SolaimanLipi.ttf
 Copyright: Tanbin Islam Siyam (Kalpurush), Ekushey (SolaimanLipi)
 License: OFL-1.0

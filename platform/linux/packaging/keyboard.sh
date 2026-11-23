@@ -1,10 +1,12 @@
 #!/bin/sh
 # Install or remove the Ekushe Bangla keyboard from the AppImage (system-wide, under /usr/local,
 # with the IBus registration file in /usr/share/ibus/component where IBus looks for it). When Fcitx 5
-# is installed, its addon goes into Fcitx's own folders too (Fcitx only looks there).
+# is installed, its addon goes into Fcitx's own folders too (Fcitx only looks there). The Shishir
+# Bangla font, Ekushe's default Bengali font, goes into $PREFIX/share/fonts/shishir-bangla.
 set -e
 ACTION="$1"; HERE="$2"
 PREFIX=/usr/local
+FONTDIR=$PREFIX/share/fonts/shishir-bangla
 FCITX_LIB=""
 for d in /usr/lib/x86_64-linux-gnu/fcitx5 /usr/lib64/fcitx5 /usr/lib/fcitx5; do
   if [ -e "$d/libdbus.so" ] || [ -e "$d/libclassicui.so" ]; then FCITX_LIB="$d"; break; fi
@@ -13,6 +15,8 @@ if [ "$ACTION" = install ]; then
   # The AppImage's files are not readable by root through FUSE: stage them first
   STAGE="$(mktemp -d)"
   cp "$HERE/usr/libexec/ekushe/ibus-engine-ekushe" "$HERE/usr/libexec/ekushe/ekushe-studio-window" "$HERE/usr/bin/ekushe-studio" "$HERE/usr/share/ekushe/ekushe.png" "$STAGE/"
+  mkdir "$STAGE/fonts"
+  cp "$HERE"/usr/share/fonts/shishir-bangla/* "$STAGE/fonts/"
   FCITX_CMD=true
   if [ -n "$FCITX_LIB" ]; then
     cp "$HERE/usr/lib/fcitx5/libekushe.so" "$HERE/usr/share/fcitx5/addon/ekushe.conf" "$STAGE/"
@@ -28,6 +32,8 @@ if [ "$ACTION" = install ]; then
                 install -Dm755 '$STAGE/ekushe-studio' $PREFIX/bin/ekushe-studio &&
                 install -Dm644 '$STAGE/ekushe.png' $PREFIX/share/ekushe/ekushe.png &&
                 install -Dm644 '$STAGE/ekushe.xml' /usr/share/ibus/component/ekushe.xml &&
+                install -d $FONTDIR && install -m644 '$STAGE'/fonts/* $FONTDIR/ &&
+                (fc-cache -s $FONTDIR >/dev/null 2>&1 || true) &&
                 $FCITX_CMD &&
                 (ibus write-cache --system >/dev/null 2>&1 || true)"
   rm -rf "$STAGE"
@@ -39,6 +45,7 @@ else
   FCITX_FILES=""
   [ -n "$FCITX_LIB" ] && FCITX_FILES="$FCITX_LIB/libekushe.so /usr/share/fcitx5/addon/ekushe.conf /usr/share/fcitx5/inputmethod/ekushe.conf"
   pkexec sh -c "rm -f $FCITX_FILES /usr/share/ibus/component/ekushe.xml $PREFIX/libexec/ekushe/ibus-engine-ekushe $PREFIX/libexec/ekushe/ekushe-studio-window $PREFIX/bin/ekushe-studio $PREFIX/share/ekushe/ekushe.png &&
+                rm -rf $FONTDIR && (fc-cache -s >/dev/null 2>&1 || true) &&
                 rmdir $PREFIX/libexec/ekushe $PREFIX/share/ekushe 2>/dev/null; (ibus write-cache --system >/dev/null 2>&1 || true)"
   ibus restart >/dev/null 2>&1 || true
   echo "Removed the Ekushe keyboard."

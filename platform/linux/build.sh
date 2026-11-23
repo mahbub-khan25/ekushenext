@@ -45,6 +45,12 @@ install -Dm644 assets/icons/logo_256.png "$STAGE/usr/share/icons/hicolor/256x256
 install -Dm644 platform/linux/packaging/ekushe-studio.desktop "$STAGE/usr/share/applications/ekushe-studio.desktop"
 install -Dm644 LICENSE "$STAGE/usr/share/doc/ekushe/LICENSE"
 install -Dm644 THIRD_PARTY_NOTICES.md "$STAGE/usr/share/doc/ekushe/THIRD_PARTY_NOTICES.md"
+# Shishir Bangla, the default Bengali font, with its licence and credits
+FONTS="$STAGE/usr/share/fonts/shishir-bangla"
+install -d "$FONTS"
+install -m644 assets/fonts/ShishirBangla-Regular.ttf assets/fonts/ShishirBangla-Medium.ttf assets/fonts/ShishirBangla-SemiBold.ttf assets/fonts/ShishirBangla-Bold.ttf "$FONTS/"
+install -m644 assets/fonts/LICENSES/OFL-1.1-ShishirBangla.txt "$FONTS/OFL.txt"
+install -m644 assets/fonts/LICENSES/FONTLOG-ShishirBangla.md "$FONTS/FONTLOG.md"
 
 # Packaging tools are fixed versions, checked against these SHA-256 sums before they run
 fetch_verified() { # url file sha256

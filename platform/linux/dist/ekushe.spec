@@ -11,7 +11,8 @@ Release:        1%{?dist}
 Summary:        Bangla phonetic keyboard for IBus and Fcitx 5, with its own dictionary
 
 # Ekushe's code is MPL-2.0; the dictionary is CC-BY-SA-4.0; Studio embeds fonts under OFL-1.0,
-# OFL-1.1 and GPL-2.0-or-later WITH Font-exception-2.0. The bundled Rust libraries are permissive.
+# OFL-1.1 and GPL-2.0-or-later WITH Font-exception-2.0, and the package installs the Shishir Bangla
+# font (OFL-1.1). The bundled Rust libraries are permissive.
 License:        MPL-2.0 AND CC-BY-SA-4.0 AND OFL-1.0 AND OFL-1.1 AND GPL-2.0-or-later WITH Font-exception-2.0 AND (MIT OR Apache-2.0) AND MIT AND Unicode-3.0 AND Zlib
 URL:            https://ekushenext.com
 Source0:        https://github.com/mahbub-khan25/ekushenext/releases/download/@TAG@/ekushe-%{version}.tar.xz
@@ -91,6 +92,8 @@ fi
 %{_datadir}/ekushe/
 %{_datadir}/icons/hicolor/256x256/apps/ekushe.png
 %{_datadir}/applications/ekushe-studio.desktop
+# Shishir Bangla, the default Bengali font (fontconfig's file triggers refresh the font cache)
+%{_datadir}/fonts/shishir-bangla/
 
 %changelog
 * @DATE@ Ekushe Next <khan.ytube24@gmail.com> - @VERSION@-1
