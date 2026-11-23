@@ -1,6 +1,21 @@
 #!/bin/bash
 # Runs after the installer copies Ekushe.app to /Library/Input Methods.
 APP="/Library/Input Methods/Ekushe.app"
+# Shishir Bangla, Ekushe's default Bengali font, for every app on this Mac. Only fonts Ekushe put in
+# /Library/Fonts itself are listed in fonts-installed.txt (and updated later); one that was already
+# there is left alone. To remove them: delete the files the list names, then Ekushe.app.
+FONTS_SRC="$APP/Contents/Resources/Fonts"
+RECORD="/Library/Application Support/Ekushe/fonts-installed.txt"
+/bin/mkdir -p "/Library/Application Support/Ekushe"
+/usr/bin/touch "$RECORD"
+for f in "$FONTS_SRC"/ShishirBangla-*.ttf; do
+  [ -f "$f" ] || continue
+  name=$(/usr/bin/basename "$f")
+  if [ ! -e "/Library/Fonts/$name" ] || /usr/bin/grep -qx "$name" "$RECORD"; then
+    /bin/cp "$f" "/Library/Fonts/$name" && /bin/chmod 644 "/Library/Fonts/$name"
+    /usr/bin/grep -qx "$name" "$RECORD" || echo "$name" >> "$RECORD"
+  fi
+done
 # Restart a running older copy so the new one loads
 /usr/bin/pkill -x Ekushe 2>/dev/null || true
 # Add Ekushe to the signed-in user's input sources (they still pick it from the menu bar)

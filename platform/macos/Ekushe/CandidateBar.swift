@@ -126,7 +126,13 @@ final class BarView: NSView {
     private let pad: CGFloat = 7
     private let gap: CGFloat = 6
     private let chipH: CGFloat = 38
-    private let wordFont = NSFont.systemFont(ofSize: 17)
+    /// The system font for Latin, with Shishir Bangla, Ekushe's default Bengali font, for Bangla (the
+    /// app carries it in Contents/Resources/Fonts, and the installer also adds it to /Library/Fonts)
+    private let wordFont: NSFont = {
+        let base = NSFont.systemFont(ofSize: 17)
+        let bangla = NSFontDescriptor(fontAttributes: [.family: "Shishir Bangla"])
+        return NSFont(descriptor: base.fontDescriptor.addingAttributes([.cascadeList: [bangla]]), size: 17) ?? base
+    }()
     private let tagFont = NSFont.systemFont(ofSize: 10, weight: .semibold)
 
     override var isFlipped: Bool { true }

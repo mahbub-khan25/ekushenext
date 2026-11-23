@@ -20,6 +20,8 @@
 	<string>__BUILD__</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
+	<key>ATSApplicationFontsPath</key>
+	<string>Fonts</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>11.0</string>
 	<key>LSBackgroundOnly</key>

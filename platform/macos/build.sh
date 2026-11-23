@@ -33,6 +33,12 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 lipo -create "$OUT/Ekushe-arm64" "$OUT/Ekushe-x86_64" -output "$APP/Contents/MacOS/Ekushe"
 sed -e "s/__VERSION__/${VERSION#v}/" -e "s/__BUILD__/$BUILD/" platform/macos/Info.plist > "$APP/Contents/Info.plist"
 cp -R platform/macos/Resources/en.lproj "$APP/Contents/Resources/"
+# Shishir Bangla, Ekushe's default Bengali font (ATSApplicationFontsPath: the suggestion bar uses it;
+# the installer also puts it in /Library/Fonts for every app), with its licence and credits
+mkdir -p "$APP/Contents/Resources/Fonts"
+cp assets/fonts/ShishirBangla-{Regular,Medium,SemiBold,Bold}.ttf "$APP/Contents/Resources/Fonts/"
+cp assets/fonts/LICENSES/OFL-1.1-ShishirBangla.txt "$APP/Contents/Resources/Fonts/OFL.txt"
+cp assets/fonts/LICENSES/FONTLOG-ShishirBangla.md "$APP/Contents/Resources/Fonts/FONTLOG.md"
 # Menu-bar icon (16 pt, with a @2x version) and app icon
 sips -s format tiff assets/icons/logo_16.png --out "$OUT/m16.tiff" >/dev/null
 sips -s format tiff assets/icons/logo_32.png --out "$OUT/m32.tiff" >/dev/null
