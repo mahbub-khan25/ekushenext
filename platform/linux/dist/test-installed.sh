@@ -18,6 +18,9 @@ grep -q "<exec>/usr/libexec/ekushe/ibus-engine-ekushe " /usr/share/ibus/componen
 FONTDIR=/usr/share/fonts/shishir-bangla; [ -d "$FONTDIR" ] || FONTDIR=/usr/share/fonts/truetype/shishir-bangla
 for w in Regular Medium SemiBold Bold; do test -f "$FONTDIR/ShishirBangla-$w.ttf"; done
 test -f "$FONTDIR/OFL.txt"
+# Studio's other font choices, with their licences
+for f in Kalpurush SolaimanLipi SiyamRupali HindSiliguri-Regular HindSiliguri-Bold; do test -f "/usr/share/ekushe/fonts/$f.ttf"; done
+test -f /usr/share/ekushe/fonts/LICENSES/OFL-1.1-ShishirBangla.txt
 if command -v fc-list >/dev/null 2>&1; then
   test "$(fc-list "Shishir Bangla" file | grep -c "$FONTDIR/ShishirBangla-")" -eq 4
 fi

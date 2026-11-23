@@ -14,6 +14,8 @@ BINDIR     ?= $(PREFIX)/bin
 # Shishir Bangla, Ekushe's default Bengali font, installed for every program on the computer
 # (Debian and Ubuntu keep TrueType fonts in $(DATADIR)/fonts/truetype/, see debian/rules)
 FONTDIR    ?= $(DATADIR)/fonts/shishir-bangla
+# Studio's other font choices: read from $(DATADIR)/ekushe/fonts (only Studio uses them)
+STUDIO_FONTS = assets/fonts/Kalpurush.ttf assets/fonts/SolaimanLipi.ttf assets/fonts/SiyamRupali.ttf assets/fonts/HindSiliguri-Regular.ttf assets/fonts/HindSiliguri-Bold.ttf
 SHISHIR_BANGLA = assets/fonts/ShishirBangla-Regular.ttf assets/fonts/ShishirBangla-Medium.ttf assets/fonts/ShishirBangla-SemiBold.ttf assets/fonts/ShishirBangla-Bold.ttf
 CARGO      ?= cargo
 CARGOFLAGS ?=
@@ -77,6 +79,9 @@ install: all
 	install -m644 $(SHISHIR_BANGLA) $(DESTDIR)$(FONTDIR)/
 	install -m644 assets/fonts/LICENSES/OFL-1.1-ShishirBangla.txt $(DESTDIR)$(FONTDIR)/OFL.txt
 	install -m644 assets/fonts/LICENSES/FONTLOG-ShishirBangla.md $(DESTDIR)$(FONTDIR)/FONTLOG.md
+	install -d $(DESTDIR)$(DATADIR)/ekushe/fonts/LICENSES
+	install -m644 $(STUDIO_FONTS) assets/fonts/README.md $(DESTDIR)$(DATADIR)/ekushe/fonts/
+	install -m644 assets/fonts/LICENSES/* $(DESTDIR)$(DATADIR)/ekushe/fonts/LICENSES/
 ifeq ($(FCITX5),yes)
 	install -Dm755 $(FCITX) $(DESTDIR)$(FCITX5_ADDONDIR)/libekushe.so
 	install -d $(DESTDIR)$(FCITX5_DATADIR)/addon

@@ -24,6 +24,10 @@ override_dh_auto_build:
 
 override_dh_auto_install:
 	$(MAKE) $(MAKEARGS) install DESTDIR=$(CURDIR)/debian/ekushe
+	# Shishir Bangla goes in its own package, fonts-shishir-bangla
+	mkdir -p debian/fonts-shishir-bangla/usr/share/fonts
+	mv debian/ekushe/usr/share/fonts/truetype debian/fonts-shishir-bangla/usr/share/fonts/
+	rmdir debian/ekushe/usr/share/fonts
 
 override_dh_auto_test:
 	target/release/ibus-engine-ekushe --version

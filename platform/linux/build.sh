@@ -51,6 +51,10 @@ install -d "$FONTS"
 install -m644 assets/fonts/ShishirBangla-Regular.ttf assets/fonts/ShishirBangla-Medium.ttf assets/fonts/ShishirBangla-SemiBold.ttf assets/fonts/ShishirBangla-Bold.ttf "$FONTS/"
 install -m644 assets/fonts/LICENSES/OFL-1.1-ShishirBangla.txt "$FONTS/OFL.txt"
 install -m644 assets/fonts/LICENSES/FONTLOG-ShishirBangla.md "$FONTS/FONTLOG.md"
+# Studio's other font choices (Studio reads them from here), with every font's licence
+install -d "$STAGE/usr/share/ekushe/fonts/LICENSES"
+install -m644 assets/fonts/Kalpurush.ttf assets/fonts/SolaimanLipi.ttf assets/fonts/SiyamRupali.ttf assets/fonts/HindSiliguri-Regular.ttf assets/fonts/HindSiliguri-Bold.ttf assets/fonts/README.md "$STAGE/usr/share/ekushe/fonts/"
+install -m644 assets/fonts/LICENSES/* "$STAGE/usr/share/ekushe/fonts/LICENSES/"
 
 # Packaging tools are fixed versions, checked against these SHA-256 sums before they run
 fetch_verified() { # url file sha256

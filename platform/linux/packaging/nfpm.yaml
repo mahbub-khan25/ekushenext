@@ -41,12 +41,18 @@ contents:
     dst: /usr/share/fcitx5/inputmethod/ekushe.conf
   - src: build/linux/stage/usr/share/ekushe/ekushe.png
     dst: /usr/share/ekushe/ekushe.png
+  # Studio's other font choices, read only by Studio (not installed for other programs)
+  - src: build/linux/stage/usr/share/ekushe/fonts
+    dst: /usr/share/ekushe/fonts
+    type: tree
   - src: build/linux/stage/usr/share/icons/hicolor/256x256/apps/ekushe.png
     dst: /usr/share/icons/hicolor/256x256/apps/ekushe.png
   - src: build/linux/stage/usr/share/applications/ekushe-studio.desktop
     dst: /usr/share/applications/ekushe-studio.desktop
   # Shishir Bangla, the default Bengali font, for every program (each distribution's fontconfig
-  # refreshes its font cache when files arrive in or leave its font folder)
+  # refreshes its font cache when files arrive in or leave its font folder). The distribution
+  # packages built from source put it in a package of its own (shishir-bangla-fonts on Fedora,
+  # fonts-shishir-bangla on Debian and Ubuntu); this single download carries it itself.
   - dst: /usr/share/fonts/shishir-bangla
     type: dir
     packager: rpm
