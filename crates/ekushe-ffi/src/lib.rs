@@ -272,6 +272,54 @@ pub extern "C" fn ek_fixed_layout() -> bool {
     })
 }
 
+/// The Bengali font for the suggestion bar: the user's choice in Studio, Shishir Bangla by default.
+/// Free with `ekushe_string_free`.
+#[no_mangle]
+pub extern "C" fn ek_font_family() -> *mut c_char {
+    let family = with_shared(String::new(), |sh| {
+        sh.ekushe.config().candidate_font_family.clone()
+    });
+    to_c(if family.is_empty() {
+        ekushe_core::config::DEFAULT_BENGALI_FONT.to_string()
+    } else {
+        family
+    })
+}
+
+/// macOS installer (run as root): put Shishir Bangla from `Ekushe.app/Contents/Resources/Fonts` into
+/// `/Library/Fonts` for every app, listed in `/Library/Application Support/Ekushe/fonts-installed.txt`
+/// (a font that was already there and isn't listed is the user's own and stays; a listed one is
+/// replaced only by a newer version). Returns 0 when done.
+#[no_mangle]
+pub extern "C" fn ek_install_fonts() -> i32 {
+    #[cfg(all(feature = "studio", target_os = "macos"))]
+    {
+        let done = catch_unwind(|| {
+            studio::studio_fonts::install_into(
+                std::path::Path::new("/Library/Fonts"),
+                std::path::Path::new("/Library/Application Support/Ekushe/fonts-installed.txt"),
+            )
+        });
+        match done {
+            Ok(Ok(written)) => {
+                for f in written {
+                    println!("installed /Library/Fonts/{f}");
+                }
+                0
+            }
+            Ok(Err(e)) => {
+                eprintln!("Ekushe: fonts not installed: {e}");
+                1
+            }
+            Err(_) => 1,
+        }
+    }
+    #[cfg(not(all(feature = "studio", target_os = "macos")))]
+    {
+        1
+    }
+}
+
 /// The name of the layout in use (for menus). Free with `ekushe_string_free`.
 #[no_mangle]
 pub extern "C" fn ek_layout_name() -> *mut c_char {

@@ -38,6 +38,12 @@ uint16_t ek_studio_start(void);
 char *ek_studio_url(const char *tab);
 char *ek_report_url(const char *os);
 void ekushe_string_free(char *s);
+/* The Bengali font for the suggestion bar (the Studio setting; Shishir Bangla by default). Free with
+   ekushe_string_free. */
+char *ek_font_family(void);
+/* Installer, as root: Shishir Bangla into /Library/Fonts (only files Ekushe put there are replaced,
+   and only by a newer version). 0 when done. */
+int32_t ek_install_fonts(void);
 char *ek_out_preedit(void);
 char *ek_out_committed(void);
 uint32_t ek_out_candidate_count(void);
