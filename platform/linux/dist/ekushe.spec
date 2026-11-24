@@ -11,7 +11,8 @@ Release:        1%{?dist}
 Summary:        Bangla phonetic keyboard for IBus and Fcitx 5, with its own dictionary
 
 # Ekushe's code is MPL-2.0; the dictionary is CC-BY-SA-4.0; Studio embeds fonts under OFL-1.0,
-# OFL-1.1 and GPL-2.0-or-later WITH Font-exception-2.0. The bundled Rust libraries are permissive.
+# OFL-1.1 and GPL-2.0-or-later WITH Font-exception-2.0, and the package installs the Shishir Bangla
+# font (OFL-1.1). The bundled Rust libraries are permissive.
 License:        MPL-2.0 AND CC-BY-SA-4.0 AND OFL-1.0 AND OFL-1.1 AND GPL-2.0-or-later WITH Font-exception-2.0 AND (MIT OR Apache-2.0) AND MIT AND Unicode-3.0 AND Zlib
 URL:            https://ekushenext.com
 Source0:        https://github.com/mahbub-khan25/ekushenext/releases/download/@TAG@/ekushe-%{version}.tar.xz
@@ -29,6 +30,8 @@ BuildRequires:  desktop-file-utils
 
 # Either input method framework: IBus (GNOME, most desktops) or Fcitx 5 (often on KDE Plasma)
 Requires:       (ibus or fcitx5)
+# Shishir Bangla, Ekushe's default Bengali font, in its own package (Fedora's font packaging)
+Requires:       shishir-bangla-fonts = %{version}-%{release}
 Requires:       xdg-utils
 # Studio's own window (GTK + WebKitGTK); without WebKitGTK Studio opens in the browser instead
 Recommends:     webkit2gtk4.1
@@ -48,6 +51,18 @@ is sent anywhere. Works with IBus and with Fcitx 5.
 Also includes Ekushe Studio: a writing pad, conjunct guide, spell checker and a
 Bijoy to Unicode converter, in its own window on any desktop (GNOME, KDE Plasma,
 COSMIC, Xfce and others).
+
+%package -n shishir-bangla-fonts
+Summary:        Shishir Bangla, an open Bengali font family (Ekushe Next's default font)
+License:        OFL-1.1
+BuildArch:      noarch
+Requires:       fontpackages-filesystem
+
+%description -n shishir-bangla-fonts
+Shishir Bangla 0.003, an open Bengali font family in four weights (Regular,
+Medium, SemiBold, Bold): SolaimanLipi 2.002's letterforms, Noto Sans Bengali's
+proportions next to Latin and its Bengali digits, and Inter's Latin. It is the
+default Bengali font of Ekushe Next and of Shishir.
 
 %prep
 %autosetup -n ekushe-%{version}
@@ -91,6 +106,13 @@ fi
 %{_datadir}/ekushe/
 %{_datadir}/icons/hicolor/256x256/apps/ekushe.png
 %{_datadir}/applications/ekushe-studio.desktop
+
+%files -n shishir-bangla-fonts
+# fontconfig's file triggers refresh the font cache
+%dir %{_datadir}/fonts/shishir-bangla
+%{_datadir}/fonts/shishir-bangla/*.ttf
+%license %{_datadir}/fonts/shishir-bangla/OFL.txt
+%doc %{_datadir}/fonts/shishir-bangla/FONTLOG.md
 
 %changelog
 * @DATE@ Ekushe Next <khan.ytube24@gmail.com> - @VERSION@-1

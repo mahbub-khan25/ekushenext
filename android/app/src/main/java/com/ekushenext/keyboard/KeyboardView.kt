@@ -132,10 +132,12 @@ class KeyboardView(context: Context, private val listener: KeyboardListener) : V
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER }
     private val glyph = Rect()
     private val hintPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.RIGHT }
-    // The phone's own Bangla font (Noto Sans Bengali on Android), as the rest of the phone uses:
-    // clearer on small keys than a display font, digits (১২৩) included
-    private val bnFace: Typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-    private val bnFaceRegular: Typeface = Typeface.create("sans-serif", Typeface.NORMAL)
+    // Shishir Bangla, Ekushe's default Bengali font, bundled in the app: Noto Sans Bengali's
+    // proportions and digits (১২৩), so it stays clear on small keys. The phone's own font if it is missing.
+    private val bnFace: Typeface = runCatching { Typeface.createFromAsset(context.assets, "fonts/ShishirBangla-Medium.ttf") }
+        .getOrDefault(Typeface.create("sans-serif-medium", Typeface.NORMAL))
+    private val bnFaceRegular: Typeface = runCatching { Typeface.createFromAsset(context.assets, "fonts/ShishirBangla-Regular.ttf") }
+        .getOrDefault(Typeface.create("sans-serif", Typeface.NORMAL))
 
     init {
         isHapticFeedbackEnabled = true

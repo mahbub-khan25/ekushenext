@@ -27,8 +27,12 @@ foreach ($dir in @((Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Program
 }
 
 # Per-user fonts Ekushe installed (fonts-installed.txt lists only the ones it wrote itself; an
-# older install without the list installed all five)
+# older install without the list installed the five fonts before Shishir Bangla)
 $fonts = @{
+    "ShishirBangla-Regular.ttf"  = "Shishir Bangla (TrueType)"
+    "ShishirBangla-Medium.ttf"   = "Shishir Bangla Medium (TrueType)"
+    "ShishirBangla-SemiBold.ttf" = "Shishir Bangla SemiBold (TrueType)"
+    "ShishirBangla-Bold.ttf"     = "Shishir Bangla Bold (TrueType)"
     "Kalpurush.ttf"            = "Kalpurush (TrueType)"
     "SolaimanLipi.ttf"         = "SolaimanLipi (TrueType)"
     "SiyamRupali.ttf"          = "Siyam Rupali (TrueType)"
@@ -36,13 +40,34 @@ $fonts = @{
     "HindSiliguri-Bold.ttf"    = "Hind Siliguri Bold (TrueType)"
 }
 $marker = Join-Path $installDir "fonts-installed.txt"
-$ours = if (Test-Path $marker) { Get-Content $marker | Where-Object { $_.Trim() -ne "" } } else { $fonts.Keys }
+$legacy = @("Kalpurush.ttf", "SolaimanLipi.ttf", "SiyamRupali.ttf", "HindSiliguri-Regular.ttf", "HindSiliguri-Bold.ttf")
+$ours = @(if (Test-Path $marker) { Get-Content $marker | Where-Object { $_.Trim() -ne "" } } else { $legacy })
+# Fonts whose removal was scheduled earlier are Ekushe's too (the list is in the settings folder)
+$pendingList = Join-Path $env:APPDATA "Ekushe\fonts-pending-removal.txt"
+if (Test-Path $pendingList) { $ours += @(Get-Content $pendingList | Where-Object { $_.Trim() -ne "" }) }
+$pending = @()
 $userFonts = Join-Path $env:LOCALAPPDATA "Microsoft\Windows\Fonts"
-foreach ($file in $ours) {
-    if ($fonts.ContainsKey($file)) {
-        Remove-ItemProperty -Path "HKCU:\Software\Microsoft\Windows NT\CurrentVersion\Fonts" -Name $fonts[$file] -ErrorAction SilentlyContinue
-        Remove-Item -Force (Join-Path $userFonts $file) -ErrorAction SilentlyContinue
+foreach ($file in ($ours | Select-Object -Unique)) {
+    # Shishir Bangla is installed under its version's name (ShishirBangla-Regular-0.003.ttf)
+    $key = $file -replace '-\d+(\.\d+)*\.ttf$', '.ttf'
+    if ($fonts.ContainsKey($key)) {
+        Remove-ItemProperty -Path "HKCU:\Software\Microsoft\Windows NT\CurrentVersion\Fonts" -Name $fonts[$key] -ErrorAction SilentlyContinue
+        $path = Join-Path $userFonts $file
+        Remove-Item -Force $path -ErrorAction SilentlyContinue
+        if (Test-Path $path) {
+            # Still in use: its font entry is gone, so it is deleted at the next sign-in
+            Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce" -Name "Ekushe remove $file" -Value "cmd.exe /c del /f /q `"$path`""
+            Write-Host "  $file is in use: removed at the next sign-in"
+            $pending += $file
+        }
     }
+}
+# Kept in the settings folder (which stays), so a new install takes these files back
+if ($pending.Count -gt 0) {
+    New-Item -ItemType Directory -Force -Path (Split-Path $pendingList) | Out-Null
+    Set-Content -Path $pendingList -Value $pending
+} else {
+    Remove-Item -Force $pendingList -ErrorAction SilentlyContinue
 }
 
 if (Test-Path $installDir) {

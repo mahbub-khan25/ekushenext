@@ -10,7 +10,8 @@ export PATH := $(RUSTBIN):$(PATH)
 endif
 VERSION := $(shell dpkg-parsechangelog -SVersion | sed 's/-[^-]*$$//')
 MAKEARGS = -f platform/linux/Makefile VERSION=$(VERSION) CARGOFLAGS="--offline --frozen" \
-           PREFIX=/usr LIBEXECDIR=/usr/libexec DATADIR=/usr/share BINDIR=/usr/bin
+           PREFIX=/usr LIBEXECDIR=/usr/libexec DATADIR=/usr/share BINDIR=/usr/bin \
+           FONTDIR=/usr/share/fonts/truetype/shishir-bangla
 
 %:
 	dh $@
@@ -23,6 +24,10 @@ override_dh_auto_build:
 
 override_dh_auto_install:
 	$(MAKE) $(MAKEARGS) install DESTDIR=$(CURDIR)/debian/ekushe
+	# Shishir Bangla goes in its own package, fonts-shishir-bangla
+	mkdir -p debian/fonts-shishir-bangla/usr/share/fonts
+	mv debian/ekushe/usr/share/fonts/truetype debian/fonts-shishir-bangla/usr/share/fonts/
+	rmdir debian/ekushe/usr/share/fonts
 
 override_dh_auto_test:
 	target/release/ibus-engine-ekushe --version

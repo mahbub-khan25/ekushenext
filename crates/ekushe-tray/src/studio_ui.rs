@@ -2,8 +2,8 @@
 //!
 //! Frosted-glass design: translucent panels over a slowly drifting backdrop taken from the
 //! Bangladesh flag (green field, red sun) and krishnachura. Light, dark or follow-the-system theme;
-//! the glass strength follows the "popup transparency" setting. Bangla interface text uses Hind
-//! Siliguri; the user's chosen font (Kalpurush by default) is used for the writing itself.
+//! the glass strength follows the "popup transparency" setting. Bangla interface text uses Shishir
+//! Bangla; the user's chosen font (Shishir Bangla by default) is used for the writing itself.
 //!
 //! Tabs: writing pad, word X-ray and conjunct builder, conjunct and word guide, spell checker,
 //! Bijoy ⇄ Unicode converter, settings. `crates/ekushe-ffi/examples/studio_preview.rs` serves this
@@ -18,6 +18,10 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
 <title>একুশে স্টুডিও</title>
 <link rel="icon" type="image/png" href="/logo.png">
 <style>
+  @font-face { font-family: 'Shishir Bangla'; src: url('/fonts/ShishirBangla-Regular.ttf') format('truetype'); font-weight: 400; font-display: swap; }
+  @font-face { font-family: 'Shishir Bangla'; src: url('/fonts/ShishirBangla-Medium.ttf') format('truetype'); font-weight: 500; font-display: swap; }
+  @font-face { font-family: 'Shishir Bangla'; src: url('/fonts/ShishirBangla-SemiBold.ttf') format('truetype'); font-weight: 600; font-display: swap; }
+  @font-face { font-family: 'Shishir Bangla'; src: url('/fonts/ShishirBangla-Bold.ttf') format('truetype'); font-weight: 700; font-display: swap; }
   @font-face { font-family: 'Kalpurush'; src: url('/fonts/Kalpurush.ttf') format('truetype'); font-display: swap; }
   @font-face { font-family: 'SolaimanLipi'; src: url('/fonts/SolaimanLipi.ttf') format('truetype'); font-display: swap; }
   @font-face { font-family: 'Siyam Rupali'; src: url('/fonts/SiyamRupali.ttf') format('truetype'); font-display: swap; }
@@ -25,8 +29,8 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
   @font-face { font-family: 'Hind Siliguri'; src: url('/fonts/HindSiliguri-Bold.ttf') format('truetype'); font-weight: 600 700; font-display: swap; }
 
   :root {
-    --font-ui: 'Segoe UI Variable Text', 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Hind Siliguri', 'Noto Sans Bengali', sans-serif;
-    --font-bn: 'Kalpurush', 'SolaimanLipi', 'Hind Siliguri', sans-serif;
+    --font-ui: 'Segoe UI Variable Text', 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Shishir Bangla', 'Hind Siliguri', 'Noto Sans Bengali', sans-serif;
+    --font-bn: 'Shishir Bangla', 'SolaimanLipi', 'Kalpurush', 'Hind Siliguri', sans-serif;
     --glass-alpha: 0.5;
 
     --green: #0B6B4A;
@@ -154,7 +158,7 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
   }
   .brand { display: flex; align-items: center; gap: 11px; padding: 2px 8px 18px; }
   .brand img { width: 38px; height: 38px; border-radius: 11px; }
-  .brand-name { font-family: 'Hind Siliguri', var(--font-ui); font-weight: 700; font-size: 1.12rem; line-height: 1.1; }
+  .brand-name { font-family: 'Shishir Bangla', var(--font-ui); font-weight: 700; font-size: 1.12rem; line-height: 1.1; }
   .brand-sub { font-size: 0.78rem; color: var(--ink-faint); }
   .nav-btn {
     display: flex; align-items: center; gap: 12px;
@@ -166,7 +170,7 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
   }
   .nav-btn svg { width: 20px; height: 20px; flex: none; }
   .nav-btn .lbl { display: flex; flex-direction: column; line-height: 1.2; }
-  .nav-btn .bn { font-family: 'Hind Siliguri', var(--font-ui); font-weight: 600; font-size: 0.97rem; }
+  .nav-btn .bn { font-family: 'Shishir Bangla', var(--font-ui); font-weight: 600; font-size: 0.97rem; }
   .nav-btn .en { font-size: 0.74rem; color: var(--ink-faint); }
   .nav-btn:hover { background: var(--etch); color: var(--ink); }
   .nav-btn.active { background: var(--etch-strong); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
@@ -191,7 +195,7 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
   /* ── Main sheet ── */
   .sheet { border-radius: 30px; padding: 22px 28px 30px; min-width: 0; }
   .topbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
-  .page-title h1 { font-family: 'Hind Siliguri', var(--font-ui); font-size: 1.7rem; font-weight: 700; line-height: 1.2; letter-spacing: -0.01em; }
+  .page-title h1 { font-family: 'Shishir Bangla', var(--font-ui); font-size: 1.7rem; font-weight: 700; line-height: 1.2; letter-spacing: -0.01em; }
   .page-title p { color: var(--ink-soft); font-size: 0.92rem; margin-top: 2px; max-width: 62ch; }
   .top-actions { display: flex; align-items: center; gap: 8px; flex: none; }
 
@@ -210,7 +214,7 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
   /* ── Building blocks ── */
   [hidden] { display: none !important; }
   .etched { background: var(--etch); border-radius: 20px; box-shadow: inset 0 0 0 1px var(--line); padding: 16px 18px; }
-  .section-title { font-family: 'Hind Siliguri', var(--font-ui); font-weight: 600; font-size: 1.05rem; margin-bottom: 2px; }
+  .section-title { font-family: 'Shishir Bangla', var(--font-ui); font-weight: 600; font-size: 1.05rem; margin-bottom: 2px; }
   .hint { color: var(--ink-soft); font-size: 0.86rem; }
   .stack { display: grid; gap: 14px; }
   .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
@@ -520,6 +524,14 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
     </div>
 
     <!-- Windows: another Bangla keyboard program is running next to Ekushe -->
+    <div class="etched" id="fontNotice" hidden role="status" style="margin-bottom:16px;border-left:4px solid var(--green, #0B6B4A)">
+      <div class="section-title" id="fontNoticeTitle"></div>
+      <div class="hint" id="fontNoticeBody"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+        <button class="chip" id="fontNoticeKeep" onclick="answerFontNotice(false)"></button>
+        <button class="chip" id="fontNoticeBack" onclick="answerFontNotice(true)"></button>
+      </div>
+    </div>
     <div class="etched" id="conflictBox" hidden role="status" style="margin-bottom:16px;border-left:4px solid var(--accent, #c0392b)">
       <div class="section-title">অন্য বাংলা কীবোর্ড চালু আছে</div><div class="hint" id="conflictMsg"></div>
     </div>
@@ -869,6 +881,7 @@ pub const STUDIO_HTML: &str = r##"<!DOCTYPE html>
           <div class="setting">
             <label for="cfgFont">বাংলা ফন্ট</label>
             <select id="cfgFont" onchange="changeBanglaFont(this.value)">
+              <option value="Shishir Bangla">শিশির বাংলা</option>
               <option value="Kalpurush">কালপুরুষ</option>
               <option value="SolaimanLipi">সোলাইমানলিপি</option>
               <option value="Siyam Rupali">সিয়াম রূপালী</option>
@@ -1228,8 +1241,26 @@ function onOpacityChange(pct) {
   opacitySaveTimer = setTimeout(saveSettings, 250);
 }
 
+// The one-time notice after the font moved to Shishir Bangla (words from the engine, Bengali and English)
+function showFontNotice(n) {
+  const box = document.getElementById('fontNotice');
+  box.hidden = !n;
+  if (!n) return;
+  document.getElementById('fontNoticeTitle').textContent = `${n.title_bn} · ${n.title_en}`;
+  document.getElementById('fontNoticeBody').textContent = `${n.body_bn} ${n.body_en}`;
+  document.getElementById('fontNoticeKeep').textContent = `${n.keep_bn} · ${n.keep_en}`;
+  document.getElementById('fontNoticeBack').textContent = `${n.back_bn} · ${n.back_en}`;
+}
+async function answerFontNotice(goBack) {
+  const res = await fetch('/api/font-notice', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ go_back: goBack }) });
+  const r = res.ok ? await res.json() : null;
+  if (r && r.ok) {
+    showFontNotice(null);
+    if (r.font_family) applyCssFont(r.font_family);
+  }
+}
 function applyCssFont(fontName) {
-  document.documentElement.style.setProperty('--font-bn', `'${fontName}', 'Kalpurush', 'SolaimanLipi', 'Hind Siliguri', sans-serif`);
+  document.documentElement.style.setProperty('--font-bn', `'${fontName}', 'Shishir Bangla', 'SolaimanLipi', 'Kalpurush', 'Hind Siliguri', sans-serif`);
   const sel = document.getElementById('cfgFont');
   if (sel) sel.value = fontName;
 }
@@ -1272,6 +1303,7 @@ async function refreshState() {
   }
   welcomeMaybeShow(st);
   document.getElementById('conflictBox').hidden = !st.conflicts;
+  showFontNotice(st.font_notice);
   document.getElementById('conflictMsg').textContent = st.conflicts || '';
   const pill = document.getElementById('modePill');
   pill.className = 'lang-switch ' + (st.language === 'Bangla' ? 'bangla' : 'english');
@@ -1773,7 +1805,7 @@ async function convertWordXml(bytes, mode) {
   if (!runs.length) return [bytes, 0];
   const pieces = runs.map(r => [...r.getElementsByTagNameNS(W_NS, 't')].map(t => t.textContent).join(''));
   const done = await convertPieces(mode, pieces);
-  const font = mode === 'bijoy2uni' ? (document.getElementById('cfgFont') && document.getElementById('cfgFont').value || 'Kalpurush') : 'SutonnyMJ';
+  const font = mode === 'bijoy2uni' ? (document.getElementById('cfgFont') && document.getElementById('cfgFont').value || 'Shishir Bangla') : 'SutonnyMJ';
   runs.forEach((r, i) => {
     const ts = [...r.getElementsByTagNameNS(W_NS, 't')];
     ts[0].textContent = done[i];

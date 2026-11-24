@@ -36,6 +36,11 @@ if CommandLine.arguments.contains("--register") {
     exit(registerInputSource())
 }
 
+// `Ekushe --install-fonts`: Shishir Bangla into /Library/Fonts (the installer, as root)
+if CommandLine.arguments.contains("--install-fonts") {
+    exit(ek_install_fonts())
+}
+
 let connection = Bundle.main.infoDictionary?["InputMethodConnectionName"] as? String ?? "Ekushe_1_Connection"
 guard let server = IMKServer(name: connection, bundleIdentifier: bundleID) else {
     FileHandle.standardError.write("Ekushe: could not start the input method server\n".data(using: .utf8)!)

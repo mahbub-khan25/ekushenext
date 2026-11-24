@@ -3,7 +3,14 @@
 Ekushe Next's own code is licensed under the [Mozilla Public License 2.0](LICENSE). The project also
 includes or uses the following third-party material, each under its own licence.
 
-## Fonts (`assets/fonts/`, embedded in the Windows tray app)
+## Fonts (`assets/fonts/`, embedded in the Windows tray app and Studio)
+
+**Shishir Bangla 0.003**, the default Bengali font, installed with Ekushe Next: SIL OFL 1.1, © 2026 Mahbub
+Khan (https://github.com/mahbub-khan25/shishir-bangla). Built from SolaimanLipi 2.002 (Solaiman Karim;
+version 2.002 by Al Mamun Hossen, Ekushey; OFL 1.1), Noto Sans Bengali 3.011 (The Noto Project Authors;
+OFL 1.1) and Inter 4.1 (The Inter Project Authors; OFL 1.1). Licence text:
+[`assets/fonts/LICENSES/OFL-1.1-ShishirBangla.txt`](assets/fonts/LICENSES/OFL-1.1-ShishirBangla.txt);
+upstream credits: [`assets/fonts/LICENSES/FONTLOG-ShishirBangla.md`](assets/fonts/LICENSES/FONTLOG-ShishirBangla.md).
 
 Kalpurush and SolaimanLipi (SIL OFL 1.0), Hind Siliguri and Noto Sans Bengali (SIL OFL 1.1), and Siyam Rupali
 (GNU GPL v2+ with font exception; Latin glyphs from Droid Sans, Apache-2.0). Authors, versions and full

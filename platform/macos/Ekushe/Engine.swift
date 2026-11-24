@@ -36,6 +36,8 @@ enum Engine {
     /// A fixed layout (National, Probhat, an imported layout file ...) is in use rather than phonetic typing
     static var isFixedLayout: Bool { ek_fixed_layout() }
     static var layoutName: String { take(ek_layout_name()) ?? "" }
+    /// The Bengali font chosen in Studio (Shishir Bangla by default)
+    static var fontFamily: String { take(ek_font_family()) ?? "Shishir Bangla" }
     /// The app in front gets Bijoy (SutonnyMJ) text instead of Unicode
     static var bijoyOutput: Bool { ek_bijoy_output() }
     static func toBijoy(_ text: String) -> String { text.withCString { take(ek_to_bijoy($0)) } ?? text }

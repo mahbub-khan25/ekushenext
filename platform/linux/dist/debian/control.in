@@ -11,7 +11,7 @@ Rules-Requires-Root: no
 
 Package: ekushe
 Architecture: amd64 arm64
-Depends: ${shlibs:Depends}, ${misc:Depends}, ibus | fcitx5, xdg-utils
+Depends: ${shlibs:Depends}, ${misc:Depends}, ibus | fcitx5, xdg-utils, fonts-shishir-bangla (= ${source:Version})
 Recommends: libwebkit2gtk-4.1-0
 Provides: ibus-ekushe, fcitx5-ekushe
 Description: Bangla phonetic keyboard for IBus and Fcitx 5, with its own dictionary
@@ -25,3 +25,15 @@ Description: Bangla phonetic keyboard for IBus and Fcitx 5, with its own diction
  Also includes Ekushe Studio: a writing pad, conjunct guide, spell checker and
  a Bijoy to Unicode converter, in its own window on any desktop (GNOME,
  KDE Plasma, COSMIC, Xfce and others).
+
+Package: fonts-shishir-bangla
+Architecture: all
+Multi-Arch: foreign
+Depends: ${misc:Depends}
+# The single-file .deb from GitHub carries these fonts itself
+Replaces: ekushe
+Description: Shishir Bangla, an open Bengali font family
+ Shishir Bangla 0.003, an open Bengali font family in four weights (Regular,
+ Medium, SemiBold, Bold): SolaimanLipi 2.002's letterforms, Noto Sans
+ Bengali's proportions next to Latin and its Bengali digits, and Inter's
+ Latin. It is the default Bengali font of Ekushe Next and of Shishir.

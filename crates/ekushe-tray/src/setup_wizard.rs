@@ -18,9 +18,9 @@ use windows_sys::Win32::Graphics::Dwm::DwmSetWindowAttribute;
 use windows_sys::Win32::Graphics::Gdi::{
     AddFontResourceW, BeginPaint, BitBlt, CreateCompatibleBitmap, CreateCompatibleDC, CreateFontW,
     CreatePen, CreateSolidBrush, DeleteDC, DeleteObject, DrawTextW, EndPaint, FillRect,
-    InvalidateRect, RoundRect, ScreenToClient, SelectObject, SetBkMode, SetTextColor, UpdateWindow,
-    DT_CENTER, DT_LEFT, DT_NOPREFIX, DT_RIGHT, DT_SINGLELINE, DT_VCENTER, HBRUSH, HDC, PAINTSTRUCT,
-    PS_SOLID, SRCCOPY, TRANSPARENT,
+    InvalidateRect, RemoveFontResourceW, RoundRect, ScreenToClient, SelectObject, SetBkMode,
+    SetTextColor, UpdateWindow, DT_CENTER, DT_LEFT, DT_NOPREFIX, DT_RIGHT, DT_SINGLELINE,
+    DT_VCENTER, HBRUSH, HDC, PAINTSTRUCT, PS_SOLID, SRCCOPY, TRANSPARENT,
 };
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows_sys::Win32::System::Registry::{
@@ -37,10 +37,7 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
     WNDCLASSW, WS_CAPTION, WS_MINIMIZEBOX, WS_OVERLAPPED, WS_SYSMENU,
 };
 
-use crate::{
-    wide_null, FONT_HINDSILIGURI_BOLD, FONT_HINDSILIGURI_REG, FONT_KALPURUSH, FONT_SIYAMRUPALI,
-    FONT_SOLAIMANLIPI, LOGO_PNG_BYTES,
-};
+use crate::{studio_fonts, wide_null, LOGO_PNG_BYTES};
 
 static ICON_EKUSHE_ICO: &[u8] = include_bytes!("../../../assets/icons/ekushe.ico");
 pub static ICON_TRAY_BANGLA_ICO: &[u8] = include_bytes!("../../../assets/icons/tray_bangla.ico");
@@ -117,31 +114,6 @@ pub fn install_root_dir() -> PathBuf {
         .join("Ekushe")
 }
 
-/// The bundled Bangladeshi fonts: registry name, file name, bytes.
-const BUNDLED_FONTS: &[(&str, &str, &[u8])] = &[
-    ("Kalpurush (TrueType)", "Kalpurush.ttf", FONT_KALPURUSH),
-    (
-        "SolaimanLipi (TrueType)",
-        "SolaimanLipi.ttf",
-        FONT_SOLAIMANLIPI,
-    ),
-    (
-        "Siyam Rupali (TrueType)",
-        "SiyamRupali.ttf",
-        FONT_SIYAMRUPALI,
-    ),
-    (
-        "Hind Siliguri (TrueType)",
-        "HindSiliguri-Regular.ttf",
-        FONT_HINDSILIGURI_REG,
-    ),
-    (
-        "Hind Siliguri Bold (TrueType)",
-        "HindSiliguri-Bold.ttf",
-        FONT_HINDSILIGURI_BOLD,
-    ),
-];
-
 /// `%LOCALAPPDATA%\Microsoft\Windows\Fonts`: where Windows keeps fonts installed for one user.
 fn user_fonts_dir() -> PathBuf {
     dirs::data_local_dir()
@@ -157,8 +129,172 @@ fn installed_fonts_marker() -> PathBuf {
     install_root_dir().join("fonts-installed.txt")
 }
 
-/// Silently ensures that whenever `ekushe.exe` runs on any PC, its icons, Bangladeshi fonts,
-/// and default configuration (`Kalpurush` font + `Double-Tap Shift`) are extracted and active.
+/// Font files of Ekushe's whose removal is scheduled (they were in use at an uninstall, or when a
+/// newer version replaced them). In the settings folder, which uninstalling keeps: a new install
+/// takes them back as Ekushe's and cancels the removal.
+fn pending_font_removals() -> PathBuf {
+    Config::default_dir().join("fonts-pending-removal.txt")
+}
+
+const FONTS_KEY: &str = r"Software\Microsoft\Windows NT\CurrentVersion\Fonts";
+const RUN_ONCE_KEY: &str = r"Software\Microsoft\Windows\CurrentVersion\RunOnce";
+
+fn read_list(path: &Path) -> Vec<String> {
+    fs::read_to_string(path)
+        .unwrap_or_default()
+        .lines()
+        .map(|l| l.trim().to_string())
+        .filter(|l| !l.is_empty())
+        .collect()
+}
+
+fn write_list(path: &Path, items: &[String]) {
+    if items.is_empty() {
+        let _ = fs::remove_file(path);
+    } else {
+        if let Some(dir) = path.parent() {
+            let _ = fs::create_dir_all(dir);
+        }
+        let _ = fs::write(path, items.join("\n"));
+    }
+}
+
+/// The file a font's Windows entry points at: its name when it is in the user's font folder, else
+/// the whole path (then it is never one of Ekushe's)
+fn registered_font_file(windows_name: &str, user_fonts: &Path) -> Option<String> {
+    let value = unsafe { get_hkcu_reg_sz(FONTS_KEY, windows_name) }?;
+    let path = PathBuf::from(&value);
+    let in_folder = path
+        .parent()
+        .is_some_and(|d| d.as_os_str().eq_ignore_ascii_case(user_fonts.as_os_str()));
+    match path.file_name() {
+        Some(n) if in_folder => Some(n.to_string_lossy().into_owned()),
+        _ => Some(value),
+    }
+}
+
+/// Take a font file of Ekushe's out of use and delete it. Every `AddFontResource` needs its own
+/// `RemoveFontResource`, so it is removed until Windows no longer has it. A file still open in some
+/// program is scheduled instead (logged as "removal scheduled"). Returns whether it is gone now.
+fn retire_font_file(path: &Path) -> bool {
+    let wpath = wide_null(&path.to_string_lossy());
+    for _ in 0..64 {
+        if unsafe { RemoveFontResourceW(wpath.as_ptr()) } == 0 {
+            break;
+        }
+    }
+    if fs::remove_file(path).is_ok() || !path.exists() {
+        return true;
+    }
+    let name = path
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    match schedule_removal(path) {
+        Some(when) => install_log(&format!("{name}: in use, removal scheduled {when}")),
+        None => install_log(&format!("{name}: in use, could not be removed")),
+    }
+    false
+}
+
+/// Install the bundled fonts for this user: Windows' own per-user font folder and font entries, as
+/// Settings > Fonts does. Shishir Bangla goes in under its version's name, so a newer version is a
+/// new file Windows switches to while the old one may still be open; the old one is removed (or
+/// scheduled). Fonts the user installed themselves are never touched, registered or loaded.
+fn install_user_fonts(root: &Path, fonts_dir: &Path) {
+    let user_fonts = user_fonts_dir();
+    let _ = fs::create_dir_all(&user_fonts);
+    let marker = installed_fonts_marker();
+    let marker_existed = marker.exists();
+    let mut ours = read_list(&marker);
+    let add = |list: &mut Vec<String>, f: &str| {
+        if !list.iter().any(|o| o.eq_ignore_ascii_case(f)) {
+            list.push(f.to_string());
+        }
+    };
+    // Removals scheduled at an uninstall (or an update) are taken back: those files are Ekushe's
+    for f in read_list(&pending_font_removals()) {
+        unsafe {
+            let _ = delete_hkcu_reg_value(RUN_ONCE_KEY, &format!("Ekushe remove {f}"));
+        }
+        if user_fonts.join(&f).exists() {
+            add(&mut ours, &f);
+        }
+    }
+    // An install from before Ekushe kept its list installed the five fonts it had then
+    if !marker_existed && root.join("ekushe.exe").exists() {
+        for f in studio_fonts::LEGACY_FILES {
+            if user_fonts.join(f).exists() {
+                add(&mut ours, f);
+            }
+        }
+    }
+    let mut pending = Vec::new();
+    let mut changed = false;
+    for font in studio_fonts::FONTS {
+        // Ekushe's own folder always holds this version's fonts
+        let app_copy = fonts_dir.join(font.file);
+        if fs::read(&app_copy).map_or(true, |b| b != font.bytes) {
+            let _ = fs::write(&app_copy, font.bytes);
+        }
+        let present: Vec<(String, Vec<u8>)> = fs::read_dir(&user_fonts)
+            .map(|rd| {
+                rd.flatten()
+                    .filter_map(|e| {
+                        let n = e.file_name().to_string_lossy().into_owned();
+                        font.is_copy(&n)
+                            .then(|| fs::read(e.path()).ok().map(|b| (n, b)))
+                            .flatten()
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        let registered = registered_font_file(font.windows_name, &user_fonts);
+        let plan = studio_fonts::plan_font(font, &ours, &present, registered.as_deref());
+        let Some(use_file) = plan.use_file else {
+            continue; // the user's own Shishir Bangla (or Kalpurush, ...): left as it is
+        };
+        let path = user_fonts.join(&use_file);
+        if plan.write {
+            if let Err(e) = fs::write(&path, font.bytes) {
+                install_log(&format!("{use_file}: not installed ({e})"));
+                continue;
+            }
+            add(&mut ours, &use_file);
+            unsafe {
+                let wpath = wide_null(&path.to_string_lossy());
+                let _ = AddFontResourceW(wpath.as_ptr());
+            }
+            changed = true;
+        }
+        if registered.as_deref() != Some(use_file.as_str()) {
+            unsafe {
+                let _ = set_hkcu_reg_sz(FONTS_KEY, font.windows_name, &path.to_string_lossy());
+            }
+            changed = true;
+        }
+        for old in plan.retire {
+            changed = true;
+            if retire_font_file(&user_fonts.join(&old)) {
+                ours.retain(|o| !o.eq_ignore_ascii_case(&old));
+                install_log(&format!("{old}: replaced by {use_file}"));
+            } else {
+                pending.push(old);
+            }
+        }
+    }
+    write_list(&marker, &ours);
+    write_list(&pending_font_removals(), &pending);
+    if changed {
+        unsafe {
+            let _ = PostMessageW(HWND_BROADCAST, WM_FONTCHANGE, 0, 0);
+        }
+    }
+}
+
+/// Silently ensures that whenever `ekushe.exe` runs on any PC, its icons, Bengali fonts (Shishir
+/// Bangla, the default, and the other bundled choices, installed for this user) and default
+/// configuration (`Shishir Bangla` font + `Double-Tap Shift`) are extracted and active.
 pub fn ensure_self_configured() {
     let root = install_root_dir();
     let icons_dir = root.join("assets").join("icons");
@@ -173,42 +309,12 @@ pub fn ensure_self_configured() {
     write_if_missing(&icons_dir.join("tray_bangla.ico"), ICON_TRAY_BANGLA_ICO);
     write_if_missing(&icons_dir.join("tray_english.ico"), ICON_TRAY_ENGLISH_ICO);
 
-    // Extract & register bundled Bangladeshi fonts
-    let user_win_fonts = user_fonts_dir();
-    let _ = fs::create_dir_all(&user_win_fonts);
-    let marker = installed_fonts_marker();
-    let mut ours: Vec<String> = fs::read_to_string(&marker)
-        .unwrap_or_default()
-        .lines()
-        .map(|l| l.trim().to_string())
-        .filter(|l| !l.is_empty())
-        .collect();
+    install_user_fonts(&root, &fonts_dir);
+    // Shishir Bangla's licence (SIL OFL 1.1) travels with the font files
+    let (licence_file, licence) = studio_fonts::SHISHIR_BANGLA_LICENCE;
+    let _ = fs::write(fonts_dir.join(licence_file), licence);
 
-    for (reg_name, filename, bytes) in BUNDLED_FONTS {
-        let app_font_path = fonts_dir.join(filename);
-        write_if_missing(&app_font_path, bytes);
-
-        let win_font_path = user_win_fonts.join(filename);
-        if !win_font_path.exists() {
-            // Not there before: this font is ours to remove at uninstall
-            if fs::write(&win_font_path, bytes).is_ok() && !ours.iter().any(|f| f == filename) {
-                ours.push((*filename).to_string());
-            }
-        }
-
-        unsafe {
-            let wpath = wide_null(&win_font_path.to_string_lossy());
-            let _ = AddFontResourceW(wpath.as_ptr());
-            let _ = set_hkcu_reg_sz(
-                r"Software\Microsoft\Windows NT\CurrentVersion\Fonts",
-                reg_name,
-                &win_font_path.to_string_lossy(),
-            );
-        }
-    }
-    let _ = fs::write(&marker, ours.join("\n"));
-
-    // Ensure default config.toml exists with Kalpurush Bangladeshi font
+    // Ensure default config.toml exists (Shishir Bangla font); a font the user chose is kept
     let cfg_path = Config::default_config_path();
     if !cfg_path.exists() {
         let cfg = Config::default();
@@ -216,43 +322,89 @@ pub fn ensure_self_configured() {
     }
 }
 
-/// Removes the fonts Ekushe installed for this user (file and registry entry). Fonts that were
-/// already in the user's font folder before Ekushe are left alone. Installs from before the marker
-/// file existed are treated as having installed all five.
-fn remove_user_fonts() {
-    use windows_sys::Win32::Graphics::Gdi::RemoveFontResourceW;
-    let user_win_fonts = user_fonts_dir();
-    let marker = installed_fonts_marker();
-    let ours: Vec<String> = match fs::read_to_string(&marker) {
-        Ok(s) => s
-            .lines()
-            .map(|l| l.trim().to_string())
-            .filter(|l| !l.is_empty())
-            .collect(),
-        Err(_) => BUNDLED_FONTS
-            .iter()
-            .map(|(_, f, _)| (*f).to_string())
-            .collect(),
-    };
-    for (reg_name, filename, _) in BUNDLED_FONTS {
-        if !ours.iter().any(|f| f == filename) {
-            continue;
-        }
-        let win_font_path = user_win_fonts.join(filename);
-        unsafe {
-            let _ = delete_hkcu_reg_value(
-                r"Software\Microsoft\Windows NT\CurrentVersion\Fonts",
-                reg_name,
-            );
-            let wpath = wide_null(&win_font_path.to_string_lossy());
-            let _ = RemoveFontResourceW(wpath.as_ptr());
-        }
-        let _ = fs::remove_file(&win_font_path);
+/// Delete a file that is in use as soon as it is free: at the next restart (`MoveFileEx`, which
+/// needs administrator rights), or else at this user's next sign-in (a `RunOnce` entry, which the
+/// next install takes back). Says when.
+fn schedule_removal(path: &Path) -> Option<&'static str> {
+    use windows_sys::Win32::Storage::FileSystem::{MoveFileExW, MOVEFILE_DELAY_UNTIL_REBOOT};
+    let wpath = wide_null(&path.to_string_lossy());
+    if unsafe { MoveFileExW(wpath.as_ptr(), ptr::null(), MOVEFILE_DELAY_UNTIL_REBOOT) } != 0 {
+        return Some("at the next restart");
     }
+    let name = format!(
+        "Ekushe remove {}",
+        path.file_name()
+            .map(|n| n.to_string_lossy())
+            .unwrap_or_default()
+    );
+    let cmd = format!("cmd.exe /c del /f /q \"{}\"", path.display());
+    match unsafe { set_hkcu_reg_sz(RUN_ONCE_KEY, &name, &cmd) } {
+        Ok(()) => Some("at the next sign-in"),
+        Err(_) => None,
+    }
+}
+
+/// Removes the fonts Ekushe installed for this user (file and font entry). Fonts that were already
+/// in the user's font folder before Ekushe are left alone. A file still in use is scheduled for
+/// removal, and listed (in the settings folder, which stays) so a new install takes it back.
+fn remove_user_fonts() {
+    let user_fonts = user_fonts_dir();
+    let marker = installed_fonts_marker();
+    // An install from before Ekushe kept its list installed the five fonts it had then
+    let mut ours = if marker.exists() {
+        read_list(&marker)
+    } else {
+        studio_fonts::LEGACY_FILES
+            .iter()
+            .map(|f| f.to_string())
+            .collect()
+    };
+    for f in read_list(&pending_font_removals()) {
+        if !ours.iter().any(|o| o.eq_ignore_ascii_case(&f)) {
+            ours.push(f);
+        }
+    }
+    let is_ours = |n: &str| ours.iter().any(|o| o.eq_ignore_ascii_case(n));
+    for font in studio_fonts::FONTS {
+        if registered_font_file(font.windows_name, &user_fonts).is_some_and(|r| is_ours(&r)) {
+            unsafe {
+                let _ = delete_hkcu_reg_value(FONTS_KEY, font.windows_name);
+            }
+        }
+    }
+    let mut pending = Vec::new();
+    for f in &ours {
+        let path = user_fonts.join(f);
+        if path.exists() && !retire_font_file(&path) {
+            pending.push(f.clone());
+        }
+    }
+    write_list(&pending_font_removals(), &pending);
     let _ = fs::remove_file(&marker);
     unsafe {
         let _ = PostMessageW(HWND_BROADCAST, WM_FONTCHANGE, 0, 0);
     }
+}
+
+/// A text value under `HKEY_CURRENT_USER\subkey`, if it is there
+unsafe fn get_hkcu_reg_sz(subkey: &str, value_name: &str) -> Option<String> {
+    use windows_sys::Win32::System::Registry::{RegGetValueW, RRF_RT_REG_SZ};
+    let mut buf = vec![0u16; 1024];
+    let mut len = (buf.len() * 2) as u32;
+    let rc = RegGetValueW(
+        HKEY_CURRENT_USER,
+        wide_null(subkey).as_ptr(),
+        wide_null(value_name).as_ptr(),
+        RRF_RT_REG_SZ,
+        ptr::null_mut(),
+        buf.as_mut_ptr().cast(),
+        &mut len,
+    );
+    if rc != 0 {
+        return None;
+    }
+    buf.truncate((len as usize / 2).saturating_sub(1));
+    Some(String::from_utf16_lossy(&buf))
 }
 
 /// Install progress, one line per step, in `%TEMP%\ekushe-install.log`: if an install ever stalls
@@ -320,9 +472,14 @@ fn apply_preset(path: &Path) -> Result<(), String> {
         .map_err(|e| format!("could not read the settings file {}: {e}", path.display()))?;
     let dir = Config::default_dir();
     let _ = fs::create_dir_all(&dir);
-    ekushe_core::backup::restore(&dir, &preset_as_backup(&text))
-        .map(|_| ())
-        .map_err(|e| format!("the settings file {} was not used: {e}", path.display()))
+    let restored = ekushe_core::backup::restore(&dir, &preset_as_backup(&text))
+        .map_err(|e| format!("the settings file {} was not used: {e}", path.display()))?;
+    // The office chose these settings (a Kalpurush font included): no upgrade changes them
+    if restored.settings {
+        Config::mark_settings_current(&dir.join("config.toml"))
+            .map_err(|e| format!("the settings file {} was not used: {e}", path.display()))?;
+    }
+    Ok(())
 }
 
 pub fn perform_full_install(
@@ -381,7 +538,7 @@ pub fn perform_full_install(
     // preview, and running it together with this tray app would convert every key twice. Testers
     // register it themselves from an administrator prompt: `regsvr32 ekushe_tsf.dll`.
 
-    // Broadcast WM_FONTCHANGE so all open Windows applications immediately see Kalpurush & SolaimanLipi
+    // Broadcast WM_FONTCHANGE so all open Windows applications immediately see Shishir Bangla and the other fonts
     unsafe {
         // Posted, not sent: a slow or hung application must never hold up the installer
         let _ = PostMessageW(HWND_BROADCAST, WM_FONTCHANGE, 0, 0);
@@ -992,7 +1149,7 @@ unsafe fn paint_installer_canvas(hdc: HDC, rc_client: &RECT) {
         0,
         5,
         0,
-        wide_null("Hind Siliguri SemiBold").as_ptr(),
+        wide_null("Shishir Bangla SemiBold").as_ptr(),
     );
     let font_sub = CreateFontW(
         -15,
@@ -1008,7 +1165,7 @@ unsafe fn paint_installer_canvas(hdc: HDC, rc_client: &RECT) {
         0,
         5,
         0,
-        wide_null("Hind Siliguri").as_ptr(),
+        wide_null("Shishir Bangla").as_ptr(),
     );
     let font_card_title = CreateFontW(
         -17,
@@ -1024,7 +1181,7 @@ unsafe fn paint_installer_canvas(hdc: HDC, rc_client: &RECT) {
         0,
         5,
         0,
-        wide_null("Hind Siliguri SemiBold").as_ptr(),
+        wide_null("Shishir Bangla SemiBold").as_ptr(),
     );
     let font_card_desc = CreateFontW(
         -14,
@@ -1040,7 +1197,7 @@ unsafe fn paint_installer_canvas(hdc: HDC, rc_client: &RECT) {
         0,
         5,
         0,
-        wide_null("Kalpurush").as_ptr(),
+        wide_null("Shishir Bangla").as_ptr(),
     );
     let font_btn = CreateFontW(
         -17,
@@ -1056,7 +1213,7 @@ unsafe fn paint_installer_canvas(hdc: HDC, rc_client: &RECT) {
         0,
         5,
         0,
-        wide_null("Hind Siliguri SemiBold").as_ptr(),
+        wide_null("Shishir Bangla SemiBold").as_ptr(),
     );
 
     let old_font = SelectObject(hdc, font_title as _);

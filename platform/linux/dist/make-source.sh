@@ -16,7 +16,7 @@ echo "› Files"
 copy() { for f in "$@"; do mkdir -p "$WORK/$(dirname "$f")"; cp -a "$f" "$WORK/$f"; done; }
 copy Cargo.toml Cargo.lock LICENSE README.md THIRD_PARTY_NOTICES.md .github/release/VERSION \
      crates/ekushe-core crates/ekushe-ffi crates/ekushe-studio \
-     crates/ekushe-tray/src/studio_http.rs crates/ekushe-tray/src/studio_ui.rs \
+     crates/ekushe-tray/src/studio_fonts.rs crates/ekushe-tray/src/studio_http.rs crates/ekushe-tray/src/studio_ui.rs \
      assets/icons/logo_256.png assets/fonts \
      data/dictionary/ekushe.dict.z data/dictionary/LICENSE.md data/dictionary/CC-BY-SA-4.0.txt \
      platform/linux/Makefile platform/linux/ekushe_ffi.h platform/linux/ibus platform/linux/studio platform/linux/packaging/ekushe-studio.desktop

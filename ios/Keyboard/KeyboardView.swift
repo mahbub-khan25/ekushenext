@@ -1,3 +1,4 @@
+import CoreText
 import UIKit
 
 /// What the keyboard asks the controller to do.
@@ -155,7 +156,29 @@ final class KeyboardView: UIView {
 
     // ───────────────────────── drawing ─────────────────────────
 
-    private func font(_ size: CGFloat, _ weight: UIFont.Weight = .regular) -> UIFont { .systemFont(ofSize: size, weight: weight) }
+    /// Shishir Bangla, Ekushe's default Bengali font, bundled with the keyboard (build-rust.sh copies
+    /// it into Data/): registered for this process once. iOS lets a keyboard use its own fonts but
+    /// not install them for other apps.
+    private static let shishirBangla: Void = {
+        for w in ["Regular", "Medium", "SemiBold", "Bold"] {
+            if let url = Bundle(for: KeyboardView.self).url(forResource: "ShishirBangla-\(w)", withExtension: "ttf") {
+                CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
+            }
+        }
+    }()
+    private var fonts: [String: UIFont] = [:]
+
+    /// The system font for Latin, with Shishir Bangla (same weight) for Bangla letters and digits
+    private func font(_ size: CGFloat, _ weight: UIFont.Weight = .regular) -> UIFont {
+        let key = "\(size)/\(weight.rawValue)"
+        if let f = fonts[key] { return f }
+        _ = KeyboardView.shishirBangla
+        let base = UIFont.systemFont(ofSize: size, weight: weight)
+        let bangla = UIFontDescriptor(fontAttributes: [.family: "Shishir Bangla", .traits: [UIFontDescriptor.TraitKey.weight: weight]])
+        let f = UIFont(descriptor: base.fontDescriptor.addingAttributes([.cascadeList: [bangla]]), size: size)
+        fonts[key] = f
+        return f
+    }
 
     private func draw(_ s: String, centre: CGPoint, font: UIFont, color: UIColor) {
         let a: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: color]

@@ -7,6 +7,11 @@
 //! opened with a fresh one-time launch code ([`launch_url`]). Requests are bounded in size and time,
 //! and a slow client cannot hold the server (see `studio_http.rs`).
 
+// Shared with the Windows tray, which also uses its Windows installer parts; this crate uses the
+// font list, serving and the macOS install (on Windows too, ekushe_ffi.dll leaves the rest unused)
+#[allow(dead_code)]
+#[path = "../../ekushe-tray/src/studio_fonts.rs"]
+pub(crate) mod studio_fonts;
 #[path = "../../ekushe-tray/src/studio_http.rs"]
 mod studio_http;
 #[path = "../../ekushe-tray/src/studio_layouts.rs"]
@@ -27,28 +32,6 @@ use ekushe_core::convert::{banglish_to_bangla, bijoy_to_unicode, unicode_to_bijo
 use crate::SHARED;
 
 static LOGO: &[u8] = include_bytes!("../../../assets/icons/logo_256.png");
-static FONTS: &[(&str, &[u8])] = &[
-    (
-        "Kalpurush.ttf",
-        include_bytes!("../../../assets/fonts/Kalpurush.ttf"),
-    ),
-    (
-        "SolaimanLipi.ttf",
-        include_bytes!("../../../assets/fonts/SolaimanLipi.ttf"),
-    ),
-    (
-        "SiyamRupali.ttf",
-        include_bytes!("../../../assets/fonts/SiyamRupali.ttf"),
-    ),
-    (
-        "HindSiliguri-Regular.ttf",
-        include_bytes!("../../../assets/fonts/HindSiliguri-Regular.ttf"),
-    ),
-    (
-        "HindSiliguri-Bold.ttf",
-        include_bytes!("../../../assets/fonts/HindSiliguri-Bold.ttf"),
-    ),
-];
 
 /// Linux: add Ekushe to the user's keyboards, on whichever desktop this is (see the module).
 #[cfg(target_os = "linux")]
@@ -275,8 +258,8 @@ fn handle(mut s: TcpStream, req: &str, port: u16) -> std::io::Result<()> {
         ),
         ("GET", p) if p.starts_with("/fonts/") => {
             let name = &p["/fonts/".len()..];
-            match FONTS.iter().find(|(n, _)| *n == name) {
-                Some((_, bytes)) => respond(&mut s, "200 OK", "font/ttf", bytes),
+            match studio_fonts::font_file(name) {
+                Some(bytes) => respond(&mut s, "200 OK", "font/ttf", &bytes),
                 None => respond(&mut s, "404 Not Found", "text/plain", b"no such font"),
             }
         }
@@ -321,6 +304,7 @@ fn handle(mut s: TcpStream, req: &str, port: u16) -> std::io::Result<()> {
                     "active_layout": studio_layouts::setting_value(cfg),
                     "layout_name": studio_layouts::active_names(cfg).0,
                     "font_family": cfg.candidate_font_family,
+                    "font_notice": cfg.font_migrated_from.as_deref().map(ekushe_core::config::font_notice),
                     "popup_opacity": OPACITY.load(Ordering::Relaxed),
                     "compact_popup": cfg.compact_popup,
                     "auto_english_in_terminals": cfg.auto_english_in_terminals,
@@ -408,6 +392,29 @@ fn handle(mut s: TcpStream, req: &str, port: u16) -> std::io::Result<()> {
                 &json(serde_json::json!({ "result": r })),
             )
         }
+        // The one-time "the font is now Shishir Bangla" notice: keep it, or go back to the old font
+        ("POST", "/api/font-notice") => {
+            let p: serde_json::Value = serde_json::from_str(body).unwrap_or_default();
+            let go_back = p["go_back"].as_bool().unwrap_or(false);
+            let saved = {
+                let mut sh = SHARED.lock();
+                let mut cfg = sh.ekushe.config().clone();
+                cfg.answer_font_notice(go_back);
+                let ok = cfg.save_to(&Config::default_config_path()).is_ok();
+                let family = cfg.candidate_font_family.clone();
+                sh.ekushe.set_config(cfg);
+                ok.then_some(family)
+            };
+            match saved {
+                Some(f) => respond(
+                    &mut s,
+                    "200 OK",
+                    ct,
+                    &json(serde_json::json!({ "ok": true, "font_family": f })),
+                ),
+                None => respond(&mut s, "500 Internal Server Error", ct, b"{\"ok\":false}"),
+            }
+        }
         ("POST", "/api/settings") => {
             let p: serde_json::Value = serde_json::from_str(body).unwrap_or_default();
             if let Some(o) = p["popup_opacity"].as_u64() {
@@ -435,7 +442,7 @@ fn handle(mut s: TcpStream, req: &str, port: u16) -> std::io::Result<()> {
                     studio_layouts::apply_setting(&mut cfg, l);
                 }
                 if let Some(f) = p["font_family"].as_str() {
-                    cfg.candidate_font_family = f.to_string();
+                    cfg.set_bengali_font(f);
                 }
                 if let Some(c) = p["compact_popup"].as_bool() {
                     cfg.compact_popup = c;
@@ -550,5 +557,16 @@ mod tests {
             format!("GET /api/suggest?q=amar HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nX-Ekushe-Token: {}\r\nConnection: close\r\n\r\n", token()),
         );
         assert!(ok.starts_with("HTTP/1.1 200") && ok.contains("candidates"));
+        // The default Bengali font, Shishir Bangla, is declared in four weights and served
+        let page = studio_ui::STUDIO_HTML;
+        for w in ["Regular", "Medium", "SemiBold", "Bold"] {
+            assert!(page.contains(&format!("url('/fonts/ShishirBangla-{w}.ttf')")));
+            let font = http(
+                port,
+                format!("GET /fonts/ShishirBangla-{w}.ttf HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nConnection: close\r\n\r\n"),
+            );
+            assert!(font.starts_with("HTTP/1.1 200") && font.contains("font/ttf"));
+        }
+        assert!(page.contains("--font-bn: 'Shishir Bangla',"));
     }
 }

@@ -18,4 +18,7 @@ lipo -create "$ROOT/target/aarch64-apple-ios-sim/release/libekushe_mobile.a" "$R
 python3 -c "import zlib,sys; open(sys.argv[2],'wb').write(zlib.decompress(open(sys.argv[1],'rb').read()))" \
   "$ROOT/data/dictionary/ekushe.dict.z" "$HERE/Data/ekushe-dictionary.bin"
 cp "$ROOT/data/english/words.txt" "$ROOT/data/english/next.tsv" "$ROOT/data/english/emoji.tsv" "$HERE/Data/"
+# Shishir Bangla, Ekushe's default Bengali font (the keyboard registers it for itself), with its licence
+cp "$ROOT"/assets/fonts/ShishirBangla-{Regular,Medium,SemiBold,Bold}.ttf "$HERE/Data/"
+cp "$ROOT/assets/fonts/LICENSES/OFL-1.1-ShishirBangla.txt" "$HERE/Data/"
 ls -la "$HERE/rust"/*/ "$HERE/Data/"

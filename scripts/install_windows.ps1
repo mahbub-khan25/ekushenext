@@ -1,6 +1,6 @@
 # Ekushe Next - Windows One-Step Installer
 # Builds or copies the release binaries (ekushe.exe, ekushe_tsf.dll, ekushe-cli.exe),
-# installs icons & Bangladeshi fonts (Kalpurush, SolaimanLipi, Siyam Rupali, Hind Siliguri)
+# installs icons & Bengali fonts (Shishir Bangla, the default; Kalpurush, SolaimanLipi, Siyam Rupali, Hind Siliguri)
 # to %LOCALAPPDATA%\Programs\Ekushe and user Windows Fonts, creates Start Menu shortcut with
 # ekushe.ico, and optionally enables Run-at-Startup. The TSF input method preview is not registered
 # from here (it must be registered from Program Files; see the README).
@@ -29,8 +29,8 @@ New-Item -ItemType Directory -Force -Path $fontsDir | Out-Null
 # Copy icons, logo, and bundled Bangladeshi fonts
 Copy-Item -Force (Join-Path $repoRoot "logo.png") $installDir
 Copy-Item -Force (Join-Path $repoRoot "assets\icons\*") $iconsDir
-Copy-Item -Force (Join-Path $repoRoot "assets\fonts\*") $fontsDir
-Write-Host "  [OK] Copied icons and Bangladeshi fonts (Kalpurush, SolaimanLipi, Siyam Rupali, Hind Siliguri)" -ForegroundColor Green
+Copy-Item -Force -Recurse (Join-Path $repoRoot "assets\fonts\*") $fontsDir   # with LICENSES\ (OFL and the others)
+Write-Host "  [OK] Copied icons and Bengali fonts (Shishir Bangla, Kalpurush, SolaimanLipi, Siyam Rupali, Hind Siliguri)" -ForegroundColor Green
 
 # Also install Bangladeshi fonts into user's Windows Fonts so all apps on the PC render Bangla cleanly
 $userWinFontsDir = Join-Path $env:LOCALAPPDATA "Microsoft\Windows\Fonts"
@@ -40,20 +40,33 @@ if (-not (Test-Path $fontRegKey)) {
     New-Item -Path $fontRegKey -Force | Out-Null
 }
 $banglaFontMap = @{
+    "Shishir Bangla (TrueType)"          = "ShishirBangla-Regular.ttf"
+    "Shishir Bangla Medium (TrueType)"   = "ShishirBangla-Medium.ttf"
+    "Shishir Bangla SemiBold (TrueType)" = "ShishirBangla-SemiBold.ttf"
+    "Shishir Bangla Bold (TrueType)"     = "ShishirBangla-Bold.ttf"
     "Kalpurush (TrueType)"    = "Kalpurush.ttf"
     "SolaimanLipi (TrueType)" = "SolaimanLipi.ttf"
     "Siyam Rupali (TrueType)" = "SiyamRupali.ttf"
     "Hind Siliguri (TrueType)"= "HindSiliguri-Regular.ttf"
 }
+# fonts-installed.txt lists the fonts this install put there, so uninstalling removes only those
+$marker = Join-Path $installDir "fonts-installed.txt"
+$ours = @(if (Test-Path $marker) { Get-Content $marker | Where-Object { $_.Trim() -ne "" } })
 foreach ($kv in $banglaFontMap.GetEnumerator()) {
     $srcFont = Join-Path $fontsDir $kv.Value
     $dstFont = Join-Path $userWinFontsDir $kv.Value
-    if (Test-Path $srcFont) {
-        Copy-Item -Force $srcFont $dstFont -ErrorAction SilentlyContinue
-        Set-ItemProperty -Path $fontRegKey -Name $kv.Key -Value $dstFont -ErrorAction SilentlyContinue
+    if (-not (Test-Path $srcFont)) { continue }
+    # A font file that was there before Ekushe is the user's own: not copied over, not registered
+    if ((Test-Path $dstFont) -and ($ours -notcontains $kv.Value)) {
+        Write-Host "  kept your own $($kv.Value)"
+        continue
     }
+    if ($ours -notcontains $kv.Value) { $ours += $kv.Value }
+    Copy-Item -Force $srcFont $dstFont -ErrorAction SilentlyContinue
+    Set-ItemProperty -Path $fontRegKey -Name $kv.Key -Value $dstFont -ErrorAction SilentlyContinue
 }
-Write-Host "  [OK] Installed Bangladeshi Unicode fonts to User Windows Fonts (Kalpurush default)" -ForegroundColor Green
+Set-Content -Path $marker -Value $ours
+Write-Host "  [OK] Installed Bengali Unicode fonts to User Windows Fonts (Shishir Bangla default)" -ForegroundColor Green
 
 # Prefer release binaries if present, otherwise debug binaries
 $targetDir = Join-Path $repoRoot "target\release"
@@ -99,7 +112,7 @@ if ($EnableStartup) {
     Write-Host "  [OK] Enabled automatic launch in Windows System Tray at login" -ForegroundColor Green
 }
 
-Write-Host "`n[SUCCESS] Ekushe Next installed with Kalpurush Bangladeshi font! Double-Tap Shift anytime to switch between Normal Keyboard (EN) and Ekushe Next (Bangla)." -ForegroundColor Yellow
+Write-Host "`n[SUCCESS] Ekushe Next installed with the Shishir Bangla font! Double-Tap Shift anytime to switch between Normal Keyboard (EN) and Ekushe Next (Bangla)." -ForegroundColor Yellow
 
 if (-not $NoLaunch -and (Test-Path $exePath)) {
     Start-Process -FilePath $exePath -WorkingDirectory $installDir

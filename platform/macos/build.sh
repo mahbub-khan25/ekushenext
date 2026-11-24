@@ -33,6 +33,15 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 lipo -create "$OUT/Ekushe-arm64" "$OUT/Ekushe-x86_64" -output "$APP/Contents/MacOS/Ekushe"
 sed -e "s/__VERSION__/${VERSION#v}/" -e "s/__BUILD__/$BUILD/" platform/macos/Info.plist > "$APP/Contents/Info.plist"
 cp -R platform/macos/Resources/en.lproj "$APP/Contents/Resources/"
+# The bundled Bengali fonts (ATSApplicationFontsPath: the suggestion bar uses the one chosen in
+# Studio, and Studio serves them from here), with their licences. The installer also puts Shishir
+# Bangla, the default, in /Library/Fonts for every app; uninstall.sh takes it out again.
+mkdir -p "$APP/Contents/Resources/Fonts/LICENSES"
+cp assets/fonts/*.ttf "$APP/Contents/Resources/Fonts/"
+rm -f "$APP/Contents/Resources/Fonts/NotoSansBengali-Regular.ttf"   # not offered in Studio
+cp assets/fonts/LICENSES/* "$APP/Contents/Resources/Fonts/LICENSES/"
+cp assets/fonts/README.md "$APP/Contents/Resources/Fonts/README.md"
+install -m755 platform/macos/uninstall.sh "$APP/Contents/Resources/uninstall.sh"
 # Menu-bar icon (16 pt, with a @2x version) and app icon
 sips -s format tiff assets/icons/logo_16.png --out "$OUT/m16.tiff" >/dev/null
 sips -s format tiff assets/icons/logo_32.png --out "$OUT/m32.tiff" >/dev/null

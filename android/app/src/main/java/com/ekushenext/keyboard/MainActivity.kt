@@ -109,8 +109,9 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prefs = Prefs(this)
-        bn = runCatching { Typeface.createFromAsset(assets, "fonts/HindSiliguri-Regular.ttf") }.getOrDefault(Typeface.DEFAULT)
-        bnBold = runCatching { Typeface.createFromAsset(assets, "fonts/HindSiliguri-SemiBold.ttf") }.getOrDefault(Typeface.DEFAULT_BOLD)
+        // Shishir Bangla, Ekushe's default Bengali font, bundled in the app (build-rust.sh copies it)
+        bn = runCatching { Typeface.createFromAsset(assets, "fonts/ShishirBangla-Regular.ttf") }.getOrDefault(Typeface.DEFAULT)
+        bnBold = runCatching { Typeface.createFromAsset(assets, "fonts/ShishirBangla-SemiBold.ttf") }.getOrDefault(Typeface.DEFAULT_BOLD)
         Engine.start(this)
         English.start(this)
         scroll = ScrollView(this).apply { isFillViewport = true }
@@ -598,7 +599,7 @@ class MainActivity : AppCompatActivity() {
         card.addView(link("🌐  ekushenext.com", "support@ekushenext.com", "https://ekushenext.com/"))
         spaceIn(card, 10f)
         val version = runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull() ?: Engine.release
-        card.addView(text("সংস্করণ $version · অভিধানে ${bnNum(Engine.words)} শব্দ\nফ্রি ও ওপেন সোর্স · কোড MPL-2.0, অভিধান CC BY-SA 4.0, ফন্ট Hind Siliguri (OFL)", 12f, bn, subColor))
+        card.addView(text("সংস্করণ $version · অভিধানে ${bnNum(Engine.words)} শব্দ\nফ্রি ও ওপেন সোর্স · কোড MPL-2.0, অভিধান CC BY-SA 4.0, ফন্ট শিশির বাংলা (Shishir Bangla, SIL OFL 1.1)", 12f, bn, subColor))
         root.addView(card)
     }
 

@@ -7,6 +7,7 @@ mod glass_popup;
 mod secure_field;
 mod selection;
 mod setup_wizard;
+mod studio_fonts;
 mod studio_http;
 mod studio_layouts;
 mod studio_ocr;
@@ -70,15 +71,6 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
 
 /// Embedded 256x256 PNG logo for the Studio UI (`/logo.png`)
 static LOGO_PNG_BYTES: &[u8] = include_bytes!("../../../assets/icons/logo_256.png");
-
-/// Bundled Bangladeshi & Bengali OpenType Fonts (100% offline, compiled into binary)
-static FONT_KALPURUSH: &[u8] = include_bytes!("../../../assets/fonts/Kalpurush.ttf");
-static FONT_SOLAIMANLIPI: &[u8] = include_bytes!("../../../assets/fonts/SolaimanLipi.ttf");
-static FONT_SIYAMRUPALI: &[u8] = include_bytes!("../../../assets/fonts/SiyamRupali.ttf");
-static FONT_HINDSILIGURI_REG: &[u8] =
-    include_bytes!("../../../assets/fonts/HindSiliguri-Regular.ttf");
-static FONT_HINDSILIGURI_BOLD: &[u8] =
-    include_bytes!("../../../assets/fonts/HindSiliguri-Bold.ttf");
 
 /// Magic extra info tag so our low-level keyboard hook never intercepts our own `SendInput` events.
 pub(crate) const EKUSHE_EXTRA_INFO: usize = 0xE21B_0945;
@@ -154,9 +146,9 @@ struct AppSharedState {
 }
 
 static STATE: Lazy<Mutex<AppSharedState>> = Lazy::new(|| {
-    let mut cfg = Config::load_from(&Config::default_config_path()).unwrap_or_default();
+    let mut cfg = Config::load_and_upgrade(&Config::default_config_path()).unwrap_or_default();
     if cfg.candidate_font_family.is_empty() || cfg.candidate_font_family == "Nirmala UI" {
-        cfg.candidate_font_family = "Kalpurush".to_string();
+        cfg.candidate_font_family = ekushe_core::config::DEFAULT_BENGALI_FONT.to_string();
     }
     // Ensure Bangla digits are enabled in Ekushe Bangla mode so English mode = 0-9 and Ekushe mode = ০-৯
     cfg.bangla_digits = true;
@@ -312,6 +304,8 @@ const TIMER_TRAY_RETRY: usize = 104;
 const TIMER_CONFLICTS: usize = 105;
 /// The other keyboards already pointed out, so each is mentioned once while it keeps running
 static CONFLICTS_SHOWN: parking_lot::Mutex<Vec<&'static str>> = parking_lot::Mutex::new(Vec::new());
+/// The "the font is now Shishir Bangla" balloon was shown in this run (it waits for Studio's answer)
+static FONT_NOTICE_SHOWN: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 static TRAY_RETRIES: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 /// The message Explorer broadcasts when the taskbar is (re)created; tray icons must be added again
 static TASKBAR_CREATED: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
@@ -319,17 +313,11 @@ const REHOOK_INTERVAL_MS: u32 = 30_000;
 const ES_PASSWORD_STYLE: i32 = 0x0020;
 
 unsafe fn register_embedded_bangla_fonts() {
-    for font_bytes in [
-        FONT_KALPURUSH,
-        FONT_SOLAIMANLIPI,
-        FONT_SIYAMRUPALI,
-        FONT_HINDSILIGURI_REG,
-        FONT_HINDSILIGURI_BOLD,
-    ] {
+    for font in studio_fonts::FONTS {
         let num_fonts: u32 = 0;
         let _ = AddFontMemResourceEx(
-            font_bytes.as_ptr() as *const _,
-            font_bytes.len() as u32,
+            font.bytes.as_ptr() as *const _,
+            font.bytes.len() as u32,
             ptr::null(),
             &num_fonts,
         );
@@ -345,7 +333,7 @@ fn main() {
 
     unsafe {
         let _ = windows_sys::Win32::UI::WindowsAndMessaging::SetProcessDPIAware();
-        // Register bundled Bangladeshi fonts (Kalpurush, SolaimanLipi, Siyam Rupali, Hind Siliguri) in GDI memory
+        // Register the bundled Bengali fonts (Shishir Bangla, the default, and the other choices) in GDI memory
         register_embedded_bangla_fonts();
 
         // CI / design check: draw the popup and badge to PNG files and exit
@@ -781,8 +769,19 @@ fn run_self_test(port: u16) {
     // 2. Verify /api/state
     let r_state = http_get("/api/state");
     assert!(r_state.contains("\"language\""));
-    assert!(r_state.contains("Kalpurush"));
+    assert!(r_state.contains("\"font_family\""));
     println!("✓ /api/state verified");
+    // The default Bengali font is served to Studio in its four weights
+    for w in ["Regular", "Medium", "SemiBold", "Bold"] {
+        let font = raw(format!(
+            "GET /fonts/ShishirBangla-{w}.ttf HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nConnection: close\r\n\r\n"
+        ));
+        assert!(
+            font.starts_with("HTTP/1.1 200"),
+            "ShishirBangla-{w}.ttf not served"
+        );
+    }
+    println!("✓ /fonts/ShishirBangla-*.ttf served");
 
     // 3. Verify /api/suggest (Phonetic + Connected Letters + Sign Hints)
     let r_sug = http_get("/api/suggest?q=swadhin");
@@ -815,7 +814,7 @@ fn run_self_test(port: u16) {
     // 7. Verify POST /api/settings
     let r_set = http_post(
         "/api/settings",
-        r#"{"hotkey":"DoubleTapShift","typing_mode":"PhoneticFirst","active_layout":"AvroPhonetic","font_family":"Kalpurush"}"#,
+        r#"{"hotkey":"DoubleTapShift","typing_mode":"PhoneticFirst","active_layout":"AvroPhonetic","font_family":"Shishir Bangla"}"#,
     );
     assert!(r_set.contains("\"ok\":true"));
     println!("✓ POST /api/settings verified");
@@ -1911,6 +1910,15 @@ unsafe extern "system" fn tray_wnd_proc(
             };
             if !new.is_empty() {
                 show_tray_balloon(hwnd, "অন্য বাংলা কীবোর্ড চালু আছে", &conflicts::message(&new));
+            } else if !FONT_NOTICE_SHOWN.swap(true, Ordering::SeqCst) {
+                // The font moved to Shishir Bangla: say so once (clicking opens Studio's settings,
+                // where it can be kept or changed back)
+                let old = STATE.lock().ekushe.config().font_migrated_from.clone();
+                if let Some(old) = old {
+                    let n = ekushe_core::config::font_notice(&old);
+                    // Bengali, like the rest of the tray (both fit a balloon: see ekushe-core's test)
+                    show_tray_balloon(hwnd, &n.title_bn, &n.body_bn);
+                }
             }
             0
         }
@@ -2035,6 +2043,13 @@ unsafe extern "system" fn tray_wnd_proc(
                     if update_check::AVAILABLE.lock().is_some() =>
                 {
                     open_in_browser(update_check::DOWNLOAD_PAGE);
+                }
+                // The "the font is now Shishir Bangla" notice was clicked: Studio's settings answer it
+                windows_sys::Win32::UI::Shell::NIN_BALLOONUSERCLICK
+                    if STATE.lock().ekushe.config().font_migrated_from.is_some() =>
+                {
+                    let port = STATE.lock().studio_port;
+                    open_studio_window_tab(port, Some("settings"));
                 }
                 _ => {}
             }
@@ -2888,21 +2903,14 @@ fn handle_http_client(mut stream: TcpStream, req: &str) -> std::io::Result<()> {
         return write_http_response(&mut stream, "200 OK", "image/png", LOGO_PNG_BYTES);
     }
 
-    // Serve bundled Bangladeshi & Bengali OpenType TTF fonts directly from memory
-    if method == "GET" && clean_path == "/fonts/Kalpurush.ttf" {
-        return write_http_response(&mut stream, "200 OK", "font/ttf", FONT_KALPURUSH);
-    }
-    if method == "GET" && clean_path == "/fonts/SolaimanLipi.ttf" {
-        return write_http_response(&mut stream, "200 OK", "font/ttf", FONT_SOLAIMANLIPI);
-    }
-    if method == "GET" && clean_path == "/fonts/SiyamRupali.ttf" {
-        return write_http_response(&mut stream, "200 OK", "font/ttf", FONT_SIYAMRUPALI);
-    }
-    if method == "GET" && clean_path == "/fonts/HindSiliguri-Regular.ttf" {
-        return write_http_response(&mut stream, "200 OK", "font/ttf", FONT_HINDSILIGURI_REG);
-    }
-    if method == "GET" && clean_path == "/fonts/HindSiliguri-Bold.ttf" {
-        return write_http_response(&mut stream, "200 OK", "font/ttf", FONT_HINDSILIGURI_BOLD);
+    // Serve the bundled Bengali fonts directly from memory
+    if method == "GET" {
+        if let Some(bytes) = clean_path
+            .strip_prefix("/fonts/")
+            .and_then(studio_fonts::font_file)
+        {
+            return write_http_response(&mut stream, "200 OK", "font/ttf", &bytes);
+        }
     }
 
     if method == "GET" && clean_path == "/api/state" {
@@ -2936,6 +2944,7 @@ fn handle_http_client(mut stream: TcpStream, req: &str) -> std::io::Result<()> {
             "layout_name": studio_layouts::active_names(cfg).0,
             "conflicts": conflicts_note,
             "font_family": cfg.candidate_font_family,
+            "font_notice": cfg.font_migrated_from.as_deref().map(ekushe_core::config::font_notice),
             "popup_opacity": st.popup_opacity_pct,
             "compact_popup": cfg.compact_popup,
             "auto_english_in_terminals": cfg.auto_english_in_terminals,
@@ -3307,6 +3316,35 @@ fn handle_http_client(mut stream: TcpStream, req: &str) -> std::io::Result<()> {
         );
     }
 
+    // The one-time "the font is now Shishir Bangla" notice: keep it, or go back to the old font
+    if method == "POST" && clean_path == "/api/font-notice" {
+        let parsed: serde_json::Value = serde_json::from_str(body).unwrap_or_default();
+        let go_back = parsed
+            .get("go_back")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+        let (ok, family) = {
+            let mut st = STATE.lock();
+            let mut cfg = st.ekushe.config().clone();
+            cfg.answer_font_notice(go_back);
+            let ok = cfg.save_to(&Config::default_config_path()).is_ok();
+            let family = cfg.candidate_font_family.clone();
+            st.ekushe.set_config(cfg);
+            (ok, family)
+        };
+        let json = serde_json::json!({ "ok": ok, "font_family": family }).to_string();
+        return write_http_response(
+            &mut stream,
+            if ok {
+                "200 OK"
+            } else {
+                "500 Internal Server Error"
+            },
+            "application/json; charset=utf-8",
+            json.as_bytes(),
+        );
+    }
+
     if method == "POST" && clean_path == "/api/settings" {
         let parsed: serde_json::Value = serde_json::from_str(body).unwrap_or_default();
         let hk_str = parsed
@@ -3324,7 +3362,7 @@ fn handle_http_client(mut stream: TcpStream, req: &str) -> std::io::Result<()> {
         let font_str = parsed
             .get("font_family")
             .and_then(|v| v.as_str())
-            .unwrap_or("Kalpurush");
+            .unwrap_or(ekushe_core::config::DEFAULT_BENGALI_FONT);
         let opacity_opt = parsed
             .get("popup_opacity")
             .and_then(|v| v.as_u64())
@@ -3389,7 +3427,7 @@ fn handle_http_client(mut stream: TcpStream, req: &str) -> std::io::Result<()> {
                 _ => TypingMode::Smart,
             };
             studio_layouts::apply_setting(&mut cfg, lay_str);
-            cfg.candidate_font_family = font_str.to_string();
+            cfg.set_bengali_font(font_str);
             if let Some(cp) = compact_opt {
                 cfg.compact_popup = cp;
             }
