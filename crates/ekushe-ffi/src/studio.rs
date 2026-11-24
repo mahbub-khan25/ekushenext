@@ -7,6 +7,9 @@
 //! opened with a fresh one-time launch code ([`launch_url`]). Requests are bounded in size and time,
 //! and a slow client cannot hold the server (see `studio_http.rs`).
 
+// Shared with the Windows tray, which also uses its Windows installer parts; this crate uses the
+// font list, serving and the macOS install (on Windows too, ekushe_ffi.dll leaves the rest unused)
+#[allow(dead_code)]
 #[path = "../../ekushe-tray/src/studio_fonts.rs"]
 pub(crate) mod studio_fonts;
 #[path = "../../ekushe-tray/src/studio_http.rs"]
