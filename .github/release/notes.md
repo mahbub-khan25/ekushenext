@@ -2,6 +2,11 @@
 
 Type Bangla the way it sounds, in English letters (`amar sonar bangla` → আমার সোনার বাংলা), and Ekushe writes it with the spelling you meant.
 
+**New in beta.16: a new Bangla font, Shishir Bangla (শিশির বাংলা), installed with Ekushe.** Ekushe now writes and shows Bangla in **Shishir Bangla**, a free font made from SolaimanLipi's letters (Ekushey, OFL) with modern Bangla shaping: every word of Ekushe's 406,421-word dictionary shapes correctly, with conjuncts, vowel signs and reph in place and nothing clipped at the top or bottom of a line. It comes in four weights (Regular, Medium, SemiBold, Bold), with Noto Sans Bengali's digits and Inter's English letters, so Bangla and English sit together on one line.
+- **Installed for you:** on Windows, Mac and Linux the font is added to your computer with Ekushe, so Word, LibreOffice, browsers and other apps can use it too; uninstalling Ekushe removes only the font files Ekushe added. A font you installed yourself is never touched. On Android and iPhone/iPad it is built into the keyboard.
+- **The new default:** Studio, the suggestion bar and the key previews use Shishir Bangla. If you were on Ekushe's old default (Kalpurush), you are moved to Shishir Bangla once, and Ekushe asks once: **শিশির বাংলাই থাক** (keep it) or **কালপুরুষ-এ ফিরে যান** (go back). A font you chose yourself, or one set by your office's settings file, stays as it is.
+- **Linux:** the font is a separate package (`shishir-bangla-fonts` on Fedora, `fonts-shishir-bangla` on Ubuntu/Debian) that Ekushe installs with it, from the COPR and the PPA as usual.
+
 **New in beta.15: English on the phone keyboards, good enough for every day (Android and iPhone/iPad).**
 - **Autocorrect that knows the keyboard:** a letter next to the one you meant (`thw` → the), two mistakes in a long word (`definately` → definitely) and words run together (`alot` → a lot) are fixed when you press Space; names, addresses and Banglish are left alone, and ⌫ right after puts back what you typed.
 - **Glide typing:** draw across the letters without lifting your finger to write an English word; other guesses show above the keys, and ⌫ right after removes the whole word.
